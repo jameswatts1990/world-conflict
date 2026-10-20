@@ -1,0 +1,57 @@
+import {
+  EUROPE_SCENARIO,
+  buildWorld,
+  createArmy,
+  createInitialState,
+  createUnit,
+  stepState,
+  type Army,
+  type GameState,
+  type NationId,
+  type OwnerId,
+  type ProvinceId,
+  type UnitType,
+} from '../src/sim';
+
+export const world = buildWorld(EUROPE_SCENARIO);
+
+/** New game with every nation under "human" control, i.e. no AI interference. */
+export function quietGame(seed = 42): GameState {
+  const state = createInitialState(world, { seed, humanNation: 'fr' });
+  for (const id of world.nationIds) {
+    state.nations[id].controller = 'human';
+    state.nations[id].ai = null;
+  }
+  return state;
+}
+
+export function aiGame(seed = 7, human: NationId | null = null): GameState {
+  return createInitialState(world, { seed, humanNation: human });
+}
+
+export function run(state: GameState, ticks: number): void {
+  for (let i = 0; i < ticks; i++) stepState(state, world);
+}
+
+export function clearArmies(state: GameState, province?: ProvinceId): void {
+  for (const id of Object.keys(state.armies)) {
+    if (!province || state.armies[id].province === province) delete state.armies[id];
+  }
+}
+
+export function place(state: GameState, owner: OwnerId, province: ProvinceId, units: Partial<Record<UnitType, number>>): Army {
+  const list = [];
+  for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
+    for (let i = 0; i < n; i++) list.push(createUnit(state, type));
+  }
+  return createArmy(state, owner, province, list);
+}
+
+export function setWar(state: GameState, a: NationId, b: NationId): void {
+  state.nations[a].relations[b] = { status: 'war', since: state.tick, truceUntil: 0 };
+  state.nations[b].relations[a] = { status: 'war', since: state.tick, truceUntil: 0 };
+}
+
+export function richen(state: GameState, nation: NationId): void {
+  state.nations[nation].resources = { money: 100000, materials: 100000, fuel: 100000, manpower: 100000 };
+}
