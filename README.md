@@ -29,6 +29,14 @@ Other scripts:
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run e2e` | Scripted browser playthrough against the production build (written but not yet run to completion — see "Known limitations") |
 
+## Deploy to GitHub Pages
+
+The build uses relative asset paths and makes no runtime fetches, so `dist/` works from any static path,
+including `https://<user>.github.io/<repo>/`. The workflow in `.github/workflows/deploy-pages.yml` builds and
+deploys on every push to the repository's default branch (or run it manually from the Actions tab).
+
+One-time setup: in the repository's **Settings → Pages**, set **Source** to **GitHub Actions**.
+
 ## Controls
 
 | Input | Action |
