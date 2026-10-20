@@ -1,0 +1,8 @@
+node_modules
+dist
+*.tsbuildinfo
+# Raw Natural Earth downloads (large); regenerate with `npm run map:fetch`
+data-src/
+# Local verification output
+e2e-output/
+.vite

@@ -1,0 +1,45 @@
+{
+  "name": "world-conflict",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Browser-based real-time global strategy game prototype (WWI to WWII era progression).",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "sim:campaign": "vite-node scripts/headless-campaign.ts",
+    "map:fetch": "node scripts/map/fetch-natural-earth.mjs",
+    "map:build": "node scripts/map/build-map.mjs",
+    "e2e": "node scripts/e2e/playthrough.mjs"
+  },
+  "dependencies": {
+    "d3-geo": "^3.1.1",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "topojson-client": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/d3-geo": "^3.1.1",
+    "@types/d3-selection": "^3.0.12",
+    "@types/d3-zoom": "^3.0.9",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
+    "@vitejs/plugin-react": "^6.1.2",
+    "mapshaper": "^0.7.92",
+    "playwright": "1.56.1",
+    "typescript": "~5.9",
+    "vite": "^8.3.4",
+    "vite-node": "^6.0.0",
+    "vitest": "^5.0.5"
+  }
+}

@@ -1,0 +1,35 @@
+// Resource income, upkeep and shortages. Runs every tick.
+import { pushEvent } from '../events';
+import { nationEconomy, perTick } from '../queries';
+import { RESOURCE_KEYS, type GameState } from '../types';
+import type { World } from '../world';
+
+export function economySystem(state: GameState, world: World): void {
+  for (const id of world.nationIds) {
+    const nation = state.nations[id];
+    if (nation.eliminated) continue;
+    const eco = nationEconomy(state, world, id);
+    for (const k of RESOURCE_KEYS) nation.resources[k] += perTick(eco.net[k], state);
+    nation.lastRates = eco.net;
+
+    const moneyShort = nation.resources.money < 0;
+    const fuelShort = nation.resources.fuel < 0;
+    for (const k of RESOURCE_KEYS) if (nation.resources[k] < 0) nation.resources[k] = 0;
+
+    if (moneyShort && !nation.shortages.money) {
+      pushEvent(state, 'shortage', 'Treasury empty: unpaid troops fight at reduced effectiveness.', {
+        nations: [id],
+        severity: 'bad',
+      });
+    }
+    if (fuelShort && !nation.shortages.fuel) {
+      pushEvent(state, 'shortage', 'Fuel exhausted: tanks move and fight at half effectiveness.', {
+        nations: [id],
+        severity: 'bad',
+      });
+    }
+    // Shortage clears once the stockpile recovers above zero.
+    nation.shortages.money = moneyShort || (nation.shortages.money && nation.resources.money <= 0);
+    nation.shortages.fuel = fuelShort || (nation.shortages.fuel && nation.resources.fuel <= 0);
+  }
+}
