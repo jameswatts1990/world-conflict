@@ -1,7 +1,7 @@
-// Coherent placeholder iconography: NATO-style unit symbols, simple resource
-// and building glyphs. All inline SVG, no external assets.
+// Inline SVG iconography: unit silhouettes, resource and building glyphs and a
+// line-icon set for the HUD. All original artwork, no external assets.
 import type { ReactElement } from 'react';
-import type { BuildingType, ResourceKey, UnitType } from '../sim';
+import type { BuildingType, ResourceKey, Terrain, UnitType } from '../sim';
 
 interface IconProps {
   size?: number;
@@ -9,53 +9,107 @@ interface IconProps {
   title?: string;
 }
 
-/** NATO APP-6 style frames: infantry ✕, artillery ●, armour ⬭. */
-export function UnitGlyph({ type, size = 18, color = 'currentColor' }: { type: UnitType; size?: number; color?: string }) {
-  const w = size;
-  const h = size * 0.7;
+// ---------------------------------------------------------------------------
+// Unit silhouettes (24 × 14 box, facing right)
+// ---------------------------------------------------------------------------
+
+/** Unit silhouette as an SVG group in a 24 × 14 box; used on map counters and in panels. */
+export function UnitShape({ type, color = '#fff', detail = 'rgba(0,0,0,0.45)' }: { type: UnitType; color?: string; detail?: string }) {
+  if (type === 'tank') {
+    return (
+      <g fill={color}>
+        <path d="M2.4 8.6L4.8 5.8H19.2L21.8 8.6Z" />
+        <path d="M7.6 5.9L8.7 3.1H14.2L15.3 5.9Z" />
+        <rect x={14} y={3.9} width={9.4} height={1.3} rx={0.4} />
+        <path d="M2.6 9.3H21.4A2.2 2.2 0 0 1 21.4 13.7H2.6A2.2 2.2 0 0 1 2.6 9.3Z" />
+        {[4, 8, 12, 16, 20].map((x) => (
+          <circle key={x} cx={x} cy={11.5} r={1.15} fill={detail} />
+        ))}
+      </g>
+    );
+  }
+  if (type === 'artillery') {
+    return (
+      <g fill={color}>
+        <path d="M7.2 7.6L21.6 1.6L22.6 3.1L8.6 9.6Z" />
+        <path d="M11.4 3.6L13.4 3V9.2L11.4 9.7Z" />
+        <path d="M7.6 9.2L9.4 10.6L2 13.9L1 12.7Z" />
+        <path fillRule="evenodd" d="M9.2 5.6a4.2 4.2 0 1 1 0 8.4a4.2 4.2 0 1 1 0-8.4zM9.2 7.4a2.4 2.4 0 1 0 0 4.8a2.4 2.4 0 1 0 0-4.8z" />
+        <circle cx={9.2} cy={9.8} r={0.9} />
+      </g>
+    );
+  }
+  // Infantry: advancing soldier, rifle and bayonet levelled.
   return (
-    <svg width={w} height={h} viewBox="0 0 20 14" aria-label={type} role="img">
-      <rect x="1" y="1" width="18" height="12" fill="none" stroke={color} strokeWidth="1.6" />
-      {type === 'infantry' && <path d="M1 1 L19 13 M19 1 L1 13" stroke={color} strokeWidth="1.4" />}
-      {type === 'artillery' && <circle cx="10" cy="7" r="2.6" fill={color} />}
-      {type === 'tank' && <rect x="4.5" y="4" width="11" height="6" rx="3" fill="none" stroke={color} strokeWidth="1.4" />}
+    <g fill={color}>
+      <circle cx={10.2} cy={3.1} r={1.6} />
+      <path d="M7.4 2.7Q10.2 -0.4 13 2.7Z" />
+      <rect x={6.8} y={2.4} width={6.8} height={0.8} rx={0.4} />
+      <path d="M8.8 4.8L11.8 4.5L13.2 8.8L9.7 9.4Z" />
+      <path d="M9.4 8.7L11.2 9.3L8.6 13.9L6.7 13.6Z" />
+      <path d="M11.2 9L13 8.7L14.9 13.6L13 13.9Z" />
+      <path d="M10.6 5L15.6 6.6L15.2 7.6L10.3 6.3Z" />
+      <path d="M8.8 7.9L23.4 4.6L23.6 5.4L9 8.8Z" />
+    </g>
+  );
+}
+
+/** Unit silhouette as a standalone icon (width = size). */
+export function UnitGlyph({ type, size = 22, color = 'currentColor' }: { type: UnitType; size?: number; color?: string }) {
+  return (
+    <svg className="unit-glyph" width={size} height={(size * 14) / 24} viewBox="0 0 24 14" aria-label={type} role="img">
+      <UnitShape type={type} color={color} detail="rgba(0,0,0,0.5)" />
     </svg>
   );
 }
 
+// ---------------------------------------------------------------------------
+// Resources (20 × 20, full colour)
+// ---------------------------------------------------------------------------
+
 const RESOURCE_PATHS: Record<ResourceKey, ReactElement> = {
   money: (
     <>
-      <circle cx="10" cy="10" r="7.5" fill="#d6b25e" stroke="#8a6b22" strokeWidth="1.2" />
-      <path d="M12.6 6.6c-.6-.7-1.6-1-2.6-1-1.7 0-2.6.9-2.6 2 0 2.6 5.4 1.4 5.4 4.2 0 1.1-1 2-2.8 2-1.1 0-2.1-.4-2.8-1.1M10 4v12" stroke="#5c4613" strokeWidth="1.3" fill="none" />
+      <circle cx="10" cy="10" r="8.2" fill="#e2b54c" stroke="#7c5d18" strokeWidth="1.2" />
+      <circle cx="10" cy="10" r="6" fill="none" stroke="#a78128" strokeWidth="0.9" />
+      <path d="M12.3 7.2c-.5-.6-1.3-.9-2.3-.9-1.4 0-2.2.7-2.2 1.6 0 2.2 4.6 1.2 4.6 3.6 0 .9-.9 1.7-2.4 1.7-1 0-1.8-.3-2.4-.9M10 4.9v10.2" stroke="#5c4410" strokeWidth="1.3" fill="none" />
     </>
   ),
   materials: (
     <>
-      <path d="M3 8h14v8H3z" fill="#9aa4ad" stroke="#4d565e" strokeWidth="1.2" />
-      <path d="M5 4h10v4H5z" fill="#b8c1c9" stroke="#4d565e" strokeWidth="1.2" />
-      <path d="M7 12h6" stroke="#4d565e" strokeWidth="1.2" />
+      <path d="M1 16.5L2.6 12.4H8.6L10.2 16.5Z" fill="#9fb0bf" stroke="#3d4955" strokeWidth="0.9" />
+      <path d="M9.8 16.5L11.4 12.4H17.4L19 16.5Z" fill="#9fb0bf" stroke="#3d4955" strokeWidth="0.9" />
+      <path d="M5.4 12L7 7.9H13L14.6 12Z" fill="#c3cfda" stroke="#3d4955" strokeWidth="0.9" />
+      <path d="M3.2 13.4H8M12 13.4H16.8M7.6 8.9H12.4" stroke="#eef3f7" strokeWidth="0.8" />
     </>
   ),
   fuel: (
-    <path d="M10 2.5c3 4 5.5 6.8 5.5 9.7A5.5 5.5 0 0 1 4.5 12.2C4.5 9.3 7 6.5 10 2.5z" fill="#3a3a3a" stroke="#111" strokeWidth="1.1" />
+    <>
+      <path d="M10 2.2c3.2 4.3 5.9 7.4 5.9 10.5a5.9 5.9 0 0 1-11.8 0c0-3.1 2.7-6.2 5.9-10.5z" fill="#1d1f22" stroke="#e39a35" strokeWidth="1.3" />
+      <path d="M7.4 12.6a2.8 2.8 0 0 0 2 2.7" stroke="#f6d39a" strokeWidth="1.1" fill="none" strokeLinecap="round" />
+    </>
   ),
   manpower: (
     <>
-      <circle cx="10" cy="6" r="3.2" fill="#c9a27e" stroke="#5e4630" strokeWidth="1.1" />
-      <path d="M4 17c.5-4 3-6 6-6s5.5 2 6 6z" fill="#6f7f5a" stroke="#38412c" strokeWidth="1.1" />
+      <path d="M5 12.4c0-3.9 2.2-6.8 5-6.8s5 2.9 5 6.8z" fill="#86965a" stroke="#3a4322" strokeWidth="1" />
+      <path d="M2.2 13.3c0-1 3.5-1.8 7.8-1.8s7.8.8 7.8 1.8-3.5 1.7-7.8 1.7-7.8-.7-7.8-1.7z" fill="#6f7d48" stroke="#3a4322" strokeWidth="1" />
+      <path d="M7 8.6c.8-1.2 1.8-1.8 3-1.8" stroke="#c4d29a" strokeWidth="0.9" fill="none" strokeLinecap="round" />
     </>
   ),
 };
 
 export function ResourceIcon({ kind, size = 16, title }: IconProps & { kind: ResourceKey }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind}>
+    <svg className="res-icon" width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind}>
       {title && <title>{title}</title>}
       {RESOURCE_PATHS[kind]}
     </svg>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Buildings (20 × 20, single colour)
+// ---------------------------------------------------------------------------
 
 const BUILDING_PATHS: Record<BuildingType, ReactElement> = {
   industry: <path d="M2 17V9l4 2.5V9l4 2.5V9l4 2.5V4h3v13z" />,
@@ -72,6 +126,108 @@ export function BuildingIcon({ kind, size = 16, title }: IconProps & { kind: Bui
     <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind} fill="currentColor">
       {title && <title>{title}</title>}
       {BUILDING_PATHS[kind]}
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HUD line icons (24 × 24, stroked)
+// ---------------------------------------------------------------------------
+
+const LINE = {
+  research: 'M9 3h6M10 3v6.5L4.8 18.6A1.6 1.6 0 0 0 6.2 21h11.6a1.6 1.6 0 0 0 1.4-2.4L14 9.5V3M7.4 15h9.2',
+  diplomacy: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM3 12h18M12 3c2.6 2.5 3.8 5.6 3.8 9s-1.2 6.5-3.8 9M12 3c-2.6 2.5-3.8 5.6-3.8 9s1.2 6.5 3.8 9',
+  news: 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M7 9h7M7 12.5h7M7 16h4',
+  save: 'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6',
+  load: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 11h18',
+  help: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.3-2.5 4M12 17.2v.3',
+  exit: 'M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10',
+  close: 'M6 6l12 12M18 6L6 18',
+  move: 'M4 12h14M13 6.5l5.5 5.5-5.5 5.5',
+  stop: 'M7 7h10v10H7z',
+  split: 'M12 21v-7M12 14L6.5 6M12 14l5.5-8M4 6h5M15 6h5',
+  merge: 'M6 3v4l6 6M18 3v4l-6 6M12 13v8M9 18l3 3 3-3',
+  pause: 'M8.5 5v14M15.5 5v14',
+  plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
+  fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  layers: 'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5',
+  legend: 'M5 5h14v14H5zM8 9h8M8 12h8M8 15h5',
+  clock: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7v5l3.2 2',
+  swords: 'M4 4l11 11M13 17l4-4M15 15l4.5 4.5M20 4L9 15M11 17l-4-4M9 15l-4.5 4.5',
+  supply: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  warning: 'M12 4l9 16H3zM12 10v4.5M12 17.3v.2',
+  anchor: 'M12 3.5a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 7.5V20M8 11h8M5 14a7 7 0 0 0 14 0',
+  road: 'M8 4L5 20M16 4l3 16M12 5v2.5M12 10.5v3M12 16.5V19',
+  city: 'M4 20V10l4-2v12M8 20V5h7v15M15 20v-8h5v8M3 20h18M10.5 8.5h2M10.5 12h2M10.5 15.5h2',
+  flag: 'M6 21V4M6 4h11l-2.5 4 2.5 4H6',
+  bolt: 'M13 3L5 14h6l-1 7 8-11h-6z',
+  target: 'M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
+  factory: 'M3 20V10l5 3v-3l5 3v-3l5 3V4h3v16zM3 20h18',
+  gear: 'M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7zM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1',
+  shield: 'M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z',
+  oil: 'M12 3.5c3.2 4.3 5.8 7.4 5.8 10.6a5.8 5.8 0 0 1-11.6 0c0-3.2 2.6-6.3 5.8-10.6z',
+  plains: 'M3 19h18M7 19l-1.5-4M7 19l1.5-4.5M12 19l-1.5-5M12 19l1.5-6M17 19l-1.5-4M17 19l1.5-4.5',
+  forest: 'M12 3l5 7h-3l4 6H6l4-6H7zM12 16v5',
+  hills: 'M2 19c3-5 6-7 9-7s6 2 11 7M8 13c1.5-3 3.5-5 6-5s4 1.5 6 4.5',
+  mountains: 'M2 20L9 7l4 7 2-3 7 9zM7.6 9.6L9 7l1.8 3.3',
+  urban: 'M4 20V10l4-2v12M8 20V5h7v15M15 20v-8h5v8M3 20h18M10.5 8.5h2M10.5 12h2M10.5 15.5h2',
+  marsh: 'M4 15c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M4 19c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M9 12V6M13 12V4M17 12V7',
+} satisfies Record<string, string>;
+
+const FILLED = {
+  play: 'M8 5l11 7-11 7z',
+  star: 'M12 2.8l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.1 6.4 20l1.1-6.2L3 9.4l6.2-.9z',
+} satisfies Record<string, string>;
+
+export type IconName = keyof typeof LINE | keyof typeof FILLED;
+
+export function Icon({ name, size = 18, className, title }: IconProps & { name: IconName | Terrain }) {
+  const filled = (FILLED as Record<string, string>)[name];
+  return (
+    <svg
+      className={`icon${className ? ` ${className}` : ''}`}
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+    >
+      {title && <title>{title}</title>}
+      {filled ? (
+        <path d={filled} fill="currentColor" />
+      ) : (
+        <path d={(LINE as Record<string, string>)[name]} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
+/** Chief-of-staff portrait for briefings (64 × 64). */
+export function AdvisorPortrait({ size = 64 }: { size?: number }) {
+  return (
+    <svg className="advisor" width={size} height={size} viewBox="0 0 64 64" aria-hidden>
+      <defs>
+        <linearGradient id="adv-bg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2f4253" />
+          <stop offset="1" stopColor="#111a22" />
+        </linearGradient>
+      </defs>
+      <rect width="64" height="64" rx="8" fill="url(#adv-bg)" />
+      <path d="M6 64c1-12 11-18 26-18s25 6 26 18z" fill="#3e4b33" />
+      <path d="M22 46l10 9 10-9-3-2-7 6-7-6z" fill="#2c3624" />
+      <rect x="16" y="52" width="7" height="3" rx="1" fill="#b8372b" />
+      <rect x="41" y="52" width="7" height="3" rx="1" fill="#b8372b" />
+      <path d="M26 38h12v8l-6 4-6-4z" fill="#b48c6a" />
+      <ellipse cx="32" cy="30" rx="9.5" ry="11" fill="#c89e78" />
+      <path d="M17 22c0-6 7-10 15-10s15 4 15 10l3 2H14z" fill="#4a5a3b" />
+      <path d="M19 24h26l-3.5 4.4H22.5z" fill="#1c2216" />
+      <rect x="16" y="22" width="32" height="2.6" rx="1" fill="#b8372b" />
+      <circle cx="32" cy="17.5" r="2.4" fill="#e2b54c" />
+      <path d="M27 36c3 1.6 7 1.6 10 0" stroke="#7a5a40" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+      <path d="M25 33.5h5M34 33.5h5" stroke="#5a4130" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

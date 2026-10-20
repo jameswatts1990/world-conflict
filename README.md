@@ -27,7 +27,7 @@ Other scripts:
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (written but not yet run to completion — see "Known limitations") |
+| `npm run e2e` | Scripted browser playthrough against the production build (start → build → recruit → research → move → capture → save/load → campaign end) |
 
 ## Controls
 
@@ -40,11 +40,15 @@ Other scripts:
 | Drag / mouse wheel | Pan / zoom |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
-| **R** / **D** / **L** | Research / Diplomacy & objectives / toggle event log |
-| **H** or **?** | Controls and tutorial |
+| **R** / **D** / **L** | Research / Diplomacy & objectives / toggle field reports |
+| **K** | Show or hide the map key |
+| **H** or **?** | Controls and briefing |
 | **Esc** | Cancel move mode, close a dialog, clear selection |
 
-Click an event in the log to jump to its province. Peace offers from the AI pop up at the top right.
+The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch changes the map
+view (Political, Terrain, Supply); the overview map and zoom buttons sit at the bottom right. With one of your armies
+selected, pointing at a province previews the route and arrival time. Click a field report or an alert to jump to its
+province. Peace offers and key events (wars, research, objectives) pop up at the top left.
 
 ## How to win
 
@@ -69,7 +73,7 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
   ai/               Computer opponents (issue the same commands as the player)
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
-src/ui/             React interface: map (SVG + d3-geo/d3-zoom), panels, dialogs
+src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON (shapes only)
 scripts/            Map pipeline, headless campaign, browser playthrough
 tests/              Simulation tests
@@ -77,10 +81,9 @@ tests/              Simulation tests
 
 ## Known limitations
 
-- The scripted browser playthrough (`npm run e2e`) has not been run to completion. The production build was loaded
-  in headless Chromium, the menu, tutorial and game screen rendered without console errors, and screenshots were
-  checked by eye. The full loop (build, recruit, research, move, capture, save/load, win/loss) is covered by the
-  simulation tests, not by an automated browser run.
+- The scripted browser playthrough (`npm run e2e`) runs to completion against the production build in headless
+  Chromium, but is not yet part of CI. It checks the gameplay loop through the real UI, not visual appearance;
+  screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
   campaigns end either by objectives (about 105 min) or on the time limit.
 - AI armies can grow large (100+ units) late in a campaign. No unit disbanding yet; a bankrupt AI keeps its army

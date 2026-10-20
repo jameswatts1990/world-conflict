@@ -1,21 +1,23 @@
 import { VICTORY } from '../../sim/config/rules';
 import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationPower, vpToWin } from '../../sim';
-import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
+import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
-import { Modal, NationSwatch } from './Common';
+import { Icon } from '../icons';
+import { Modal } from './Common';
 
 export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameController; onClose: () => void; onFocus: (pid: string) => void }) {
   const { state, world, human } = ctrl;
   const scores = computeScores(state, world);
   const need = vpToWin(world);
   const leader = state.victory.leader;
+  const maxPower = Math.max(1, ...scores.map((s) => nationPower(state, s.nation)));
   return (
-    <Modal title="Diplomacy & Objectives" onClose={onClose} wide>
-      <p className="muted">
-        All powers start at peace. Declaring war lets your armies enter that nation&apos;s territory. Peace can be offered after{' '}
-        {Math.round(180 / 60)} minutes of war; the AI accepts when losing or war-weary. Peace freezes the current borders and
-        withdraws trespassing armies. Neutral states may be invaded at any time.
+    <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} wide>
+      <p className="intro">
+        All powers start at peace. Declaring war lets your armies enter that nation&apos;s territory. Peace can be offered after {Math.round(180 / 60)}{' '}
+        minutes of war; the AI accepts when losing or war-weary. Peace freezes the current borders and withdraws trespassing armies. Neutral
+        states may be invaded at any time.
       </p>
       <table className="dip-table">
         <thead>
@@ -23,10 +25,10 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             <th>Nation</th>
             <th>Era</th>
             <th>Relation</th>
-            <th title="Total military power">Power</th>
-            <th>Prov.</th>
-            <th>VP</th>
-            <th>Score</th>
+            <th title="Total military power">Military power</th>
+            <th className="num">Prov.</th>
+            <th className="num">VP</th>
+            <th className="num">Score</th>
             <th />
           </tr>
         </thead>
@@ -39,28 +41,63 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             const war = checkDeclareWar(state, human, s.nation);
             const peace = checkOfferPeace(state, human, s.nation);
             const truce = rel && state.tick < rel.truceUntil && rel.status === 'peace';
+            const power = nationPower(state, s.nation);
             return (
               <tr key={s.nation} className={`${me ? 'me' : ''}${n.eliminated ? ' eliminated' : ''}`} data-nation={s.nation}>
                 <td>
-                  <NationSwatch color={def.color} /> {def.name} {me ? '(you)' : ''}
+                  <span className="dip-nation">
+                    <Flag id={s.nation} size={20} />
+                    <span>
+                      <strong>{def.name}</strong>
+                      {me && <span className="you-tag">You</span>}
+                    </span>
+                  </span>
                 </td>
-                <td>{n.eliminated ? '—' : nationEra(state, s.nation)}</td>
+                <td>{n.eliminated ? '—' : <span className="era-pill">{nationEra(state, s.nation)}</span>}</td>
                 <td>
-                  {me ? '—' : n.eliminated ? 'Eliminated' : rel.status === 'war' ? <strong className="bad">WAR</strong> : 'Peace'}
-                  {!me && truce ? <span className="muted"> (truce {formatDuration(rel.truceUntil - state.tick, state)})</span> : null}
+                  {me ? (
+                    <span className="muted">—</span>
+                  ) : n.eliminated ? (
+                    <span className="rel-pill gone">Eliminated</span>
+                  ) : rel.status === 'war' ? (
+                    <span className="rel-pill war">
+                      <Icon name="swords" size={12} /> War
+                    </span>
+                  ) : (
+                    <span className="rel-pill peace">
+                      <Icon name="flag" size={12} /> Peace
+                    </span>
+                  )}
+                  {!me && truce ? <span className="muted truce"> truce {formatDuration(rel.truceUntil - state.tick, state)}</span> : null}
                 </td>
-                <td>{Math.round(nationPower(state, s.nation))}</td>
-                <td>{s.provinces}</td>
-                <td>{s.vp}</td>
-                <td>{s.score}</td>
                 <td>
+                  <span className="power-bar" title={`${Math.round(power)}`}>
+                    <span style={{ width: `${(power / maxPower) * 100}%`, background: def.color }} />
+                  </span>
+                  <span className="power-val">{Math.round(power)}</span>
+                </td>
+                <td className="num">{s.provinces}</td>
+                <td className="num">{s.vp}</td>
+                <td className="num score">{s.score}</td>
+                <td className="actions">
                   {!me && !n.eliminated && rel.status === 'peace' && (
-                    <button className="danger" disabled={!war.ok} title={war.ok ? 'Declare war' : war.ok === false ? war.reason : ''} onClick={() => ctrl.submit({ type: 'declareWar', nation: human, target: s.nation })} data-declare-war={s.nation}>
+                    <button
+                      className="danger"
+                      disabled={!war.ok}
+                      title={war.ok ? 'Declare war' : war.ok === false ? war.reason : ''}
+                      onClick={() => ctrl.submit({ type: 'declareWar', nation: human, target: s.nation })}
+                      data-declare-war={s.nation}
+                    >
                       Declare war
                     </button>
                   )}
                   {!me && !n.eliminated && rel.status === 'war' && (
-                    <button disabled={!peace.ok} title={peace.ok ? 'Offer peace (status quo)' : peace.reason} onClick={() => ctrl.submit({ type: 'offerPeace', nation: human, target: s.nation })}>
+                    <button
+                      className="primary"
+                      disabled={!peace.ok}
+                      title={peace.ok ? 'Offer peace (status quo)' : peace.reason}
+                      onClick={() => ctrl.submit({ type: 'offerPeace', nation: human, target: s.nation })}
+                    >
                       Offer peace
                     </button>
                   )}
@@ -70,29 +107,33 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           })}
         </tbody>
       </table>
-      <p className="muted">
-        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perProvince} × provinces + {VICTORY.score.perTech} × technologies. The highest
-        score wins when the campaign time limit is reached.
+      <p className="intro small">
+        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perProvince} × provinces + {VICTORY.score.perTech} × technologies. The highest score wins when
+        the campaign time limit is reached.
       </p>
 
       <h4>
-        Strategic objectives — hold {need} of {world.totalVp} VP for {VICTORY.holdSeconds}s to win
+        <Icon name="star" size={15} /> Strategic objectives — hold {need} of {world.totalVp} VP for {VICTORY.holdSeconds}s to win
       </h4>
       {leader && (
         <div className="warn">
-          {world.nations[leader].name} holds {heldVp(state, world, leader)} VP — victory in{' '}
-          {formatDuration(Math.max(0, VICTORY.holdSeconds * state.settings.durationScale - (state.tick - (state.victory.holdSince ?? state.tick))), state)} unless an objective is retaken.
+          <Icon name="warning" size={15} />
+          <span>
+            {world.nations[leader].name} holds {heldVp(state, world, leader)} VP — victory in{' '}
+            {formatDuration(Math.max(0, VICTORY.holdSeconds * state.settings.durationScale - (state.tick - (state.victory.holdSince ?? state.tick))), state)} unless
+            an objective is retaken.
+          </span>
         </div>
       )}
       <ul className="objective-list">
         {world.objectiveIds.map((id) => {
           const owner = state.provinces[id].owner;
-          const color = owner === 'neutral' ? NEUTRAL_COLOR : world.nations[owner].color;
           return (
             <li key={id}>
-              <button className="link" onClick={() => onFocus(id)}>
-                <NationSwatch color={color} /> ★{world.provinces[id].objectiveVp} {world.provinces[id].city.name}
-                <span className="muted"> · {owner === 'neutral' ? 'neutral' : world.nations[owner].name}</span>
+              <button className={`objective-chip${owner === human ? ' mine' : ''}`} onClick={() => onFocus(id)} title="Show on map">
+                <span className="obj-vp">{world.provinces[id].objectiveVp}</span>
+                <span className="obj-name">{world.provinces[id].city.name}</span>
+                <OwnerFlag world={world} owner={owner} province={id} size={12} />
               </button>
             </li>
           );

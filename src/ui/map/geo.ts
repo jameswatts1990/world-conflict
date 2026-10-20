@@ -1,6 +1,6 @@
 // Map geometry for rendering only. Shapes come from bundled Natural Earth
 // TopoJSON; gameplay adjacency lives in the simulation's scenario data.
-import { geoArea, geoMercator, geoPath } from 'd3-geo';
+import { geoArea, geoGraticule, geoMercator, geoPath } from 'd3-geo';
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 import { feature, mesh } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
@@ -21,6 +21,7 @@ export interface CountryShape {
   iso: string;
   name: string;
   d: string;
+  bounds: [[number, number], [number, number]];
 }
 
 export interface MapGeometry {
@@ -28,10 +29,17 @@ export interface MapGeometry {
   labelPoints: Record<ProvinceId, [number, number]>;
   anchors: Record<ProvinceId, [number, number]>;
   countries: CountryShape[];
+  /** Projected area of each province, in map units² (for label weighting). */
+  provinceArea: Record<ProvinceId, number>;
+  /** Bounding box of the playable theatre, in map units. */
+  theatreBounds: [[number, number], [number, number]];
   coastline: string;
+  graticule: string;
   provinceBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
+  /** Full outline (land borders and coast) of everything one owner holds. */
+  ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
 }
 
 function largestPolygon(f: Feature<Polygon | MultiPolygon>): Feature<Polygon> {
@@ -53,6 +61,18 @@ function pidOf(g: { properties?: unknown }): string {
   return (g.properties as { pid: string }).pid;
 }
 
+const cache = new WeakMap<World, MapGeometry>();
+
+/** Projected geometry for a world, built once and shared by the menu and the game. */
+export function mapGeometry(world: World): MapGeometry {
+  let geo = cache.get(world);
+  if (!geo) {
+    geo = buildMapGeometry(world);
+    cache.set(world, geo);
+  }
+  return geo;
+}
+
 export function buildMapGeometry(world: World): MapGeometry {
   const provinces = feature(theatreTopo, theatreTopo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
   const countries = feature(worldTopo, worldTopo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
@@ -68,10 +88,12 @@ export function buildMapGeometry(world: World): MapGeometry {
 
   const provincePaths: Record<ProvinceId, string> = {};
   const labelPoints: Record<ProvinceId, [number, number]> = {};
+  const provinceArea: Record<ProvinceId, number> = {};
   const geomById = new Map<string, number>();
   provinces.features.forEach((f, i) => {
     provincePaths[f.properties.pid] = path(f) ?? '';
     labelPoints[f.properties.pid] = path.centroid(largestPolygon(f));
+    provinceArea[f.properties.pid] = path.area(f);
     geomById.set(f.properties.pid, i);
   });
 
@@ -84,11 +106,22 @@ export function buildMapGeometry(world: World): MapGeometry {
     iso: f.properties.iso,
     name: f.properties.name,
     d: path(f) ?? '',
+    bounds: path.bounds(f) as [[number, number], [number, number]],
   }));
 
   const geoms = theatreTopo.objects.provinces;
   const coastline = path(mesh(theatreTopo, geoms, (a, b) => a === b)) ?? '';
   const provinceBorders = path(mesh(theatreTopo, geoms, (a, b) => a !== b)) ?? '';
+  const graticule =
+    path(
+      geoGraticule()
+        .extent([
+          [-180, -60],
+          [180, 84],
+        ])
+        .step([5, 5])(),
+    ) ?? '';
+  const theatreBounds = path.bounds(provinces) as [[number, number], [number, number]];
 
   const worldBounds = path.bounds({ type: 'Sphere' }) as [[number, number], [number, number]];
   // Mercator is unbounded at the poles; clamp to the inhabited latitudes we draw.
@@ -102,12 +135,22 @@ export function buildMapGeometry(world: World): MapGeometry {
     labelPoints,
     anchors,
     countries: countryShapes,
+    provinceArea,
+    theatreBounds,
     coastline,
+    graticule,
     provinceBorders,
     worldBounds,
     nationBorders: (ownerOf) =>
       path(
         mesh(theatreTopo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
+      ) ?? '',
+    ownerOutline: (owner, ownerOf) =>
+      path(
+        mesh(theatreTopo, geoms, (a, b) => {
+          const inA = ownerOf(pidOf(a)) === owner;
+          return a === b ? inA : inA !== (ownerOf(pidOf(b)) === owner);
+        }),
       ) ?? '',
   };
 }
