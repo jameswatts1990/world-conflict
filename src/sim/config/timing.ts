@@ -38,6 +38,7 @@ export const CLIENT_SPEEDS = [
   { multiplier: 5, label: 'DEV 5x', dev: true },
   { multiplier: 20, label: 'DEV 20x', dev: true },
   { multiplier: 60, label: 'DEV 60x', dev: true },
+  { multiplier: 200, label: 'DEV 200x', dev: true },
 ] as const;
 
 /** Max ticks the client loop will simulate per animation frame (prevents spiral of death). */
