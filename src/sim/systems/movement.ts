@@ -1,20 +1,41 @@
 // Timed army movement along explicit connections. Runs every tick.
+import { BUILDING_EFFECTS } from '../config/buildings';
 import { MOVEMENT } from '../config/rules';
+import { UNITS } from '../config/units';
 import { pushEvent } from '../events';
-import { areHostile, armySpeedKmPerTick, canEnterProvince, hostileArmiesIn, scaledTicks } from '../queries';
-import type { Army, GameState, ProvinceId } from '../types';
+import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
+import type { Army, GameState, ProvinceId, UnitType } from '../types';
 import { connectionBetween, type World } from '../world';
 
-const MIN_LEG_SECONDS = 15;
-
-/** Ticks needed for this army to travel one connection. */
+/**
+ * Ticks needed for this army to travel one connection. Every unit type has
+ * its own speed and its own feel for passes and terrain (mountain troops climb,
+ * lorries bog down); the slowest decides. Owned railway junctions at either
+ * end speed the leg up.
+ */
 export function legTicks(state: GameState, world: World, army: Army, from: ProvinceId, to: ProvinceId): number {
   const conn = connectionBetween(world, from, to);
   if (!conn) return Infinity;
   const km = conn.distanceKm * MOVEMENT.routeFactor;
   const terrain = world.provinces[to].terrain;
-  const raw = (km / armySpeedKmPerTick(state, army)) * MOVEMENT.connection[conn.kind] * MOVEMENT.terrain[terrain];
-  return Math.max(scaledTicks(state, MIN_LEG_SECONDS), Math.ceil(raw));
+  let worst = 0;
+  const seen = new Set<UnitType>();
+  for (const u of army.units) {
+    if (seen.has(u.type)) continue;
+    seen.add(u.type);
+    const mv = UNITS[u.type].movement;
+    const connFactor = mv?.connection?.[conn.kind] ?? MOVEMENT.connection[conn.kind];
+    const terrainFactor = mv?.terrain?.[terrain] ?? MOVEMENT.terrain[terrain];
+    worst = Math.max(worst, (km / unitSpeedKmPerTick(state, army.owner, u.type)) * connFactor * terrainFactor);
+  }
+  if (seen.size === 0) worst = km * state.settings.durationScale;
+  let rail = 0;
+  for (const end of [from, to]) {
+    const p = state.provinces[end];
+    if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
+  }
+  const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
+  return Math.max(scaledTicks(state, MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**
@@ -75,6 +96,7 @@ export function movementSystem(state: GameState, world: World): void {
       });
       continue;
     }
+    army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
     if (army.move.path.length === 0) army.move = null;

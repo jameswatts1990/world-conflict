@@ -16,6 +16,7 @@ import {
   hostileArmiesIn,
   isArmyInTransit,
   nationEconomy,
+  researchSlots,
   scaledTicks,
   type NationEconomy,
 } from '../queries';
@@ -23,6 +24,7 @@ import { random } from '../rng';
 import {
   NEUTRAL,
   RESOURCE_KEYS,
+  UNIT_TYPES,
   type Army,
   type BuildingType,
   type GameState,
@@ -178,13 +180,14 @@ const ECONOMY_TECHS = new Set(['industrialMobilisation', 'assemblyLine', 'synthe
 function handleResearch(ctx: Ctx): void {
   const { state, me } = ctx;
   const research = state.nations[me].research;
-  if (research.active) return;
+  if (research.active.length >= researchSlots(state, me)) return;
   let best: { id: string; score: number } | null = null;
   for (const t of TECHS) {
-    if (research.completed.includes(t.id) || t.requires.some((r) => !research.completed.includes(r))) continue;
-    let score = 10 - t.tier * 2 + random(state) * 3;
+    if (research.completed.includes(t.id) || research.active.some((j) => j.tech === t.id)) continue;
+    if (t.requires.some((r) => !research.completed.includes(r))) continue;
+    let score = 10 - t.col + random(state) * 3;
     if (ECONOMY_TECHS.has(t.id)) score += ctx.economyBias * 6;
-    if (t.tier === 3) score += 4; // WWII upgrades are the big prizes
+    if (t.effects.some((e) => e.kind === 'unitModel')) score += 3; // new equipment is the big prize
     if (!best || score > best.score) best = { id: t.id, score };
   }
   if (!best) return;
@@ -244,7 +247,7 @@ function handleConstruction(ctx: Ctx): void {
 
 function handleRecruitment(ctx: Ctx): void {
   const { state, world, me } = ctx;
-  const counts: Record<UnitType, number> = { infantry: 0, artillery: 0, tank: 0 };
+  const counts = Object.fromEntries(UNIT_TYPES.map((t) => [t, 0])) as Record<UnitType, number>;
   for (const a of Object.values(state.armies)) if (a.owner === me) for (const u of a.units) counts[u.type]++;
   let queuedUpkeep = 0;
   for (const pid of ctx.owned) {
@@ -253,23 +256,23 @@ function handleRecruitment(ctx: Ctx): void {
       queuedUpkeep += UNITS[j.unitType].upkeepPerMinute.money ?? 0;
     }
   }
-  const total = counts.infantry + counts.artillery + counts.tank;
+  const total = UNIT_TYPES.reduce((sum, t) => sum + counts[t], 0);
   // Army size is bounded by how much upkeep the treasury can sustain.
   const budgetShare = (0.45 + 0.3 * ctx.aggression) * (ctx.enemies.length > 0 ? 1.2 : 1);
   let upkeep = ctx.eco.upkeep.money + queuedUpkeep;
   const budget = ctx.eco.income.money * budgetShare;
 
-  const mix: Record<UnitType, number> = { infantry: 0.55, artillery: 0.27, tank: 0.18 };
+  const mix: Partial<Record<UnitType, number>> = { infantry: 0.5, artillery: 0.22, tank: 0.18, cavalry: 0.05, antiTank: 0.05 };
   // Prefer recruiting near the front.
   const sites = [...ctx.owned].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
   let recruited = 0;
   while (recruited < 3 && upkeep < budget) {
     const order = (Object.keys(mix) as UnitType[]).sort(
-      (a, b) => counts[a] / (total + recruited + 1) - mix[a] - (counts[b] / (total + recruited + 1) - mix[b]),
+      (a, b) => counts[a] / (total + recruited + 1) - mix[a]! - (counts[b] / (total + recruited + 1) - mix[b]!),
     );
     let done = false;
     for (const type of order) {
-      if (type === 'tank' && ctx.eco.net.fuel <= 1) continue;
+      if ((UNITS[type].upkeepPerMinute.fuel ?? 0) > 0 && ctx.eco.net.fuel <= 1) continue;
       for (const pid of sites) {
         if (!checkRecruit(state, world, me, pid, type).ok) continue;
         if (!affordableWithReserve(ctx, UNITS[type].cost)) continue;

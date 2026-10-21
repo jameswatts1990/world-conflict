@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { SUPPLY } from '../../sim/config/rules';
 import { UNITS } from '../../sim/config/units';
-import { armiesIn, armySpeedKmPerTick, findPath, hostileArmiesIn, scaledTicks, unitStats, type ArmyId } from '../../sim';
+import { armiesIn, armySpeedKmPerTick, currentModel, findPath, hostileArmiesIn, scaledTicks, unitStats, type ArmyId } from '../../sim';
 import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
@@ -92,6 +92,7 @@ export function ArmyPanel({
         <ul className="unit-list">
           {army.units.map((u) => {
             const s = unitStats(state, army.owner, u.type);
+            const model = currentModel(state, world, army.owner, u.type);
             return (
               <li key={u.id}>
                 {own && (
@@ -104,12 +105,12 @@ export function ArmyPanel({
                       else next.delete(u.id);
                       setChecked(next);
                     }}
-                    aria-label={`select ${s.name}`}
+                    aria-label={`select ${model.name}`}
                   />
                 )}
                 <UnitGlyph type={u.type} />
                 <span className="unit-name" title={UNITS[u.type].description}>
-                  {s.name}
+                  {model.name}
                 </span>
                 <span className="unit-stats" title="Attack (soft/hard) · Defence (soft/hard)">
                   A {s.attack.soft.toFixed(0)}/{s.attack.hard.toFixed(0)} · D {s.defence.soft.toFixed(0)}/{s.defence.hard.toFixed(0)}

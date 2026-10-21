@@ -39,10 +39,11 @@ export function clearArmies(state: GameState, province?: ProvinceId): void {
   }
 }
 
-export function place(state: GameState, owner: OwnerId, province: ProvinceId, units: Partial<Record<UnitType, number>>): Army {
+/** Places a fresh army of trained regulars (or the given experience). */
+export function place(state: GameState, owner: OwnerId, province: ProvinceId, units: Partial<Record<UnitType, number>>, xp = 1): Army {
   const list = [];
   for (const [type, n] of Object.entries(units) as [UnitType, number][]) {
-    for (let i = 0; i < n; i++) list.push(createUnit(state, type));
+    for (let i = 0; i < n; i++) list.push(createUnit(state, owner, type, { xp }));
   }
   return createArmy(state, owner, province, list);
 }

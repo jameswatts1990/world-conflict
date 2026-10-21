@@ -1,4 +1,4 @@
-import { ERA_RULES, TECHS, TECH_BY_ID } from '../../sim/config/research';
+import { TECHS, TECH_BY_ID } from '../../sim/config/research';
 import { checkResearch, nationEra } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
@@ -13,8 +13,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
   return (
     <Modal title={`Research — ${nationEra(state, human)} era`} onClose={onClose} wide>
       <p className="muted">
-        One project at a time; cost is paid up front. Era: Interwar after {ERA_RULES.interwarTier2Count} tier-2 techs, WWII once
-        infantry, artillery and tanks are all upgraded. Upgrades apply to existing units immediately.
+        Cost is paid up front. Upgrades apply to existing units immediately.
       </p>
       <div className="tech-columns">
         {([1, 2, 3] as const).map((tier) => (
@@ -22,9 +21,9 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
             <h4>
               Tier {tier}: {TIER_NAMES[tier]}
             </h4>
-            {TECHS.filter((t) => t.tier === tier).map((t) => {
+            {TECHS.filter((t) => Math.min(3, Math.floor(t.col / 3) + 1) === tier).map((t) => {
               const done = research.completed.includes(t.id);
-              const active = research.active?.tech === t.id ? research.active : null;
+              const active = research.active.find((j) => j.tech === t.id) ?? null;
               const check = checkResearch(state, human, t.id);
               const locked = t.requires.some((r) => !research.completed.includes(r));
               return (

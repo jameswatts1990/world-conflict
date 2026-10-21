@@ -57,7 +57,7 @@ export function ResourceIcon({ kind, size = 16, title }: IconProps & { kind: Res
   );
 }
 
-const BUILDING_PATHS: Record<BuildingType, ReactElement> = {
+const BUILDING_PATHS: Partial<Record<BuildingType, ReactElement>> = {
   industry: <path d="M2 17V9l4 2.5V9l4 2.5V9l4 2.5V4h3v13z" />,
   barracks: <path d="M3 17V8l7-5 7 5v9h-5v-5H8v5z" />,
   armsWorks: <path d="M8 3h4v3l2 2v9H6V8l2-2z" />,
@@ -71,7 +71,7 @@ export function BuildingIcon({ kind, size = 16, title }: IconProps & { kind: Bui
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind} fill="currentColor">
       {title && <title>{title}</title>}
-      {BUILDING_PATHS[kind]}
+      {BUILDING_PATHS[kind] ?? <rect x="4" y="6" width="12" height="11" />}
     </svg>
   );
 }

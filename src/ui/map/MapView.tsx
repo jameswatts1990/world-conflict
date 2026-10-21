@@ -4,6 +4,7 @@ import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { UNITS } from '../../sim/config/units';
 import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
 import { findPath, isArmyInTransit, type Army, type ArmyId, type GameState, type ProvinceId, type World } from '../../sim';
 import type { GameController } from '../game/GameController';
@@ -202,7 +203,8 @@ function ArmyMarker({
   const counts = { infantry: 0, artillery: 0, tank: 0 };
   let strength = 0;
   for (const u of army.units) {
-    counts[u.type]++;
+    const cls = UNITS[u.type].class;
+    counts[cls === 'armour' ? 'tank' : cls === 'support' ? 'artillery' : 'infantry']++;
     strength += u.strength;
   }
   const main = counts.tank > 0 ? 'tank' : counts.artillery > counts.infantry ? 'artillery' : 'infantry';

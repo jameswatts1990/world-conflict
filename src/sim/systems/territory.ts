@@ -1,8 +1,12 @@
 // Province capture, ownership transfer and army withdrawal.
+import { CITY } from '../config/buildings';
+import { MORALE } from '../config/rules';
+import { ARMY_RULES, UNITS } from '../config/units';
 import { pushEvent } from '../events';
 import { areHostile, armyPower, captureTicks, hostileArmiesIn, isArmyInTransit } from '../queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId } from '../types';
 import type { World } from '../world';
+import { shockNation } from './civic';
 
 export function ownerName(world: World, owner: OwnerId, province?: ProvinceId): string {
   if (owner === NEUTRAL) return province ? (world.provinces[province].neutralState ?? 'neutral forces') : 'neutral forces';
@@ -39,7 +43,9 @@ export function captureSystem(state: GameState, world: World): void {
     if (!p.capture || p.capture.by !== capturer) {
       p.capture = { by: capturer, progress: 0, required: captureTicks(state, world, pid) };
     }
-    p.capture.progress += 1;
+    // Reconnaissance units find the way in faster.
+    const recon = attackers.some((a) => a.owner === capturer && a.units.some((u) => UNITS[u.type].recon));
+    p.capture.progress += recon ? 1 / ARMY_RULES.reconCapture : 1;
     if (p.capture.progress >= p.capture.required) transferProvince(state, world, pid, capturer);
   }
 }
@@ -53,12 +59,24 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   p.capture = null;
   p.construction = null;
   p.recruitQueue = [];
-  // Fighting damages fortifications.
+  // Fighting damages fortifications; an occupation HQ only serves its builder.
   if (p.buildings.fortifications) {
     p.buildings.fortifications -= 1;
     if (p.buildings.fortifications <= 0) delete p.buildings.fortifications;
   }
+  delete p.buildings.garrisonHq;
   state.nations[newOwner].stats.provincesCaptured += 1;
+
+  // Civilians greet liberators and resent occupiers; the loser's nearby land is shaken.
+  p.morale = def.core === newOwner ? MORALE.capturedLiberated : MORALE.capturedOccupied;
+  p.growth = Math.max(0, p.growth - CITY.captureGrowthLoss);
+  if (oldOwner !== NEUTRAL) {
+    for (const n of world.neighbors[pid]) {
+      const np = state.provinces[n.id];
+      if (np.owner === oldOwner) np.morale = Math.max(0, np.morale + MORALE.captureNeighbourShock);
+    }
+    if (world.nations[oldOwner].capital === pid) shockNation(state, world, oldOwner, MORALE.capitalLostShock, true);
+  }
 
   const important = !!def.objectiveVp;
   const verb = def.core === newOwner ? 'liberated' : 'captured';
