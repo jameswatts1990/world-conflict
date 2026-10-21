@@ -1,11 +1,12 @@
-// SVG strategy map: static geography is projected once and memoised; only
-// ownership colours, labels (on zoom) and army markers (every frame) update.
+// Strategy map: baked shaded-relief terrain under translucent ownership tints,
+// glowing national borders, plated city labels, towns and army counters with
+// national unit art. Static geography is projected once and memoised; ownership,
+// labels (on zoom) and army markers (every frame) update.
 import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { UNITS } from '../../sim/config/units';
-import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
 import {
   armyMorale,
   armyName,
@@ -16,33 +17,39 @@ import {
   type Army,
   type ArmyId,
   type GameState,
+  type NationId,
   type ProvinceId,
   type UnitType,
   type World,
 } from '../../sim';
 import { CounterArt } from '../art/adapters';
+import { darken, lighten, ownerColor, strengthColor } from '../color';
+import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
+import { Icon } from '../icons';
 import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
+import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
-export type MapMode = 'political' | 'morale' | 'development' | 'supply';
+export type MapMode = 'political' | 'terrain' | 'supply' | 'morale' | 'development';
 
 export interface MapViewProps {
   ctrl: GameController;
   geo: MapGeometry;
-  mode: MapMode;
   selectedProvince: ProvinceId | null;
   selectedArmies: ArmyId[];
   moveMode: boolean;
   focus: { province: ProvinceId; seq: number } | null;
+  mapMode: MapMode;
+  /** Screen pixels on the right covered by floating panels; fitting and centring avoid them. */
+  insetRight: number;
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
   onOrderMove: (pid: ProvinceId) => void;
   onHover: (pid: ProvinceId | null) => void;
 }
 
-function ownerColor(world: World, owner: string): string {
-  return owner === 'neutral' ? NEUTRAL_COLOR : (world.nations[owner]?.color ?? '#999');
-}
+/** Zoom ratios (relative to the initial fit) at which labels change. */
+const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2 };
 
 /** Red → amber → green ramp for 0..1. */
 export function rampColor(t: number): string {
@@ -58,26 +65,32 @@ export function rampColor(t: number): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
+/** Province morale mapped onto the ramp: 20 or less is red, 85 or more green. */
+export const moraleRamp = (morale: number) => rampColor((morale - 20) / 65);
 
-/** Province fill for the current map mode. */
-function provinceFill(state: GameState, world: World, mode: MapMode, pid: ProvinceId): string {
-  const p = state.provinces[pid];
-  if (mode === 'political' || (p.owner === 'neutral' && mode !== 'development')) return ownerColor(world, p.owner);
-  if (mode === 'morale') return rampColor((p.morale - 20) / 65);
-  if (mode === 'development') return TIER_COLORS[p.tier];
-  return p.supplied ? '#6f9a5f' : '#b0473a';
-}
+/** City tier 1–5 colours for the development map mode. */
+export const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
 
 // ---------------------------------------------------------------------------
 // Static layers
 // ---------------------------------------------------------------------------
 
+const SeaLayer = memo(function SeaLayer({ geo, glow }: { geo: MapGeometry; glow: TerrainTexture | null }) {
+  const [[x0, y0], [x1, y1]] = geo.worldBounds;
+  return (
+    <g className="sea-layer" pointerEvents="none">
+      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="ocean" />
+      <path d={geo.graticule} className="graticule" />
+      {glow && <image href={glow.href} x={glow.x} y={glow.y} width={glow.width} height={glow.height} preserveAspectRatio="none" className="terrain-img" />}
+    </g>
+  );
+});
+
 const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
   return (
     <g className="world-layer">
       {geo.countries.map((c) => (
-        <path key={c.iso + c.name} d={c.d} className="country outside">
+        <path key={c.iso + c.name} d={c.d} className="country">
           <title>{THEATRE_ISO.has(c.iso) ? `${c.name} (territory outside the prototype theatre)` : `${c.name} — outside the prototype theatre`}</title>
         </path>
       ))}
@@ -85,31 +98,73 @@ const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
   );
 });
 
+/** Flat terrain colours, replaced by the shaded-relief bitmap once it is baked. */
+const TerrainLayer = memo(function TerrainLayer({ geo, world, texture }: { geo: MapGeometry; world: World; texture: TerrainTexture | null }) {
+  return (
+    <g className="terrain-layer" pointerEvents="none">
+      {world.provinceIds.map((id) => (
+        <path key={id} id={`prov-${id}`} d={geo.provincePaths[id]} fill={TERRAIN_BASE[world.provinces[id].terrain]} />
+      ))}
+      {texture && (
+        <image
+          href={texture.href}
+          x={texture.x}
+          y={texture.y}
+          width={texture.width}
+          height={texture.height}
+          preserveAspectRatio="none"
+          className="terrain-img"
+        />
+      )}
+    </g>
+  );
+});
+
 interface ProvinceLayerProps {
   geo: MapGeometry;
   world: World;
-  owners: string; // fill signature, forces re-render when it changes
+  owners: string; // ownership signature, forces re-render when it changes
+  supplied: string; // supply signature, for the supply map mode
+  /** Per-province morale (morale mode) or city tier (development mode), joined by '|'. */
+  values: string;
   ownerOf: Record<ProvinceId, string>;
-  fills: Record<ProvinceId, string>;
-  selected: ProvinceId | null;
-  highlight: string; // joined ids of highlighted (reachable) provinces
+  human: NationId;
+  mode: MapMode;
   onClick: (pid: ProvinceId, e: React.MouseEvent) => void;
   onContext: (pid: ProvinceId, e: React.MouseEvent) => void;
   onHover: (pid: ProvinceId | null) => void;
 }
 
+function tint(p: ProvinceLayerProps, id: ProvinceId, i: number, values: string[]): { fill: string; opacity: number } {
+  const owner = p.ownerOf[id];
+  const neutral = owner === 'neutral';
+  if (p.mode === 'morale') {
+    if (neutral) return { fill: ownerColor(p.world, owner), opacity: 0.12 };
+    return { fill: moraleRamp(Number(values[i])), opacity: 0.66 };
+  }
+  if (p.mode === 'development') return { fill: TIER_COLORS[Number(values[i])], opacity: 0.66 };
+  if (p.mode === 'supply') {
+    if (owner === p.human) return { fill: p.supplied[i] === '1' ? '#3fae5a' : '#e0473a', opacity: 0.55 };
+    return { fill: ownerColor(p.world, owner), opacity: 0.12 };
+  }
+  if (p.mode === 'terrain') return { fill: ownerColor(p.world, owner), opacity: neutral ? 0.08 : 0.16 };
+  return { fill: ownerColor(p.world, owner), opacity: neutral ? 0.34 : 0.56 };
+}
+
 const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
-  const highlight = new Set(p.highlight ? p.highlight.split(',') : []);
+  const values = p.values.split('|');
   return (
     <g className="province-layer">
-      {p.world.provinceIds.map((id) => {
+      {p.world.provinceIds.map((id, i) => {
         const owner = p.ownerOf[id];
+        const t = tint(p, id, i, values);
         return (
           <path
             key={id}
             d={p.geo.provincePaths[id]}
-            fill={p.fills[id]}
-            className={`province${owner === 'neutral' ? ' neutral' : ''}${p.selected === id ? ' selected' : ''}${highlight.has(id) ? ' reachable' : ''}`}
+            fill={t.fill}
+            fillOpacity={t.opacity}
+            className={`province${owner === 'neutral' ? ' neutral' : ''}`}
             data-province={id}
             onClick={(e) => p.onClick(id, e)}
             onContextMenu={(e) => p.onContext(id, e)}
@@ -119,19 +174,56 @@ const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
         );
       })}
       {/* Hatch overlay marks neutral minor states */}
-      {p.world.provinceIds
-        .filter((id) => p.ownerOf[id] === 'neutral')
-        .map((id) => (
-          <path key={`h-${id}`} d={p.geo.provincePaths[id]} className="neutral-hatch" pointerEvents="none" />
-        ))}
+      {p.mode !== 'supply' &&
+        p.mode !== 'development' &&
+        p.world.provinceIds
+          .filter((id) => p.ownerOf[id] === 'neutral')
+          .map((id) => <path key={`h-${id}`} d={p.geo.provincePaths[id]} className="neutral-hatch" pointerEvents="none" />)}
     </g>
   );
 });
 
-const BorderLayer = memo(function BorderLayer({ geo, nationBorders }: { geo: MapGeometry; nationBorders: string }) {
+const BorderLayer = memo(function BorderLayer({
+  geo,
+  world,
+  owners,
+  ownerOf,
+}: {
+  geo: MapGeometry;
+  world: World;
+  owners: string;
+  ownerOf: Record<ProvinceId, string>;
+}) {
+  // Each nation's outline is stroked wide in its colour and clipped to its own
+  // territory, giving the inner border glow; the shared border sits on top.
+  const outlines = useMemo(() => {
+    const own = (pid: ProvinceId) => ownerOf[pid];
+    return world.nationIds
+      .map((n) => ({ id: n, color: world.nations[n].color, pids: world.provinceIds.filter((pid) => ownerOf[pid] === n) }))
+      .filter((o) => o.pids.length > 0)
+      .map((o) => ({ ...o, d: geo.ownerOutline(o.id, own) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo, world, owners]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const nationBorders = useMemo(() => geo.nationBorders((pid) => ownerOf[pid]), [geo, owners]);
   return (
     <g className="border-layer" pointerEvents="none">
+      <defs>
+        {outlines.map((o) => (
+          <clipPath key={o.id} id={`clip-own-${o.id}`}>
+            {o.pids.map((pid) => (
+              <use key={pid} href={`#prov-${pid}`} />
+            ))}
+          </clipPath>
+        ))}
+      </defs>
       <path d={geo.provinceBorders} className="province-border" />
+      {outlines.map((o) => (
+        <g key={o.id} clipPath={`url(#clip-own-${o.id})`}>
+          <path d={o.d} className="nation-glow wide" stroke={o.color} />
+          <path d={o.d} className="nation-glow" stroke={lighten(o.color, 0.35)} />
+        </g>
+      ))}
       <path d={nationBorders} className="nation-border" />
       <path d={geo.coastline} className="coastline" />
     </g>
@@ -157,23 +249,137 @@ const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: 
 });
 
 // ---------------------------------------------------------------------------
-// Dynamic layers
+// Labels
 // ---------------------------------------------------------------------------
 
-function CityLayer({ geo, state, world, k }: { geo: MapGeometry; state: GameState; world: World; k: number }) {
-  const showProvinceNames = k >= 1.15;
-  const showCityNames = k >= 2.2;
-  const showTowns = k >= 2.0;
-  const showTownNames = k >= 3.4;
+interface NationLabel {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  size: number;
+  neutral: boolean;
+}
+
+function nationLabels(geo: MapGeometry, world: World, ownerOf: Record<ProvinceId, string>): NationLabel[] {
+  const out: NationLabel[] = [];
+  for (const n of world.nationIds) {
+    const pids = world.provinceIds.filter((pid) => ownerOf[pid] === n);
+    if (!pids.length) continue;
+    let area = 0;
+    let cx = 0;
+    let cy = 0;
+    for (const pid of pids) {
+      const a = geo.provinceArea[pid];
+      area += a;
+      cx += geo.labelPoints[pid][0] * a;
+      cy += geo.labelPoints[pid][1] * a;
+    }
+    cx /= area;
+    cy /= area;
+    // Anchor on the owned province nearest the weighted centre, so the label stays on land.
+    let best = pids[0];
+    let bestD = Infinity;
+    for (const pid of pids) {
+      const [x, y] = geo.labelPoints[pid];
+      const d = (x - cx) ** 2 + (y - cy) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = pid;
+      }
+    }
+    const [x, y] = geo.labelPoints[best];
+    out.push({ id: n, text: world.nations[n].name, x, y, size: Math.max(10, Math.min(28, Math.sqrt(area) * 0.11)), neutral: false });
+  }
+  for (const pid of world.provinceIds) {
+    if (ownerOf[pid] !== 'neutral') continue;
+    const [x, y] = geo.labelPoints[pid];
+    const name = world.provinces[pid].neutralState ?? world.provinces[pid].name;
+    out.push({ id: pid, text: name, x, y, size: Math.max(6, Math.min(10, Math.sqrt(geo.provinceArea[pid]) * 0.07)), neutral: true });
+  }
+  return out;
+}
+
+function LabelLayer({
+  geo,
+  world,
+  owners,
+  ownerOf,
+  k,
+  ratio,
+}: {
+  geo: MapGeometry;
+  world: World;
+  owners: string;
+  ownerOf: Record<ProvinceId, string>;
+  k: number;
+  ratio: number;
+}) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const labels = useMemo(() => nationLabels(geo, world, ownerOf), [geo, world, owners]);
+  if (ratio < ZOOM.provinceNames) {
+    return (
+      <g className="label-layer" pointerEvents="none">
+        {labels.map((l) => (
+          <text key={l.id} x={l.x} y={l.y} fontSize={l.size} className={`nation-label${l.neutral ? ' neutral' : ''}`}>
+            {l.text}
+          </text>
+        ))}
+      </g>
+    );
+  }
+  const s = 1 / k;
+  return (
+    <g className="label-layer" pointerEvents="none">
+      {world.provinceIds.map((id) => {
+        let [x, y] = geo.labelPoints[id];
+        const [ax, ay] = geo.anchors[id];
+        // Keep the name clear of the city marker, its plate and any army stack above it.
+        if (Math.abs(x - ax) * k < 80 && (y - ay) * k > -70 && (y - ay) * k < 40) {
+          x = ax;
+          y = ay + 30 * s;
+        }
+        return (
+          <text key={id} x={x} y={y + 12 * s} fontSize={10.5 * s} strokeWidth={2.6 * s} className="province-label">
+            {world.provinces[id].name}
+          </text>
+        );
+      })}
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cities and objectives
+// ---------------------------------------------------------------------------
+
+const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
+
+/** Dark label plate centred under a point (in screen pixels, before 1/k scaling). */
+function Plate({ text, y, color, size = 10, className = '' }: { text: string; y: number; color?: string; size?: number; className?: string }) {
+  const w = text.length * size * 0.56 + 12;
+  const h = size + 5;
+  return (
+    <g className={`plate ${className}`}>
+      <rect x={-w / 2} y={y} width={w} height={h} rx={2.5} className="plate-bg" />
+      {color && <rect x={-w / 2} y={y} width={3} height={h} rx={1} fill={color} />}
+      <text y={y + h / 2 + size * 0.36} x={color ? 1.5 : 0} fontSize={size} className="plate-text">
+        {text}
+      </text>
+    </g>
+  );
+}
+
+function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: GameState; world: World; k: number; ratio: number }) {
   const s = 1 / k;
   return (
     <g className="city-layer" pointerEvents="none">
-      {showTowns &&
+      {ratio >= ZOOM.townDots &&
         world.provinceIds.map((id) =>
           geo.towns[id].map((t) => (
             <g key={`${id}-${t.name}`} transform={`translate(${t.x},${t.y}) scale(${s})`}>
-              <circle r={1.7} className="town-dot" />
-              {showTownNames && (
+              <circle r={1.8} className="town-dot" />
+              {ratio >= ZOOM.townNames && (
                 <text y={-4.5} className="town-label">
                   {t.name}
                 </text>
@@ -183,58 +389,68 @@ function CityLayer({ geo, state, world, k }: { geo: MapGeometry; state: GameStat
         )}
       {world.provinceIds.map((id) => {
         const def = world.provinces[id];
-        const ps = state.provinces[id];
         const [x, y] = geo.anchors[id];
-        const [lx, ly] = geo.labelPoints[id];
+        const ps = state.provinces[id];
         const capture = ps.capture;
-        const isCapital = def.city.size === 'capital' && def.core !== null;
-        const tierScale = 0.75 + ps.tier * 0.15;
+        const size = def.city.size;
+        const isCapital = size === 'capital';
+        // Markers grow with the city: tier 1 (town) to tier 5 (world city).
+        const tierScale = 0.76 + ps.tier * 0.12;
+        const showName = isCapital ? ratio >= ZOOM.capitals : size === 'major' ? ratio >= ZOOM.majorCities : ratio >= ZOOM.towns;
         return (
-          <g key={id}>
-            {showProvinceNames && (
-              <text x={lx} y={ly + 22 * s} fontSize={11 * s} className="province-label">
-                {def.name}
-              </text>
-            )}
-            <g transform={`translate(${x},${y}) scale(${s})`}>
-              {def.objectiveVp ? (
-                <g className="objective">
-                  <circle r={9} className="objective-ring" />
-                  <text y={3.5} className="objective-vp">
-                    {def.objectiveVp}
-                  </text>
-                </g>
-              ) : null}
-              {isCapital ? (
-                <path
-                  d="M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z"
-                  className="capital-star"
-                  transform={`scale(${tierScale})`}
-                />
-              ) : (
-                <circle r={1.6 + ps.tier * 0.65} className={`city-dot tier-${ps.tier}`} />
-              )}
-              {capture && (
+          <g key={id} transform={`translate(${x},${y}) scale(${s})`}>
+            {capture && (
+              <g className="capture">
+                <circle r={11} className="capture-track" />
                 <circle
-                  r={12}
+                  r={11}
                   className="capture-ring"
                   stroke={world.nations[capture.by]?.color}
-                  strokeDasharray={`${(capture.progress / capture.required) * 75.4} 75.4`}
+                  strokeDasharray={`${(capture.progress / capture.required) * 69.1} 69.1`}
                   transform="rotate(-90)"
                 />
-              )}
-              {showCityNames && (
-                <text y={-11} className="city-label">
-                  {def.city.name}
-                </text>
+              </g>
+            )}
+            <g transform={`scale(${tierScale})`}>
+              {isCapital ? (
+                <g className={`city-icon capital${def.core ? ' national' : ''}`}>
+                  <circle r={6.6} />
+                  <path d={STAR} transform="scale(0.72)" />
+                </g>
+              ) : size === 'major' ? (
+                <g className="city-icon major">
+                  <circle r={4.2} />
+                  <circle r={1.6} className="dot" />
+                </g>
+              ) : (
+                <circle r={2.7} className="city-icon town" />
               )}
             </g>
+            {def.objectiveVp ? (
+              <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
+                <circle r={5.6} />
+                <text y={3.1}>{def.objectiveVp}</text>
+              </g>
+            ) : null}
+            {showName && (
+              <Plate
+                text={def.city.name}
+                y={isCapital ? 8.5 : 6.5}
+                color={ownerColor(world, ps.owner)}
+                size={isCapital ? 10.5 : 9.5}
+                className={isCapital ? 'capital' : ''}
+              />
+            )}
           </g>
         );
       })}
     </g>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Armies, routes and battles
+// ---------------------------------------------------------------------------
 
 function armyPosition(geo: MapGeometry, army: Army, alpha: number): [number, number] {
   const leg = army.move?.leg;
@@ -244,6 +460,18 @@ function armyPosition(geo: MapGeometry, army: Army, alpha: number): [number, num
   const [x2, y2] = geo.anchors[leg.to];
   return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
 }
+
+function starburst(outer: number, inner: number, points: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < points * 2; i++) {
+    const r = i % 2 ? inner : outer;
+    const a = (Math.PI * i) / points - Math.PI / 2;
+    pts.push(`${(Math.cos(a) * r).toFixed(2)},${(Math.sin(a) * r).toFixed(2)}`);
+  }
+  return `M${pts.join('L')}Z`;
+}
+const BURST_OUTER = starburst(11, 5, 9);
+const BURST_INNER = starburst(6, 2.8, 7);
 
 const CLASS_PRIORITY = { armour: 4, support: 3, mobile: 2, infantry: 1 } as const;
 
@@ -272,6 +500,7 @@ function ArmyMarker({
   k,
   selected,
   own,
+  hostile,
   onSelect,
 }: {
   army: Army;
@@ -282,6 +511,7 @@ function ArmyMarker({
   k: number;
   selected: boolean;
   own: boolean;
+  hostile: boolean;
   onSelect: (id: ArmyId, additive: boolean) => void;
 }) {
   const counts: Record<string, number> = {};
@@ -291,17 +521,17 @@ function ArmyMarker({
     strength += u.strength;
   }
   const main = counterType(army);
-  const color = ownerColor(world, army.owner);
   const avg = army.units.length ? strength / army.units.length : 0;
   const morale = armyMorale(army);
   const routed = isRouted(state, army);
+  const who = `${armyName(world, army)}${army.owner === 'neutral' ? '' : ` (${world.nations[army.owner].adjective})`}`;
   const summary = Object.entries(counts)
-    .map(([k, n]) => `${n} ${k}`)
+    .map(([t, n]) => `${n} ${t}`)
     .join(', ');
   return (
     <g
       transform={`translate(${x},${y}) scale(${1 / k})`}
-      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`}
+      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`}
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
@@ -310,16 +540,25 @@ function ArmyMarker({
       onContextMenu={(e) => e.preventDefault()}
     >
       <title>
-        {`${armyName(world, army)}${army.owner === 'neutral' ? '' : ` (${world.nations[army.owner].adjective})`} — ${summary} · strength ${Math.round(avg * 100)}% · morale ${Math.round(morale * 100)}%${army.supplied ? '' : ' — OUT OF SUPPLY'}${routed ? ' — ROUTED' : ''}`}
+        {`${who} — ${summary} · strength ${Math.round(avg * 100)}% · morale ${Math.round(morale * 100)}%${army.supplied ? '' : ' — OUT OF SUPPLY'}${routed ? ' — ROUTED' : ''}`}
       </title>
-      <rect x={-21} y={-10} width={42} height={20} rx={3} fill={color} className="army-body" />
-      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19} y={-8} width={24} />
-      <text x={12.5} y={4.5} className="army-count">
+      <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
+      <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
+      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
+      <text x={12.2} y={4.7} className="army-count">
         {army.units.length}
       </text>
-      <rect x={-21} y={11} width={42 * avg} height={2.2} className="army-strength" />
-      <rect x={-21} y={13.6} width={42 * morale} height={2.2} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
+      <rect x={-21} y={10.6} width={42} height={6.2} rx={1.6} className="army-hp-bg" />
+      <rect x={-21} y={10.6} width={42 * avg} height={3} rx={1.5} fill={strengthColor(avg)} />
+      <rect x={-21} y={14} width={42 * morale} height={2.6} rx={1.3} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
       {routed && <path d="M15,-10 L15,-22 L24,-19 L15,-16" className="routed-flag" />}
+      {!army.supplied && (
+        <g transform="translate(20,-11)" className="army-badge warn">
+          <circle r={5.4} />
+          <text y={2.9}>!</text>
+        </g>
+      )}
+      {selected && <rect x={-25.5} y={-15.5} width={51} height={36.5} rx={6} className="army-select" />}
     </g>
   );
 }
@@ -339,36 +578,41 @@ function ArmyLayer({
 }) {
   // Re-render every animation frame for smooth interpolation of marching armies.
   useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
-  const { state, world } = ctrl;
+  const { state, world, human } = ctrl;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
+  const relations = state.nations[human].relations;
   const stacks = new Map<ProvinceId, number>();
   const armies = Object.values(state.armies).sort((a, b) => (a.id < b.id ? -1 : 1));
 
-  const routes: React.ReactNode[] = [];
-  const markers: React.ReactNode[] = [];
+  const routes: ReactNode[] = [];
+  const markers: ReactNode[] = [];
   for (const army of armies) {
     let [x, y] = armyPosition(geo, army, alpha);
     if (!isArmyInTransit(army)) {
       const n = stacks.get(army.province) ?? 0;
       stacks.set(army.province, n + 1);
-      y -= (17 + n * 20) / k;
+      y -= (19 + n * 27) / k;
     }
-    const own = army.owner === ctrl.human;
+    const own = army.owner === human;
     if (army.move && (own || selected.has(army.id))) {
       const pts: [number, number][] = [[x, y]];
-      const remaining = army.move.leg ? army.move.path : army.move.path;
-      for (const pid of remaining) pts.push(geo.anchors[pid]);
+      for (const pid of army.move.path) pts.push(geo.anchors[pid]);
       if (pts.length > 1) {
+        const [ex, ey] = pts[pts.length - 1];
+        const [px, py] = pts[pts.length - 2];
+        const angle = (Math.atan2(ey - py, ex - px) * 180) / Math.PI;
+        const line = pts.map((p) => p.join(',')).join(' ');
         routes.push(
-          <polyline
-            key={`r-${army.id}`}
-            points={pts.map((p) => p.join(',')).join(' ')}
-            className={`route${selected.has(army.id) ? ' selected' : ''}`}
-          />,
+          <g key={`r-${army.id}`} className={`route${selected.has(army.id) ? ' selected' : ''}${own ? '' : ' foreign'}`}>
+            <polyline points={line} className="route-casing" />
+            <polyline points={line} className="route-line" />
+            <path d="M-8,-5 L1,0 L-8,5 Z" transform={`translate(${ex},${ey}) rotate(${angle}) scale(${1 / k})`} className="route-head" />
+          </g>,
         );
       }
     }
+    const hostile = army.owner !== 'neutral' && !own && relations[army.owner]?.status === 'war';
     markers.push(
       <ArmyMarker
         key={army.id}
@@ -380,6 +624,7 @@ function ArmyLayer({
         k={k}
         selected={selected.has(army.id)}
         own={own}
+        hostile={hostile}
         onSelect={onSelectArmy}
       />,
     );
@@ -388,9 +633,10 @@ function ArmyLayer({
   const battles = Object.keys(state.battles).map((pid) => {
     const [x, y] = geo.anchors[pid];
     return (
-      <g key={`b-${pid}`} transform={`translate(${x + 14 / k},${y + 8 / k}) scale(${1 / k})`} className="battle-icon" pointerEvents="none">
-        <circle r={9} />
-        <path d="M-5,-5 L5,5 M5,-5 L-5,5 M-6,-2 L-2,-6 M6,-2 L2,-6" />
+      <g key={`b-${pid}`} transform={`translate(${x + 17 / k},${y - 4 / k}) scale(${1 / k})`} className="battle-fx" pointerEvents="none">
+        <circle r={12} className="battle-pulse" />
+        <path d={BURST_OUTER} className="battle-burst" />
+        <path d={BURST_INNER} className="battle-core" />
       </g>
     );
   });
@@ -398,9 +644,93 @@ function ArmyLayer({
   return (
     <g className="army-layer">
       <g pointerEvents="none">{routes}</g>
-      {battles}
       {markers}
+      {battles}
     </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Minimap
+// ---------------------------------------------------------------------------
+
+const MiniMapBase = memo(function MiniMapBase({
+  geo,
+  world,
+  owners,
+  ownerOf,
+}: {
+  geo: MapGeometry;
+  world: World;
+  owners: string;
+  ownerOf: Record<ProvinceId, string>;
+}) {
+  // Only the countries around the theatre are visible in the overview.
+  const [[bx0, by0], [bx1, by1]] = geo.theatreBounds;
+  const near = geo.countries.filter((c) => c.bounds[1][0] > bx0 - 200 && c.bounds[0][0] < bx1 + 200 && c.bounds[1][1] > by0 - 200 && c.bounds[0][1] < by1 + 200);
+  return (
+    <g data-owners={owners}>
+      {near.map((c) => (
+        <path key={c.iso + c.name} d={c.d} className="mm-country" />
+      ))}
+      {world.provinceIds.map((id) => (
+        <path key={id} d={geo.provincePaths[id]} fill={ownerColor(world, ownerOf[id])} className="mm-province" />
+      ))}
+    </g>
+  );
+});
+
+function MiniMap({
+  geo,
+  world,
+  owners,
+  ownerOf,
+  view,
+  onNavigate,
+}: {
+  geo: MapGeometry;
+  world: World;
+  owners: string;
+  ownerOf: Record<ProvinceId, string>;
+  view: [number, number, number, number];
+  onNavigate: (x: number, y: number, animate: boolean) => void;
+}) {
+  const ref = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+  const [[bx0, by0], [bx1, by1]] = geo.theatreBounds;
+  const pad = 40;
+  const vb = [bx0 - pad, by0 - pad, bx1 - bx0 + 2 * pad, by1 - by0 + 2 * pad];
+  const toMap = (e: React.PointerEvent) => {
+    const m = ref.current!.getScreenCTM();
+    if (!m) return null;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    return [pt.x, pt.y] as const;
+  };
+  return (
+    <div className="minimap" title="Overview: click or drag to move the view">
+      <svg
+        ref={ref}
+        viewBox={vb.join(' ')}
+        preserveAspectRatio="xMidYMid meet"
+        onPointerDown={(e) => {
+          dragging.current = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+          const p = toMap(e);
+          if (p) onNavigate(p[0], p[1], true);
+        }}
+        onPointerMove={(e) => {
+          if (!dragging.current) return;
+          const p = toMap(e);
+          if (p) onNavigate(p[0], p[1], false);
+        }}
+        onPointerUp={() => (dragging.current = false)}
+        onPointerCancel={() => (dragging.current = false)}
+      >
+        <rect x={vb[0]} y={vb[1]} width={vb[2]} height={vb[3]} className="mm-sea" />
+        <MiniMapBase geo={geo} world={world} owners={owners} ownerOf={ownerOf} />
+        <rect x={view[0]} y={view[1]} width={view[2]} height={view[3]} className="mm-view" />
+      </svg>
+    </div>
   );
 }
 
@@ -418,23 +748,44 @@ function useStableCallback<A extends any[]>(fn: (...args: A) => void): (...args:
   return useCallback((...args: A) => ref.current(...args), []);
 }
 
+function fitFor(width: number, height: number, inset: number) {
+  const usable = Math.max(240, width - inset);
+  const k = Math.min(usable / MAP_WIDTH, height / MAP_HEIGHT);
+  return { k, transform: zoomIdentity.translate((usable - MAP_WIDTH * k) / 2, (height - MAP_HEIGHT * k) / 2).scale(k) };
+}
+
 export function MapView(props: MapViewProps) {
   const { ctrl, geo } = props;
-  const { world, state } = ctrl;
+  const { world, state, human } = ctrl;
   const svgRef = useRef<SVGSVGElement>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const insetRef = useRef(props.insetRight);
+  insetRef.current = props.insetRight;
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
+  const [fitK, setFitK] = useState(1);
+  const [size, setSize] = useState<[number, number]>([1, 1]);
   const [hovered, setHovered] = useState<ProvinceId | null>(null);
+  const [texture, setTexture] = useState<TerrainTexture | null>(null);
+  const [glow, setGlow] = useState<TerrainTexture | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    terrainTexture(geo, world).then((t) => live && setTexture(t));
+    seaGlowTexture(geo).then((t) => live && setGlow(t));
+    return () => {
+      live = false;
+    };
+  }, [geo, world]);
 
   // Zoom & pan.
   useEffect(() => {
     const svg = svgRef.current!;
     const { width, height } = svg.getBoundingClientRect();
-    const fit = Math.min(width / MAP_WIDTH, height / MAP_HEIGHT);
+    const fit = fitFor(width, height, insetRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
     const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
     const behavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([minK, fit * 14])
+      .scaleExtent([minK, fit.k * 14])
       .translateExtent([
         [x0, y0],
         [x1, y1],
@@ -442,57 +793,91 @@ export function MapView(props: MapViewProps) {
       .clickDistance(5)
       .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => setTransform(e.transform));
     zoomRef.current = behavior;
+    setFitK(fit.k);
+    setSize([width, height]);
     const sel = select(svg);
     sel.call(behavior).on('dblclick.zoom', null);
-    const initial = zoomIdentity.translate((width - MAP_WIDTH * fit) / 2, (height - MAP_HEIGHT * fit) / 2).scale(fit);
-    sel.call(behavior.transform, initial);
+    sel.call(behavior.transform, fit.transform);
+    const ro = new ResizeObserver(() => {
+      const r = svg.getBoundingClientRect();
+      setSize([r.width, r.height]);
+    });
+    ro.observe(svg);
     return () => {
+      ro.disconnect();
       sel.on('.zoom', null);
     };
   }, [geo]);
 
+  const centreOn = useCallback((x: number, y: number, k: number | null, duration: number) => {
+    const svg = svgRef.current;
+    const behavior = zoomRef.current;
+    if (!svg || !behavior) return;
+    const { width, height } = svg.getBoundingClientRect();
+    const cx = Math.max(120, width - insetRef.current) / 2;
+    const sel = select(svg);
+    if (k === null) {
+      if (duration) sel.transition().duration(duration).call(behavior.translateTo, x, y, [cx, height / 2]);
+      else sel.call(behavior.translateTo, x, y, [cx, height / 2]);
+      return;
+    }
+    sel
+      .transition()
+      .duration(duration)
+      .call(behavior.transform, zoomIdentity.translate(cx - x * k, height / 2 - y * k).scale(k));
+  }, []);
+
   // Centre on a province when requested (e.g. clicking an event).
   useEffect(() => {
-    if (!props.focus || !svgRef.current || !zoomRef.current) return;
-    const svg = svgRef.current;
-    const { width, height } = svg.getBoundingClientRect();
+    if (!props.focus) return;
     const [x, y] = geo.anchors[props.focus.province];
-    const k = Math.max(transform.k, Math.min(width / MAP_WIDTH, height / MAP_HEIGHT) * 2.2);
-    select(svg)
-      .transition()
-      .duration(450)
-      .call(zoomRef.current.transform, zoomIdentity.translate(width / 2 - x * k, height / 2 - y * k).scale(k));
+    centreOn(x, y, Math.max(transform.k, fitK * 2.2), 450);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.focus?.seq]);
 
+  const zoomBy = (factor: number) => {
+    if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(220).call(zoomRef.current.scaleBy, factor);
+  };
+  const zoomFit = () => {
+    const svg = svgRef.current;
+    if (!svg || !zoomRef.current) return;
+    const { width, height } = svg.getBoundingClientRect();
+    select(svg).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current).transform);
+  };
+
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
+  const suppliedSig = world.provinceIds.map((id) => (state.provinces[id].supplied ? '1' : '0')).join('');
+  // Morale is shown in steps of 2 so the layer re-renders only on visible changes.
+  const valuesSig =
+    props.mapMode === 'morale'
+      ? world.provinceIds.map((id) => Math.round(state.provinces[id].morale / 2) * 2).join('|')
+      : props.mapMode === 'development'
+        ? world.provinceIds.map((id) => state.provinces[id].tier).join('|')
+        : '';
   const ownerOf = useMemo(() => {
     const o: Record<ProvinceId, string> = {};
     world.provinceIds.forEach((id, i) => (o[id] = ownersSig.split(',')[i]));
     return o;
   }, [world, ownersSig]);
-  const fillList = world.provinceIds.map((id) => provinceFill(state, world, props.mode, id));
-  const fillSig = fillList.join('|');
-  const fills = useMemo(() => {
-    const f: Record<ProvinceId, string> = {};
-    world.provinceIds.forEach((id, i) => (f[id] = fillSig.split('|')[i]));
-    return f;
-  }, [world, fillSig]);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const nationBorders = useMemo(() => geo.nationBorders((pid) => ownerOf[pid]), [geo, ownersSig]);
 
   const primaryArmy = props.selectedArmies.length > 0 ? state.armies[props.selectedArmies[0]] : undefined;
-  const ownArmySelected = primaryArmy && primaryArmy.owner === ctrl.human;
+  const ownArmySelected = !!primaryArmy && primaryArmy.owner === human;
 
-  // Reachable neighbours of the selected army (or the selected province's connections).
+  // Movement connections of the selected army (or the selected province) are highlighted.
   const focusIds = primaryArmy ? (primaryArmy.move?.leg?.to ?? primaryArmy.province) : (props.selectedProvince ?? '');
-  const highlight = useMemo(() => {
-    if (!ownArmySelected || !props.moveMode || !hovered) return '';
-    const from = primaryArmy!.move?.leg ? primaryArmy!.move.leg.to : primaryArmy!.province;
-    const route = findPath(state, world, primaryArmy!, from, hovered);
-    return route ? [from, ...route.path].join(',') : '';
+
+  // Route preview for the selected own army towards the hovered province.
+  const preview = useMemo(() => {
+    if (!ownArmySelected || !hovered) return null;
+    const army = primaryArmy!;
+    const from = army.move?.leg ? army.move.leg.to : army.province;
+    if (hovered === from) return null;
+    const route = findPath(state, world, army, from, hovered);
+    if (!route) return { to: hovered, path: null, ticks: 0 };
+    const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
+    return { to: hovered, path: [from, ...route.path], ticks: route.ticks + legLeft };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownArmySelected, props.moveMode, hovered, primaryArmy?.id, ownersSig, ctrl.version]);
+  }, [ownArmySelected, hovered, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
 
   const onProvinceClick = useStableCallback((pid: ProvinceId) => {
     if (props.moveMode && ownArmySelected) props.onOrderMove(pid);
@@ -508,50 +893,116 @@ export function MapView(props: MapViewProps) {
   });
 
   const k = transform.k;
-  const detailK = 0.35;
+  const ratio = k / fitK;
+  const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
+  const showDetail = ratio >= ZOOM.detail;
+
+  const owners: string[] = [...world.nationIds, 'neutral'];
   return (
-    <svg
-      ref={svgRef}
-      className={`map${props.moveMode ? ' move-mode' : ''}`}
-      onContextMenu={(e) => e.preventDefault()}
-      onClick={(e) => {
-        if (e.target === svgRef.current) props.onSelectProvince(null);
-      }}
-      data-zoom={k.toFixed(3)}
-    >
-      <defs>
-        <pattern id="hatch-outside" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="6" height="6" className="hatch-bg" />
-          <line x1="0" y1="0" x2="0" y2="6" className="hatch-line" />
-        </pattern>
-        <pattern id="hatch-neutral" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-          <line x1="0" y1="0" x2="0" y2="5" className="hatch-neutral-line" />
-        </pattern>
-      </defs>
-      <g transform={transform.toString()}>
-        <WorldLayer geo={geo} />
-        <ProvinceLayer
+    <div className="map-stage">
+      <svg
+        ref={svgRef}
+        className={`map mode-${props.mapMode}${props.moveMode ? ' move-mode' : ''}`}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={(e) => {
+          if (!(e.target as Element).closest('[data-province],[data-army]')) props.onSelectProvince(null);
+        }}
+        data-zoom={k.toFixed(3)}
+      >
+        <defs>
+          <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={MAP_WIDTH * 0.45} cy={MAP_HEIGHT * 0.5} r={MAP_WIDTH * 1.3}>
+            <stop offset="0" stopColor="#2c5d7c" />
+            <stop offset="0.45" stopColor="#1c425f" />
+            <stop offset="1" stopColor="#0c1f31" />
+          </radialGradient>
+          <pattern id="hatch-neutral" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <line x1="0" y1="0" x2="0" y2="5" className="hatch-neutral-line" />
+          </pattern>
+          {owners.map((o) => {
+            const c = ownerColor(world, o);
+            return (
+              <linearGradient key={o} id={`ag-${o}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={lighten(c, 0.3)} />
+                <stop offset="0.5" stopColor={c} />
+                <stop offset="1" stopColor={darken(c, 0.35)} />
+              </linearGradient>
+            );
+          })}
+        </defs>
+        <g transform={transform.toString()}>
+          <SeaLayer geo={geo} glow={glow} />
+          <WorldLayer geo={geo} />
+          <TerrainLayer geo={geo} world={world} texture={texture} />
+          <ProvinceLayer
+            geo={geo}
+            world={world}
+            owners={ownersSig}
+            supplied={suppliedSig}
+            values={valuesSig}
+            ownerOf={ownerOf}
+            human={human}
+            mode={props.mapMode}
+            onClick={onProvinceClick}
+            onContext={onProvinceContext}
+            onHover={onHover}
+          />
+          <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} />
+          <g className="overlay-layer" pointerEvents="none">
+            {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
+            {hovered && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
+            {props.selectedProvince && (
+              <>
+                <path d={geo.provincePaths[props.selectedProvince]} className="sel-casing" />
+                <path d={geo.provincePaths[props.selectedProvince]} className="sel-line" />
+              </>
+            )}
+          </g>
+          {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
+          {showDetail && (
+            <>
+              <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
+              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} />
+              <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} />
+              <ArmyLayer ctrl={ctrl} geo={geo} k={k} selectedArmies={props.selectedArmies} onSelectArmy={props.onSelectArmy} />
+              {preview && (
+                <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
+                  {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
+                  <g transform={`translate(${geo.anchors[preview.to].join(',')}) scale(${1 / k})`}>
+                    <Plate
+                      text={preview.path ? `${world.provinces[preview.to].city.name} · ${formatDuration(preview.ticks, state)}` : 'No route'}
+                      y={-34}
+                      size={10.5}
+                      className="eta"
+                    />
+                  </g>
+                </g>
+              )}
+            </>
+          )}
+        </g>
+      </svg>
+      <div className="map-vignette" />
+      <div className="map-nav">
+        <div className="zoom-controls">
+          <button onClick={() => zoomBy(1.6)} title="Zoom in (mouse wheel)" aria-label="Zoom in">
+            <Icon name="plus" />
+          </button>
+          <button onClick={() => zoomBy(1 / 1.6)} title="Zoom out (mouse wheel)" aria-label="Zoom out">
+            <Icon name="minus" />
+          </button>
+          <button onClick={zoomFit} title="Show the whole theatre" aria-label="Fit theatre">
+            <Icon name="fit" />
+          </button>
+        </div>
+        <MiniMap
           geo={geo}
           world={world}
-          owners={fillSig}
+          owners={ownersSig}
           ownerOf={ownerOf}
-          fills={fills}
-          selected={props.selectedProvince}
-          highlight={highlight}
-          onClick={onProvinceClick}
-          onContext={onProvinceContext}
-          onHover={onHover}
+          view={view}
+          onNavigate={(x, y, animate) => centreOn(x, y, null, animate ? 250 : 0)}
         />
-        <BorderLayer geo={geo} nationBorders={nationBorders} />
-        {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
-        {k >= detailK && (
-          <>
-            <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
-            <CityLayer geo={geo} state={state} world={world} k={k} />
-            <ArmyLayer ctrl={ctrl} geo={geo} k={k} selectedArmies={props.selectedArmies} onSelectArmy={props.onSelectArmy} />
-          </>
-        )}
-      </g>
-    </svg>
+      </div>
+    </div>
   );
 }

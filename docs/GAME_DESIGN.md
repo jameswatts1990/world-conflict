@@ -273,19 +273,44 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
 
 ## 13. Presentation
 
-A map-centred layout with a dark UI frame and a parchment-toned map.
+The look follows modern browser grand-strategy games: a dark, glassy command-centre HUD around a bright relief map.
 
-- **Map:** ownership colours, or morale, city-size and supply views (V). City markers grow with tier; secondary
-  towns appear at close zoom. Army counters show the army's main unit in its national art with strength and
-  morale bars, a white flag when routed, and dashed routes for marching armies.
+- **Map.** Shaded-relief terrain is baked once per session from each province's terrain type (an SVG turbulence and
+  lighting filter rendered to a bitmap, `src/ui/map/terrain.ts`), so mountains, hills, forests and marshes read at a
+  glance. Ownership is a translucent nation tint over the terrain, with a glowing inner border in each nation's colour.
+  The sea has a depth gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey.
+  Five map views, cycled with V: **Political** (strong tint), **Terrain** (light tint), **Supply** (your provinces
+  green when connected to a supply hub, red when cut off), **Morale** (civilian morale, red to green) and **Cities**
+  (city tier).
+- **Labels.** Nation names are painted across their territory when zoomed out; province names take over when zoomed
+  in. Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
+  badges for objective VP and capture-progress rings. City markers grow with tier; secondary towns appear at close
+  zoom.
+- **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
+  and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
+  war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Marching
+  routes are animated dashed lines with arrowheads. Battles show a pulsing explosion. With your army selected,
+  pointing at a province previews the route, highlights the provinces on it and shows the arrival time (or "No
+  route").
+- **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red), national
+  morale, research progress with slots in use and the queue, objective VP towards victory, the clock and the speed
+  controls. A left command rail opens Research, Diplomacy, field reports, save/load and help, with badges for an idle
+  research slot, wars and peace offers. The selected army and province open as floating cards on the right; the
+  overview map and zoom buttons sit below them. Field reports (the event log) sit bottom left; alerts for wars, peace,
+  research, surrenders, eliminations, shortages and objective captures pop up top left. A cursor tooltip summarises
+  the province under the mouse, including its city size and morale.
 - **City view** (click a province): a procedural skyline that grows with the city and shows every building,
-  construction and battle; morale and growth meters with factor breakdowns; a building-slot grid; a build picker
-  by category; unit cards with each nation's art and named designs; armies present and connections.
-- **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per
-  formation, orders including disband.
-- **Research tree:** era columns, branch rows, prerequisite lines, path highlighting, slots and queue.
-- Unit art: drawn side-views for all 13 types × 3 generations × 6 nations (plus neutrals), with national
-  uniforms, headgear, camouflage and insignia; compact icons for counters.
+  construction and battle; morale and growth meters with factor breakdowns; a building-slot grid; a build picker by
+  category; unit cards with each nation's art and named designs; armies present and routes.
+- **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
+  and orders (move, stop, split, merge, disband).
+- **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and
+  queue. Diplomacy shows flags, relation pills, national specialities and morale, military power bars and objective
+  chips. The opening tutorial is a Chief of Staff briefing. The main menu shows the theatre map with the chosen nation
+  lit up and its speciality.
+- **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
+  national uniforms, headgear, camouflage and insignia), city skylines, building, branch and HUD icons are inline
+  SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 14. Open questions for playtesting
 

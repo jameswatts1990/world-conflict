@@ -17,13 +17,14 @@ import {
 } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
+import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
+import { Icon } from '../icons';
+import { Cost, Modal, Progress } from './Common';
 
 /** Compact m:ss for node footers. */
 function formatClockShort(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
-import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
-import { Cost, Modal, Progress } from './Common';
 
 const COL_W = 224;
 const NODE_W = 198;
@@ -177,7 +178,13 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
   }
 
   return (
-    <Modal title={`Research — ${nationEra(state, human)} era`} onClose={onClose} full>
+    <Modal
+      title="Research"
+      icon="research"
+      subtitle={`${nationEra(state, human)} era · ${research.completed.length} of ${TECHS.length} technologies researched`}
+      onClose={onClose}
+      full
+    >
       <div className="research-head">
         <div className="research-status">
           <div>
@@ -192,7 +199,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
               <span>{TECH_BY_ID[j.tech].name}</span>
               <Progress value={1 - j.remaining / j.total} label={formatDuration(Math.ceil(j.remaining / speed), state)} />
               <button className="icon-btn" title="Cancel (50% refund)" onClick={() => ctrl.submit({ type: 'cancelResearch', nation: human, tech: j.tech })}>
-                ✕
+                <Icon name="close" size={13} />
               </button>
             </div>
           ))}
@@ -202,11 +209,15 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
           {research.queue.length === 0 && <span className="muted"> empty — click a locked technology to queue its whole path</span>}
           {research.queue.map((t, i) => (
             <button key={t} className="chip queued" title="Remove from queue (and anything that depends on it)" onClick={() => ctrl.submit({ type: 'unqueueResearch', nation: human, tech: t })}>
-              {i + 1}. {TECH_BY_ID[t].name} ✕
+              {i + 1}. {TECH_BY_ID[t].name} <Icon name="close" size={11} />
             </button>
           ))}
         </div>
-        {message && <div className="warn">{message}</div>}
+        {message && (
+          <div className="warn">
+            <Icon name="warning" size={13} /> {message}
+          </div>
+        )}
       </div>
 
       <div className="tree-scroll">
@@ -271,7 +282,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
                 </span>
                 <span className="tn-body">
                   <span className="tn-name">
-                    {isDone ? '✓ ' : ''}
+                    {isDone && <Icon name="check" size={12} />}
                     {t.name}
                   </span>
                   <span className="tn-chips">{unlockChips(ctrl, t).slice(0, 2)}</span>

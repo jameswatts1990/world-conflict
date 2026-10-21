@@ -102,6 +102,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ## M3 — Playtest polish
 
+- [x] Graphics and UX overhaul (relief map, command rail, floating cards, alerts, minimap, route preview) merged with
+      the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end
 - [ ] Add the playthrough and the test suite to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression

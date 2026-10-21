@@ -18,17 +18,20 @@ import {
   veterancyRank,
   type ArmyId,
 } from '../../sim';
-import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
-import { NationEmblem, UnitIconArt } from '../art/adapters';
+import { UnitIconArt } from '../art/adapters';
+import { ownerColor, strengthColor } from '../color';
+import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
-import { MoraleMeter, Progress } from './Common';
+import { Icon, type IconName } from '../icons';
+import { MoraleMeter, Progress, Section, moraleClass } from './Common';
+import { composition } from './ProvincePanel';
 
 /** Rank chevrons: none for Green, one to three for Regular to Elite. */
 export function RankChevrons({ xp }: { xp: number }) {
   const rank = veterancyRank(xp);
   return (
-    <span className={`rank rank-${rank}`} title={`${rankName(xp)} (${xp.toFixed(1)} XP)`}>
+    <span className={`vet-rank vet-${rank}`} title={`${rankName(xp)} (${xp.toFixed(1)} XP)`}>
       {rank === 0 ? '·' : '❯'.repeat(rank)}
     </span>
   );
@@ -40,12 +43,14 @@ export function ArmyPanel({
   moveMode,
   onMoveMode,
   onSelectArmies,
+  onClose,
 }: {
   ctrl: GameController;
   armyIds: ArmyId[];
   moveMode: boolean;
   onMoveMode: (on: boolean) => void;
   onSelectArmies: (ids: ArmyId[]) => void;
+  onClose: () => void;
 }) {
   const { state, world, human } = ctrl;
   const [checked, setChecked] = useState<Set<string>>(new Set());
@@ -53,21 +58,34 @@ export function ArmyPanel({
   const army = state.armies[armyIds[0]];
   if (!army) return null;
   const own = army.owner === human;
-  const color = army.owner === 'neutral' ? NEUTRAL_COLOR : world.nations[army.owner].color;
-  const name = armyName(world, army);
-  const title = army.owner === 'neutral' ? name : `${name}`;
+  const color = ownerColor(world, army.owner);
+  const title = armyName(world, army);
   const leg = army.move?.leg;
   const dest = army.move ? army.move.path[army.move.path.length - 1] : null;
   const hostiles = hostileArmiesIn(state, army.province, army.owner);
   const p = state.provinces[army.province];
   const routed = isRouted(state, army);
+  const c = composition(army);
+  const morale = armyMorale(army);
 
   let status: string;
-  if (routed) status = `Routed — falling back to ${world.provinces[leg?.to ?? army.province].name}`;
-  else if (leg) status = `Marching to ${world.provinces[leg.to].name}`;
-  else if (hostiles.length > 0) status = `In battle at ${world.provinces[army.province].name}`;
-  else if (p.capture && p.capture.by === army.owner) status = `Capturing ${world.provinces[army.province].name}`;
-  else status = `Stationed in ${world.provinces[army.province].name}`;
+  let statusIcon: IconName;
+  if (routed) {
+    status = `Routed — falling back to ${world.provinces[leg?.to ?? army.province].name}`;
+    statusIcon = 'warning';
+  } else if (leg) {
+    status = `Marching to ${world.provinces[leg.to].name}`;
+    statusIcon = 'move';
+  } else if (hostiles.length > 0) {
+    status = `In battle at ${world.provinces[army.province].name}`;
+    statusIcon = 'swords';
+  } else if (p.capture && p.capture.by === army.owner) {
+    status = `Capturing ${world.provinces[army.province].name}`;
+    statusIcon = 'target';
+  } else {
+    status = `Stationed in ${world.provinces[army.province].name}`;
+    statusIcon = 'shield';
+  }
 
   let eta: number | null = null;
   if (army.move && dest) {
@@ -78,8 +96,6 @@ export function ArmyPanel({
 
   const sameProvinceOwn = armiesIn(state, army.province).filter((a) => a.owner === human);
   const grace = scaledTicks(state, SUPPLY.attritionGraceSeconds);
-  const strength = army.units.reduce((s, u) => s + u.strength, 0) / Math.max(1, army.units.length);
-  const morale = armyMorale(army);
 
   const split = () => {
     const ids = army.units.filter((u) => checked.has(u.id)).map((u) => u.id);
@@ -106,115 +122,118 @@ export function ArmyPanel({
 
   return (
     <section className="panel army-panel" data-testid="army-panel" data-army={army.id}>
-      <header className="panel-header" style={{ borderLeftColor: color }}>
-        <h3>
-          {army.owner !== 'neutral' && <NationEmblem nation={army.owner} size={16} />} {title}
-        </h3>
-        <div className="panel-sub">
-          {army.owner !== 'neutral' ? `${world.nations[army.owner].adjective} · ` : ''}
-          {status}
+      <header className="panel-hero army-hero" style={{ '--owner': color } as React.CSSProperties}>
+        <div className="hero-top">
+          <OwnerFlag world={world} owner={army.owner} province={army.province} size={16} />
+          <span className="hero-owner">
+            {army.owner === 'neutral' ? 'Neutral' : world.nations[army.owner].name} · {army.units.length} formations
+          </span>
+          <button className="icon-btn close-btn" onClick={onClose} aria-label="Close army panel">
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+        <h3>{title}</h3>
+        <div className={`army-status${(hostiles.length && !leg) || routed ? ' battle' : ''}`}>
+          <Icon name={statusIcon} size={14} /> {status}
+        </div>
+        <div className="army-summary">
+          {c.types.slice(0, 4).map(([t, n]) => (
+            <span key={t} className="as-unit" title={currentModel(state, world, army.owner, t).name}>
+              <span className="unit-plate">
+                <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={30} />
+              </span>
+              <span>{n}</span>
+            </span>
+          ))}
+          {c.types.length > 4 && <span className="as-more muted">+{c.types.length - 4}</span>}
+          <span className="as-str" title="Average strength">
+            <span className="as-str-val" style={{ color: strengthColor(c.strength) }}>
+              {Math.round(c.strength * 100)}%
+            </span>
+            <span className="tb-sub">strength</span>
+          </span>
+          <span className={`as-str as-morale ${moraleClass(morale * 100)}`} title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+            <span className="as-str-val">{Math.round(morale * 100)}</span>
+            <span className="tb-sub">morale</span>
+          </span>
         </div>
       </header>
 
-      <div className="section army-meters">
-        <div className="meter-row">
-          <span className="meter-label">Strength</span>
-          <Progress value={strength} label={`${Math.round(strength * 100)}%`} />
-        </div>
-        <div className="meter-row">
-          <span className="meter-label" title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
-            Morale
-          </span>
-          <MoraleMeter value={morale * 100} />
-        </div>
-      </div>
-
-      {army.move && dest && !routed && (
-        <div className="section">
-          {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} />}
-          <div className="muted">
-            Destination {world.provinces[dest].name}
-            {eta !== null ? ` · ETA ${formatDuration(eta, state)}` : ''}
-            {!leg ? ' · holding to fight/capture' : ''}
+      <div className="panel-body">
+        <div className="army-meters">
+          <div className="meter-row">
+            <span className="meter-label">Strength</span>
+            <Progress value={c.strength} label={`${Math.round(c.strength * 100)}%`} color={strengthColor(c.strength)} />
+          </div>
+          <div className="meter-row">
+            <span className="meter-label" title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+              Morale
+            </span>
+            <MoraleMeter value={morale * 100} />
           </div>
         </div>
-      )}
 
-      {routed && (
-        <div className="warn">
-          Routed: the army broke and is falling back. It can take orders again in {formatDuration(army.routedUntil - state.tick, state)}.
-        </div>
-      )}
-      {!army.supplied && (
-        <div className="warn">
-          Out of supply: −25% combat, no recovery.
-          {army.unsuppliedTicks >= grace ? ' Suffering attrition!' : ` Attrition begins in ${formatDuration(grace - army.unsuppliedTicks, state)}.`}
-        </div>
-      )}
-      {army.arrivedVia === 'strait' && p.owner !== army.owner && (
-        <div className="warn">Landed from the sea: fighting at a disadvantage until the beachhead is won.</div>
-      )}
+        {army.move && dest && !routed && (
+          <div className="march-box">
+            {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
+            <div className="march-meta">
+              <span>
+                <Icon name="target" size={13} /> {world.provinces[dest].name}
+              </span>
+              {eta !== null && (
+                <span>
+                  <Icon name="clock" size={13} /> ETA {formatDuration(eta, state)}
+                </span>
+              )}
+            </div>
+            {!leg && <div className="muted">Holding to fight or capture</div>}
+          </div>
+        )}
 
-      <div className="section">
-        <h4>Formations ({army.units.length})</h4>
-        <ul className="unit-list">
-          {army.units.map((u) => {
-            const s = unitStats(state, army.owner, u.type);
-            const model = currentModel(state, world, army.owner, u.type);
-            return (
-              <li key={u.id} className={checked.has(u.id) ? 'checked' : ''}>
-                {!own && <span />}
-                {own && (
-                  <input
-                    type="checkbox"
-                    checked={checked.has(u.id)}
-                    onChange={(e) => {
-                      const next = new Set(checked);
-                      if (e.target.checked) next.add(u.id);
-                      else next.delete(u.id);
-                      setChecked(next);
-                    }}
-                    aria-label={`select ${formationName(world, army.owner, u)}`}
-                  />
-                )}
-                <span className="unit-icon">
-                  <UnitIconArt type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={36} />
-                </span>
-                <span className="unit-text">
-                  <span className="unit-name" title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>
-                    {formationName(world, army.owner, u)} <RankChevrons xp={u.xp} />
-                  </span>
-                  <span className="unit-model muted" title={`Attack ${s.attack.soft.toFixed(0)}/${s.attack.hard.toFixed(0)} · Defence ${s.defence.soft.toFixed(0)}/${s.defence.hard.toFixed(0)}`}>
-                    {model.name} · {model.detail}
-                  </span>
-                </span>
-                <span className="unit-bars">
-                  <Progress value={u.strength} label={`${Math.round(u.strength * 100)}%`} />
-                  <div className={`mini-morale ${u.morale >= 0.6 ? 'high' : u.morale >= 0.35 ? 'mid' : 'low'}`} title={`Morale ${Math.round(u.morale * 100)}%`}>
-                    <div style={{ width: `${u.morale * 100}%` }} />
-                  </div>
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="muted">Speed {(armySpeedKmPerTick(state, army) * 60 * state.settings.durationScale).toFixed(0)} km/min on open ground (slowest unit)</div>
-      </div>
+        {routed && (
+          <div className="warn">
+            <Icon name="warning" size={15} />
+            <span>Routed: the army broke and is falling back. It can take orders again in {formatDuration(army.routedUntil - state.tick, state)}.</span>
+          </div>
+        )}
+        {!army.supplied && (
+          <div className="warn">
+            <Icon name="warning" size={15} />
+            <span>
+              Out of supply: −25% combat, no recovery.
+              {army.unsuppliedTicks >= grace ? ' Suffering attrition!' : ` Attrition begins in ${formatDuration(grace - army.unsuppliedTicks, state)}.`}
+            </span>
+          </div>
+        )}
+        {army.arrivedVia === 'strait' && p.owner !== army.owner && (
+          <div className="warn">
+            <Icon name="anchor" size={15} />
+            <span>Landed from the sea: fighting at a disadvantage until the beachhead is won.</span>
+          </div>
+        )}
 
-      {own && (
-        <div className="section orders">
-          <h4>Orders</h4>
-          <div className="btn-row">
-            <button className={moveMode ? 'active' : ''} disabled={routed} onClick={() => onMoveMode(!moveMode)} title="Then click a destination (or right-click a province any time) — M" data-testid="move-mode">
-              {moveMode ? 'Click destination…' : 'Move'}
+        {own && (
+          <div className="orders">
+            <button
+              className={`order-btn${moveMode ? ' active' : ''}`}
+              disabled={routed}
+              onClick={() => onMoveMode(!moveMode)}
+              title="Then click a destination (or right-click a province any time) — M"
+              data-testid="move-mode"
+            >
+              <Icon name="move" size={18} />
+              <span>{moveMode ? 'Pick target' : 'Move'}</span>
             </button>
-            <button disabled={!army.move || routed} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
-              Stop
+            <button className="order-btn" disabled={!army.move || routed} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
+              <Icon name="stop" size={18} />
+              <span>Stop</span>
             </button>
-            <button disabled={checked.size === 0 || checked.size === army.units.length || !!leg} onClick={split} title="Split ticked formations into a new army">
-              Split
+            <button className="order-btn" disabled={checked.size === 0 || checked.size === army.units.length || !!leg} onClick={split} title="Split ticked formations into a new army">
+              <Icon name="split" size={18} />
+              <span>Split</span>
             </button>
             <button
+              className="order-btn"
               disabled={sameProvinceOwn.length < 2 || !!leg}
               onClick={() => {
                 const ids = [army.id, ...sameProvinceOwn.filter((a) => a.id !== army.id).map((a) => a.id)];
@@ -222,20 +241,83 @@ export function ArmyPanel({
               }}
               title="Merge all your armies in this province into this one"
             >
-              Merge here
+              <Icon name="merge" size={18} />
+              <span>Merge here</span>
             </button>
             <button
-              className={`danger${confirmDisband ? ' active' : ''}`}
+              className={`order-btn danger${confirmDisband ? ' active' : ''}`}
               disabled={!!leg}
               onClick={disband}
               title={checked.size > 0 ? 'Disband the ticked formations (half their manpower returns)' : 'Disband the whole army (half its manpower returns)'}
+              data-testid="disband"
             >
-              {confirmDisband ? 'Confirm' : checked.size > 0 ? `Disband ${checked.size}` : 'Disband'}
+              <Icon name="exit" size={18} />
+              <span>{confirmDisband ? 'Confirm' : checked.size > 0 ? `Disband ${checked.size}` : 'Disband'}</span>
             </button>
           </div>
-          {armyIds.length > 1 && <div className="muted">{armyIds.length} armies selected — move orders apply to all.</div>}
-        </div>
-      )}
+        )}
+        {own && armyIds.length > 1 && <div className="muted multi-note">{armyIds.length} armies selected — move orders apply to all.</div>}
+
+        <Section
+          title={`Formations (${army.units.length})`}
+          icon="shield"
+          extra={
+            <span className="muted" title="On open ground; the slowest unit sets the pace">
+              {(armySpeedKmPerTick(state, army) * 60 * state.settings.durationScale).toFixed(0)} km/min
+            </span>
+          }
+        >
+          <ul className="unit-list formation-list">
+            {army.units.map((u) => {
+              const s = unitStats(state, army.owner, u.type);
+              const model = currentModel(state, world, army.owner, u.type);
+              const name = formationName(world, army.owner, u);
+              return (
+                <li key={u.id} className={checked.has(u.id) ? 'checked' : ''}>
+                  {own ? (
+                    <input
+                      type="checkbox"
+                      checked={checked.has(u.id)}
+                      onChange={(e) => {
+                        const next = new Set(checked);
+                        if (e.target.checked) next.add(u.id);
+                        else next.delete(u.id);
+                        setChecked(next);
+                      }}
+                      aria-label={`select ${name}`}
+                    />
+                  ) : (
+                    <span />
+                  )}
+                  <span className="unit-icon unit-plate">
+                    <UnitIconArt type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={32} />
+                  </span>
+                  <span className="unit-text">
+                    <span className="unit-name" title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>
+                      {name} <RankChevrons xp={u.xp} />
+                    </span>
+                    <span className="unit-model">
+                      {model.name} · {model.detail}
+                    </span>
+                  </span>
+                  <span className="unit-stats" title="Attack (soft/hard) · Defence (soft/hard)">
+                    <span>
+                      ATK <b>{s.attack.soft.toFixed(0)}</b>/{s.attack.hard.toFixed(0)}
+                    </span>
+                    <span>
+                      DEF <b>{s.defence.soft.toFixed(0)}</b>/{s.defence.hard.toFixed(0)}
+                    </span>
+                  </span>
+                  <Progress value={u.strength} label={`${Math.round(u.strength * 100)}%`} color={strengthColor(u.strength)} />
+                  <div className={`mini-morale ${moraleClass(u.morale * 100)}`} title={`Morale ${Math.round(u.morale * 100)}%`}>
+                    <div style={{ width: `${u.morale * 100}%` }} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      </div>
     </section>
   );
 }

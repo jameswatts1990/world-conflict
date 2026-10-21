@@ -42,7 +42,7 @@ Other scripts:
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; ~1–2 min, plays a whole campaign at DEV speed) |
+| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 
 ## Deploy to GitHub Pages
 
@@ -63,12 +63,17 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | Drag / mouse wheel | Pan / zoom |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
-| **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle event log |
-| **V** | Cycle map view: political, morale, city size, supply |
-| **H** or **?** | Controls and tutorial |
+| **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |
+| **V** | Cycle map view: political, terrain, supply, morale, city size |
+| **K** | Show or hide the map key |
+| **H** or **?** | Controls and briefing |
 | **Esc** | Cancel move mode, close a dialog, clear selection |
 
-Click an event in the log to jump to its province. Peace offers from the AI pop up at the top right.
+The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**)
+changes the map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the
+bottom right. With one of your armies selected, pointing at a province previews the route and arrival time. Click a
+field report or an alert to jump to its province. Peace offers and key events (wars, research, objectives) pop up at
+the top left.
 
 ## How to win
 
@@ -94,7 +99,7 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
   ai/               Computer opponents: context, diplomacy, economy, recruitment, military
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
-src/ui/             React interface: map (SVG + d3-geo/d3-zoom), panels, dialogs
+src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
   art/              Hand-drawn SVG unit art, insignia, procedural city skylines, building and branch icons
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON (shapes only)
 scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
@@ -103,11 +108,13 @@ tests/              Simulation tests
 
 ## Known limitations
 
+- The scripted browser playthrough (`npm run e2e`) runs to completion against the production build in headless
+  Chromium, but is not yet part of CI. It checks the gameplay loop through the real UI, not visual appearance;
+  screenshots in `e2e-output/` are checked by eye.
 - Balance is tuned with headless AI-vs-AI campaigns and needs human playtesting. In those runs every campaign ends
   on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up on a leader.
-- The browser playthrough (`npm run e2e`) passes end to end but is not yet in CI.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
-- Single desktop layout; not tuned for touch or small screens. The main bundle is ~800 KB (257 KB gzipped).
+- Single desktop layout; not tuned for touch or small screens. The main bundle is ~850 KB (274 KB gzipped).
 - Saves from the first prototype (schema 1) are not loadable.
