@@ -1,8 +1,20 @@
-# World Conflict — first playable prototype
+# World Conflict
 
 A browser-based, real-time global strategy game. Six modern nations on recognisable Earth geography start with
-Great War technology and research their way towards the Second World War. This milestone is a local
+Great War technology and research their way towards the Second World War. The current build is a local
 single-player campaign on the **European theatre** at **Standard** speed (target ~2–3 hours).
+
+What is in it (Milestone 2, Depth):
+
+- **13 unit types** in four classes with 1914, interwar and 1940 equipment, each nation fielding its **own named
+  designs** and art (Poilus, Alpini, Ułani; Mark IV, Renault FT, A7V, 7TP …), numbered formations in its own
+  language, veterancy, and one **national speciality**.
+- **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
+  integrate over time) and nations.
+- **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
+- A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
+- **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
+  power close to victory.
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -26,8 +38,11 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~20 s) |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
+| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
+| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (written but not yet run to completion — see "Known limitations") |
+| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; ~10 min, plays a whole campaign at DEV speed) |
 
 ## Deploy to GitHub Pages
 
@@ -41,14 +56,15 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 
 | Input | Action |
 | --- | --- |
-| Left-click province | Select it: production, buildings, recruitment, armies present, connections |
+| Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, armies present |
 | Left-click army counter | Select army (Shift-click adds more of your armies) |
 | Right-click province | Move the selected army there (or press **M** / the **Move** button, then left-click) |
 | **S** | Stop the selected army after its current leg |
 | Drag / mouse wheel | Pan / zoom |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
-| **R** / **D** / **L** | Research / Diplomacy & objectives / toggle event log |
+| **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle event log |
+| **V** | Cycle map view: political, morale, city size, supply |
 | **H** or **?** | Controls and tutorial |
 | **Esc** | Cancel move mode, close a dialog, clear selection |
 
@@ -72,28 +88,26 @@ save was made. Offline progression belongs to the later server-backed version.
 ```
 src/sim/            Framework-free simulation (could run on a server unchanged)
   config/           Balance and timing values: units, buildings, research, rules, AI, timing
-  scenario/europe/  Nations, province gameplay data, movement connections, starting setup
-  systems/          Economy, production, movement, combat, supply, territory, diplomacy, victory
-  ai/               Computer opponents (issue the same commands as the player)
+  scenario/europe/  Nations and their identity, province gameplay data, connections, starting setup
+  systems/          Economy, production, movement, combat (morale, rout), supply, civic (morale, growth),
+                    territory, diplomacy, victory
+  ai/               Computer opponents: context, diplomacy, economy, recruitment, military
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom), panels, dialogs
+  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, building and branch icons
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON (shapes only)
-scripts/            Map pipeline, headless campaign, browser playthrough
+scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
 
 ## Known limitations
 
-- The scripted browser playthrough (`npm run e2e`) has not been run to completion. The production build was loaded
-  in headless Chromium, the menu, tutorial and game screen rendered without console errors, and screenshots were
-  checked by eye. The full loop (build, recruit, research, move, capture, save/load, win/loss) is covered by the
-  simulation tests, not by an automated browser run.
-- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  campaigns end either by objectives (about 105 min) or on the time limit.
-- AI armies can grow large (100+ units) late in a campaign. No unit disbanding yet; a bankrupt AI keeps its army
-  but fights at reduced effectiveness.
+- Balance is tuned with headless AI-vs-AI campaigns and needs human playtesting. In those runs every campaign ends
+  on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up on a leader.
+- The browser playthrough (`npm run e2e`) passes end to end but is not yet in CI.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
-- Single desktop layout; not tuned for touch or small screens.
+- Single desktop layout; not tuned for touch or small screens. The main bundle is ~800 KB (257 KB gzipped).
+- Saves from the first prototype (schema 1) are not loadable.

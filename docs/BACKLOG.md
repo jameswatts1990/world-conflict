@@ -17,7 +17,7 @@ _Living document. Ticked items are in the build; the rest is ordered by priority
 - [x] Save/load (slots, autosave, export/import), pause, labelled DEV speeds, tutorial, event log
 - [x] Tests: resources, movement, combat, research, victory, save/load, replay, frame-rate independence
 
-## M2 — Depth (in progress)
+## M2 — Depth ✅ (first pass; balance continues in M3)
 
 First-playthrough feedback: the core loop works, but it is shallow. Morale is missing, cities do not feel like
 cities, building choices are thin, the research tree is short and does not look like a tree, units feel like
@@ -36,73 +36,77 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ### 2.1 Unit roster and identity
 
-- [ ] 13 unit types in four classes: infantry (line, assault, mountain, motorised), mobile (cavalry, armoured
+- [x] 13 unit types in four classes: infantry (line, assault, mountain, motorised), mobile (cavalry, armoured
       cars), support (field artillery, heavy siege artillery, anti-tank guns) and armour (light, medium/battle,
       heavy tanks, tank destroyers)
-- [ ] Three equipment generations per type (1914, interwar, 1940); research upgrades units in place
-- [ ] Mechanics beyond attack and defence numbers: armour **hardness**, support units fighting from the second
+- [x] Three equipment generations per type (1914, interwar, 1940); research upgrades units in place
+- [x] Mechanics beyond attack and defence numbers: armour **hardness**, support units fighting from the second
       line, **recon** (army bonus, faster capture), **fortification-busting**, **mountaineers** (fast over passes),
       **shock** (morale damage), fuel-hungry motorised units
-- [ ] National designs: every nation fields its own named equipment (Mark IV, Renault FT, A7V, Fiat 3000,
+- [x] National designs: every nation fields its own named equipment (Mark IV, Renault FT, A7V, Fiat 3000,
       Trubia, 7TP …) and formations (Poilus, Alpini, Stoßtruppen, Ułani …)
-- [ ] Numbered formations and armies in each nation's language ("12e Division d'Infanterie", "3. Armee")
-- [ ] Veterancy: Green → Regular → Veteran → Elite from combat experience
-- [ ] National specialities: one small, flavourful edge per nation
-- [ ] Artwork: drawn silhouettes per unit type and generation, national palettes and insignia
+- [x] Numbered formations and armies in each nation's language ("12e Division d'Infanterie", "3. Armee")
+- [x] Veterancy: Green → Regular → Veteran → Elite from combat experience
+- [x] National specialities: one small, flavourful edge per nation
+- [x] Artwork: drawn silhouettes per unit type and generation, national palettes and insignia
 
 ### 2.2 Morale
 
-- [ ] **Unit morale**: damage breaks morale before it destroys units. Broken armies **rout** to a friendly
+- [x] **Unit morale**: damage breaks morale before it destroys units. Broken armies **rout** to a friendly
       neighbour, and armies with nowhere to go **surrender**, so encirclement matters
-- [ ] Morale recovers out of combat, faster in supplied home territory and near hospitals
-- [ ] **Province morale** (0–100): drives output. It is lowered by nearby enemies, battles, shortages and a lost
+- [x] Morale recovers out of combat, faster in supplied home territory and near hospitals
+- [x] **Province morale** (0–100): drives output. It is lowered by nearby enemies, battles, shortages and a lost
       capital, and raised by garrisons, propaganda and time. It replaces the flat 50% occupied-output penalty
       with integration over time
-- [ ] **National morale**: the home-front average; caps unit morale and decides when the AI sues for peace
-- [ ] Morale map mode
+- [x] **National morale**: the home-front average; caps unit morale and decides when the AI sues for peace
+- [x] Morale map mode
 
 ### 2.3 Cities and buildings
 
-- [ ] City tiers (Town → City → Large City → Metropolis → World City) with population and growth
-- [ ] Building **slots** per tier, so every build is a choice. Infrastructure (forts, depots, railways, coastal
+- [x] City tiers (Town → City → Large City → Metropolis → World City) with population and growth
+- [x] Building **slots** per tier, so every build is a choice. Infrastructure (forts, depots, railways, coastal
       batteries) does not use slots
-- [ ] 18 buildings across economy, military, civic and infrastructure: markets, power stations, housing,
+- [x] 18 buildings across economy, military, civic and infrastructure: markets, power stations, housing,
       universities, military academies, motor works, hospitals, propaganda bureaus, occupation HQs, railway
       junctions, coastal batteries, plus the existing ones
-- [ ] City view: skyline illustration that grows with the city's buildings, slot grid and a build picker
-- [ ] Secondary towns drawn on the map when zoomed in
-- [ ] Development map mode
+- [x] City view: skyline illustration that grows with the city's buildings, slot grid and a build picker
+- [x] Secondary towns drawn on the map when zoomed in
+- [x] Development map mode
 
 ### 2.4 Research tree
 
-- [ ] About 50 technologies in six branches (Infantry, Artillery, Armour, Industry, Logistics, Society) across
+- [x] About 50 technologies in six branches (Infantry, Artillery, Armour, Industry, Logistics, Society) across
       four eras (Great War, 1920s, 1930s, Second World War)
-- [ ] Technologies unlock units, buildings and equipment generations, not just percentages
-- [ ] Research slots (gained through research), research speed from universities, and a research queue
-- [ ] Classic tree view: era columns, branch rows, prerequisite lines, path highlighting
-- [ ] The tree is longer than a campaign, so each nation has to choose a direction
+- [x] Technologies unlock units, buildings and equipment generations, not just percentages
+- [x] Research slots (gained through research), research speed from universities, and a research queue
+- [x] Classic tree view: era columns, branch rows, prerequisite lines, path highlighting
+- [x] The tree is longer than a campaign, so each nation has to choose a direction
 
 ### 2.5 AI
 
-- [ ] Front-aware force allocation: garrisons sized to threat, a reserve, and strike groups
-- [ ] Army-size discipline: upkeep budgets and disbanding obsolete units when bankrupt
-- [ ] Composition that answers the enemy and terrain (anti-tank against armour, mountain troops on alpine
+- [x] Front-aware force allocation: garrisons sized to threat, a reserve, and strike groups
+- [x] Army-size discipline: upkeep budgets and disbanding obsolete units when bankrupt
+- [x] Composition that answers the enemy and terrain (anti-tank against armour, mountain troops on alpine
       fronts, siege guns against forts)
-- [ ] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
-- [ ] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
-- [ ] Research strategies by personality, using the queue
-- [ ] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
+- [x] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
+- [x] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
+- [x] Research strategies by personality, using the queue
+- [x] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
 
 ### 2.6 Balance and presentation
 
-- [ ] Headless campaign sweeps across seeds; outcomes by objectives as well as by time limit
-- [ ] New tests for every system; save schema v2
-- [ ] Design document, tutorial and controls updated
+- [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
+- [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
+- [x] New tests for every system; save schema v2
+- [x] Design document, tutorial and controls updated
 
 ## M3 — Playtest polish
 
-- [ ] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
-- [ ] Human playtests at Standard speed; tune the VP threshold, combat damage and AI aggression
+- [x] Run the scripted browser playthrough (`npm run e2e`) end to end
+- [ ] Add the playthrough and the test suite to CI
+- [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
+- [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
+- [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [ ] Notifications for key events (war declared on you, capital threatened, research done)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies

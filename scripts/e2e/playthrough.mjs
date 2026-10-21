@@ -97,7 +97,7 @@ try {
   await page.click('[data-testid="start-campaign"]');
   await page.waitForSelector('[data-testid="tutorial"]');
   await shot('02-tutorial');
-  for (let i = 0; i < 5; i++) await page.click('.tutorial button.primary');
+  while (!(await page.$('[data-testid="tutorial-done"]'))) await page.click('.tutorial button.primary');
   await page.click('[data-testid="tutorial-done"]');
   step('campaign started (France, seed 2024), tutorial completed');
 
@@ -111,7 +111,8 @@ try {
   if (!construction) throw new Error('construction did not start');
   step('ordered Industrial Works level 2 in Paris', { moneyBefore: Math.round(money0), job: construction.building });
 
-  // 3. Recruit infantry in Paris.
+  // 3. Recruit infantry in Paris (Recruit tab of the city view).
+  await page.click('[data-tab="recruit"]');
   await page.click('[data-recruit="infantry"]');
   const queue = await state((s) => s.provinces['fr-paris'].recruitQueue.length);
   if (queue !== 1) throw new Error('recruitment did not queue');
@@ -119,12 +120,16 @@ try {
 
   // 4. Research an upgrade.
   await page.click('[data-testid="open-research"]');
-  await page.click('[data-tech="industrialMobilisation"] button');
-  const research = await state((s) => s.nations.fr.research.active?.tech);
-  if (research !== 'industrialMobilisation') throw new Error('research did not start');
+  await page.click('[data-tech="industrialMobilisation"]');
+  const research = await state((s) => s.nations.fr.research.active.map((j) => j.tech));
+  if (!research.includes('industrialMobilisation')) throw new Error('research did not start');
+  // Clicking a locked technology queues it with its missing prerequisites.
+  await page.click('[data-tech="lightTanks"]');
+  const researchQueue = await state((s) => s.nations.fr.research.queue);
+  if (researchQueue.join(',') !== 'landships,lightTanks') throw new Error(`research path not queued: ${researchQueue}`);
   await shot('03-research');
   await page.keyboard.press('Escape');
-  step('started research: Industrial Mobilisation');
+  step('started research: Industrial Mobilisation; queued Landships → Light Tanks');
 
   // 5. Move the Paris army to Nord (select marker, right-click destination).
   const parisArmy = await state((s) => Object.values(s.armies).find((a) => a.owner === 'fr' && a.province === 'fr-paris').id);
