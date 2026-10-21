@@ -331,8 +331,8 @@ export interface AiMemory {
   /** Research and recruitment emphasis. */
   doctrine: 'armour' | 'infantry' | 'artillery';
   nextThinkTick: number;
-  /** Province currently being massed against, if any. */
-  campaignTarget: ProvinceId | null;
+  /** Provinces currently being massed against (kept between thinks to avoid dithering). */
+  campaigns: ProvinceId[];
 }
 
 export interface NationState {

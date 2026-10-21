@@ -150,7 +150,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             economyBias: 0.3 + random(state) * 0.5,
             doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
             nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
-            campaignTarget: null,
+            campaigns: [],
           },
       stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },
     };

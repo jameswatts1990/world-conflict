@@ -79,7 +79,7 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
     name: 'University',
     short: 'UNI',
     category: 'economy',
-    description: 'Research is 10% faster nationally for each university (up to five). Needs a Large City.',
+    description: 'Research is 10% faster nationally for each university (up to three). Needs a Large City.',
     maxLevel: 1,
     levelTiers: [3],
     cost: () => ({ money: 500, materials: 150 }),
@@ -212,9 +212,9 @@ export const BUILDING_EFFECTS = {
   powerPlantAdjacentMaterials: 0.1,
   housingManpowerPerLevel: 0.12,
   housingMoralePerLevel: 3,
-  housingGrowthPerLevel: 0.5,
+  housingGrowthPerLevel: 0.4,
   universityResearch: 0.1,
-  universityMax: 5,
+  universityMax: 3,
   barracksManpower: 0.25,
   armsWorksMaterials: 0.1,
   refineryOilFuelPerLevel: 12,
@@ -259,13 +259,13 @@ export const CITY = {
   /** City building slots per tier. */
   slots: [0, 3, 4, 5, 7, 8] as const,
   /** Growth points needed to reach the next tier (index = current tier). */
-  growthToNext: [0, 20, 30, 45, 65, Infinity] as const,
+  growthToNext: [0, 25, 40, 60, 90, Infinity] as const,
   /** Population multiplier per tier, relative to tier 1. */
   populationScale: [0, 1, 1.6, 2.6, 4, 6] as const,
   /** Money and manpower bonus per tier above the starting tier. */
   outputPerTier: 0.1,
   /** Growth points per minute from high (≥ 60) or low (< 35) morale. */
-  moraleGrowth: 0.4,
+  moraleGrowth: 0.25,
   /** Growth points per minute while a battle rages in the province. */
   battleGrowth: -2,
   /** Growth points lost when the province is captured. */

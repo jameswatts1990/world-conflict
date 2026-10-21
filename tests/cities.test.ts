@@ -59,7 +59,7 @@ describe('cities', () => {
     const town = 'fr-centre';
     state.provinces[town].buildings.housing = 3;
     const need = CITY.growthToNext[1];
-    run(state, 60 * 15);
+    run(state, 60 * 20);
     expect(state.provinces[town].tier).toBe(2);
     expect(state.events.some((e) => e.kind === 'city-growth' && e.province === town)).toBe(true);
     expect(buildingSlots(state, town)).toBe(CITY.slots[2]);

@@ -41,9 +41,9 @@ const TANKS: UnitType[] = ['lightTank', 'tank'];
 
 /** Default cost and time by column; individual techs may override. */
 function tier(col: number, extra: PartialResources = {}): { cost: PartialResources; seconds: number } {
-  const money = [300, 380, 450, 520, 600, 700, 800, 900][col];
-  const materials = [100, 140, 180, 210, 250, 300, 350, 400][col];
-  const seconds = [150, 170, 200, 220, 250, 280, 310, 340][col];
+  const money = [360, 450, 540, 620, 720, 840, 960, 1080][col];
+  const materials = [120, 170, 220, 250, 300, 360, 420, 480][col];
+  const seconds = [240, 280, 330, 380, 430, 480, 540, 600][col];
   return { cost: { money, materials, ...extra }, seconds };
 }
 
@@ -417,7 +417,7 @@ export const TECHS: TechConfig[] = [
     row: 0,
     description: 'Total-war economy: +10% money, +20% materials.',
     requires: [],
-    ...tier(0, { money: 350 }),
+    ...tier(0, { money: 420 }),
     effects: [
       { kind: 'production', resource: 'money', mult: 1.1 },
       { kind: 'production', resource: 'materials', mult: 1.2 },
@@ -512,10 +512,10 @@ export const TECHS: TechConfig[] = [
     branch: 'industry',
     col: 6,
     row: 2,
-    description: 'Scientists at war: one extra research slot and research 10% faster.',
+    description: 'Scientists at war: research 20% faster.',
     requires: ['researchInstitutes'],
     ...tier(6),
-    effects: [{ kind: 'researchSlot' }, { kind: 'researchSpeed', mult: 1.1 }],
+    effects: [{ kind: 'researchSpeed', mult: 1.2 }],
   },
   {
     id: 'totalWarEconomy',
