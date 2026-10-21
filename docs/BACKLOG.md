@@ -90,7 +90,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       fronts, siege guns against forts)
 - [x] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
 - [x] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
-- [x] Research strategies by personality, using the queue
+- [x] Research strategies by personality (doctrine) and need
 - [x] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
 
 ### 2.6 Balance and presentation
