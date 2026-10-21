@@ -42,7 +42,7 @@ Other scripts:
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; ~10 min, plays a whole campaign at DEV speed) |
+| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; ~1–2 min, plays a whole campaign at DEV speed) |
 
 ## Deploy to GitHub Pages
 
