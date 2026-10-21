@@ -22,8 +22,7 @@ import { formatDuration } from '../format';
 function formatClockShort(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
-import { BuildingIcon } from '../icons';
-import { BranchIcon, TechUnitIcon } from '../art/adapters';
+import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
 import { Cost, Modal, Progress } from './Common';
 
 const COL_W = 224;
@@ -91,7 +90,7 @@ function TechIcon({ tech, ctrl }: { tech: TechConfig; ctrl: GameController }) {
     }
     if (e.kind === 'unitModel') return <TechUnitIcon type={e.units[0]} gen={e.gen} nation={human} title={modelName(world, human, e.units[0], e.gen).name} />;
   }
-  for (const e of tech.effects) if (e.kind === 'unlockBuilding') return <BuildingIcon kind={e.building} size={22} />;
+  for (const e of tech.effects) if (e.kind === 'unlockBuilding') return <BuildingGlyphArt kind={e.building} size={24} />;
   return <BranchIcon branch={tech.branch} size={20} />;
 }
 

@@ -1,9 +1,11 @@
 // Bridges simulation ids to the artwork components, so panels and the map
 // never import the art modules directly.
-import { BUILDINGS } from '../../sim/config/buildings';
 import { UNITS } from '../../sim/config/units';
 import type { BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
-import { BuildingIcon, UnitGlyph } from '../icons';
+import { UnitGlyph } from '../icons';
+import { BranchIcon as BranchArt } from './BranchIcons';
+import { BuildingGlyph, BuildingTile } from './BuildingIcons';
+import { CitySkyline } from './CitySkyline';
 
 function natoFor(type: UnitType): UnitType {
   const cls = UNITS[type].class;
@@ -47,27 +49,16 @@ export function CounterArt({ type, x, y, width }: { type: UnitType; gen: UnitGen
   );
 }
 
-const BRANCH_LETTER: Record<TechBranch, string> = { infantry: 'I', artillery: 'A', armour: 'M', industry: 'E', logistics: 'L', society: 'S' };
-
 export function BranchIcon({ branch, size = 18 }: { branch: TechBranch; size?: number }) {
-  return (
-    <span className="branch-letter" style={{ width: size, height: size, fontSize: size * 0.6 }}>
-      {BRANCH_LETTER[branch]}
-    </span>
-  );
+  return <BranchArt branch={branch} size={size} />;
 }
 
-export function BuildingTileArt({ kind, level, size = 44 }: { kind: BuildingType; level: number; maxLevel: number; size?: number }) {
-  return (
-    <span className={`building-tile cat-${BUILDINGS[kind].category}`} style={{ width: size, height: size }}>
-      <BuildingIcon kind={kind} size={size * 0.55} />
-      {BUILDINGS[kind].maxLevel > 1 && <span className="bt-level">{level}</span>}
-    </span>
-  );
+export function BuildingTileArt({ kind, level, maxLevel, size = 44 }: { kind: BuildingType; level: number; maxLevel: number; size?: number }) {
+  return <BuildingTile kind={kind} level={level} maxLevel={maxLevel} size={size} />;
 }
 
-export function BuildingGlyphArt({ kind, size = 16 }: { kind: BuildingType; size?: number }) {
-  return <BuildingIcon kind={kind} size={size} />;
+export function BuildingGlyphArt({ kind, size = 16, title }: { kind: BuildingType; size?: number; title?: string }) {
+  return <BuildingGlyph kind={kind} size={size} title={title} />;
 }
 
 export interface CitySceneProps {
@@ -83,8 +74,8 @@ export interface CitySceneProps {
   width?: number;
 }
 
-export function CityScene({ width = 340 }: CitySceneProps) {
-  return <div className="city-scene placeholder" style={{ width, height: (width * 120) / 320 }} />;
+export function CityScene(props: CitySceneProps) {
+  return <CitySkyline {...props} width={props.width ?? 340} />;
 }
 
 export function NationEmblem({ color, size = 16 }: { nation: OwnerId; color: string; size?: number }) {
