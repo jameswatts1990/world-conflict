@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { SUPPLY } from '../../sim/config/rules';
 import { UNITS } from '../../sim/config/units';
-import { UNIT_TYPES, armiesIn, armySpeedKmPerTick, findPath, hostileArmiesIn, scaledTicks, unitStats, type ArmyId } from '../../sim';
+import { UNIT_TYPES, armiesIn, armySpeedKmPerTick, findPath, hostileArmiesIn, provinceName, scaledTicks, unitStats, type ArmyId } from '../../sim';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
 import { Icon, UnitGlyph, type IconName } from '../icons';
+import { armyName, composition, ownerShortName } from '../labels';
 import { Progress, Section } from './Common';
-import { composition } from './ProvincePanel';
 
 export function ArmyPanel({
   ctrl,
@@ -31,7 +31,6 @@ export function ArmyPanel({
   if (!army) return null;
   const own = army.owner === human;
   const color = ownerColor(world, army.owner);
-  const title = army.owner === 'neutral' ? `${world.provinces[army.province].neutralState} garrison` : `${world.nations[army.owner].adjective} army`;
   const leg = army.move?.leg;
   const dest = army.move ? army.move.path[army.move.path.length - 1] : null;
   const hostiles = hostileArmiesIn(state, army.province, army.owner);
@@ -40,17 +39,18 @@ export function ArmyPanel({
 
   let status: string;
   let statusIcon: IconName;
+  const here = provinceName(world, army.province);
   if (leg) {
-    status = `Marching to ${world.provinces[leg.to].name}`;
+    status = `Marching to ${provinceName(world, leg.to)}`;
     statusIcon = 'move';
   } else if (hostiles.length > 0) {
-    status = `In battle at ${world.provinces[army.province].name}`;
+    status = `In battle in ${here}`;
     statusIcon = 'swords';
   } else if (p.capture && p.capture.by === army.owner) {
-    status = `Capturing ${world.provinces[army.province].name}`;
+    status = `Capturing ${here} · ${formatDuration(p.capture.required - p.capture.progress, state)} left`;
     statusIcon = 'target';
   } else {
-    status = `Stationed in ${world.provinces[army.province].name}`;
+    status = `Stationed in ${here}`;
     statusIcon = 'shield';
   }
 
@@ -81,13 +81,13 @@ export function ArmyPanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={army.owner} province={army.province} size={16} />
           <span className="hero-owner">
-            {army.owner === 'neutral' ? 'Neutral' : world.nations[army.owner].name} · #{army.id.slice(1)}
+            {ownerShortName(world, army.owner, army.province)} · Army #{army.id.slice(1)}
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close army panel">
             <Icon name="close" size={16} />
           </button>
         </div>
-        <h3>{title}</h3>
+        <h3>{armyName(world, army)}</h3>
         <div className={`army-status${hostiles.length && !leg ? ' battle' : ''}`}>
           <Icon name={statusIcon} size={14} /> {status}
         </div>
@@ -121,7 +121,7 @@ export function ArmyPanel({
                 </span>
               )}
             </div>
-            {!leg && <div className="muted">Holding to fight or capture</div>}
+            {!leg && <div className="muted">Halted to fight or capture, then marching on</div>}
           </div>
         )}
 
@@ -129,7 +129,7 @@ export function ArmyPanel({
           <div className="warn">
             <Icon name="warning" size={15} />
             <span>
-              Out of supply: −25% combat, no recovery.
+              Out of supply: fights at {Math.round(SUPPLY.unsuppliedCombatMult * 100)}% and cannot recover.
               {army.unsuppliedTicks >= grace ? ' Suffering attrition!' : ` Attrition begins in ${formatDuration(grace - army.unsuppliedTicks, state)}.`}
             </span>
           </div>

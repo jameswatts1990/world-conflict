@@ -81,7 +81,8 @@ describe('determinism', () => {
         loop.advance(dt);
         elapsed += dt;
       }
-      expect(state.tick).toBeGreaterThan(targetTicks - 100);
+      // Real time drove the clock to within a few ticks of the target (or the campaign ended first).
+      expect(state.outcome !== null || state.tick > targetTicks - 100).toBe(true);
       // Drain to an exact tick count so every profile is compared at the same game time.
       while (state.tick < targetTicks && !state.outcome) {
         applyScript(state);

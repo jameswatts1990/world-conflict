@@ -72,6 +72,9 @@ Four resources, each with a per-minute rate shown in the top bar:
 
 ### City buildings (one construction per province at a time; cost paid up front)
 
+Construction and recruitment can be cancelled: the full price comes back until work has started, half of it after.
+The refund is what was paid, even if research has since made the job cheaper.
+
 | Building | Levels | Effect |
 | --- | --- | --- |
 | Industrial Works | 3 | +30% money, +60% materials per level |
@@ -146,10 +149,11 @@ Interwar around 60 min and WWII around 90 min.
 ## 8. War and peace
 
 - All powers start at **peace**. Declaring war is instant. After peace there is a 5-minute truce.
-- Peace can be offered after 3 minutes of war, and offers expire after 90 s. Peace is status quo: borders freeze
-  and trespassing armies withdraw.
+- Peace can be offered after 3 minutes of war, and offers expire after 90 s. After an offer is rejected or ignored, the
+  side that made it waits 4 minutes before proposing again (this also keeps the AI from flooding the player with
+  offers). Peace is status quo: borders freeze and trespassing armies withdraw.
 - The AI accepts peace when weaker (power below 85% of the enemy's), war-weary (25 min) or after losing its
-  capital. It offers peace when its power falls below 60% of the enemy's.
+  capital. It offers peace when its power falls below 60% of the enemy's, and now and then once war-weary.
 
 ## 9. Victory
 
@@ -178,14 +182,19 @@ has a personality (aggression, economy bias) drawn from the seed.
 
 - `src/sim` has no React or DOM dependency. All state is plain JSON (`GameState`), so it can move to an
   authoritative server unchanged.
-- **Explicit commands** (`move`, `stop`, `split`, `merge`, `recruit`, `cancelRecruit`, `build`, `research`,
-  `declareWar`, `offerPeace`, `respondPeace`) are validated, applied at tick boundaries and logged. `replay()`
+- **Explicit commands** (`move`, `stop`, `split`, `merge`, `recruit`, `cancelRecruit`, `build`, `cancelBuild`,
+  `research`, `declareWar`, `offerPeace`, `respondPeace`) are validated, applied at tick boundaries and logged. `replay()`
   reproduces a game from its initial state and command log.
 - **Seeded RNG** (mulberry32) state is stored inside the game state.
 - **Geography is separate from rules.** Shapes are in `src/assets/map`, used only for rendering. Adjacency and
   travel are in `scenario/europe/connections.ts`. Distances are rounded to whole kilometres, so timing never
   depends on floating-point trigonometry.
 - **Saves** are versioned (`schemaVersion`) and tied to a scenario id. Load rejects incompatible files.
+- **Messages** are written by the simulation (`text.ts`): names that read with "the" in running text (the United
+  Kingdom, the Netherlands, the Midlands) carry the article in scenario data. Rule numbers quoted in descriptions and
+  messages come from config, so the text cannot drift from the balance.
+- **Tests** cover the rules system by system, determinism and replay, save/load, event wording, and an invariant check
+  that plays campaigns with random (often invalid) player orders.
 
 ## 12. Presentation
 
@@ -197,23 +206,34 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   The sea has a depth gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey.
   Three map views: **Political** (strong tint), **Terrain** (light tint) and **Supply** (your provinces green when
   connected to a supply hub, red when cut off).
-- **Labels.** Nation names are painted across their territory when zoomed out; province names take over when zoomed
-  in. Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
-  badges for objective VP and capture-progress rings.
+- **Labels.** Nation names are painted across their territory when zoomed out, as a translucent, widely spaced
+  background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
+  cities and counters where possible. Province names take over when zoomed in. Cities have dark name plates with an
+  owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
+  capture-progress rings. Neutral states are hatched with lines that keep the same spacing at every zoom.
 - **Armies.** Counters in the owner's colour carry a silhouette of the main unit type (infantry, artillery, tank), the
   unit count and a strength bar. Your armies have a white rim, armies of nations at war with you a red rim, armies out
   of supply a red "!" badge, and the selection a running dashed outline. Marching routes are animated dashed lines with
-  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province previews the route,
-  highlights the provinces on it and shows the arrival time (or "No route").
-- **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red), current
-  research with progress, objective VP towards victory, the clock and the speed controls. A left command rail opens
+  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy counter
+  previews the route, highlights the provinces on it and shows the arrival time (or "No route"); right-clicking an
+  enemy counter attacks it.
+- **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
+  at one shows stockpile, production, army upkeep and net), current research with progress, objective VP towards
+  victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A left command rail opens
   Research, Diplomacy, field reports, save/load and help, with badges for idle research, wars and peace offers. The
   selected army and province open as floating cards on the right; the overview map and zoom buttons sit below them.
-  Field reports (the event log) sit bottom left; alerts for wars, peace, research, eliminations, shortages and
-  objective captures pop up top left. A cursor tooltip summarises the province under the mouse.
-- **Windows.** Research shows the era track and tier columns of tech cards; Diplomacy shows flags, relation pills,
-  military power bars and objective chips. The opening tutorial is a Chief of Staff briefing. The main menu shows the
-  theatre map with the chosen nation lit up.
+  The province card shows any battle there (sides, units and share of firepower), capture progress, output, recruitment
+  (locked cards name the building they need), buildings with a cancellable construction job, forces present and routes.
+  Field reports (the event log) sit bottom left; alerts pop up top left for wars, peace, research, eliminations,
+  shortages, objective captures, provinces you win or lose, enemy attacks on your territory, armies you lose and
+  rejected peace offers. Alerts only count down while the game runs. A cursor tooltip summarises the province (and the
+  army) under the mouse.
+- **Windows.** Research shows the era track and tier columns of tech cards, each with its own art; Diplomacy shows
+  flags, relation pills, military power bars, objective chips and answers to incoming peace offers. Declaring war and
+  leaving the campaign ask for confirmation, and Escape closes the innermost window first. The opening tutorial is a
+  Chief of Staff briefing. The results screen ranks the powers with their provinces captured, enemy units destroyed
+  and units lost; after closing it, a banner brings it back. The main menu shows the theatre map with the chosen
+  nation lit up.
 - **Assets.** Everything is drawn in code: flags, unit silhouettes and icons are inline SVG; the Barlow and Barlow
   Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 

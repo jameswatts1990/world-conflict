@@ -9,6 +9,7 @@ export * from './save';
 export * from './hash';
 export * from './loop';
 export * from './events';
+export * from './text';
 export { findPath } from './pathfinding';
 export { legTicks } from './systems/movement';
 export { suppliedProvinces } from './systems/supply';

@@ -1,18 +1,31 @@
 import { useState } from 'react';
-import { deserializeGame, type GameState, type World } from '../../sim';
+import { deserializeGame, nationName, type GameState, type World } from '../../sim';
 import { downloadSave, listSlots, loadFromSlot, saveToSlot, slotLabel, SLOTS, type SlotId } from '../game/storage';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
 import { formatClock } from '../format';
 import { Icon } from '../icons';
 import { Modal } from './Common';
-import { CONTROLS, Tutorial } from './Tutorial';
+import { CONTROLS } from './Tutorial';
+
+function savedAt(iso: string): string {
+  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
 
 export function SaveDialog({ ctrl, onClose }: { ctrl: GameController; onClose: () => void }) {
-  const [message, setMessage] = useState<string | null>(null);
-  const [, force] = useState(0);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [, refresh] = useState(0);
   const slots = listSlots(ctrl.state.scenarioId);
   const label = `${ctrl.world.nations[ctrl.human].name} — ${formatClock(ctrl.state.tick, ctrl.state)}`;
+  const save = (slot: SlotId) => {
+    try {
+      saveToSlot(slot, ctrl.state, label);
+      setMessage({ ok: true, text: `Saved to ${slotLabel(slot)}.` });
+      refresh((x) => x + 1);
+    } catch (e) {
+      setMessage({ ok: false, text: (e as Error).message });
+    }
+  };
   return (
     <Modal title="Save game" icon="save" subtitle="Stored in this browser; the campaign is paused while closed" onClose={onClose}>
       <ul className="slot-list">
@@ -23,21 +36,9 @@ export function SaveDialog({ ctrl, onClose }: { ctrl: GameController; onClose: (
               <span className="slot-icon">{s.file ? <Flag id={s.file.state.settings.humanNation ?? 'neutral'} size={18} /> : <Icon name="save" size={18} />}</span>
               <div className="slot-info">
                 <strong>{slotLabel(s.slot)}</strong>
-                <div className="muted">{s.file ? `${s.file.label} · saved ${new Date(s.file.savedAt).toLocaleString()}` : 'Empty slot'}</div>
+                <div className="muted">{s.file ? `${s.file.label} · saved ${savedAt(s.file.savedAt)}` : 'Empty slot'}</div>
               </div>
-              <button
-                className="primary"
-                data-save-slot={s.slot}
-                onClick={() => {
-                  try {
-                    saveToSlot(s.slot, ctrl.state, label);
-                    setMessage(`Saved to ${slotLabel(s.slot)}.`);
-                    force((x) => x + 1);
-                  } catch (e) {
-                    setMessage((e as Error).message);
-                  }
-                }}
-              >
+              <button className="primary" data-save-slot={s.slot} onClick={() => save(s.slot)}>
                 {s.file ? 'Overwrite' : 'Save here'}
               </button>
             </li>
@@ -45,12 +46,12 @@ export function SaveDialog({ ctrl, onClose }: { ctrl: GameController; onClose: (
       </ul>
       <div className="btn-row">
         <button onClick={() => downloadSave(ctrl.state, label)}>
-          <Icon name="load" size={15} /> Export save file…
+          <Icon name="save" size={15} /> Export save file…
         </button>
       </div>
       {message && (
-        <div className="notice" data-testid="save-message">
-          <Icon name="check" size={15} /> {message}
+        <div className={message.ok ? 'notice' : 'warn'} data-testid="save-message">
+          <Icon name={message.ok ? 'check' : 'warning'} size={15} /> <span>{message.text}</span>
         </div>
       )}
     </Modal>
@@ -84,14 +85,18 @@ export function LoadDialog({
           const info = slots.find((s) => s.slot === slot)!;
           const st = info.file?.state;
           const human = st?.settings.humanNation;
+          const winner = st?.outcome?.winner;
           return (
             <li key={slot} className={info.file ? 'filled' : 'empty'}>
               <span className="slot-icon">{human ? <Flag id={human} size={18} /> : <Icon name="save" size={18} />}</span>
               <div className="slot-info">
-                <strong>{slotLabel(slot)}</strong>
+                <strong>
+                  {slotLabel(slot)}
+                  {st?.outcome && <span className="slot-tag">Campaign over</span>}
+                </strong>
                 <div className="muted">
                   {info.file && st && human
-                    ? `${world.nations[human].name} · game time ${formatClock(st.tick, st)} · saved ${new Date(info.file.savedAt).toLocaleString()}`
+                    ? `${world.nations[human].name} · ${st.outcome ? (winner === human ? 'won' : `${winner ? nationName(world, winner) : 'nobody'} won`) : `game time ${formatClock(st.tick, st)}`} · saved ${savedAt(info.file.savedAt)}`
                     : (info.error ?? 'Empty slot')}
                 </div>
               </div>
@@ -107,13 +112,17 @@ export function LoadDialog({
         <input
           type="file"
           accept="application/json,.json"
+          className="visually-hidden"
           onChange={async (e) => {
-            const file = e.target.files?.[0];
+            const input = e.currentTarget;
+            const file = input.files?.[0];
             if (!file) return;
             try {
               onLoad(deserializeGame(await file.text(), scenarioId).state);
             } catch (err) {
               setError((err as Error).message);
+            } finally {
+              input.value = '';
             }
           }}
         />
@@ -128,9 +137,7 @@ export function LoadDialog({
   );
 }
 
-export function HelpDialog({ ctrl, onClose }: { ctrl: GameController; onClose: () => void }) {
-  const [tour, setTour] = useState(false);
-  if (tour) return <Tutorial world={ctrl.world} nationName={ctrl.world.nations[ctrl.human].name} onClose={onClose} />;
+export function HelpDialog({ onReplayBriefing, onClose }: { onReplayBriefing: () => void; onClose: () => void }) {
   return (
     <Modal title="Controls" icon="help" subtitle="Mouse and keyboard reference" onClose={onClose}>
       <table className="controls-table">
@@ -151,7 +158,7 @@ export function HelpDialog({ ctrl, onClose }: { ctrl: GameController; onClose: (
         </tbody>
       </table>
       <div className="btn-row">
-        <button className="primary" onClick={() => setTour(true)}>
+        <button className="primary" onClick={onReplayBriefing}>
           Replay briefing
         </button>
       </div>
@@ -159,29 +166,40 @@ export function HelpDialog({ ctrl, onClose }: { ctrl: GameController; onClose: (
   );
 }
 
+function ordinal(n: number): string {
+  return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
+}
+
 export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController; onMenu: () => void; onClose: () => void }) {
   const { state, world, human } = ctrl;
   const o = state.outcome!;
   const won = o.winner === human;
+  const rank = o.scores.findIndex((s) => s.nation === human) + 1;
   const reason = {
     objectives: 'strategic objectives held',
-    timeLimit: 'campaign time limit reached — highest score wins',
+    timeLimit: 'time limit reached, highest score',
     lastStanding: 'last power standing',
-    humanEliminated: 'your nation was eliminated',
+    humanEliminated: 'your nation has fallen',
   }[o.reason];
   return (
-    <Modal title="Campaign over" icon={won ? 'star' : 'warning'} subtitle={`Ended at ${formatClock(o.tick, state)} game time`} onClose={onClose}>
+    <Modal title="Campaign over" icon={won ? 'star' : 'warning'} subtitle={`Ended at ${formatClock(o.tick, state)} game time`} onClose={onClose} size="medium">
       <div className={`outcome ${won ? 'won' : 'lost'}`} data-testid="outcome" data-result={won ? 'win' : 'loss'}>
         <div className="outcome-banner">
           {o.winner ? <Flag id={o.winner} size={40} /> : <Icon name="flag" size={40} />}
           <div>
             <div className="outcome-title">{won ? 'Victory!' : 'Defeat'}</div>
             <div>
-              <strong>{o.winner ? world.nations[o.winner].name : 'Nobody'}</strong> wins — {reason}.
+              <strong>{o.winner ? world.nations[o.winner].name : 'Nobody'}</strong> wins: {reason}.
+              {!won && rank > 0 && o.reason !== 'humanEliminated' && (
+                <span className="muted">
+                  {' '}
+                  {world.nations[human].name} finished {ordinal(rank)} of {o.scores.length}.
+                </span>
+              )}
             </div>
           </div>
         </div>
-        <table className="dip-table">
+        <table className="dip-table outcome-table">
           <thead>
             <tr>
               <th>#</th>
@@ -189,24 +207,33 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
               <th className="num">VP</th>
               <th className="num">Provinces</th>
               <th className="num">Techs</th>
+              <th className="num" title="Provinces captured during the campaign">Captured</th>
+              <th className="num" title="Enemy units destroyed">Destroyed</th>
+              <th className="num" title="Own units lost">Lost</th>
               <th className="num">Score</th>
             </tr>
           </thead>
           <tbody>
-            {o.scores.map((s, i) => (
-              <tr key={s.nation} className={s.nation === human ? 'me' : ''}>
-                <td className="rank">{i + 1}</td>
-                <td>
-                  <span className="dip-nation">
-                    <Flag id={s.nation} size={16} /> {world.nations[s.nation].name}
-                  </span>
-                </td>
-                <td className="num">{s.vp}</td>
-                <td className="num">{s.provinces}</td>
-                <td className="num">{s.techs}</td>
-                <td className="num score">{s.score}</td>
-              </tr>
-            ))}
+            {o.scores.map((s, i) => {
+              const stats = state.nations[s.nation].stats;
+              return (
+                <tr key={s.nation} className={`${s.nation === human ? 'me' : ''}${state.nations[s.nation].eliminated ? ' eliminated' : ''}`}>
+                  <td className="rank">{i + 1}</td>
+                  <td>
+                    <span className="dip-nation">
+                      <Flag id={s.nation} size={16} /> {world.nations[s.nation].name}
+                    </span>
+                  </td>
+                  <td className="num">{s.vp}</td>
+                  <td className="num">{s.provinces}</td>
+                  <td className="num">{s.techs}</td>
+                  <td className="num">{stats.provincesCaptured}</td>
+                  <td className="num">{stats.unitsDestroyed}</td>
+                  <td className="num">{stats.unitsLost}</td>
+                  <td className="num score">{s.score}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

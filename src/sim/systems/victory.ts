@@ -2,18 +2,20 @@
 import { VICTORY } from '../config/rules';
 import { pushEvent } from '../events';
 import { computeScores, heldVp, provincesOwnedBy, scaledTicks, vpToWin } from '../queries';
+import { durationText, nationName, sentence } from '../text';
 import type { GameState, NationId, OutcomeReason } from '../types';
 import type { World } from '../world';
 
 function finish(state: GameState, world: World, winner: NationId | null, reason: OutcomeReason): void {
   const scores = computeScores(state, world);
   state.outcome = { winner, reason, tick: state.tick, scores };
-  const name = winner ? world.nations[winner].name : 'Nobody';
+  const name = winner ? sentence(nationName(world, winner)) : 'Nobody';
+  const human = state.settings.humanNation;
   const why: Record<OutcomeReason, string> = {
-    objectives: 'by controlling the strategic objectives',
-    timeLimit: 'on score when the campaign time limit was reached',
+    objectives: 'by holding the strategic objectives',
+    timeLimit: 'on score as the campaign time limit runs out',
     lastStanding: 'as the last power standing',
-    humanEliminated: 'after the player nation was eliminated',
+    humanEliminated: human ? `the campaign: ${nationName(world, human)} has fallen` : 'the campaign',
   };
   pushEvent(state, 'outcome', `${name} wins ${why[reason]}.`, { severity: 'system' });
 }
@@ -32,7 +34,7 @@ export function victorySystem(state: GameState, world: World): void {
       if (other === id) continue;
       state.nations[other].relations[id] = { status: 'peace', since: state.tick, truceUntil: Number.MAX_SAFE_INTEGER };
     }
-    pushEvent(state, 'eliminated', `${world.nations[id].name} has been eliminated.`, { severity: 'bad' });
+    pushEvent(state, 'eliminated', `${sentence(nationName(world, id))} has been eliminated.`, { severity: 'bad' });
   }
 
   const human = state.settings.humanNation;
@@ -64,7 +66,7 @@ export function victorySystem(state: GameState, world: World): void {
       pushEvent(
         state,
         'victory-warning',
-        `${world.nations[leader].name} controls ${best} of ${world.totalVp} objective VP. Victory in ${secs}s unless an objective is retaken!`,
+        `${sentence(nationName(world, leader))} holds ${best} of ${world.totalVp} objective VP: victory in ${durationText(secs)} unless an objective is retaken!`,
         { severity: 'system' },
       );
     } else if (state.tick - (state.victory.holdSince ?? state.tick) >= scaledTicks(state, VICTORY.holdSeconds)) {
@@ -72,7 +74,7 @@ export function victorySystem(state: GameState, world: World): void {
       return;
     }
   } else if (state.victory.leader) {
-    pushEvent(state, 'victory-averted', `${world.nations[state.victory.leader].name} no longer holds enough objectives.`, {
+    pushEvent(state, 'victory-averted', `${sentence(nationName(world, state.victory.leader))} no longer holds enough objectives. Victory averted.`, {
       severity: 'system',
     });
     state.victory = { leader: null, holdSince: null };

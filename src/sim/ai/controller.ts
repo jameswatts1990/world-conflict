@@ -144,7 +144,7 @@ function handleDiplomacy(ctx: Ctx): void {
     if (state.peaceOffers.some((o) => o.from === me && o.to === enemy)) continue;
     const theirPower = nationPower(state, enemy);
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
-    if (myPower < theirPower * 0.6 || (weary && random(state) < 0.05)) {
+    if (myPower < theirPower * AI.offerPeaceRatio || (weary && random(state) < AI.wearyPeaceChance)) {
       issue(ctx, { type: 'offerPeace', nation: me, target: enemy });
     }
   }

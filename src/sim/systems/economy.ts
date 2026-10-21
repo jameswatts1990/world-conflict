@@ -1,4 +1,5 @@
 // Resource income, upkeep and shortages. Runs every tick.
+import { ECONOMY } from '../config/rules';
 import { pushEvent } from '../events';
 import { nationEconomy, perTick } from '../queries';
 import { RESOURCE_KEYS, type GameState } from '../types';
@@ -10,20 +11,19 @@ export function economySystem(state: GameState, world: World): void {
     if (nation.eliminated) continue;
     const eco = nationEconomy(state, world, id);
     for (const k of RESOURCE_KEYS) nation.resources[k] += perTick(eco.net[k], state);
-    nation.lastRates = eco.net;
 
     const moneyShort = nation.resources.money < 0;
     const fuelShort = nation.resources.fuel < 0;
     for (const k of RESOURCE_KEYS) if (nation.resources[k] < 0) nation.resources[k] = 0;
 
     if (moneyShort && !nation.shortages.money) {
-      pushEvent(state, 'shortage', 'Treasury empty: unpaid troops fight at reduced effectiveness.', {
+      pushEvent(state, 'shortage', `Treasury empty: unpaid troops fight at ${Math.round(ECONOMY.unpaidCombatMult * 100)}%.`, {
         nations: [id],
         severity: 'bad',
       });
     }
     if (fuelShort && !nation.shortages.fuel) {
-      pushEvent(state, 'shortage', 'Fuel exhausted: tanks move and fight at half effectiveness.', {
+      pushEvent(state, 'shortage', `Out of fuel: tanks move and fight at ${Math.round(ECONOMY.noFuelTankMult * 100)}%.`, {
         nations: [id],
         severity: 'bad',
       });

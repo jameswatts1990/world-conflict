@@ -33,12 +33,12 @@ export const INTERVALS = {
  * everything above it is a development/testing aid and is labelled as such in the UI.
  */
 export const CLIENT_SPEEDS = [
-  { multiplier: 1, label: '1x', dev: false },
-  { multiplier: 2, label: '2x', dev: false },
-  { multiplier: 5, label: 'DEV 5x', dev: true },
-  { multiplier: 20, label: 'DEV 20x', dev: true },
-  { multiplier: 60, label: 'DEV 60x', dev: true },
-  { multiplier: 200, label: 'DEV 200x', dev: true },
+  { multiplier: 1, dev: false },
+  { multiplier: 2, dev: false },
+  { multiplier: 5, dev: true },
+  { multiplier: 20, dev: true },
+  { multiplier: 60, dev: true },
+  { multiplier: 200, dev: true },
 ] as const;
 
 /** Max ticks the client loop will simulate per animation frame (prevents spiral of death). */

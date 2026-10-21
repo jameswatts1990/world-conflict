@@ -15,16 +15,32 @@
 - [x] Save/load (slots, autosave, export/import), pause, labelled DEV speeds, tutorial, event log
 - [x] Tests: resources, movement, combat, research, victory, save/load, replay, frame-rate independence
 
-## M1.1 — Playtest polish (next)
+## M1.1 — Playtest polish (in progress)
 
-- [ ] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
+- [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage and AI aggression
-- [ ] Disband units; AI army-size discipline when bankrupt
+- [ ] Disband units; AI army-size discipline when bankrupt (AI stacks still reach 100+ units late on)
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
-- [ ] Notifications for key events (war declared on you, capital threatened, research done)
+- [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
+      done, rejected peace offers)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
-- [ ] Responsive layout and touch controls
+- [ ] Responsive layout and touch controls (the HUD now fits 1280 × 720; phones and touch are still out of scope)
 - [ ] Code-split the bundle; lazy-load the world context layer
+
+### Polish pass (done)
+
+- [x] Attack by right-clicking an enemy army (or clicking it in move mode); route preview and tooltip on army counters
+- [x] Confirm before declaring war or leaving the campaign; Escape closes the innermost window first
+- [x] Cancel construction; full refund for jobs that have not started, refunds at the price paid
+- [x] Peace offers: 4-minute retry delay after a refusal or expiry (ends AI offer spam); countdown on the offer card;
+      answer offers from the Diplomacy window
+- [x] Resource breakdown (production, upkeep, net) on the top bar; live rates from the first second
+- [x] Battle box in the province card; results screen with provinces captured, units destroyed and units lost
+- [x] Alerts that wait while paused; Ctrl/Alt shortcuts left to the browser; working campaign-speed select
+- [x] Event wording ("the United Kingdom", "occupied the Netherlands"), config-driven rule text, distinct tech art,
+      map key for army rims, country names as a background layer placed clear of cities, constant-size neutral hatching
+- [x] Removed dead code and config (unused exports, icons, styles, AI keys, unit and building codes)
+- [x] Randomised invariant test; the browser playthrough no longer hangs after finishing
 
 ## M2 — Fog of war and diplomacy
 

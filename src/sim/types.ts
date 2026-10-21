@@ -41,13 +41,24 @@ export interface CityDef {
   size: 'capital' | 'major' | 'town';
 }
 
+/** Names that read with "the" in running text ("the United Kingdom", "the Midlands"). */
+export type Article = 'the';
+
+export interface NeutralStateDef {
+  name: string;
+  /** Used for its forces: "Dutch garrison". */
+  adjective: string;
+  article?: Article;
+}
+
 export interface ProvinceDef {
   id: ProvinceId;
   name: string;
+  article?: Article;
   /** Nation whose core territory this is; null for neutral minor states. */
   core: NationId | null;
-  /** Display name of the neutral state (neutral provinces only). */
-  neutralState?: string;
+  /** The neutral state this province belongs to (neutral provinces only). */
+  neutral?: NeutralStateDef;
   terrain: Terrain;
   city: CityDef;
   /** Base output per minute (Standard speed) before buildings and research. */
@@ -69,6 +80,7 @@ export interface ConnectionDef {
 export interface NationDef {
   id: NationId;
   name: string;
+  article?: Article;
   adjective: string;
   color: string;
   capital: ProvinceId;
@@ -133,12 +145,16 @@ export interface ConstructionJob {
   targetLevel: number;
   remaining: number;
   total: number;
+  /** Price paid, refunded on cancel (absent in saves made before it was recorded). */
+  cost?: PartialResources;
 }
 
 export interface RecruitJob {
   unitType: UnitType;
   remaining: number;
   total: number;
+  /** Price paid, refunded on cancel (absent in saves made before it was recorded). */
+  cost?: PartialResources;
 }
 
 export interface CaptureProgress {
@@ -165,6 +181,8 @@ export interface RelationState {
   since: number;
   /** War cannot be declared again before this tick (set when peace is made). */
   truceUntil: number;
+  /** No new peace offer to this nation before this tick (set when one is rejected or expires). */
+  peaceOfferAfter?: number;
 }
 
 export interface ResearchState {
@@ -184,8 +202,6 @@ export interface NationState {
   id: NationId;
   controller: 'human' | 'ai';
   resources: Resources;
-  /** Net change per minute at the last economy update (for the UI). */
-  lastRates: Resources;
   research: ResearchState;
   relations: Record<NationId, RelationState>;
   eliminated: boolean;

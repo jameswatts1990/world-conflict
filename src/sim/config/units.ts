@@ -24,7 +24,6 @@ export interface TerrainModifier {
 
 export interface UnitConfig {
   name: string;
-  short: string;
   description: string;
   armoured: boolean;
   /** Models by era; research upgrades a nation's units from ww1 to ww2. */
@@ -39,7 +38,6 @@ export interface UnitConfig {
 export const UNITS: Record<UnitType, UnitConfig> = {
   infantry: {
     name: 'Infantry',
-    short: 'INF',
     description: 'Cheap and sturdy. Strong defenders, especially in rough or urban terrain. Weak against armour.',
     armoured: false,
     models: {
@@ -72,7 +70,6 @@ export const UNITS: Record<UnitType, UnitConfig> = {
   },
   artillery: {
     name: 'Artillery',
-    short: 'ART',
     description: 'Heavy firepower for breaking defences. Fragile when attacked and slow to move.',
     armoured: false,
     models: {
@@ -103,7 +100,6 @@ export const UNITS: Record<UnitType, UnitConfig> = {
   },
   tank: {
     name: 'Tanks',
-    short: 'TNK',
     description: 'Armoured breakthrough units. Shrug off infantry fire on open ground but struggle in forests, mountains, cities and marshes. Burn fuel.',
     armoured: true,
     models: {

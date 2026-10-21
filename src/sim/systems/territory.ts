@@ -1,13 +1,9 @@
 // Province capture, ownership transfer and army withdrawal.
 import { pushEvent } from '../events';
 import { areHostile, armyPower, captureTicks, hostileArmiesIn, isArmyInTransit } from '../queries';
-import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId } from '../types';
+import { nationName, provinceName, sentence } from '../text';
+import { NEUTRAL, type Army, type GameState, type NationId, type ProvinceId } from '../types';
 import type { World } from '../world';
-
-export function ownerName(world: World, owner: OwnerId, province?: ProvinceId): string {
-  if (owner === NEUTRAL) return province ? (world.provinces[province].neutralState ?? 'neutral forces') : 'neutral forces';
-  return world.nations[owner]?.name ?? owner;
-}
 
 /** Capture progresses while an enemy army holds a province uncontested. Runs every tick. */
 export function captureSystem(state: GameState, world: World): void {
@@ -61,17 +57,18 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   state.nations[newOwner].stats.provincesCaptured += 1;
 
   const important = !!def.objectiveVp;
-  const verb = def.core === newOwner ? 'liberated' : 'captured';
-  pushEvent(
-    state,
-    'capture',
-    `${world.nations[newOwner].name} ${verb} ${def.name}${important ? ` — objective, ${def.objectiveVp} VP` : ''} from ${ownerName(world, oldOwner, pid)}.`,
-    {
-      nations: important ? [] : [newOwner, ...(oldOwner === NEUTRAL ? [] : [oldOwner])],
-      province: pid,
-      severity: 'combat',
-    },
-  );
+  const who = sentence(nationName(world, newOwner));
+  const where = provinceName(world, pid);
+  const objective = important ? ` (objective, ${def.objectiveVp} VP)` : '';
+  const text =
+    oldOwner === NEUTRAL
+      ? `${who} occupied ${where}${objective}.`
+      : `${who} ${def.core === newOwner ? 'liberated' : 'captured'} ${where} from ${nationName(world, oldOwner)}${objective}.`;
+  pushEvent(state, 'capture', text, {
+    nations: important ? [] : [newOwner, ...(oldOwner === NEUTRAL ? [] : [oldOwner])],
+    province: pid,
+    severity: 'combat',
+  });
 
   // Armies of nations at peace with the new owner cannot stay.
   for (const id of Object.keys(state.armies).sort()) {
@@ -103,7 +100,7 @@ export function withdrawArmy(state: GameState, world: World, army: Army): void {
   const nations = army.owner === NEUTRAL ? [] : [army.owner];
   if (!target) {
     delete state.armies[army.id];
-    pushEvent(state, 'withdraw', `An army in ${world.provinces[start].name} had nowhere to withdraw to and disbanded.`, {
+    pushEvent(state, 'withdraw', `An army in ${provinceName(world, start)} had nowhere to withdraw to and disbanded.`, {
       nations,
       province: start,
       severity: 'bad',
@@ -112,7 +109,7 @@ export function withdrawArmy(state: GameState, world: World, army: Army): void {
   }
   army.province = target;
   army.move = null;
-  pushEvent(state, 'withdraw', `An army withdrew from ${world.provinces[start].name} to ${world.provinces[target].name}.`, {
+  pushEvent(state, 'withdraw', `An army withdrew from ${provinceName(world, start)} to ${provinceName(world, target)}.`, {
     nations,
     province: target,
   });

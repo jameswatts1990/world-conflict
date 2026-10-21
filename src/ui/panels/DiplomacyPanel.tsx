@@ -1,23 +1,27 @@
-import { VICTORY } from '../../sim/config/rules';
-import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationPower, vpToWin } from '../../sim';
+import { useState } from 'react';
+import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
+import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationPower, vpToWin, type NationId } from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { formatDuration } from '../format';
+import { formatDuration, proseDuration } from '../format';
 import { Icon } from '../icons';
-import { Modal } from './Common';
+import { ConfirmDialog, Modal } from './Common';
 
 export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameController; onClose: () => void; onFocus: (pid: string) => void }) {
   const { state, world, human } = ctrl;
+  const [confirmWar, setConfirmWar] = useState<NationId | null>(null);
   const scores = computeScores(state, world);
   const need = vpToWin(world);
   const leader = state.victory.leader;
   const maxPower = Math.max(1, ...scores.map((s) => nationPower(state, s.nation)));
+  const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
   return (
-    <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} wide>
+    <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} size="wide">
       <p className="intro">
-        All powers start at peace. Declaring war lets your armies enter that nation&apos;s territory. Peace can be offered after {Math.round(180 / 60)}{' '}
-        minutes of war; the AI accepts when losing or war-weary. Peace freezes the current borders and withdraws trespassing armies. Neutral
-        states may be invaded at any time.
+        All powers start at peace. Declaring war opens each side&apos;s territory to the other&apos;s armies. Peace can be offered after{' '}
+        {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
+        wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
+        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}. Neutral states may be invaded at any time.
       </p>
       <table className="dip-table">
         <thead>
@@ -39,9 +43,11 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             const me = s.nation === human;
             const rel = state.nations[human].relations[s.nation];
             const war = checkDeclareWar(state, human, s.nation);
-            const peace = checkOfferPeace(state, human, s.nation);
+            const peace = checkOfferPeace(state, world, human, s.nation);
             const truce = rel && state.tick < rel.truceUntil && rel.status === 'peace';
             const power = nationPower(state, s.nation);
+            const incoming = state.peaceOffers.find((o) => o.from === s.nation && o.to === human);
+            const outgoing = state.peaceOffers.some((o) => o.from === human && o.to === s.nation);
             return (
               <tr key={s.nation} className={`${me ? 'me' : ''}${n.eliminated ? ' eliminated' : ''}`} data-nation={s.nation}>
                 <td>
@@ -71,7 +77,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                   {!me && truce ? <span className="muted truce"> truce {formatDuration(rel.truceUntil - state.tick, state)}</span> : null}
                 </td>
                 <td>
-                  <span className="power-bar" title={`${Math.round(power)}`}>
+                  <span className="power-bar" title={`Military power ${Math.round(power)}`}>
                     <span style={{ width: `${(power / maxPower) * 100}%`, background: def.color }} />
                   </span>
                   <span className="power-val">{Math.round(power)}</span>
@@ -84,21 +90,30 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <button
                       className="danger"
                       disabled={!war.ok}
-                      title={war.ok ? 'Declare war' : war.ok === false ? war.reason : ''}
-                      onClick={() => ctrl.submit({ type: 'declareWar', nation: human, target: s.nation })}
+                      title={war.ok ? `Declare war on ${def.name}` : war.reason}
+                      onClick={() => setConfirmWar(s.nation)}
                       data-declare-war={s.nation}
                     >
                       Declare war
                     </button>
                   )}
-                  {!me && !n.eliminated && rel.status === 'war' && (
+                  {!me && !n.eliminated && rel.status === 'war' && incoming && (
+                    <span className="offer-actions">
+                      <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: s.nation, accept: true })}>
+                        Accept peace
+                      </button>
+                      <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: s.nation, accept: false })}>Reject</button>
+                    </span>
+                  )}
+                  {!me && !n.eliminated && rel.status === 'war' && !incoming && (
                     <button
                       className="primary"
                       disabled={!peace.ok}
-                      title={peace.ok ? 'Offer peace (status quo)' : peace.reason}
+                      title={peace.ok ? 'Offer peace on current borders' : peace.reason}
                       onClick={() => ctrl.submit({ type: 'offerPeace', nation: human, target: s.nation })}
+                      data-offer-peace={s.nation}
                     >
-                      Offer peace
+                      {outgoing ? 'Offer sent' : 'Offer peace'}
                     </button>
                   )}
                 </td>
@@ -113,7 +128,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
       </p>
 
       <h4>
-        <Icon name="star" size={15} /> Strategic objectives — hold {need} of {world.totalVp} VP for {VICTORY.holdSeconds}s to win
+        <Icon name="star" size={15} /> Strategic objectives — hold {need} of {world.totalVp} VP for {VICTORY.holdSeconds} seconds to win
       </h4>
       {leader && (
         <div className="warn">
@@ -130,7 +145,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           const owner = state.provinces[id].owner;
           return (
             <li key={id}>
-              <button className={`objective-chip${owner === human ? ' mine' : ''}`} onClick={() => onFocus(id)} title="Show on map">
+              <button className={`objective-chip${owner === human ? ' mine' : ''}`} onClick={() => onFocus(id)} title={`${world.provinces[id].name}: show on map`}>
                 <span className="obj-vp">{world.provinces[id].objectiveVp}</span>
                 <span className="obj-name">{world.provinces[id].city.name}</span>
                 <OwnerFlag world={world} owner={owner} province={id} size={12} />
@@ -139,6 +154,30 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           );
         })}
       </ul>
+
+      {confirmWar && (
+        <ConfirmDialog
+          title={`War with ${world.nations[confirmWar].name}?`}
+          icon="swords"
+          confirmLabel="Declare war"
+          danger
+          onCancel={() => setConfirmWar(null)}
+          onConfirm={() => {
+            ctrl.submit({ type: 'declareWar', nation: human, target: confirmWar });
+            setConfirmWar(null);
+          }}
+        >
+          <p>
+            Your armies may then enter {world.nations[confirmWar].adjective} territory, and theirs may enter yours. Peace cannot be offered for the first{' '}
+            {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)}.
+          </p>
+          {wars.length > 0 && (
+            <p className="warn-text">
+              You are already at war with {wars.map((id) => world.nations[id].name).join(' and ')}.
+            </p>
+          )}
+        </ConfirmDialog>
+      )}
     </Modal>
   );
 }

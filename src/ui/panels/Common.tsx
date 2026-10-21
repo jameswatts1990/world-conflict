@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { PartialResources, Resources } from '../../sim';
 import { costParts, fmt } from '../format';
 import { Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
@@ -38,24 +38,50 @@ export function Section({ title, icon, extra, children }: { title: string; icon?
   );
 }
 
+// Open dialogs close on Escape, innermost first. The listener runs in the capture
+// phase so the game's own Escape handling (cancel move, clear selection) is skipped.
+const escapeStack: { close: () => void }[] = [];
+
+function onEscape(e: KeyboardEvent): void {
+  if (e.key !== 'Escape' || escapeStack.length === 0) return;
+  e.stopPropagation();
+  escapeStack[escapeStack.length - 1].close();
+}
+
+/** Closes the calling dialog on Escape while it is the innermost one open. */
+export function useEscape(onClose: () => void): void {
+  const latest = useRef(onClose);
+  latest.current = onClose;
+  useEffect(() => {
+    const entry = { close: () => latest.current() };
+    escapeStack.push(entry);
+    if (escapeStack.length === 1) window.addEventListener('keydown', onEscape, true);
+    return () => {
+      escapeStack.splice(escapeStack.indexOf(entry), 1);
+      if (escapeStack.length === 0) window.removeEventListener('keydown', onEscape, true);
+    };
+  }, []);
+}
+
 export function Modal({
   title,
   icon,
   subtitle,
   onClose,
   children,
-  wide,
+  size,
 }: {
   title: string;
   icon?: IconName;
   subtitle?: ReactNode;
   onClose: () => void;
   children: ReactNode;
-  wide?: boolean;
+  size?: 'wide' | 'medium' | 'narrow';
 }) {
+  useEscape(onClose);
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal${wide ? ' wide' : ''}`} role="dialog" aria-label={title}>
+      <div className={`modal${size ? ` ${size}` : ''}`} role="dialog" aria-label={title}>
         <header className="modal-header">
           {icon && (
             <span className="modal-icon">
@@ -73,5 +99,39 @@ export function Modal({
         <div className="modal-body">{children}</div>
       </div>
     </div>
+  );
+}
+
+/** Asks before an action that is hard to undo. */
+export function ConfirmDialog({
+  title,
+  icon,
+  confirmLabel,
+  danger,
+  onConfirm,
+  onCancel,
+  children,
+}: {
+  title: string;
+  icon: IconName;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Modal title={title} icon={icon} onClose={onCancel} size="narrow">
+      <div className="confirm-text">{children}</div>
+      <div className="btn-row confirm-actions">
+        {/* Enter picks the safe choice for dangerous actions. */}
+        <button onClick={onCancel} autoFocus={danger}>
+          Cancel
+        </button>
+        <button className={danger ? 'danger' : 'primary'} onClick={onConfirm} autoFocus={!danger} data-testid="confirm">
+          {confirmLabel}
+        </button>
+      </div>
+    </Modal>
   );
 }

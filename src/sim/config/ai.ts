@@ -12,11 +12,12 @@ export const AI = {
   warStrengthRatio: 1.1,
   /** Accept peace when own strength falls below this fraction of the enemy's. */
   acceptPeaceRatio: 0.85,
+  /** Offer peace when own strength falls below this fraction of the enemy's. */
+  offerPeaceRatio: 0.6,
+  /** Chance per think that a war-weary AI offers peace anyway. */
+  wearyPeaceChance: 0.05,
   /** Accept peace after this long at war regardless (war weariness). */
   warWearinessSeconds: 1500,
   /** Reserve kept back when spending (fraction of income per minute). */
   reserveMinutes: 0.5,
-  /** Target number of units per controlled province. */
-  unitsPerProvince: 2.2,
-  maxArmySize: 10,
 };

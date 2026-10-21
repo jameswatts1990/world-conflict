@@ -1,6 +1,6 @@
 // Gameplay data for each playable province. Shapes live separately in
 // src/assets/map/theatre.topo.json (keyed by the same ids).
-import type { CityDef, NationId, ProvinceDef, Resources, Terrain } from '../../types';
+import type { Article, CityDef, NationId, NeutralStateDef, ProvinceDef, Resources, Terrain } from '../../types';
 
 type Tier = 'capital' | 'industrial' | 'major' | 'town';
 
@@ -20,8 +20,9 @@ const OIL_FUEL = 12;
 interface Row {
   id: string;
   name: string;
+  article?: Article;
   core: NationId | null;
-  neutralState?: string;
+  neutral?: NeutralStateDef;
   terrain: Terrain;
   tier: Tier;
   city: CityDef;
@@ -32,7 +33,7 @@ interface Row {
 const ROWS: Row[] = [
   // United Kingdom
   { id: 'uk-london', name: 'London & the South East', core: 'uk', terrain: 'urban', tier: 'capital', city: { name: 'London', coord: [-0.128, 51.507], size: 'capital' }, vp: 3 },
-  { id: 'uk-midlands', name: 'The Midlands', core: 'uk', terrain: 'plains', tier: 'industrial', city: { name: 'Birmingham', coord: [-1.89, 52.486], size: 'major' }, vp: 2 },
+  { id: 'uk-midlands', name: 'Midlands', article: 'the', core: 'uk', terrain: 'plains', tier: 'industrial', city: { name: 'Birmingham', coord: [-1.89, 52.486], size: 'major' }, vp: 2 },
   { id: 'uk-north', name: 'Northern England', core: 'uk', terrain: 'hills', tier: 'major', city: { name: 'Manchester', coord: [-2.243, 53.481], size: 'major' } },
   { id: 'uk-scotland', name: 'Scotland', core: 'uk', terrain: 'hills', tier: 'town', city: { name: 'Glasgow', coord: [-4.252, 55.864], size: 'major' }, oil: true },
   { id: 'uk-west', name: 'Wales & the West Country', core: 'uk', terrain: 'hills', tier: 'town', city: { name: 'Cardiff', coord: [-3.179, 51.482], size: 'town' } },
@@ -86,13 +87,13 @@ const ROWS: Row[] = [
   { id: 'pl-east', name: 'Eastern Poland', core: 'pl', terrain: 'marsh', tier: 'town', city: { name: 'Lublin', coord: [22.568, 51.247], size: 'town' } },
 
   // Neutral minor states (capturable; garrisoned; never attack)
-  { id: 'nt-benelux', name: 'Belgium & Luxembourg', core: null, neutralState: 'Belgium & Luxembourg', terrain: 'plains', tier: 'industrial', city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, vp: 1 },
-  { id: 'nt-netherlands', name: 'Netherlands', core: null, neutralState: 'Netherlands', terrain: 'marsh', tier: 'major', city: { name: 'Amsterdam', coord: [4.904, 52.368], size: 'capital' }, oil: true, vp: 1 },
-  { id: 'nt-denmark', name: 'Denmark', core: null, neutralState: 'Denmark', terrain: 'plains', tier: 'town', city: { name: 'Copenhagen', coord: [12.568, 55.676], size: 'capital' }, vp: 1 },
-  { id: 'nt-switzerland', name: 'Switzerland', core: null, neutralState: 'Switzerland', terrain: 'mountains', tier: 'major', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, vp: 1 },
-  { id: 'nt-austria', name: 'Austria', core: null, neutralState: 'Austria', terrain: 'mountains', tier: 'major', city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, oil: true, vp: 1 },
-  { id: 'nt-czechia', name: 'Czechia', core: null, neutralState: 'Czechia', terrain: 'hills', tier: 'industrial', city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, vp: 1 },
-  { id: 'nt-portugal', name: 'Portugal', core: null, neutralState: 'Portugal', terrain: 'hills', tier: 'major', city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, vp: 1 },
+  { id: 'nt-benelux', name: 'Belgium & Luxembourg', core: null, neutral: { name: 'Belgium & Luxembourg', adjective: 'Belgian' }, terrain: 'plains', tier: 'industrial', city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, vp: 1 },
+  { id: 'nt-netherlands', name: 'Netherlands', article: 'the', core: null, neutral: { name: 'Netherlands', adjective: 'Dutch', article: 'the' }, terrain: 'marsh', tier: 'major', city: { name: 'Amsterdam', coord: [4.904, 52.368], size: 'capital' }, oil: true, vp: 1 },
+  { id: 'nt-denmark', name: 'Denmark', core: null, neutral: { name: 'Denmark', adjective: 'Danish' }, terrain: 'plains', tier: 'town', city: { name: 'Copenhagen', coord: [12.568, 55.676], size: 'capital' }, vp: 1 },
+  { id: 'nt-switzerland', name: 'Switzerland', core: null, neutral: { name: 'Switzerland', adjective: 'Swiss' }, terrain: 'mountains', tier: 'major', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, vp: 1 },
+  { id: 'nt-austria', name: 'Austria', core: null, neutral: { name: 'Austria', adjective: 'Austrian' }, terrain: 'mountains', tier: 'major', city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, oil: true, vp: 1 },
+  { id: 'nt-czechia', name: 'Czechia', core: null, neutral: { name: 'Czechia', adjective: 'Czech' }, terrain: 'hills', tier: 'industrial', city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, vp: 1 },
+  { id: 'nt-portugal', name: 'Portugal', core: null, neutral: { name: 'Portugal', adjective: 'Portuguese' }, terrain: 'hills', tier: 'major', city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, vp: 1 },
 ];
 
 function round1(n: number): number {
@@ -119,8 +120,9 @@ function buildProvinces(): ProvinceDef[] {
     return {
       id: r.id,
       name: r.name,
+      article: r.article,
       core: r.core,
-      neutralState: r.neutralState,
+      neutral: r.neutral,
       terrain: r.terrain,
       city: r.city,
       production: {

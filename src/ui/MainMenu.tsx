@@ -1,8 +1,10 @@
 import { memo, useEffect, useMemo, useState } from 'react';
+import { VICTORY } from '../sim/config/rules';
 import { SPEED_PRESETS } from '../sim/config/timing';
-import { vpToWin, type GameState, type NationId, type ProvinceId, type World } from '../sim';
+import { vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
 import { lighten, ownerColor } from './color';
 import { Flag } from './flags';
+import { hoursText, proseDuration } from './format';
 import { Icon } from './icons';
 import { mapGeometry, type MapGeometry } from './map/geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './map/terrain';
@@ -10,14 +12,15 @@ import { LoadDialog } from './panels/Dialogs';
 
 const BLURB: Record<string, string> = {
   uk: 'An island fortress. Safe behind the Channel, but every offensive starts with a slow sea crossing.',
-  fr: 'The continental hinge. Many provinces and many neighbours — Germany, Italy, Spain and Britain.',
-  de: 'Central and exposed. Borders five neutral states and two great powers.',
+  fr: 'The continental hinge. Many provinces and many neighbours: Germany, Italy, Spain and Britain.',
+  de: 'Central and exposed. Borders six neutral states and two great powers.',
   it: 'Alpine walls to the north, a long peninsula behind. Mountains favour the defender.',
   es: 'A Pyrenean bastion with France as the only great-power neighbour. Portugal is within reach.',
   pl: 'Open plains between Germany and the edge of the theatre. Czechia lies to the south.',
 };
 
-const DIFFICULTY: Record<string, string> = {
+/** Each nation's strategic character, shown on its card. */
+const TRAIT: Record<string, string> = {
   uk: 'Defensive',
   fr: 'Many fronts',
   de: 'Encircled',
@@ -100,11 +103,12 @@ export function MainMenu({
   onLoad,
 }: {
   world: World;
-  onStart: (nation: NationId, seed: number) => void;
+  onStart: (nation: NationId, seed: number, speed: GameSettings['speed']) => void;
   onLoad: (state: GameState) => void;
 }) {
   const geo = useMemo(() => mapGeometry(world), [world]);
   const [nation, setNation] = useState<NationId>('fr');
+  const [speed, setSpeed] = useState<GameSettings['speed']>('standard');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [loading, setLoading] = useState(false);
   const def = world.nations[nation];
@@ -142,7 +146,7 @@ export function MainMenu({
               <Flag id={n.id} size={22} />
               <span className="nc-text">
                 <strong>{n.name}</strong>
-                <span className="nc-tag">{DIFFICULTY[n.id]}</span>
+                <span className="nc-tag">{TRAIT[n.id]}</span>
               </span>
             </button>
           ))}
@@ -175,7 +179,7 @@ export function MainMenu({
         <div className="menu-options">
           <label>
             Campaign speed
-            <select defaultValue="standard">
+            <select value={speed} onChange={(e) => setSpeed(e.target.value as GameSettings['speed'])}>
               {Object.entries(SPEED_PRESETS).map(([id, p]) => (
                 <option key={id} value={id} disabled={!p.available}>
                   {p.label}
@@ -184,17 +188,22 @@ export function MainMenu({
               ))}
             </select>
           </label>
-          <label>
-            Map seed
-            <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
+          <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
+            Campaign seed
+            <span className="seed-field">
+              <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
+              <button type="button" className="icon-btn" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))} title="New random seed" aria-label="New random seed">
+                <Icon name="dice" size={16} />
+              </button>
+            </span>
           </label>
         </div>
         <p className="menu-victory">
-          <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for 90 seconds, or lead on score when the
-          2½-hour limit ends. Five computer opponents control the other powers.
+          <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
+          the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. Five computer opponents control the other powers.
         </p>
         <div className="btn-row menu-actions">
-          <button className="primary big" onClick={() => onStart(nation, seed)} data-testid="start-campaign">
+          <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">
             <Icon name="play" size={16} /> Start campaign
           </button>
           <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">

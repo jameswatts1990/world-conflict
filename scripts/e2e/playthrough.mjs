@@ -14,8 +14,9 @@ const URL = `http://localhost:${PORT}/`;
 const OUT = 'e2e-output';
 mkdirSync(OUT, { recursive: true });
 
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
-const stopServer = () => server.kill('SIGTERM');
+// Run Vite's CLI directly: killing an `npx` wrapper would leave the server running and the script hanging.
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
+const stopServer = () => server.exitCode === null && server.kill('SIGTERM');
 process.on('exit', stopServer);
 
 async function waitForServer() {
@@ -146,7 +147,7 @@ try {
   step('army arrived in Nord');
   await waitUntil((s) => (s.provinces['fr-paris'].buildings.industry ?? 0) >= 2, 30000, 'Industrial Works L2');
   step('Industrial Works level 2 completed (production improved)', {
-    rate: Math.round(await state((s) => s.nations.fr.lastRates.money)),
+    rate: await page.textContent('[data-resource="money"] .tb-res-rate'),
   });
   await waitUntil((s) => s.nations.fr.research.completed.includes('industrialMobilisation'), 40000, 'research');
   step('research completed: Industrial Mobilisation');

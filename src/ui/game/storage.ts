@@ -50,10 +50,6 @@ export function loadFromSlot(slot: SlotId, scenarioId: string): SaveFile {
   return deserializeGame(raw, scenarioId);
 }
 
-export function deleteSlot(slot: SlotId): void {
-  storage()?.removeItem(KEY_PREFIX + slot);
-}
-
 export function downloadSave(state: GameState, label: string): void {
   const blob = new Blob([serializeGame(state, label)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

@@ -18,7 +18,6 @@ import {
   type ResourceKey,
   type Resources,
   type ScoreLine,
-  type TechId,
   type UnitType,
 } from './types';
 import type { World } from './world';
@@ -35,20 +34,9 @@ export function canAfford(have: Resources, cost: PartialResources): boolean {
   return RESOURCE_KEYS.every((k) => have[k] + 1e-9 >= (cost[k] ?? 0));
 }
 
-export function formatCost(cost: PartialResources): string {
-  return RESOURCE_KEYS.filter((k) => (cost[k] ?? 0) > 0)
-    .map((k) => `${Math.round(cost[k]!)} ${k}`)
-    .join(', ');
-}
-
 // ---------------------------------------------------------------------------
 // Research
 // ---------------------------------------------------------------------------
-
-export function hasTech(state: GameState, nation: OwnerId, tech: TechId): boolean {
-  if (nation === NEUTRAL) return false;
-  return state.nations[nation]?.research.completed.includes(tech) ?? false;
-}
 
 export function techEffects(state: GameState, nation: OwnerId): TechEffect[] {
   if (nation === NEUTRAL) return [];

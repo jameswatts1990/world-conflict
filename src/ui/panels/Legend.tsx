@@ -1,5 +1,5 @@
 // Map key popover: explains the symbols used on the strategy map.
-import type { NationId, World } from '../../sim';
+import type { NationId, UnitType, World } from '../../sim';
 import { Flag } from '../flags';
 import { Icon, UnitShape } from '../icons';
 import type { MapMode } from '../map/MapView';
@@ -11,6 +11,22 @@ function Sample({ children, w = 34 }: { children: React.ReactNode; w?: number })
     <svg className="lg-sample" width={w} height={20} viewBox={`${-w / 2} -10 ${w} 20`} aria-hidden>
       {children}
     </svg>
+  );
+}
+
+/** A miniature army counter, as drawn on the map. */
+function ArmySample({ color, rim, type, count }: { color: string; rim: string; type: UnitType; count: number }) {
+  return (
+    <g transform="scale(0.9)">
+      <rect x={-21} y={-10} width={42} height={18} rx={4} fill={color} stroke={rim} strokeWidth={1.4} />
+      <rect x={-19} y={-8} width={21} height={14} rx={2.5} fill="rgba(0,0,0,0.28)" />
+      <g transform="translate(-18.1,-6.6) scale(0.8)">
+        <UnitShape type={type} />
+      </g>
+      <text x={11.6} y={4} className="army-count">
+        {count}
+      </text>
+    </g>
   );
 }
 
@@ -40,7 +56,7 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
       )}
       <div className="lg-grid">
         <span className="lg-swatch neutral" /> Neutral state (may be invaded)
-        <span className="lg-swatch outside" /> Outside the prototype theatre
+        <span className="lg-swatch outside" /> Outside this campaign's theatre
         <Sample>
           <g className="city-icon capital">
             <circle r={6.6} />
@@ -56,18 +72,13 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Objective worth victory points
         <Sample w={46}>
-          <g transform="scale(0.9)">
-            <rect x={-21} y={-10} width={42} height={18} rx={4} fill="#3f6fc4" stroke="#fff" strokeWidth={1.2} />
-            <rect x={-19} y={-8} width={21} height={14} rx={2.5} fill="rgba(0,0,0,0.28)" />
-            <g transform="translate(-18.1,-6.6) scale(0.8)">
-              <UnitShape type="tank" />
-            </g>
-            <text x={11.6} y={4} className="army-count">
-              4
-            </text>
-          </g>
+          <ArmySample color={world.nations[human].color} rim="#fff" type="tank" count={4} />
         </Sample>
-        Army: main unit type and unit count
+        Your army: main unit type and unit count
+        <Sample w={46}>
+          <ArmySample color={world.scenario.nations.find((n) => n.id !== human)!.color} rim="#ff5a45" type="infantry" count={6} />
+        </Sample>
+        Army of a nation at war with you
         <Sample>
           <g className="army-badge warn">
             <circle r={6} />

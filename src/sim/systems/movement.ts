@@ -2,6 +2,7 @@
 import { MOVEMENT } from '../config/rules';
 import { pushEvent } from '../events';
 import { areHostile, armySpeedKmPerTick, canEnterProvince, hostileArmiesIn, scaledTicks } from '../queries';
+import { provinceName } from '../text';
 import type { Army, GameState, ProvinceId } from '../types';
 import { connectionBetween, type World } from '../world';
 
@@ -37,7 +38,7 @@ export function startLeg(state: GameState, world: World, army: Army): boolean {
   const next = move.path[0];
   if (!connectionBetween(world, army.province, next) || !canEnterProvince(state, army.owner, next)) {
     army.move = null;
-    pushEvent(state, 'move', `An army halted: the route to ${world.provinces[next].name} is closed.`, {
+    pushEvent(state, 'move', `An army halted: the route to ${provinceName(world, next)} is closed.`, {
       nations: army.owner === 'neutral' ? [] : [army.owner],
       province: army.province,
     });
@@ -69,7 +70,7 @@ export function movementSystem(state: GameState, world: World): void {
     if (!canEnterProvince(state, army.owner, leg.to)) {
       // Diplomacy changed mid-march (e.g. peace signed): turn back.
       army.move = null;
-      pushEvent(state, 'move', `An army was refused entry to ${world.provinces[leg.to].name} and returned.`, {
+      pushEvent(state, 'move', `An army was refused entry to ${provinceName(world, leg.to)} and turned back.`, {
         nations: army.owner === 'neutral' ? [] : [army.owner],
         province: leg.from,
       });

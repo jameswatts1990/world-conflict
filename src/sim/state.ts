@@ -102,7 +102,6 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       id: n.id,
       controller: isHuman ? 'human' : 'ai',
       resources: { ...scenario.startingResources },
-      lastRates: { money: 0, materials: 0, fuel: 0, manpower: 0 },
       research: { completed: [], active: null },
       relations,
       eliminated: false,

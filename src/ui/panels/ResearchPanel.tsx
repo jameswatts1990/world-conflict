@@ -1,8 +1,8 @@
 import { ERA_RULES, TECHS, TECH_BY_ID, type TechConfig } from '../../sim/config/research';
-import { checkResearch, nationEra, type Era } from '../../sim';
+import { checkResearch, nationEra, type BuildingType, type Era, type UnitType } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
-import { Icon, UnitGlyph, type IconName } from '../icons';
+import { BuildingIcon, Icon, UnitGlyph, type IconName } from '../icons';
 import { Cost, Modal, Progress } from './Common';
 
 const TIER_NAMES = { 1: 'Great War refinements', 2: 'Interwar developments', 3: 'WWII upgrades' } as const;
@@ -12,20 +12,25 @@ const ERAS: { id: Era; label: string; years: string }[] = [
   { id: 'WWII', label: 'Second World War', years: '1939–1945' },
 ];
 
-/** Card artwork chosen from what the technology does. */
+type Art = { unit: UnitType } | { icon: IconName } | { building: BuildingType };
+
+/** Card artwork per technology; anything unlisted falls back to what its first effect does. */
+const TECH_ART: Record<string, Art> = {
+  industrialMobilisation: { icon: 'factory' },
+  motorTransport: { icon: 'truck' },
+  syntheticFuel: { icon: 'oil' },
+  assemblyLine: { icon: 'gear' },
+  fieldRadio: { icon: 'radio' },
+  fortificationEngineering: { building: 'fortifications' },
+  combinedArms: { icon: 'swords' },
+};
+
 function TechArt({ tech }: { tech: TechConfig }) {
   const e = tech.effects[0];
-  if ((e.kind === 'unitStat' || e.kind === 'unitModel') && e.unit !== 'all') return <UnitGlyph type={e.unit} size={34} />;
-  const icon: Record<string, IconName> = {
-    production: 'factory',
-    unitStat: 'move',
-    recruitTime: 'shield',
-    recruitCost: 'shield',
-    constructionTime: 'gear',
-    fortification: 'shield',
-    syntheticFuel: 'oil',
-  };
-  return <Icon name={icon[e.kind] ?? 'swords'} size={26} />;
+  const art: Art = TECH_ART[tech.id] ?? ((e.kind === 'unitStat' || e.kind === 'unitModel') && e.unit !== 'all' ? { unit: e.unit } : { icon: 'research' });
+  if ('unit' in art) return <UnitGlyph type={art.unit} size={34} />;
+  if ('building' in art) return <BuildingIcon kind={art.building} size={26} />;
+  return <Icon name={art.icon} size={26} />;
 }
 
 export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose: () => void }) {
@@ -41,7 +46,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
       icon="research"
       subtitle={`${research.completed.length} of ${TECHS.length} technologies · one project at a time, paid up front`}
       onClose={onClose}
-      wide
+      size="wide"
     >
       <div className="era-track">
         {ERAS.map((e, i) => (

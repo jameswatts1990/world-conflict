@@ -6,9 +6,9 @@ import { ARMY_RULES, UNITS } from '../config/units';
 import { pushEvent } from '../events';
 import { areHostile, fortificationReduction, isArmyInTransit, techEffects, unitStats } from '../queries';
 import { random, randomInt } from '../rng';
-import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId, type Unit } from '../types';
+import { ownerName, sentence } from '../text';
+import { NEUTRAL, type Army, type BattleState, type GameState, type NationId, type OwnerId, type ProvinceId, type Unit } from '../types';
 import type { World } from '../world';
-import { ownerName } from './territory';
 
 interface Target {
   army: Army;
@@ -54,6 +54,7 @@ export function combatSystem(state: GameState, world: World): void {
       continue;
     }
     if (!state.battles[pid]) startBattle(state, world, pid, armies);
+    else joinBattle(state.battles[pid], armies);
     resolveRound(state, world, pid, armies);
     const survivors = armies.filter((a) => state.armies[a.id]);
     if (!(survivors.length >= 2 && hasHostilePair(state, survivors))) endBattle(state, world, pid, survivors);
@@ -67,12 +68,19 @@ function involvedNations(owners: OwnerId[]): NationId[] {
 function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Army[]): void {
   const owners = [...new Set(armies.map((a) => a.owner))];
   state.battles[pid] = { province: pid, startedAt: state.tick, owners };
-  const names = owners.map((o) => ownerName(world, o, pid)).join(' vs ');
-  pushEvent(state, 'battle', `Battle of ${world.provinces[pid].city.name}: ${names}.`, {
+  // Attackers first, the defending province owner last: "Germany vs France".
+  const defender = state.provinces[pid].owner;
+  const names = [...owners.filter((o) => o !== defender), ...owners.filter((o) => o === defender)].map((o) => ownerName(world, o, pid));
+  pushEvent(state, 'battle', `Battle of ${world.provinces[pid].city.name}: ${names.join(' vs ')}.`, {
     nations: involvedNations(owners),
     province: pid,
     severity: 'combat',
   });
+}
+
+/** Late arrivals become participants, so they also hear how the battle ends. */
+function joinBattle(battle: BattleState, armies: Army[]): void {
+  for (const a of armies) if (!battle.owners.includes(a.owner)) battle.owners.push(a.owner);
 }
 
 function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: Army[]): void {
@@ -80,10 +88,15 @@ function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: A
   delete state.battles[pid];
   if (!battle) return;
   const winners = [...new Set(survivors.map((a) => a.owner))];
+  const city = world.provinces[pid].city.name;
+  // Nobody beaten means the fighting simply stopped (the sides made peace).
+  const beaten = battle.owners.some((o) => !winners.includes(o));
   const text =
     winners.length === 0
-      ? `The Battle of ${world.provinces[pid].city.name} ended with no survivors.`
-      : `${winners.map((w) => ownerName(world, w, pid)).join(' & ')} won the Battle of ${world.provinces[pid].city.name}.`;
+      ? `The Battle of ${city} ended with no survivors.`
+      : beaten
+        ? `${sentence(winners.map((w) => ownerName(world, w, pid)).join(' & '))} won the Battle of ${city}.`
+        : `The Battle of ${city} ended.`;
   pushEvent(state, 'battle-end', text, { nations: involvedNations(battle.owners), province: pid, severity: 'combat' });
 }
 
@@ -136,7 +149,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
     if (army.units.length === 0) {
       delete state.armies[army.id];
-      pushEvent(state, 'army-destroyed', `${ownerName(world, army.owner, pid)} lost an army at ${world.provinces[pid].city.name}.`, {
+      pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost an army at ${world.provinces[pid].city.name}.`, {
         nations: involvedNations([army.owner, ...hostileOwners]),
         province: pid,
         severity: 'combat',

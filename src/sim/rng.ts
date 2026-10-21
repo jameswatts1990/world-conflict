@@ -18,10 +18,6 @@ export function random(state: GameState): number {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
-export function randomRange(state: GameState, min: number, max: number): number {
-  return min + (max - min) * random(state);
-}
-
 export function randomInt(state: GameState, maxExclusive: number): number {
   return Math.floor(random(state) * maxExclusive);
 }

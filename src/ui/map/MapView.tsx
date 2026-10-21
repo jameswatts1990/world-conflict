@@ -11,6 +11,7 @@ import { darken, lighten, ownerColor, strengthColor } from '../color';
 import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
 import { Icon, UnitShape } from '../icons';
+import { composition, mainUnitType } from '../labels';
 import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
@@ -29,7 +30,8 @@ export interface MapViewProps {
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
   onOrderMove: (pid: ProvinceId) => void;
-  onHover: (pid: ProvinceId | null) => void;
+  /** Province under the cursor, and the army counter if pointing at one. */
+  onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
@@ -55,7 +57,7 @@ const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
     <g className="world-layer">
       {geo.countries.map((c) => (
         <path key={c.iso + c.name} d={c.d} className="country">
-          <title>{THEATRE_ISO.has(c.iso) ? `${c.name} (territory outside the prototype theatre)` : `${c.name} — outside the prototype theatre`}</title>
+          <title>{THEATRE_ISO.has(c.iso) ? `${c.name}: territory outside this campaign's theatre` : `${c.name}: outside this campaign's theatre`}</title>
         </path>
       ))}
     </g>
@@ -194,9 +196,7 @@ const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: 
         const [x2, y2] = geo.anchors[c.b];
         const active = focus.has(c.a) || focus.has(c.b);
         return (
-          <line key={`${c.a}|${c.b}`} x1={x1} y1={y1} x2={x2} y2={y2} className={`connection ${c.kind}${active ? ' active' : ''}`}>
-            {c.label && <title>{c.label}</title>}
-          </line>
+          <line key={`${c.a}|${c.b}`} x1={x1} y1={y1} x2={x2} y2={y2} className={`connection ${c.kind}${active ? ' active' : ''}`} />
         );
       })}
     </g>
@@ -216,40 +216,94 @@ interface NationLabel {
   neutral: boolean;
 }
 
+/** Owned provinces in groups joined by land; sea crossings separate them (Britain from occupied France). */
+function landGroups(world: World, pids: ProvinceId[]): ProvinceId[][] {
+  const owned = new Set(pids);
+  const seen = new Set<ProvinceId>();
+  const groups: ProvinceId[][] = [];
+  for (const start of pids) {
+    if (seen.has(start)) continue;
+    seen.add(start);
+    const group = [start];
+    for (let i = 0; i < group.length; i++) {
+      for (const n of world.neighbors[group[i]]) {
+        if (n.kind === 'strait' || !owned.has(n.id) || seen.has(n.id)) continue;
+        seen.add(n.id);
+        group.push(n.id);
+      }
+    }
+    groups.push(group);
+  }
+  return groups;
+}
+
+/** How crowded a map point is: army stacks sit above each city and name plates below it. */
+function crowding(geo: MapGeometry, x: number, y: number): number {
+  let c = 0;
+  for (const [ax, ay] of Object.values(geo.anchors)) {
+    const dx = (x - ax) / 28;
+    const dy = (y - ay + 12) / 36;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < 1) c += 1 - d2;
+  }
+  return c;
+}
+
+/** Name for one block of territory: near its middle, but clear of cities and counters. */
+function placeNationLabel(geo: MapGeometry, id: string, text: string, group: ProvinceId[]): NationLabel {
+  let area = 0;
+  let cx = 0;
+  let cy = 0;
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const pid of group) {
+    const a = geo.provinceArea[pid];
+    area += a;
+    cx += geo.labelPoints[pid][0] * a;
+    cy += geo.labelPoints[pid][1] * a;
+    const [[bx0, by0], [bx1, by1]] = geo.provinceBounds[pid];
+    [x0, y0, x1, y1] = [Math.min(x0, bx0), Math.min(y0, by0), Math.max(x1, bx1), Math.max(y1, by1)];
+  }
+  cx /= area;
+  cy /= area;
+  // Letter-spaced capitals take about 0.94 em per character. Shrink to fit narrow territory.
+  const size = Math.max(9, Math.min(32, Math.sqrt(area) * 0.12, ((x1 - x0) * 0.92) / (text.length * 0.94)));
+  const half = (text.length * size * 0.94) / 2;
+  let best = { x: cx, y: cy, score: Infinity };
+  const fits = x1 - x0 > 2 * half;
+  for (const pid of group) {
+    const [px, py] = geo.labelPoints[pid];
+    for (const dx of fits ? [0, -0.5, 0.5] : [0]) {
+      const x = fits ? Math.max(x0 + half, Math.min(x1 - half, px + dx * half)) : (x0 + x1) / 2;
+      for (const dy of [0, -0.8, 0.8, -1.6, 1.6]) {
+        const y = py + dy * size;
+        if (y < y0 + size / 2 || y > y1 - size / 2) continue;
+        let crowd = 0;
+        for (let i = -2; i <= 2; i++) for (let j = -1; j <= 1; j++) crowd += crowding(geo, x + (i / 2) * half, y + j * 0.35 * size);
+        const score = crowd + (6 * Math.hypot(x - cx, y - cy)) / Math.sqrt(area);
+        if (score < best.score) best = { x, y, score };
+      }
+    }
+  }
+  return { id, text, x: best.x, y: best.y, size, neutral: false };
+}
+
 function nationLabels(geo: MapGeometry, world: World, ownerOf: Record<ProvinceId, string>): NationLabel[] {
   const out: NationLabel[] = [];
   for (const n of world.nationIds) {
     const pids = world.provinceIds.filter((pid) => ownerOf[pid] === n);
     if (!pids.length) continue;
-    let area = 0;
-    let cx = 0;
-    let cy = 0;
-    for (const pid of pids) {
-      const a = geo.provinceArea[pid];
-      area += a;
-      cx += geo.labelPoints[pid][0] * a;
-      cy += geo.labelPoints[pid][1] * a;
-    }
-    cx /= area;
-    cy /= area;
-    // Anchor on the owned province nearest the weighted centre, so the label stays on land.
-    let best = pids[0];
-    let bestD = Infinity;
-    for (const pid of pids) {
-      const [x, y] = geo.labelPoints[pid];
-      const d = (x - cx) ** 2 + (y - cy) ** 2;
-      if (d < bestD) {
-        bestD = d;
-        best = pid;
-      }
-    }
-    const [x, y] = geo.labelPoints[best];
-    out.push({ id: n, text: world.nations[n].name, x, y, size: Math.max(10, Math.min(28, Math.sqrt(area) * 0.11)), neutral: false });
+    const groups = landGroups(world, pids)
+      .map((g) => ({ g, area: g.reduce((s, pid) => s + geo.provinceArea[pid], 0) }))
+      .sort((a, b) => b.area - a.area);
+    // Large separate blocks (say, a conquered neighbour across the sea) carry the name too.
+    groups
+      .filter((x, i) => i === 0 || x.area >= groups[0].area * 0.3)
+      .forEach((x, i) => out.push(placeNationLabel(geo, `${n}-${i}`, world.nations[n].name, x.g)));
   }
   for (const pid of world.provinceIds) {
     if (ownerOf[pid] !== 'neutral') continue;
     const [x, y] = geo.labelPoints[pid];
-    const name = world.provinces[pid].neutralState ?? world.provinces[pid].name;
+    const name = world.provinces[pid].neutral?.name ?? world.provinces[pid].name;
     out.push({ id: pid, text: name, x, y, size: Math.max(6, Math.min(10, Math.sqrt(geo.provinceArea[pid]) * 0.07)), neutral: true });
   }
   return out;
@@ -411,36 +465,37 @@ function starburst(outer: number, inner: number, points: number): string {
 const BURST_OUTER = starburst(11, 5, 9);
 const BURST_INNER = starburst(6, 2.8, 7);
 
+/** Where an army can be attacked: where it stands, or where it is about to arrive. */
+function armyTarget(army: Army): ProvinceId {
+  return army.move?.leg ? army.move.leg.to : army.province;
+}
+
 function ArmyMarker({
   army,
-  world,
   x,
   y,
   k,
   selected,
   own,
   hostile,
-  onSelect,
+  onClick,
+  onContext,
+  onHover,
 }: {
   army: Army;
-  world: World;
   x: number;
   y: number;
   k: number;
   selected: boolean;
   own: boolean;
   hostile: boolean;
-  onSelect: (id: ArmyId, additive: boolean) => void;
+  onClick: (army: Army, additive: boolean) => void;
+  onContext: (army: Army) => void;
+  onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }) {
-  const counts = { infantry: 0, artillery: 0, tank: 0 };
-  let strength = 0;
-  for (const u of army.units) {
-    counts[u.type]++;
-    strength += u.strength;
-  }
-  const main = counts.tank > 0 ? 'tank' : counts.artillery > counts.infantry ? 'artillery' : 'infantry';
-  const avg = army.units.length ? strength / army.units.length : 0;
-  const who = army.owner === 'neutral' ? `${world.provinces[army.province].neutralState ?? 'Neutral'} garrison` : `${world.nations[army.owner].adjective} army`;
+  const c = composition(army);
+  const main = mainUnitType(c);
+  const avg = c.strength;
   return (
     <g
       transform={`translate(${x},${y}) scale(${1 / k})`}
@@ -448,13 +503,16 @@ function ArmyMarker({
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
-        onSelect(army.id, e.shiftKey);
+        onClick(army, e.shiftKey);
       }}
-      onContextMenu={(e) => e.preventDefault()}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onContext(army);
+      }}
+      onMouseEnter={() => onHover(armyTarget(army), army.id)}
+      onMouseLeave={() => onHover(null)}
     >
-      <title>
-        {`${who} — ${counts.infantry} INF, ${counts.artillery} ART, ${counts.tank} TNK (${Math.round(avg * 100)}% strength)${army.supplied ? '' : ' — OUT OF SUPPLY'}`}
-      </title>
       <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
       <ellipse cx={1} cy={14} rx={20} ry={3.2} className="army-shadow" />
       <rect x={-19} y={-9} width={21} height={16} rx={2.5} className="army-icon-bg" />
@@ -482,17 +540,21 @@ function ArmyLayer({
   geo,
   k,
   selectedArmies,
-  onSelectArmy,
+  onArmyClick,
+  onArmyContext,
+  onHover,
 }: {
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
   selectedArmies: ArmyId[];
-  onSelectArmy: (id: ArmyId, additive: boolean) => void;
+  onArmyClick: (army: Army, additive: boolean) => void;
+  onArmyContext: (army: Army) => void;
+  onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }) {
   // Re-render every animation frame for smooth interpolation of marching armies.
   useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
-  const { state, world, human } = ctrl;
+  const { state, human } = ctrl;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
   const relations = state.nations[human].relations;
@@ -531,14 +593,15 @@ function ArmyLayer({
       <ArmyMarker
         key={army.id}
         army={army}
-        world={world}
         x={x}
         y={y}
         k={k}
         selected={selected.has(army.id)}
         own={own}
         hostile={hostile}
-        onSelect={onSelectArmy}
+        onClick={onArmyClick}
+        onContext={onArmyContext}
+        onHover={onHover}
       />,
     );
   }
@@ -793,9 +856,18 @@ export function MapView(props: MapViewProps) {
     e.preventDefault();
     if (ownArmySelected) props.onOrderMove(pid);
   });
-  const onHover = useStableCallback((pid: ProvinceId | null) => {
+  const onHover = useStableCallback((pid: ProvinceId | null, army?: ArmyId) => {
     setHovered(pid);
-    props.onHover(pid);
+    props.onHover(pid, army);
+  });
+  // Clicking another army's counter in move mode, or right-clicking it, marches there.
+  const ordersTo = (army: Army) => ownArmySelected && !props.selectedArmies.includes(army.id);
+  const onArmyClick = useStableCallback((army: Army, additive: boolean) => {
+    if (props.moveMode && ordersTo(army)) props.onOrderMove(armyTarget(army));
+    else props.onSelectArmy(army.id, additive);
+  });
+  const onArmyContext = useStableCallback((army: Army) => {
+    if (ordersTo(army)) props.onOrderMove(armyTarget(army));
   });
 
   const k = transform.k;
@@ -821,8 +893,9 @@ export function MapView(props: MapViewProps) {
             <stop offset="0.45" stopColor="#1c425f" />
             <stop offset="1" stopColor="#0c1f31" />
           </radialGradient>
-          <pattern id="hatch-neutral" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-            <line x1="0" y1="0" x2="0" y2="5" className="hatch-neutral-line" />
+          {/* Hatching keeps the same on-screen spacing at every zoom. */}
+          <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+            <line x1="0" y1="0" x2="0" y2={7 / k} className="hatch-neutral-line" strokeWidth={1.3 / k} />
           </pattern>
           {owners.map((o) => {
             const c = ownerColor(world, o);
@@ -868,7 +941,15 @@ export function MapView(props: MapViewProps) {
               <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
               <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} />
               <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} />
-              <ArmyLayer ctrl={ctrl} geo={geo} k={k} selectedArmies={props.selectedArmies} onSelectArmy={props.onSelectArmy} />
+              <ArmyLayer
+                ctrl={ctrl}
+                geo={geo}
+                k={k}
+                selectedArmies={props.selectedArmies}
+                onArmyClick={onArmyClick}
+                onArmyContext={onArmyContext}
+                onHover={onHover}
+              />
               {preview && (
                 <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
