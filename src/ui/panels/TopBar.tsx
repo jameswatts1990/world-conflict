@@ -1,5 +1,7 @@
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { RESOURCE_KEYS, heldVp, nationEra, vpToWin } from '../../sim';
+import { RESOURCE_KEYS, heldVp, nationEra, researchSlots, vpToWin } from '../../sim';
+import { TECH_BY_ID } from '../../sim/config/research';
+import { moraleClass } from './Common';
 import type { GameController } from '../game/GameController';
 import { fmt, fmtRate, formatClock } from '../format';
 import { RESOURCE_LABEL, ResourceIcon } from '../icons';
@@ -15,6 +17,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   const vp = heldVp(state, world, human);
   const need = vpToWin(world);
   const active = nation.research.active;
+  const slots = researchSlots(state, human);
 
   return (
     <header className="topbar">
@@ -39,6 +42,11 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
         })}
       </div>
 
+      <div className={`tb-morale ${moraleClass(nation.morale)}`} title="National morale: the home-front average. It caps how high your units' morale can climb and decides how long the nation will fight.">
+        <span className="tb-morale-val">{Math.round(nation.morale)}</span>
+        <span className="tb-sub">morale</span>
+      </div>
+
       <div className="tb-status">
         <div className="tb-clock" title="Game time / time remaining (campaign time limit)">
           <span>{formatClock(state.tick, state)}</span>
@@ -46,7 +54,10 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
         </div>
         <div className="tb-vp" title={`Objective victory: hold ${need} VP for 90 s`}>
           <span>★ {vp}/{need} VP</span>
-          <span className="tb-sub">{active ? 'Researching…' : 'No research'}</span>
+          <span className={`tb-sub${active.length < slots ? ' idle' : ''}`} title={active.map((j) => TECH_BY_ID[j.tech].name).join(', ') || 'No research running'}>
+            Research {active.length}/{slots}
+            {nation.research.queue.length ? ` +${nation.research.queue.length} queued` : ''}
+          </span>
         </div>
       </div>
 

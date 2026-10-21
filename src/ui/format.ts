@@ -32,3 +32,8 @@ export const SHORT: Record<string, string> = { money: '$', materials: 'mat', fue
 export function costParts(cost: PartialResources): { key: (typeof RESOURCE_KEYS)[number]; amount: number }[] {
   return RESOURCE_KEYS.filter((k) => (cost[k] ?? 0) > 0).map((k) => ({ key: k, amount: cost[k]! }));
 }
+
+/** Population in thousands -> "9.0 M" / "650 k". */
+export function fmtPopulation(thousands: number): string {
+  return thousands >= 1000 ? `${(thousands / 1000).toFixed(1)} M` : `${Math.round(thousands)} k`;
+}

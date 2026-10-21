@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { CLIENT_SPEEDS } from '../sim/config/timing';
+import { CITY } from '../sim/config/buildings';
 import type { ArmyId, GameState, ProvinceId } from '../sim';
 import type { GameController } from './game/GameController';
 import { buildMapGeometry } from './map/geo';
-import { MapView } from './map/MapView';
+import { MapView, rampColor, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
 import { HelpDialog, LoadDialog, OutcomeDialog, SaveDialog } from './panels/Dialogs';
 import { DiplomacyPanel } from './panels/DiplomacyPanel';
@@ -12,6 +13,13 @@ import { ProvincePanel } from './panels/ProvincePanel';
 import { ResearchPanel } from './panels/ResearchPanel';
 import { TopBar, type PanelId } from './panels/TopBar';
 import { Tutorial } from './panels/Tutorial';
+
+const MAP_MODES: { id: MapMode; label: string; title: string }[] = [
+  { id: 'political', label: 'Political', title: 'Who owns what' },
+  { id: 'morale', label: 'Morale', title: 'Civilian morale per province' },
+  { id: 'development', label: 'Cities', title: 'City size (tier) per province' },
+  { id: 'supply', label: 'Supply', title: 'Provinces connected to a supply hub' },
+];
 
 export function GameScreen({
   ctrl,
@@ -37,6 +45,7 @@ export function GameScreen({
   const [hover, setHover] = useState<ProvinceId | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [outcomeSeen, setOutcomeSeen] = useState(false);
+  const [mapMode, setMapMode] = useState<MapMode>('political');
 
   // Drop selections of armies that no longer exist.
   const liveArmies = selectedArmies.filter((id) => state.armies[id]);
@@ -106,6 +115,7 @@ export function GameScreen({
       else if ((e.key === 's' || e.key === 'S') && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
       } else if (e.key === 'l' || e.key === 'L') document.querySelector<HTMLElement>('.event-log header')?.click();
+      else if (e.key === 'v' || e.key === 'V') setMapMode((m) => MAP_MODES[(MAP_MODES.findIndex((x) => x.id === m) + 1) % MAP_MODES.length].id);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -129,6 +139,7 @@ export function GameScreen({
           <MapView
             ctrl={ctrl}
             geo={geo}
+            mode={mapMode}
             selectedProvince={selectedProvince}
             selectedArmies={selectedArmies}
             moveMode={moveMode}
@@ -141,27 +152,57 @@ export function GameScreen({
           {ctrl.loop.paused && !state.outcome && <div className="paused-banner">PAUSED — press Space or ▶ Resume</div>}
           {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="dev-banner">DEVELOPMENT SPEED {ctrl.loop.speed}x</div>}
           {moveMode && <div className="hint-banner">Choose a destination: click a province (Esc to cancel)</div>}
-          {hoverDef && (
+          {hoverDef && hover && (
             <div className="hover-info">
-              <strong>{hoverDef.name}</strong> · {hoverOwner === 'neutral' ? `${hoverDef.neutralState} (neutral)` : world.nations[hoverOwner!].name} ·{' '}
-              {hoverDef.terrain}
+              <strong>{hoverDef.city.name}</strong> · {hoverDef.name} · {hoverOwner === 'neutral' ? `${hoverDef.neutralState} (neutral)` : world.nations[hoverOwner!].name} ·{' '}
+              {CITY.tierNames[state.provinces[hover].tier]} · {hoverDef.terrain}
+              {hoverOwner !== 'neutral' ? ` · morale ${Math.round(state.provinces[hover].morale)}` : ''}
               {hoverDef.objectiveVp ? ` · ★${hoverDef.objectiveVp} VP` : ''}
             </div>
           )}
           <EventLog ctrl={ctrl} onFocus={focusOn} />
           <div className="legend">
-            <div>
-              <span className="lg lg-neutral" /> Neutral state
+            <div className="map-modes" role="group" aria-label="Map mode (V)">
+              {MAP_MODES.map((m) => (
+                <button key={m.id} className={mapMode === m.id ? 'active' : ''} onClick={() => setMapMode(m.id)} title={`${m.title} (V cycles)`} data-map-mode={m.id}>
+                  {m.label}
+                </button>
+              ))}
             </div>
-            <div>
-              <span className="lg lg-outside" /> Outside prototype
-            </div>
-            <div>
-              <span className="lg-sym">★</span> Capital · <span className="lg-sym ring">2</span> Objective VP
-            </div>
-            <div>
-              <span className="lg-line land" /> land <span className="lg-line mountain" /> pass <span className="lg-line strait" /> sea
-            </div>
+            {mapMode === 'political' && (
+              <>
+                <div>
+                  <span className="lg lg-neutral" /> Neutral state <span className="lg lg-outside" /> Outside prototype
+                </div>
+                <div>
+                  <span className="lg-sym">★</span> Capital · <span className="lg-sym ring">2</span> Objective VP · dots grow with city size
+                </div>
+                <div>
+                  <span className="lg-line land" /> land <span className="lg-line mountain" /> pass <span className="lg-line strait" /> sea
+                </div>
+              </>
+            )}
+            {mapMode === 'morale' && (
+              <div className="lg-ramp">
+                <span>20</span>
+                <span className="ramp" style={{ background: `linear-gradient(90deg, ${rampColor(0)}, ${rampColor(0.5)}, ${rampColor(1)})` }} />
+                <span>85+</span> civilian morale (drives output)
+              </div>
+            )}
+            {mapMode === 'development' && (
+              <div className="lg-tiers">
+                {[1, 2, 3, 4, 5].map((t) => (
+                  <span key={t}>
+                    <span className={`lg lg-tier-${t}`} /> {CITY.tierNames[t]}
+                  </span>
+                ))}
+              </div>
+            )}
+            {mapMode === 'supply' && (
+              <div>
+                <span className="lg lg-supplied" /> connected to a supply hub <span className="lg lg-cut" /> cut off
+              </div>
+            )}
           </div>
           {offers.length > 0 && (
             <div className="offer-stack">

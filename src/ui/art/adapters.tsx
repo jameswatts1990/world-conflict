@@ -1,0 +1,92 @@
+// Bridges simulation ids to the artwork components, so panels and the map
+// never import the art modules directly.
+import { BUILDINGS } from '../../sim/config/buildings';
+import { UNITS } from '../../sim/config/units';
+import type { BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
+import { BuildingIcon, UnitGlyph } from '../icons';
+
+function natoFor(type: UnitType): UnitType {
+  const cls = UNITS[type].class;
+  return cls === 'armour' ? 'tank' : cls === 'support' ? 'artillery' : 'infantry';
+}
+
+/** Small unit picture for tree nodes. */
+export function TechUnitIcon({ type, title }: { type: UnitType; gen: UnitGen; nation: NationId; title?: string }) {
+  return (
+    <span title={title}>
+      <UnitGlyph type={natoFor(type)} size={24} />
+    </span>
+  );
+}
+
+/** Large side-view illustration for unit cards. */
+export function UnitPicture({ type, width = 96 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+  return (
+    <span className="unit-picture placeholder" style={{ width, height: (width * 60) / 96 }}>
+      <UnitGlyph type={natoFor(type)} size={width / 3} />
+    </span>
+  );
+}
+
+/** Compact silhouette for army counters and unit rows. */
+export function UnitIconArt({ type, width = 32 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+  return <UnitGlyph type={natoFor(type)} size={width * 0.7} />;
+}
+
+/** Map-counter silhouette drawn inside an SVG (returns SVG content, not HTML). */
+export function CounterArt({ type, x, y, width }: { type: UnitType; gen: UnitGen; nation: OwnerId; x: number; y: number; width: number }) {
+  const h = width * 0.6;
+  const main = natoFor(type);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <rect width={width} height={h} fill="#fff" opacity={0.92} />
+      {main === 'infantry' && <path d={`M0 0 L${width} ${h} M${width} 0 L0 ${h}`} stroke="#222" strokeWidth={1.2} />}
+      {main === 'artillery' && <circle cx={width / 2} cy={h / 2} r={h / 4.5} fill="#222" />}
+      {main === 'tank' && <rect x={width * 0.2} y={h * 0.27} width={width * 0.6} height={h * 0.46} rx={h * 0.23} fill="none" stroke="#222" strokeWidth={1.2} />}
+    </g>
+  );
+}
+
+const BRANCH_LETTER: Record<TechBranch, string> = { infantry: 'I', artillery: 'A', armour: 'M', industry: 'E', logistics: 'L', society: 'S' };
+
+export function BranchIcon({ branch, size = 18 }: { branch: TechBranch; size?: number }) {
+  return (
+    <span className="branch-letter" style={{ width: size, height: size, fontSize: size * 0.6 }}>
+      {BRANCH_LETTER[branch]}
+    </span>
+  );
+}
+
+export function BuildingTileArt({ kind, level, size = 44 }: { kind: BuildingType; level: number; maxLevel: number; size?: number }) {
+  return (
+    <span className={`building-tile cat-${BUILDINGS[kind].category}`} style={{ width: size, height: size }}>
+      <BuildingIcon kind={kind} size={size * 0.55} />
+      {BUILDINGS[kind].maxLevel > 1 && <span className="bt-level">{level}</span>}
+    </span>
+  );
+}
+
+export function BuildingGlyphArt({ kind, size = 16 }: { kind: BuildingType; size?: number }) {
+  return <BuildingIcon kind={kind} size={size} />;
+}
+
+export interface CitySceneProps {
+  seed: string;
+  tier: CityTier;
+  capital: boolean;
+  buildings: Partial<Record<BuildingType, number>>;
+  construction: BuildingType | null;
+  terrain: Terrain;
+  coastal: boolean;
+  nationColor?: string;
+  battle: boolean;
+  width?: number;
+}
+
+export function CityScene({ width = 340 }: CitySceneProps) {
+  return <div className="city-scene placeholder" style={{ width, height: (width * 120) / 320 }} />;
+}
+
+export function NationEmblem({ color, size = 16 }: { nation: OwnerId; color: string; size?: number }) {
+  return <span className="swatch" style={{ background: color, width: size, height: size }} />;
+}

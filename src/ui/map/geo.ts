@@ -27,6 +27,8 @@ export interface MapGeometry {
   provincePaths: Record<ProvinceId, string>;
   labelPoints: Record<ProvinceId, [number, number]>;
   anchors: Record<ProvinceId, [number, number]>;
+  /** Projected secondary towns per province (drawn at close zoom). */
+  towns: Record<ProvinceId, { name: string; x: number; y: number }[]>;
   countries: CountryShape[];
   coastline: string;
   provinceBorders: string;
@@ -76,8 +78,13 @@ export function buildMapGeometry(world: World): MapGeometry {
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
+  const towns: MapGeometry['towns'] = {};
   for (const id of world.provinceIds) {
     anchors[id] = projection(world.provinces[id].city.coord) as [number, number];
+    towns[id] = world.provinces[id].towns.map((t) => {
+      const [x, y] = projection(t.coord) as [number, number];
+      return { name: t.name, x, y };
+    });
   }
 
   const countryShapes: CountryShape[] = countries.features.map((f) => ({
@@ -101,6 +108,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     provincePaths,
     labelPoints,
     anchors,
+    towns,
     countries: countryShapes,
     coastline,
     provinceBorders,

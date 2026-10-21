@@ -6,13 +6,30 @@ import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTrans
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { UNITS } from '../../sim/config/units';
 import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
-import { findPath, isArmyInTransit, type Army, type ArmyId, type GameState, type ProvinceId, type World } from '../../sim';
+import {
+  armyMorale,
+  armyName,
+  findPath,
+  isArmyInTransit,
+  isRouted,
+  unitGen,
+  type Army,
+  type ArmyId,
+  type GameState,
+  type ProvinceId,
+  type UnitType,
+  type World,
+} from '../../sim';
+import { CounterArt } from '../art/adapters';
 import type { GameController } from '../game/GameController';
 import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
+
+export type MapMode = 'political' | 'morale' | 'development' | 'supply';
 
 export interface MapViewProps {
   ctrl: GameController;
   geo: MapGeometry;
+  mode: MapMode;
   selectedProvince: ProvinceId | null;
   selectedArmies: ArmyId[];
   moveMode: boolean;
@@ -25,6 +42,31 @@ export interface MapViewProps {
 
 function ownerColor(world: World, owner: string): string {
   return owner === 'neutral' ? NEUTRAL_COLOR : (world.nations[owner]?.color ?? '#999');
+}
+
+/** Red → amber → green ramp for 0..1. */
+export function rampColor(t: number): string {
+  const x = Math.max(0, Math.min(1, t));
+  const stops = [
+    [176, 64, 52],
+    [214, 168, 72],
+    [92, 150, 84],
+  ];
+  const seg = x < 0.5 ? 0 : 1;
+  const f = x < 0.5 ? x * 2 : (x - 0.5) * 2;
+  const c = stops[seg].map((v, i) => Math.round(v + (stops[seg + 1][i] - v) * f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
+
+/** Province fill for the current map mode. */
+function provinceFill(state: GameState, world: World, mode: MapMode, pid: ProvinceId): string {
+  const p = state.provinces[pid];
+  if (mode === 'political' || (p.owner === 'neutral' && mode !== 'development')) return ownerColor(world, p.owner);
+  if (mode === 'morale') return rampColor((p.morale - 20) / 65);
+  if (mode === 'development') return TIER_COLORS[p.tier];
+  return p.supplied ? '#6f9a5f' : '#b0473a';
 }
 
 // ---------------------------------------------------------------------------
@@ -46,8 +88,9 @@ const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
 interface ProvinceLayerProps {
   geo: MapGeometry;
   world: World;
-  owners: string; // ownership signature, forces re-render when it changes
+  owners: string; // fill signature, forces re-render when it changes
   ownerOf: Record<ProvinceId, string>;
+  fills: Record<ProvinceId, string>;
   selected: ProvinceId | null;
   highlight: string; // joined ids of highlighted (reachable) provinces
   onClick: (pid: ProvinceId, e: React.MouseEvent) => void;
@@ -65,7 +108,7 @@ const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
           <path
             key={id}
             d={p.geo.provincePaths[id]}
-            fill={ownerColor(p.world, owner)}
+            fill={p.fills[id]}
             className={`province${owner === 'neutral' ? ' neutral' : ''}${p.selected === id ? ' selected' : ''}${highlight.has(id) ? ' reachable' : ''}`}
             data-province={id}
             onClick={(e) => p.onClick(id, e)}
@@ -120,15 +163,32 @@ const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: 
 function CityLayer({ geo, state, world, k }: { geo: MapGeometry; state: GameState; world: World; k: number }) {
   const showProvinceNames = k >= 1.15;
   const showCityNames = k >= 2.2;
+  const showTowns = k >= 2.0;
+  const showTownNames = k >= 3.4;
   const s = 1 / k;
   return (
     <g className="city-layer" pointerEvents="none">
+      {showTowns &&
+        world.provinceIds.map((id) =>
+          geo.towns[id].map((t) => (
+            <g key={`${id}-${t.name}`} transform={`translate(${t.x},${t.y}) scale(${s})`}>
+              <circle r={1.7} className="town-dot" />
+              {showTownNames && (
+                <text y={-4.5} className="town-label">
+                  {t.name}
+                </text>
+              )}
+            </g>
+          )),
+        )}
       {world.provinceIds.map((id) => {
         const def = world.provinces[id];
+        const ps = state.provinces[id];
         const [x, y] = geo.anchors[id];
         const [lx, ly] = geo.labelPoints[id];
-        const capture = state.provinces[id].capture;
+        const capture = ps.capture;
         const isCapital = def.city.size === 'capital' && def.core !== null;
+        const tierScale = 0.75 + ps.tier * 0.15;
         return (
           <g key={id}>
             {showProvinceNames && (
@@ -146,9 +206,13 @@ function CityLayer({ geo, state, world, k }: { geo: MapGeometry; state: GameStat
                 </g>
               ) : null}
               {isCapital ? (
-                <path d="M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z" className="capital-star" />
+                <path
+                  d="M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z"
+                  className="capital-star"
+                  transform={`scale(${tierScale})`}
+                />
               ) : (
-                <circle r={def.city.size === 'major' || def.city.size === 'capital' ? 3.2 : 2.4} className="city-dot" />
+                <circle r={1.6 + ps.tier * 0.65} className={`city-dot tier-${ps.tier}`} />
               )}
               {capture && (
                 <circle
@@ -181,8 +245,27 @@ function armyPosition(geo: MapGeometry, army: Army, alpha: number): [number, num
   return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
 }
 
+const CLASS_PRIORITY = { armour: 4, support: 3, mobile: 2, infantry: 1 } as const;
+
+/** The type shown on an army's counter: its most numerous type, heavier classes breaking ties. */
+function counterType(army: Army): UnitType {
+  const counts = new Map<UnitType, number>();
+  for (const u of army.units) counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
+  let best: UnitType = army.units[0]?.type ?? 'infantry';
+  let bestScore = -1;
+  for (const [t, n] of counts) {
+    const score = n * 10 + CLASS_PRIORITY[UNITS[t].class] + (UNITS[t].class === 'armour' ? 15 : 0);
+    if (score > bestScore) {
+      best = t;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 function ArmyMarker({
   army,
+  state,
   world,
   x,
   y,
@@ -192,6 +275,7 @@ function ArmyMarker({
   onSelect,
 }: {
   army: Army;
+  state: GameState;
   world: World;
   x: number;
   y: number;
@@ -200,20 +284,24 @@ function ArmyMarker({
   own: boolean;
   onSelect: (id: ArmyId, additive: boolean) => void;
 }) {
-  const counts = { infantry: 0, artillery: 0, tank: 0 };
+  const counts: Record<string, number> = {};
   let strength = 0;
   for (const u of army.units) {
-    const cls = UNITS[u.type].class;
-    counts[cls === 'armour' ? 'tank' : cls === 'support' ? 'artillery' : 'infantry']++;
+    counts[UNITS[u.type].short] = (counts[UNITS[u.type].short] ?? 0) + 1;
     strength += u.strength;
   }
-  const main = counts.tank > 0 ? 'tank' : counts.artillery > counts.infantry ? 'artillery' : 'infantry';
+  const main = counterType(army);
   const color = ownerColor(world, army.owner);
   const avg = army.units.length ? strength / army.units.length : 0;
+  const morale = armyMorale(army);
+  const routed = isRouted(state, army);
+  const summary = Object.entries(counts)
+    .map(([k, n]) => `${n} ${k}`)
+    .join(', ');
   return (
     <g
       transform={`translate(${x},${y}) scale(${1 / k})`}
-      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${army.supplied ? '' : ' unsupplied'}`}
+      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`}
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
@@ -222,19 +310,16 @@ function ArmyMarker({
       onContextMenu={(e) => e.preventDefault()}
     >
       <title>
-        {`${army.owner === 'neutral' ? 'Neutral garrison' : world.nations[army.owner].adjective + ' army'} — ${counts.infantry} INF, ${counts.artillery} ART, ${counts.tank} TNK (${Math.round(avg * 100)}% strength)${army.supplied ? '' : ' — OUT OF SUPPLY'}`}
+        {`${armyName(world, army)}${army.owner === 'neutral' ? '' : ` (${world.nations[army.owner].adjective})`} — ${summary} · strength ${Math.round(avg * 100)}% · morale ${Math.round(morale * 100)}%${army.supplied ? '' : ' — OUT OF SUPPLY'}${routed ? ' — ROUTED' : ''}`}
       </title>
-      <rect x={-19} y={-9} width={38} height={18} rx={3} fill={color} className="army-body" />
-      <g transform="translate(-16,-6)">
-        <rect x={0} y={0} width={15} height={11} fill="#fff" opacity={0.92} />
-        {main === 'infantry' && <path d="M0 0 L15 11 M15 0 L0 11" stroke="#222" strokeWidth={1.2} />}
-        {main === 'artillery' && <circle cx={7.5} cy={5.5} r={2.3} fill="#222" />}
-        {main === 'tank' && <rect x={3} y={3} width={9} height={5} rx={2.5} fill="none" stroke="#222" strokeWidth={1.2} />}
-      </g>
-      <text x={9} y={4.5} className="army-count">
+      <rect x={-21} y={-10} width={42} height={20} rx={3} fill={color} className="army-body" />
+      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19} y={-8} width={24} />
+      <text x={12.5} y={4.5} className="army-count">
         {army.units.length}
       </text>
-      <rect x={-19} y={10} width={38 * avg} height={2.5} className="army-strength" />
+      <rect x={-21} y={11} width={42 * avg} height={2.2} className="army-strength" />
+      <rect x={-21} y={13.6} width={42 * morale} height={2.2} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
+      {routed && <path d="M15,-10 L15,-22 L24,-19 L15,-16" className="routed-flag" />}
     </g>
   );
 }
@@ -288,6 +373,7 @@ function ArmyLayer({
       <ArmyMarker
         key={army.id}
         army={army}
+        state={state}
         world={world}
         x={x}
         y={y}
@@ -385,6 +471,13 @@ export function MapView(props: MapViewProps) {
     world.provinceIds.forEach((id, i) => (o[id] = ownersSig.split(',')[i]));
     return o;
   }, [world, ownersSig]);
+  const fillList = world.provinceIds.map((id) => provinceFill(state, world, props.mode, id));
+  const fillSig = fillList.join('|');
+  const fills = useMemo(() => {
+    const f: Record<ProvinceId, string> = {};
+    world.provinceIds.forEach((id, i) => (f[id] = fillSig.split('|')[i]));
+    return f;
+  }, [world, fillSig]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const nationBorders = useMemo(() => geo.nationBorders((pid) => ownerOf[pid]), [geo, ownersSig]);
 
@@ -440,8 +533,9 @@ export function MapView(props: MapViewProps) {
         <ProvinceLayer
           geo={geo}
           world={world}
-          owners={ownersSig}
+          owners={fillSig}
           ownerOf={ownerOf}
+          fills={fills}
           selected={props.selectedProvince}
           highlight={highlight}
           onClick={onProvinceClick}
