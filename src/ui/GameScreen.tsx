@@ -5,8 +5,10 @@ import {
   UNIT_TYPES,
   armiesIn,
   eventsFor,
+  nationName,
   provinceName,
   scaledTicks,
+  sentence,
   type ArmyId,
   type EventSeverity,
   type GameEvent,
@@ -60,16 +62,16 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
     case 'capture': {
       const pid = e.province!;
       if (state.provinces[pid].owner === human) return 'good';
-      if (e.nations.includes(human) || world.provinces[pid].core === human) return 'bad';
+      if (e.subject === human) return 'bad';
       return world.provinces[pid].objectiveVp ? e.severity : null;
     }
     case 'battle':
       // Our own attacks are no surprise; an enemy attacking our land is.
       return e.province && state.provinces[e.province].owner === human ? 'bad' : null;
     case 'army-destroyed':
-      return e.nations[0] === human ? 'bad' : null;
     case 'peace-rejected':
-      return e.nations[1] === human ? 'bad' : null;
+      // Our army lost, or our offer turned down.
+      return e.subject === human ? 'bad' : null;
     default:
       return null;
   }
@@ -188,8 +190,8 @@ export function GameScreen({
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
-      // Leave browser shortcuts (Ctrl+1 switches tabs) alone, and let the briefing have the keyboard.
-      if (e.ctrlKey || e.metaKey || e.altKey || tutorial) return;
+      // Leave browser shortcuts (Ctrl+1 switches tabs) alone.
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const key = e.key.toLowerCase();
       if (e.key === ' ') {
         e.preventDefault();
@@ -214,7 +216,7 @@ export function GameScreen({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, moveMode, legendOpen, tutorial, selectedArmies]);
+  }, [ctrl, moveMode, legendOpen, selectedArmies]);
 
   useEffect(() => {
     if (!toast) return;
@@ -281,7 +283,7 @@ export function GameScreen({
             {outcome && outcomeSeen && (
               <div className="banner outcome-banner-bar">
                 <Icon name="star" size={16} /> Campaign over
-                <span className="muted">— {outcome.winner ? `${world.nations[outcome.winner].name} wins` : 'no winner'}</span>
+                <span className="muted">— {outcome.winner ? `${nationName(world, outcome.winner)} wins` : 'no winner'}</span>
                 <button className="primary" onClick={() => setOutcomeSeen(false)}>
                   Results
                 </button>
@@ -309,7 +311,7 @@ export function GameScreen({
                 <div className="alert-body">
                   <div className="alert-title">Peace proposal</div>
                   <div>
-                    <strong>{world.nations[o.from].name}</strong> offers peace on current borders.
+                    <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
                   </div>
                   <div className="offer-timer" title="Time left to answer">
                     <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
@@ -403,6 +405,8 @@ export function GameScreen({
         <HelpDialog
           onClose={() => setPanel(null)}
           onReplayBriefing={() => {
+            // The briefing says the game is paused: make it so.
+            ctrl.setPaused(true);
             setPanel(null);
             setTutorial(true);
           }}
@@ -411,7 +415,7 @@ export function GameScreen({
       {tutorial && (
         <Tutorial
           world={world}
-          nationName={world.nations[human].name}
+          nationName={nationName(world, human)}
           limitMinutes={state.settings.timeLimitTicks / TICKS_PER_MINUTE / state.settings.durationScale}
           onClose={() => setTutorial(false)}
         />

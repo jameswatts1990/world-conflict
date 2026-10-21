@@ -189,7 +189,8 @@ has a personality (aggression, economy bias) drawn from the seed.
 - **Geography is separate from rules.** Shapes are in `src/assets/map`, used only for rendering. Adjacency and
   travel are in `scenario/europe/connections.ts`. Distances are rounded to whole kilometres, so timing never
   depends on floating-point trigonometry.
-- **Saves** are versioned (`schemaVersion`) and tied to a scenario id. Load rejects incompatible files.
+- **Saves** are versioned (`schemaVersion`, now 2) and tied to a scenario id. Older saves are upgraded step by step on
+  load (`save.ts`); a save from a newer version, another scenario or another program is refused with a message.
 - **Messages** are written by the simulation (`text.ts`): names that read with "the" in running text (the United
   Kingdom, the Netherlands, the Midlands) carry the article in scenario data. Rule numbers quoted in descriptions and
   messages come from config, so the text cannot drift from the balance.

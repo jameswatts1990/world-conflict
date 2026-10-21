@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deserializeGame, nationName, type GameState, type World } from '../../sim';
+import { deserializeGame, nationName, sentence, type GameState, type World } from '../../sim';
 import { downloadSave, listSlots, loadFromSlot, saveToSlot, slotLabel, SLOTS, type SlotId } from '../game/storage';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
@@ -189,11 +189,11 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
           <div>
             <div className="outcome-title">{won ? 'Victory!' : 'Defeat'}</div>
             <div>
-              <strong>{o.winner ? world.nations[o.winner].name : 'Nobody'}</strong> wins: {reason}.
+              <strong>{o.winner ? sentence(nationName(world, o.winner)) : 'Nobody'}</strong> wins: {reason}.
               {!won && rank > 0 && o.reason !== 'humanEliminated' && (
                 <span className="muted">
                   {' '}
-                  {world.nations[human].name} finished {ordinal(rank)} of {o.scores.length}.
+                  {sentence(nationName(world, human))} finished {ordinal(rank)} of {o.scores.length}.
                 </span>
               )}
             </div>

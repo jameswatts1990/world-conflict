@@ -334,6 +334,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
         state.nations[cmd.from].relations[cmd.nation].peaceOfferAfter = state.tick + scaledTicks(state, DIPLOMACY.peaceRetrySeconds);
         pushEvent(state, 'peace-rejected', `${sentence(nationName(world, cmd.nation))} rejected peace with ${nationName(world, cmd.from)}.`, {
           nations: [cmd.nation, cmd.from],
+          subject: cmd.from,
           severity: 'bad',
         });
       }

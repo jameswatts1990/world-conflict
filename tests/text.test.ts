@@ -62,6 +62,51 @@ describe('event wording', () => {
     expect(texts(state, 'battle-end')).toEqual(['The Battle of Brussels ended.']);
   });
 
+  it('a bystander at peace with both sides is not part of the battle', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    place(state, 'de', 'nt-benelux', { infantry: 3 });
+    place(state, 'fr', 'nt-benelux', { infantry: 3 });
+    const uk = place(state, 'uk', 'nt-benelux', { infantry: 1 });
+    run(state, 11);
+    expect(texts(state, 'battle')).toEqual(['Battle of Brussels: Germany vs France.']);
+    expect(state.battles['nt-benelux'].owners).not.toContain('uk');
+    delete state.armies[uk.id];
+    state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
+    applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
+    applyCommand(state, world, { type: 'respondPeace', nation: 'de', from: 'fr', accept: true });
+    run(state, 11);
+    expect(texts(state, 'battle-end')).toEqual(['The Battle of Brussels ended.']);
+  });
+
+  it('peace that sends the attacker home ends a battle without a victor', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    place(state, 'de', 'de-ruhr', { infantry: 3 });
+    place(state, 'fr', 'de-ruhr', { infantry: 3 });
+    run(state, 11);
+    state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
+    applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
+    applyCommand(state, world, { type: 'respondPeace', nation: 'de', from: 'fr', accept: true });
+    run(state, 11);
+    expect(texts(state, 'battle-end')).toEqual(['The Battle of Essen ended.']);
+  });
+
+  it('losses name who suffered them, even a neutral garrison', () => {
+    const state = quietGame();
+    clearArmies(state);
+    place(state, 'neutral', 'nt-netherlands', { infantry: 1 });
+    place(state, 'fr', 'nt-netherlands', { infantry: 6, artillery: 2 });
+    run(state, 200);
+    const lost = state.events.find((e) => e.kind === 'army-destroyed')!;
+    expect(lost.text).toBe('The Netherlands lost an army at Amsterdam.');
+    expect(lost.subject).toBe('neutral');
+    const captured = state.events.find((e) => e.kind === 'capture')!;
+    expect(captured.subject).toBe('neutral');
+  });
+
   it('the defender is named last when invading', () => {
     const state = quietGame();
     clearArmies(state);

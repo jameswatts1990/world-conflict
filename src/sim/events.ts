@@ -1,4 +1,4 @@
-import type { EventSeverity, GameState, NationId, ProvinceId } from './types';
+import type { EventSeverity, GameState, NationId, OwnerId, ProvinceId } from './types';
 
 export const MAX_EVENTS = 300;
 
@@ -6,7 +6,7 @@ export function pushEvent(
   state: GameState,
   kind: string,
   text: string,
-  opts: { nations?: NationId[]; province?: ProvinceId; severity?: EventSeverity } = {},
+  opts: { nations?: NationId[]; province?: ProvinceId; subject?: OwnerId; severity?: EventSeverity } = {},
 ): void {
   state.events.push({
     id: state.nextEventId++,
@@ -15,6 +15,7 @@ export function pushEvent(
     text,
     nations: opts.nations ?? [],
     province: opts.province,
+    subject: opts.subject,
     severity: opts.severity ?? 'info',
   });
   if (state.events.length > MAX_EVENTS) state.events.splice(0, state.events.length - MAX_EVENTS);

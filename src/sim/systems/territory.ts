@@ -67,6 +67,7 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   pushEvent(state, 'capture', text, {
     nations: important ? [] : [newOwner, ...(oldOwner === NEUTRAL ? [] : [oldOwner])],
     province: pid,
+    subject: oldOwner,
     severity: 'combat',
   });
 

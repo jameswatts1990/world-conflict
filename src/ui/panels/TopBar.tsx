@@ -1,7 +1,7 @@
 import { TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, VICTORY } from '../../sim/config/rules';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { RESOURCE_KEYS, heldVp, nationEconomy, nationEra, vpToWin, type ResourceKey } from '../../sim';
+import { RESOURCE_KEYS, heldVp, nationEconomy, nationEra, nationName, sentence, vpToWin, type ResourceKey } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
 import { fmt, fmtRate, formatClock, formatDuration, proseDuration } from '../format';
@@ -13,7 +13,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 /** What each resource is for, shown in its breakdown. */
 const RESOURCE_HINT: Record<ResourceKey, string> = {
   money: 'Pays for everything, including army upkeep.',
-  materials: 'Mostly from industrial provinces. Needed for buildings, artillery, tanks and research.',
+  materials: 'Mostly from industrial provinces. Needed for buildings, every unit and research.',
   fuel: 'From oil fields and refineries. Tanks need it to be built and to keep moving.',
   manpower: 'Grows with population; Barracks add more. Every new unit needs it.',
 };
@@ -115,11 +115,11 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
         </span>
         <span className="tb-sub">
           {over
-            ? `${state.outcome!.winner ? world.nations[state.outcome!.winner].name : 'Nobody'} won`
+            ? `${state.outcome!.winner ? sentence(nationName(world, state.outcome!.winner)) : 'Nobody'} won`
             : leader
               ? leader === human
                 ? 'Hold on for victory!'
-                : `${world.nations[leader].name} nearing victory!`
+                : `${sentence(nationName(world, leader))} nearing victory!`
               : 'Objectives held'}
         </span>
       </div>

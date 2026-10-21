@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GameLoop,
+  SCHEMA_VERSION,
   Simulation,
   applyCommand,
   deserializeGame,
@@ -121,6 +122,17 @@ describe('save / load', () => {
     run(copy, 1800);
     expect(hashState(copy)).toBe(hashState(original));
     expect(copy.rng).toBe(original.rng);
+  });
+
+  it('upgrades saves from the previous schema version', () => {
+    const state = aiGame(5);
+    run(state, 120);
+    const old = JSON.parse(serializeGame(state, 'v1'));
+    old.schemaVersion = old.state.schemaVersion = 1;
+    for (const n of Object.values(old.state.nations) as Record<string, unknown>[]) n.lastRates = { money: 1, materials: 2, fuel: 3, manpower: 4 };
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(hashState(loaded.state)).toBe(hashState(state));
   });
 
   it('rejects foreign or incompatible saves', () => {

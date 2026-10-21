@@ -227,6 +227,8 @@ export interface GameEvent {
   /** Nations the event concerns; empty means it is shown to everyone. */
   nations: NationId[];
   province?: ProvinceId;
+  /** Who it happened to: the side that lost an army or a province, or whose peace offer was turned down. */
+  subject?: OwnerId;
   severity: EventSeverity;
 }
 

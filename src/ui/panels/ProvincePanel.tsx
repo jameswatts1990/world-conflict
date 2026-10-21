@@ -9,9 +9,11 @@ import {
   checkBuild,
   checkRecruit,
   constructionTicks,
+  nationName,
   provinceOutput,
   recruitCost,
   recruitTicks,
+  sentence,
   type ArmyId,
   type ConnectionKind,
   type OwnerId,
@@ -146,7 +148,7 @@ export function ProvincePanel({
         {ps.capture && (
           <div className="capture-box">
             <span>
-              <Icon name="target" size={14} /> {world.nations[ps.capture.by].name} capturing
+              <Icon name="target" size={14} /> {sentence(nationName(world, ps.capture.by))} capturing
               <span className="muted"> · {formatDuration(ps.capture.required - ps.capture.progress, state)} left</span>
             </span>
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />

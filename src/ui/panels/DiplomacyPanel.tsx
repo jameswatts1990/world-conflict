@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
-import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationPower, vpToWin, type NationId } from '../../sim';
+import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration, proseDuration } from '../format';
@@ -90,7 +90,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <button
                       className="danger"
                       disabled={!war.ok}
-                      title={war.ok ? `Declare war on ${def.name}` : war.reason}
+                      title={war.ok ? `Declare war on ${nationName(world, s.nation)}` : war.reason}
                       onClick={() => setConfirmWar(s.nation)}
                       data-declare-war={s.nation}
                     >
@@ -134,7 +134,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
         <div className="warn">
           <Icon name="warning" size={15} />
           <span>
-            {world.nations[leader].name} holds {heldVp(state, world, leader)} VP — victory in{' '}
+            {sentence(nationName(world, leader))} holds {heldVp(state, world, leader)} VP — victory in{' '}
             {formatDuration(Math.max(0, VICTORY.holdSeconds * state.settings.durationScale - (state.tick - (state.victory.holdSince ?? state.tick))), state)} unless
             an objective is retaken.
           </span>
@@ -157,7 +157,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
 
       {confirmWar && (
         <ConfirmDialog
-          title={`War with ${world.nations[confirmWar].name}?`}
+          title={`War with ${nationName(world, confirmWar)}?`}
           icon="swords"
           confirmLabel="Declare war"
           danger
@@ -173,7 +173,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           </p>
           {wars.length > 0 && (
             <p className="warn-text">
-              You are already at war with {wars.map((id) => world.nations[id].name).join(' and ')}.
+              You are already at war with {wars.map((id) => nationName(world, id)).join(' and ')}.
             </p>
           )}
         </ConfirmDialog>

@@ -54,7 +54,7 @@ export function combatSystem(state: GameState, world: World): void {
       continue;
     }
     if (!state.battles[pid]) startBattle(state, world, pid, armies);
-    else joinBattle(state.battles[pid], armies);
+    else joinBattle(state, state.battles[pid], armies);
     resolveRound(state, world, pid, armies);
     const survivors = armies.filter((a) => state.armies[a.id]);
     if (!(survivors.length >= 2 && hasHostilePair(state, survivors))) endBattle(state, world, pid, survivors);
@@ -65,8 +65,14 @@ function involvedNations(owners: OwnerId[]): NationId[] {
   return owners.filter((o): o is NationId => o !== NEUTRAL);
 }
 
-function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Army[]): void {
+/** Sides actually fighting: owners hostile to someone else present (not bystanders at peace with all). */
+function combatants(state: GameState, armies: Army[]): OwnerId[] {
   const owners = [...new Set(armies.map((a) => a.owner))];
+  return owners.filter((o) => owners.some((p) => areHostile(state, o, p)));
+}
+
+function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Army[]): void {
+  const owners = combatants(state, armies);
   state.battles[pid] = { province: pid, startedAt: state.tick, owners };
   // Attackers first, the defending province owner last: "Germany vs France".
   const defender = state.provinces[pid].owner;
@@ -78,9 +84,9 @@ function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Ar
   });
 }
 
-/** Late arrivals become participants, so they also hear how the battle ends. */
-function joinBattle(battle: BattleState, armies: Army[]): void {
-  for (const a of armies) if (!battle.owners.includes(a.owner)) battle.owners.push(a.owner);
+/** Late arrivals who join the fighting become participants, so they also hear how it ends. */
+function joinBattle(state: GameState, battle: BattleState, armies: Army[]): void {
+  for (const o of combatants(state, armies)) if (!battle.owners.includes(o)) battle.owners.push(o);
 }
 
 function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: Army[]): void {
@@ -89,8 +95,9 @@ function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: A
   if (!battle) return;
   const winners = [...new Set(survivors.map((a) => a.owner))];
   const city = world.provinces[pid].city.name;
-  // Nobody beaten means the fighting simply stopped (the sides made peace).
-  const beaten = battle.owners.some((o) => !winners.includes(o));
+  // A side is beaten if it is gone and still at war with the victors. If peace sent it home
+  // (or nobody is gone), the fighting simply stopped.
+  const beaten = battle.owners.some((o) => !winners.includes(o) && winners.some((w) => areHostile(state, o, w)));
   const text =
     winners.length === 0
       ? `The Battle of ${city} ended with no survivors.`
@@ -152,6 +159,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
       pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost an army at ${world.provinces[pid].city.name}.`, {
         nations: involvedNations([army.owner, ...hostileOwners]),
         province: pid,
+        subject: army.owner,
         severity: 'combat',
       });
     }
