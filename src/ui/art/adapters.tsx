@@ -1,53 +1,49 @@
 // Bridges simulation ids to the artwork components, so panels and the map
 // never import the art modules directly.
-import { UNITS } from '../../sim/config/units';
+import { memo } from 'react';
 import type { BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
-import { UnitGlyph } from '../icons';
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { CitySkyline } from './CitySkyline';
+import { NationInsignia } from './Insignia';
+import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
 
-function natoFor(type: UnitType): UnitType {
-  const cls = UNITS[type].class;
-  return cls === 'armour' ? 'tank' : cls === 'support' ? 'artillery' : 'infantry';
+function artNation(owner: OwnerId): ArtNation {
+  return (ART_NATIONS as readonly string[]).includes(owner) ? (owner as ArtNation) : 'neutral';
 }
 
 /** Small unit picture for tree nodes. */
-export function TechUnitIcon({ type, title }: { type: UnitType; gen: UnitGen; nation: NationId; title?: string }) {
-  return (
-    <span title={title}>
-      <UnitGlyph type={natoFor(type)} size={24} />
-    </span>
-  );
+export function TechUnitIcon({ type, gen, nation, title }: { type: UnitType; gen: UnitGen; nation: NationId; title?: string }) {
+  return <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={34} title={title} />;
 }
 
 /** Large side-view illustration for unit cards. */
-export function UnitPicture({ type, width = 96 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+export function UnitPicture({ type, gen, nation, width = 96 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
   return (
-    <span className="unit-picture placeholder" style={{ width, height: (width * 60) / 96 }}>
-      <UnitGlyph type={natoFor(type)} size={width / 3} />
+    <span className="unit-picture">
+      <UnitArt type={type} gen={gen} nation={artNation(nation)} width={width} />
     </span>
   );
 }
 
-/** Compact silhouette for army counters and unit rows. */
-export function UnitIconArt({ type, width = 32 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
-  return <UnitGlyph type={natoFor(type)} size={width * 0.7} />;
-}
+/** Compact silhouette for unit rows. */
+export const UnitIconArt = memo(function UnitIconArt({ type, gen, nation, width = 32 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+  return <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={width} />;
+});
 
-/** Map-counter silhouette drawn inside an SVG (returns SVG content, not HTML). */
-export function CounterArt({ type, x, y, width }: { type: UnitType; gen: UnitGen; nation: OwnerId; x: number; y: number; width: number }) {
+/**
+ * Map-counter silhouette drawn inside the map's SVG. Memoised: counters move
+ * every frame, but their drawing only changes with type, generation or owner.
+ */
+export const CounterArt = memo(function CounterArt({ type, gen, nation, x, y, width }: { type: UnitType; gen: UnitGen; nation: OwnerId; x: number; y: number; width: number }) {
   const h = width * 0.6;
-  const main = natoFor(type);
   return (
     <g transform={`translate(${x},${y})`}>
-      <rect width={width} height={h} fill="#fff" opacity={0.92} />
-      {main === 'infantry' && <path d={`M0 0 L${width} ${h} M${width} 0 L0 ${h}`} stroke="#222" strokeWidth={1.2} />}
-      {main === 'artillery' && <circle cx={width / 2} cy={h / 2} r={h / 4.5} fill="#222" />}
-      {main === 'tank' && <rect x={width * 0.2} y={h * 0.27} width={width * 0.6} height={h * 0.46} rx={h * 0.23} fill="none" stroke="#222" strokeWidth={1.2} />}
+      <rect width={width} height={h} rx={1.5} className="counter-art-bg" />
+      <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={width} />
     </g>
   );
-}
+});
 
 export function BranchIcon({ branch, size = 18 }: { branch: TechBranch; size?: number }) {
   return <BranchArt branch={branch} size={size} />;
@@ -78,6 +74,6 @@ export function CityScene(props: CitySceneProps) {
   return <CitySkyline {...props} width={props.width ?? 340} />;
 }
 
-export function NationEmblem({ color, size = 16 }: { nation: OwnerId; color: string; size?: number }) {
-  return <span className="swatch" style={{ background: color, width: size, height: size }} />;
+export function NationEmblem({ nation, size = 16 }: { nation: OwnerId; size?: number }) {
+  return <NationInsignia nation={artNation(nation)} size={size} />;
 }

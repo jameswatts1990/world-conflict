@@ -19,7 +19,7 @@ import {
   type ArmyId,
 } from '../../sim';
 import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
-import { UnitIconArt } from '../art/adapters';
+import { NationEmblem, UnitIconArt } from '../art/adapters';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
 import { MoraleMeter, Progress } from './Common';
@@ -107,7 +107,9 @@ export function ArmyPanel({
   return (
     <section className="panel army-panel" data-testid="army-panel" data-army={army.id}>
       <header className="panel-header" style={{ borderLeftColor: color }}>
-        <h3>{title}</h3>
+        <h3>
+          {army.owner !== 'neutral' && <NationEmblem nation={army.owner} size={16} />} {title}
+        </h3>
         <div className="panel-sub">
           {army.owner !== 'neutral' ? `${world.nations[army.owner].adjective} · ` : ''}
           {status}
@@ -161,6 +163,7 @@ export function ArmyPanel({
             const model = currentModel(state, world, army.owner, u.type);
             return (
               <li key={u.id} className={checked.has(u.id) ? 'checked' : ''}>
+                {!own && <span />}
                 {own && (
                   <input
                     type="checkbox"

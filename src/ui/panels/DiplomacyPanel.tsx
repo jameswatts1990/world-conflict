@@ -3,6 +3,7 @@ import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nat
 import { NEUTRAL_COLOR } from '../../sim/scenario/europe/nations';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
+import { NationEmblem } from '../art/adapters';
 import { Modal, NationSwatch } from './Common';
 
 export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameController; onClose: () => void; onFocus: (pid: string) => void }) {
@@ -42,7 +43,10 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             return (
               <tr key={s.nation} className={`${me ? 'me' : ''}${n.eliminated ? ' eliminated' : ''}`} data-nation={s.nation}>
                 <td>
-                  <NationSwatch color={def.color} /> {def.name} {me ? '(you)' : ''}
+                  <NationSwatch color={def.color} /> <NationEmblem nation={s.nation} size={14} /> {def.name} {me ? '(you)' : ''}
+                  <div className="muted small" title={def.speciality.description}>
+                    {def.speciality.name} · morale {Math.round(n.morale)}
+                  </div>
                 </td>
                 <td>{n.eliminated ? '—' : nationEra(state, s.nation)}</td>
                 <td>

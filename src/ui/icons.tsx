@@ -1,26 +1,11 @@
-// Coherent placeholder iconography: NATO-style unit symbols, simple resource
-// and building glyphs. All inline SVG, no external assets.
+// Resource icons. Unit, building and branch artwork lives in src/ui/art.
 import type { ReactElement } from 'react';
-import type { BuildingType, ResourceKey, UnitType } from '../sim';
+import type { ResourceKey } from '../sim';
 
 interface IconProps {
   size?: number;
   className?: string;
   title?: string;
-}
-
-/** NATO APP-6 style frames: infantry ✕, artillery ●, armour ⬭. */
-export function UnitGlyph({ type, size = 18, color = 'currentColor' }: { type: UnitType; size?: number; color?: string }) {
-  const w = size;
-  const h = size * 0.7;
-  return (
-    <svg width={w} height={h} viewBox="0 0 20 14" aria-label={type} role="img">
-      <rect x="1" y="1" width="18" height="12" fill="none" stroke={color} strokeWidth="1.6" />
-      {type === 'infantry' && <path d="M1 1 L19 13 M19 1 L1 13" stroke={color} strokeWidth="1.4" />}
-      {type === 'artillery' && <circle cx="10" cy="7" r="2.6" fill={color} />}
-      {type === 'tank' && <rect x="4.5" y="4" width="11" height="6" rx="3" fill="none" stroke={color} strokeWidth="1.4" />}
-    </svg>
-  );
 }
 
 const RESOURCE_PATHS: Record<ResourceKey, ReactElement> = {
@@ -38,7 +23,7 @@ const RESOURCE_PATHS: Record<ResourceKey, ReactElement> = {
     </>
   ),
   fuel: (
-    <path d="M10 2.5c3 4 5.5 6.8 5.5 9.7A5.5 5.5 0 0 1 4.5 12.2C4.5 9.3 7 6.5 10 2.5z" fill="#3a3a3a" stroke="#111" strokeWidth="1.1" />
+    <path d="M10 2.5c3 4 5.5 6.8 5.5 9.7A5.5 5.5 0 0 1 4.5 12.2C4.5 9.3 7 6.5 10 2.5z" fill="#4b4f57" stroke="#c9ccd2" strokeWidth="1.1" />
   ),
   manpower: (
     <>
@@ -53,25 +38,6 @@ export function ResourceIcon({ kind, size = 16, title }: IconProps & { kind: Res
     <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind}>
       {title && <title>{title}</title>}
       {RESOURCE_PATHS[kind]}
-    </svg>
-  );
-}
-
-const BUILDING_PATHS: Partial<Record<BuildingType, ReactElement>> = {
-  industry: <path d="M2 17V9l4 2.5V9l4 2.5V9l4 2.5V4h3v13z" />,
-  barracks: <path d="M3 17V8l7-5 7 5v9h-5v-5H8v5z" />,
-  armsWorks: <path d="M8 3h4v3l2 2v9H6V8l2-2z" />,
-  tankWorks: <path d="M2 13h16v3H2zM4 9h10v4H4zM8 6h4v3H8zM12 7h6v1.5h-6z" />,
-  refinery: <path d="M9 2h2l3 15h-2.2L10 8l-1.8 9H6zM5 17h10" />,
-  fortifications: <path d="M2 17V8h3v2h2V8h3v2h2V8h3v2h1V8h2v9z" />,
-  supplyDepot: <path d="M3 7l7-4 7 4v10H3zM7 11h6v6H7z" />,
-};
-
-export function BuildingIcon({ kind, size = 16, title }: IconProps & { kind: BuildingType }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind} fill="currentColor">
-      {title && <title>{title}</title>}
-      {BUILDING_PATHS[kind] ?? <rect x="4" y="6" width="12" height="11" />}
     </svg>
   );
 }

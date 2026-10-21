@@ -1,7 +1,7 @@
 // Contact sheet for the city art: skylines in every state plus all icons.
 //
 //   npx vite-node scripts/art/city-sheet.tsx /tmp/city-art/city-sheet.html
-//   node scripts/art/screenshot.mjs /tmp/city-art/city-sheet.html /tmp/city-art/city-sheet.png
+//   node scripts/art/screenshot-city.mjs /tmp/city-art/city-sheet.html /tmp/city-art/city-sheet.png
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import type { ReactNode } from 'react';

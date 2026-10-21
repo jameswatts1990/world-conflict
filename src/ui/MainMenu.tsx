@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { SPEED_PRESETS } from '../sim/config/timing';
 import { vpToWin, type GameState, type NationId, type World } from '../sim';
+import { NationEmblem } from './art/adapters';
 import { LoadDialog } from './panels/Dialogs';
 
 const BLURB: Record<string, string> = {
@@ -29,7 +30,7 @@ export function MainMenu({
     <div className="menu-screen">
       <div className="menu-card">
         <h1>World Conflict</h1>
-        <p className="tagline">Real-time grand strategy from the Great War to the Second World War — first playable prototype.</p>
+        <p className="tagline">Real-time grand strategy from the Great War to the Second World War.</p>
 
         <h2>Choose your nation</h2>
         <div className="nation-grid">
@@ -41,9 +42,12 @@ export function MainMenu({
               onClick={() => setNation(n.id)}
               data-nation-card={n.id}
             >
-              <span className="swatch big" style={{ background: n.color }} />
+              <NationEmblem nation={n.id} size={22} />
               <strong>{n.name}</strong>
               <span className="muted">{BLURB[n.id]}</span>
+              <span className="speciality" title={n.speciality.description}>
+                <em>{n.speciality.name}</em> — {n.speciality.description}
+              </span>
             </button>
           ))}
         </div>

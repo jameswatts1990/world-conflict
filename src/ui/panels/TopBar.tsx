@@ -1,6 +1,7 @@
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
 import { RESOURCE_KEYS, heldVp, nationEra, researchSlots, vpToWin } from '../../sim';
 import { TECH_BY_ID } from '../../sim/config/research';
+import { NationEmblem } from '../art/adapters';
 import { moraleClass } from './Common';
 import type { GameController } from '../game/GameController';
 import { fmt, fmtRate, formatClock } from '../format';
@@ -22,7 +23,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   return (
     <header className="topbar">
       <div className="tb-nation" style={{ borderColor: def.color }}>
-        <span className="swatch big" style={{ background: def.color }} />
+        <NationEmblem nation={human} size={22} />
         <div>
           <div className="tb-nation-name">{def.name}</div>
           <div className="tb-era">{nationEra(state, human)} era</div>

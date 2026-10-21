@@ -1,31 +1,39 @@
-// Full-page (or single-element) screenshot of a local HTML file with Playwright's Chromium.
+// Full-page screenshot of a local HTML file (e.g. the unit-art contact sheet).
 //
-//   node scripts/art/screenshot.mjs <in.html> <out.png> [css-selector] [device-scale]
+//   node scripts/art/screenshot.mjs <in.html> <out.png> [--scale 2] [--split]
 //
-// e.g. node scripts/art/screenshot.mjs /tmp/city-art/city-sheet.html /tmp/city-art/growth.png '#growth' 2
+// --split also writes one PNG per `[data-shot]` section, named <out>-<id>.png,
+// so individual sections can be inspected at full resolution.
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 
-const [input, output, selector, scaleArg] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const positional = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--scale');
+const [input, output] = positional;
 if (!input || !output) {
-  console.error('usage: node scripts/art/screenshot.mjs <in.html> <out.png> [css-selector] [device-scale]');
+  console.error('usage: node scripts/art/screenshot.mjs <in.html> <out.png> [--scale 2] [--split]');
   process.exit(1);
 }
+const scaleIdx = args.indexOf('--scale');
+const scale = scaleIdx >= 0 ? Number(args[scaleIdx + 1]) : 1;
+const split = args.includes('--split');
 
 const browser = await chromium.launch();
 try {
-  const page = await browser.newPage({
-    viewport: { width: 1080, height: 800 },
-    deviceScaleFactor: Number(scaleArg ?? 1) || 1,
-  });
-  await page.goto(pathToFileURL(resolve(input)).href);
-  if (selector) {
-    await page.locator(selector).first().screenshot({ path: output });
-  } else {
-    await page.screenshot({ path: output, fullPage: true });
-  }
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: scale });
+  await page.goto(pathToFileURL(resolve(input)).href, { waitUntil: 'load' });
+  await page.screenshot({ path: output, fullPage: true });
   console.log(`wrote ${output}`);
+  if (split) {
+    const base = output.replace(/\.png$/i, '');
+    for (const el of await page.$$('[data-shot]')) {
+      const id = await el.getAttribute('data-shot');
+      const file = `${base}-${id}.png`;
+      await el.screenshot({ path: file });
+      console.log(`wrote ${file}`);
+    }
+  }
 } finally {
   await browser.close();
 }
