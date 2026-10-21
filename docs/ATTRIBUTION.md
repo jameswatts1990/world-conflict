@@ -31,4 +31,15 @@ The bundled files contain only geometry and ids. Province adjacency is defined s
 
 Runtime: React (MIT), d3-geo, d3-zoom, d3-selection, d3-transition (ISC), topojson-client (ISC).
 Build and test: Vite, Vitest, TypeScript, mapshaper, Playwright.
-All icons are original inline SVG.
+
+## Fonts
+
+**Barlow** and **Barlow Condensed** by Jeremy Tribby, licensed under the
+[SIL Open Font License 1.1](https://openfontlicense.org/), bundled through the `@fontsource/barlow` and
+`@fontsource/barlow-condensed` packages (latin subset only).
+
+## Artwork
+
+All icons, unit silhouettes and the advisor portrait are original inline SVG. National flags are simplified
+drawings of the public national flags of the nations and neutral states in the scenario. The map's relief texture is
+generated procedurally in the browser from each province's terrain type; it is not elevation data.

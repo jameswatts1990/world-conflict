@@ -189,12 +189,33 @@ has a personality (aggression, economy bias) drawn from the seed.
 
 ## 12. Presentation
 
-A map-centred layout with a dark UI frame and a parchment-toned map. The top bar holds resources and rates, the
-clock and time left, objective VP and speed controls. The right side panel shows the selected province or army.
-Research and Diplomacy open as dialogs. A collapsible event log sits at the bottom left, with a legend at the
-bottom right. Units use NATO-style symbols. City markers are stars for capitals and gold rings for objectives.
-The map also shows capture-progress rings, crossed swords for battles, dashed routes for marching armies, and
-red dashed outlines for unsupplied armies.
+The look follows modern browser grand-strategy games: a dark, glassy command-centre HUD around a bright relief map.
+
+- **Map.** Shaded-relief terrain is baked once per session from each province's terrain type (an SVG turbulence and
+  lighting filter rendered to a bitmap, `src/ui/map/terrain.ts`), so mountains, hills, forests and marshes read at a
+  glance. Ownership is a translucent nation tint over the terrain, with a glowing inner border in each nation's colour.
+  The sea has a depth gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey.
+  Three map views: **Political** (strong tint), **Terrain** (light tint) and **Supply** (your provinces green when
+  connected to a supply hub, red when cut off).
+- **Labels.** Nation names are painted across their territory when zoomed out; province names take over when zoomed
+  in. Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
+  badges for objective VP and capture-progress rings.
+- **Armies.** Counters in the owner's colour carry a silhouette of the main unit type (infantry, artillery, tank), the
+  unit count and a strength bar. Your armies have a white rim, armies of nations at war with you a red rim, armies out
+  of supply a red "!" badge, and the selection a running dashed outline. Marching routes are animated dashed lines with
+  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province previews the route,
+  highlights the provinces on it and shows the arrival time (or "No route").
+- **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red), current
+  research with progress, objective VP towards victory, the clock and the speed controls. A left command rail opens
+  Research, Diplomacy, field reports, save/load and help, with badges for idle research, wars and peace offers. The
+  selected army and province open as floating cards on the right; the overview map and zoom buttons sit below them.
+  Field reports (the event log) sit bottom left; alerts for wars, peace, research, eliminations, shortages and
+  objective captures pop up top left. A cursor tooltip summarises the province under the mouse.
+- **Windows.** Research shows the era track and tier columns of tech cards; Diplomacy shows flags, relation pills,
+  military power bars and objective chips. The opening tutorial is a Chief of Staff briefing. The main menu shows the
+  theatre map with the chosen nation lit up.
+- **Assets.** Everything is drawn in code: flags, unit silhouettes and icons are inline SVG; the Barlow and Barlow
+  Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 13. Open questions for playtesting
 
