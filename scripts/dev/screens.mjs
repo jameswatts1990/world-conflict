@@ -12,8 +12,16 @@ const steps = process.argv.slice(4);
 mkdirSync(out, { recursive: true });
 const PORT = 5199;
 const URL = `http://localhost:${PORT}/`;
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
-process.on('exit', () => server.kill('SIGTERM'));
+// Own process group, so stopping it also stops the vite process npx starts.
+const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', detached: true });
+const stopServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    // already gone
+  }
+};
+process.on('exit', stopServer);
 for (let i = 0; i < 150; i++) {
   try {
     if ((await fetch(URL)).ok) break;
@@ -82,5 +90,5 @@ for (const s of steps) {
 }
 console.log(errors.length ? errors.join('\n') : 'no console errors');
 await browser.close();
-server.kill('SIGTERM');
+stopServer();
 process.exit(0);

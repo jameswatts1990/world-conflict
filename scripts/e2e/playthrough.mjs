@@ -14,8 +14,15 @@ const URL = `http://localhost:${PORT}/`;
 const OUT = 'e2e-output';
 mkdirSync(OUT, { recursive: true });
 
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe' });
-const stopServer = () => server.kill('SIGTERM');
+// Own process group, so stopping it also stops the vite process npx starts.
+const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', detached: true });
+const stopServer = () => {
+  try {
+    process.kill(-server.pid, 'SIGTERM');
+  } catch {
+    // already gone
+  }
+};
 process.on('exit', stopServer);
 
 async function waitForServer() {
@@ -220,4 +227,5 @@ try {
   } else {
     console.log(`E2E passed (${summary.steps.length} steps). Screenshots in ${OUT}/`);
   }
+  process.exit();
 }
