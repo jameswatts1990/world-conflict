@@ -130,7 +130,8 @@ export function GameScreen({
   const touch = useTouch();
   const compact = layout !== 'desktop';
 
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(world.nations[human].capital);
+  // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
+  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
   const [moveMode, setMoveMode] = useState(false);
   const [panel, setPanel] = useState<PanelId | null>(null);
@@ -144,8 +145,10 @@ export function GameScreen({
   const [legendOpen, setLegendOpen] = useState(false);
   // Small screens start with the reports closed: they open from the command bar.
   const [feedOpen, setFeedOpen] = useState(!compact);
+  // The last event seen in the reports; opening or closing them marks everything read.
+  const [reportsSeen, setReportsSeen] = useState(state.nextEventId - 1);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  // Portrait layout: how far the selection's bottom sheet is pulled up. It opens on the capital at peek.
+  // Portrait layout: how far the selection's bottom sheet is pulled up.
   const [sheet, setSheet] = useState<SheetSnap>('peek');
   const [mapHeight, setMapHeight] = useState(() => window.innerHeight);
   // Touch move mode: the destination tapped once, previewed until confirmed.
@@ -234,7 +237,7 @@ export function GameScreen({
     setSelectedProvince(pid);
     setSelectedArmies([]);
     setMoveMode(false);
-    // Tapping the province already selected (the capital, at the start) raises a peeking sheet too.
+    // Tapping the province already selected raises a peeking sheet too.
     if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
   }, []);
 
@@ -280,6 +283,9 @@ export function GameScreen({
     return () => window.removeEventListener('keydown', onKey);
   }, [ctrl, moveMode, legendOpen, selectedArmies]);
 
+  useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
+  const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3500);
@@ -293,7 +299,7 @@ export function GameScreen({
   const outcome = state.outcome;
 
   // A new selection raises the portrait sheet to half, where an army's orders are in reach;
-  // a taller sheet keeps its height. (The opening selection, the capital, stays at peek.)
+  // a taller sheet keeps its height.
   const selectionKey = `${selectedArmies[0] ?? ''}|${selectedProvince ?? ''}`;
   const lastSelection = useRef(selectionKey);
   useEffect(() => {
@@ -322,6 +328,7 @@ export function GameScreen({
           ctrl={ctrl}
           active={panel}
           feedOpen={feedOpen}
+          unreadReports={unreadReports}
           compact={compact}
           onToggleFeed={() => setFeedOpen((o) => !o)}
           onOpen={(p) => (p === 'menu' ? exitToMenu() : setPanel(p))}
@@ -342,6 +349,7 @@ export function GameScreen({
             insetRight={insetRight}
             insetBottom={insetBottom}
             followSelection={compact}
+            compact={compact}
             touch={touch}
             moveTarget={moveTarget}
             onPickTarget={setMoveTarget}

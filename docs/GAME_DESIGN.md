@@ -332,7 +332,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At peace
   with France"); right-clicking an enemy counter attacks it.
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
-  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp.
+  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp. A phone opens closer in,
+  centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so they stand apart.
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A

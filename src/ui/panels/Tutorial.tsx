@@ -30,7 +30,7 @@ export function tutorialSteps(
       icon: 'diplomacy',
       body: touch
         ? 'Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.'
-        : 'Drag to pan, scroll to zoom, or use the overview map at the bottom right; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.',
+        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',
