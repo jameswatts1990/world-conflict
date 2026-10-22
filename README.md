@@ -108,6 +108,7 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 | **Move**, then tap a province or an enemy army | Preview the route and arrival time; tap it again (or **Confirm**) to march |
 | Drag / pinch | Pan / zoom the map (the **fit** button shows the whole theatre) |
 | Tap a resource | Its income, upkeep and net change |
+| Tap a technology in Research | Its details; research it, or queue the path to it, from there (a tap alone spends nothing) |
 | Pause button or the **Paused** banner | Pause / resume; **1x** and **2x** set the speed (DEV speeds are keyboard only) |
 
 ## How to win
@@ -154,6 +155,6 @@ tests/              Simulation tests
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~925 KB (302 KB gzipped).
+  devices. The main bundle is ~935 KB (304 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.

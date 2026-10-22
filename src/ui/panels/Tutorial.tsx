@@ -56,7 +56,9 @@ export function tutorialSteps(
     {
       title: 'War, supply and research',
       icon: 'research',
-      body: `Everyone starts at peace: declare war from Diplomacy ${compact ? 'in the command bar' : 'on the left command rail'}. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research${touch ? '' : ' (R)'} is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; ${touch ? 'tap' : 'click'} a distant technology to queue the whole path.`,
+      body: `Everyone starts at peace: declare war from Diplomacy ${compact ? 'in the command bar' : 'on the left command rail'}. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research${touch ? '' : ' (R)'} is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; ${
+        touch ? 'tap a technology for its details, then research it or queue the whole path to it' : 'click a distant technology to queue the whole path'
+      }.`,
     },
     {
       title: 'Time & saving',
@@ -150,5 +152,6 @@ export const TOUCH_CONTROLS: [string, string][] = [
   ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],
   ['Panel handle', 'Drag the selection panel up for more, down to close it (upright phones)'],
   ['Tap resource', 'Income, army upkeep and net change'],
+  ['Tap technology', 'Its details in Research; research it, or queue the path to it, from there'],
   ['Pause / 1x / 2x', 'Pause or resume (or tap the Paused banner) and set the campaign speed'],
 ];

@@ -205,13 +205,29 @@ try {
   if (!path || path.at(-1) !== 'es-castile') throw new Error('move order not given');
   step('tapped an army, Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
-  // 5. Research from the tab bar.
+  // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
+  //    technology's details without spending anything; the order comes from there.
   await page.tap('[data-testid="open-research"]');
+  await page.tap('[data-branch="industry"]');
   await page.tap('[data-tech="industrialMobilisation"]');
+  await page.waitForSelector('[data-tech-detail="industrialMobilisation"]');
+  if (await state((s) => s.nations.es.research.active.length)) throw new Error('tapping a technology already started it');
+  await page.tap('[data-testid="research-action"]');
   if (!(await state((s) => s.nations.es.research.active.some((j) => j.tech === 'industrialMobilisation')))) throw new Error('research did not start');
+  // A locked technology queues with the prerequisites it still needs.
+  await page.tap('[data-branch="armour"]');
+  await page.tap('[data-tech="lightTanks"]');
+  const queueLabel = await page.textContent('[data-testid="research-action"]');
+  if (!/Queue 2/i.test(queueLabel)) throw new Error(`expected to queue a path of two, got "${queueLabel}"`);
+  await page.tap('[data-testid="research-action"]');
+  const researchQueue = await state((s) => s.nations.es.research.queue);
+  if (researchQueue.join(',') !== 'landships,lightTanks') throw new Error(`research path not queued: ${researchQueue}`);
+  // Its requirement is a link to that technology's details.
+  await page.tap('.tech-detail .td-link >> text=Landships');
+  await page.waitForSelector('[data-tech-detail="landships"]');
   await shot('06-research');
-  await page.tap('.modal [aria-label="Close"]');
-  step('started research from the tab bar');
+  await page.tap('.modal-header [aria-label="Close"]');
+  step('research list: details before spending; started Industrial Mobilisation; queued Landships → Light Tanks');
 
   // 6. Field reports open over the map and close again.
   await page.tap('[data-testid="toggle-reports"]');
