@@ -83,8 +83,9 @@ skyline. Capture costs 10 growth points. Each tier above Town also makes capture
 
 ### 5.2 Buildings
 
-Economy, military and civic buildings use a **slot**; infrastructure does not. Some levels need a bigger city.
-Demolishing frees a slot (no refund). Construction and recruitment can be cancelled: the full price comes back until
+Economy, military and civic buildings use a **slot**; infrastructure does not. Some levels need a bigger city. A city
+builds one project at a time. Demolishing frees a slot (no refund); a building cannot be demolished while another one
+that needs it stands or is being built. Construction and recruitment can be cancelled: the full price comes back until
 work has started, half of it after. The refund is what was paid, even if research has since made the job cheaper.
 
 | Building | Category | Levels | Effect |
@@ -165,7 +166,7 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields its own 
 | United Kingdom | Combined Operations | No penalty for attacking straight off a sea crossing |
 | France | Ligne Maginot | Fortifications 30% more effective and 20% cheaper |
 | Germany | Bewegungskrieg | Armour and motorised units 10% faster, 15% more morale shock |
-| Italy | Alpini | Mountain troops +20% attack and defence, 20% cheaper |
+| Italy | Alpini | Mountain troops +20% attack and defence, 20% less money to raise |
 | Spain | La Legión | Assault infantry +20% resilience, +10% attack, always raised as Regulars |
 | Poland | Ułani | Cavalry +25% attack, +10% speed, +15% resilience |
 
@@ -214,7 +215,7 @@ capital is occupied. Shocks: declaring war −3 (the victim's people rally +2); 
 
 ## 8. Research
 
-58 technologies in **six branches** (Infantry & Doctrine, Artillery, Armour & Mobility, Industry, Logistics &
+59 technologies in **six branches** (Infantry & Doctrine, Artillery, Armour & Mobility, Industry, Logistics &
 Engineering, Society & Morale) across **eight columns in four eras** (Great War, Twenties, Thirties, Second World
 War). Technologies unlock units and buildings, upgrade equipment generations, and grant modifiers.
 
@@ -223,7 +224,10 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 - Cost is paid when a project starts; cancelling refunds half. A queue (up to 8) starts projects in order as
   slots, prerequisites and funds allow. Clicking a locked technology in the tree queues its whole path.
 - **Era:** Interwar after 3 technologies from the Twenties onwards; WWII after 3 from column 5 (1935) onwards.
-- The tree is deliberately longer than a campaign: in AI campaigns nations finish 35–50 of the 58 technologies.
+- The tree is deliberately longer than a campaign: in AI campaigns nations finish 30–50 of the 59 technologies
+  (fewer when beaten early).
+- A queued project that cannot be paid for yet waits, and the queue behind it waits too; the top bar and the research
+  window say what it is still short of.
 
 ## 9. War and peace
 
@@ -306,10 +310,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   with lines that keep the same spacing at every zoom.
 - **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
   and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
-  war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Marching
-  routes are animated dashed lines with arrowheads. Battles show a pulsing explosion. With your army selected,
-  pointing at a province or an enemy counter previews the route, highlights the provinces on it and shows the arrival
-  time (or "No route"); right-clicking an enemy counter attacks it.
+  war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Armies
+  standing in one province fill rows of two above its city, yours first, so a crowded province grows a short pyramid
+  rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above standing), then
+  the selection, so a click lands on what you most likely meant. Marching routes are animated dashed lines with
+  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy counter
+  previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At peace
+  with France"); right-clicking an enemy counter attacks it.
+- **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
+  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp.
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
@@ -317,15 +326,17 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   slot, wars and peace offers. The selected army and province open as floating cards on the right; the overview map
   and zoom buttons sit below them. Field reports (the event log) sit bottom left; alerts pop up top left for wars,
   peace, research, eliminations, shortages, objective captures, provinces you win or lose, enemy attacks on your
-  territory, armies you lose, routs and surrenders, and rejected peace offers. Alerts only count down while the game
-  runs. A cursor tooltip summarises the province (city size, morale) and the army under the mouse.
+  territory, armies you lose, routs and surrenders, and rejected peace offers. A war declared on you is red, your own
+  declaration orange, and other powers' wars and treaties neutral. Alerts only count down while the game runs. A cursor
+  tooltip summarises the province (city size, morale, units present by nation) and the army under the mouse.
 - **City view** (click a province): a procedural skyline that grows with the city and shows every building,
   construction and battle; any battle there (sides, units, morale and share of firepower) and capture progress; morale
   and growth meters with factor breakdowns; a building-slot grid with a cancellable construction job; a build picker
-  by category; unit cards with each nation's art and named designs (locked cards name the building they need); armies
-  present and routes.
+  by category, where a building that cannot go here says why (no free slot, needs a bigger city, another building or
+  an oil field); unit cards with each nation's art and named designs (locked cards name the building they need);
+  armies present and routes.
 - **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
-  and orders (move, stop, split, merge, disband).
+  and orders (move, stop, split, merge, disband). Merging keeps the senior (lowest-numbered) army's name.
 - **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and
   queue. Diplomacy shows flags, relation pills, national specialities and morale, military power bars, objective chips
   and answers to incoming peace offers. Declaring war and leaving the campaign ask for confirmation, and Escape closes

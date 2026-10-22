@@ -12,7 +12,7 @@ What is in it (Milestone 2, Depth):
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
-- A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
+- A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
 
@@ -72,10 +72,11 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
-The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**)
-changes the map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the
-bottom right. With one of your armies selected, pointing at a province or an enemy army previews the route and arrival
-time. Point at a resource in the top bar for its income and upkeep. Click a field report or an alert to jump to its
+The campaign opens on your own territory; the **fit** button under the zoom controls shows the whole theatre. The left
+command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**) changes the
+map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the bottom right. With
+one of your armies selected, pointing at a province or an enemy army previews the route and arrival time (or why there
+is none, such as a nation you are at peace with). Point at a resource in the top bar for its income and upkeep. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
