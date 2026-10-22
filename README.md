@@ -11,7 +11,9 @@ What is in it (Milestone 2, Depth):
   language, veterancy, and one **national speciality**.
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
-- **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
+- **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
+  small 3D model of what it holds (barracks, factories, a tank works, empty plots for free slots); the city view adds
+  a skyline.
 - A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
@@ -40,7 +42,7 @@ Other scripts:
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
-| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
+| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 
@@ -76,7 +78,10 @@ The campaign opens on your own territory; the **fit** button under the zoom cont
 command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**) changes the
 map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the bottom right. With
 one of your armies selected, pointing at a province or an enemy army previews the route and arrival time (or why there
-is none, such as a nation you are at peace with). Point at a resource in the top bar for its income and upkeep. Click a field report or an alert to jump to its
+is none, such as a nation you are at peace with). Point at a resource in the top bar for its income and upkeep.
+Zoom in one step and every city turns into a 3D model of its buildings, each on a plinth in its category's colour
+(economy, military, civic, infrastructure), with empty plots for free building slots and the rim in the owner's colour;
+pointing at a province lists the same buildings. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
@@ -107,8 +112,9 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
-  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, building and branch icons
-src/assets/map/     Bundled, simplified Natural Earth TopoJSON (shapes only)
+  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city models (a small
+                    isometric renderer in iso3d.ts), building and branch icons
+src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and world in one topology (shapes only)
 scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
@@ -123,6 +129,6 @@ tests/              Simulation tests
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
-- Single desktop layout; not tuned for touch or small screens. The main bundle is ~850 KB (274 KB gzipped).
+- Single desktop layout; not tuned for touch or small screens. The main bundle is ~910 KB (298 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.

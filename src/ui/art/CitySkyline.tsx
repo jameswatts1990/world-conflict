@@ -4,10 +4,9 @@
 import { createElement, useId, useMemo } from 'react';
 import type { JSX, ReactNode, SVGProps } from 'react';
 
-export type ArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
-  | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'
-  | 'fortifications' | 'supplyDepot' | 'railway' | 'coastalBattery';
-export type ArtTerrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
+import type { ArtBuilding, ArtTerrain } from './types';
+
+export type { ArtBuilding, ArtTerrain } from './types';
 
 export interface CitySkylineProps {
   /** Province id, e.g. 'uk-north'; drives deterministic variety. */

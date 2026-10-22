@@ -1339,6 +1339,12 @@ kbd {
   color: var(--gold);
   font-weight: 700;
 }
+.hc-buildings {
+  gap: 3px 5px;
+}
+.hc-free {
+  color: var(--muted);
+}
 .hc-army {
   margin: -1px -4px 8px;
   padding: 5px 6px 6px;
@@ -1454,6 +1460,12 @@ kbd {
 .lg-line.route {
   stroke: #fff;
   stroke-dasharray: 6 4;
+}
+.lg-plot {
+  fill: #8c6f4f;
+  stroke: #e9dcb4;
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
 }
 
 /* Field reports */

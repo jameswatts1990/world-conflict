@@ -1,5 +1,5 @@
 // Gameplay data for each playable province. Shapes live separately in
-// src/assets/map/theatre.topo.json (keyed by the same ids).
+// src/assets/map/map.topo.json (keyed by the same ids).
 import type { Article, CityDef, CityTier, NationId, NeutralStateDef, ProvinceDef, Resources, Terrain, TownDef } from '../../types';
 
 type Tier = 'capital' | 'industrial' | 'major' | 'town';

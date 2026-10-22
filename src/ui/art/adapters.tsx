@@ -1,9 +1,10 @@
 // Bridges simulation ids to the artwork components, so panels and the map
 // never import the art modules directly.
 import { memo } from 'react';
-import type { BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
+import type { BuildingCategory, BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
+import { PLINTH_COLORS, buildCityModel } from './CityModel';
 import { CitySkyline } from './CitySkyline';
 import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
 
@@ -71,4 +72,55 @@ export interface CitySceneProps {
 
 export function CityScene(props: CitySceneProps) {
   return <CitySkyline {...props} width={props.width ?? 340} />;
+}
+
+/** Colour of the plinth a building stands on in the city models, by category. */
+export function plinthColor(category: BuildingCategory): string {
+  return PLINTH_COLORS[category];
+}
+
+export interface CitySprite {
+  /** Image URL of the city's 3D model. */
+  href: string;
+  /** Size in model units, and the city's centre within the image. */
+  width: number;
+  height: number;
+  cx: number;
+  cy: number;
+  /** Half-width of the token's ground ellipse, in model units. */
+  rx: number;
+}
+
+const sprites = new Map<string, CitySprite>();
+/** Enough for every city in a few states each; older looks are dropped first. */
+const SPRITE_CACHE = 240;
+
+/**
+ * The city's 3D model as an image for the map, built once per look: the map
+ * draws one image per city instead of hundreds of shapes, so panning stays cheap.
+ */
+export function citySprite(props: Omit<CitySceneProps, 'width'> & { freeSlots: number }): CitySprite {
+  const built = Object.entries(props.buildings)
+    .filter(([, lv]) => (lv ?? 0) > 0)
+    .sort(([a], [b]) => (a < b ? -1 : 1));
+  const key = JSON.stringify([props.seed, props.tier, props.capital, built, props.construction, props.freeSlots, props.terrain, props.coastal, props.nationColor, props.battle]);
+  const hit = sprites.get(key);
+  if (hit) {
+    sprites.delete(key);
+    sprites.set(key, hit);
+    return hit;
+  }
+  const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
+  const href =
+    typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
+      ? URL.createObjectURL(new Blob([model.svg], { type: 'image/svg+xml' }))
+      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(model.svg)}`;
+  const sprite = { href, width: model.width, height: model.height, cx: model.cx, cy: model.cy, rx: model.rx };
+  sprites.set(key, sprite);
+  if (sprites.size > SPRITE_CACHE) {
+    const [oldKey, old] = sprites.entries().next().value!;
+    sprites.delete(oldKey);
+    if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
+  }
+  return sprite;
 }

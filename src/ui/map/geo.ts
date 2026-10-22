@@ -1,18 +1,21 @@
 // Map geometry for rendering only. Shapes come from bundled Natural Earth
-// TopoJSON; gameplay adjacency lives in the simulation's scenario data.
+// TopoJSON; gameplay adjacency lives in the simulation's scenario data. The
+// provinces and the world around them share one topology, so their coasts and
+// borders are the same lines.
 import { geoArea, geoGraticule, geoMercator, geoPath } from 'd3-geo';
 import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
 import { feature, mesh } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
-import theatreJson from '../../assets/map/theatre.topo.json';
-import worldJson from '../../assets/map/world.topo.json';
+import mapJson from '../../assets/map/map.topo.json';
 import type { OwnerId, ProvinceId, World } from '../../sim';
 
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 820;
 
-const theatreTopo = theatreJson as unknown as Topology<{ provinces: GeometryCollection<{ pid: string }> }>;
-const worldTopo = worldJson as unknown as Topology<{ countries: GeometryCollection<{ iso: string; name: string }> }>;
+const topo = mapJson as unknown as Topology<{
+  provinces: GeometryCollection<{ pid: string }>;
+  countries: GeometryCollection<{ iso: string; name: string }>;
+}>;
 
 /** Countries that are (partly) represented by playable provinces. */
 export const THEATRE_ISO = new Set(['GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'POL', 'BEL', 'LUX', 'NLD', 'CHE', 'AUT', 'CZE', 'DNK', 'PRT']);
@@ -77,8 +80,8 @@ export function mapGeometry(world: World): MapGeometry {
 }
 
 export function buildMapGeometry(world: World): MapGeometry {
-  const provinces = feature(theatreTopo, theatreTopo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
-  const countries = feature(worldTopo, worldTopo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
+  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
+  const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
   const projection = geoMercator().fitExtent(
     [
@@ -117,9 +120,9 @@ export function buildMapGeometry(world: World): MapGeometry {
     bounds: path.bounds(f) as [[number, number], [number, number]],
   }));
 
-  const geoms = theatreTopo.objects.provinces;
-  const coastline = path(mesh(theatreTopo, geoms, (a, b) => a === b)) ?? '';
-  const provinceBorders = path(mesh(theatreTopo, geoms, (a, b) => a !== b)) ?? '';
+  const geoms = topo.objects.provinces;
+  const coastline = path(mesh(topo, geoms, (a, b) => a === b)) ?? '';
+  const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b)) ?? '';
   const graticule =
     path(
       geoGraticule()
@@ -153,11 +156,11 @@ export function buildMapGeometry(world: World): MapGeometry {
     worldBounds,
     nationBorders: (ownerOf) =>
       path(
-        mesh(theatreTopo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
+        mesh(topo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
       ) ?? '',
     ownerOutline: (owner, ownerOf) =>
       path(
-        mesh(theatreTopo, geoms, (a, b) => {
+        mesh(topo, geoms, (a, b) => {
           const inA = ownerOf(pidOf(a)) === owner;
           return a === b ? inA : inA !== (ownerOf(pidOf(b)) === owner);
         }),

@@ -124,7 +124,7 @@ describe('cities', () => {
 
 describe('map towns', () => {
   it('every secondary town lies inside its own province shape', () => {
-    const topo = JSON.parse(readFileSync('src/assets/map/theatre.topo.json', 'utf8')) as Topology<{
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8')) as Topology<{
       provinces: GeometryCollection<{ pid: string }>;
     }>;
     const fc = feature(topo, topo.objects.provinces) as unknown as { features: Feature<Polygon | MultiPolygon, { pid: string }>[] };
