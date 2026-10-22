@@ -39,6 +39,7 @@ Other scripts:
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>` | Traces every AI army order with its reason and reports armies sent back and forth |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |

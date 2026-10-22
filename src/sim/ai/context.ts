@@ -43,8 +43,34 @@ export interface Ctx {
   savings: PartialResources;
 }
 
-export function issue(ctx: Ctx, cmd: Command): boolean {
-  return applyCommand(ctx.state, ctx.world, cmd).ok;
+/** Which step of the AI's army handling gave an order (for tracing). */
+export type AiOrderReason = 'retreat' | 'resupply' | 'recover' | 'attack' | 'stage' | 'defend' | 'strike' | 'advance';
+
+export interface AiOrderTrace {
+  tick: number;
+  nation: NationId;
+  armyId: string;
+  from: ProvinceId;
+  to: ProvinceId;
+  reason: AiOrderReason;
+}
+
+// Development aid: a sink that sees every AI move order with its reason. It
+// only observes, so turning it on never changes what the simulation computes.
+let traceSink: ((t: AiOrderTrace) => void) | null = null;
+
+export function setAiOrderTrace(sink: ((t: AiOrderTrace) => void) | null): void {
+  traceSink = sink;
+}
+
+export function issue(ctx: Ctx, cmd: Command, reason?: AiOrderReason): boolean {
+  const army = traceSink && cmd.type === 'move' ? ctx.state.armies[cmd.armyId] : undefined;
+  const from = army ? armyLocation(army) : null;
+  const ok = applyCommand(ctx.state, ctx.world, cmd).ok;
+  if (ok && traceSink && cmd.type === 'move' && from && reason) {
+    traceSink({ tick: ctx.state.tick, nation: ctx.me, armyId: cmd.armyId, from, to: cmd.to, reason });
+  }
+  return ok;
 }
 
 export function nationPower(state: GameState, nation: NationId): number {

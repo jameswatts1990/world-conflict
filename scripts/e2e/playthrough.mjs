@@ -94,13 +94,15 @@ try {
   await page.goto(URL);
   await shot('01-menu');
   await page.click('[data-nation-card="fr"]');
-  await page.fill('.menu-options input[type="number"]', '2024');
+  // A seed where no computer opponent races France into Belgium before step 7
+  // (in most seeds Britain invades it as soon as the AI's neutral grace ends).
+  await page.fill('.menu-options input[type="number"]', '2044');
   await page.click('[data-testid="start-campaign"]');
   await page.waitForSelector('[data-testid="tutorial"]');
   await shot('02-tutorial');
   while (!(await page.$('[data-testid="tutorial-done"]'))) await page.click('.tutorial button.primary');
   await page.click('[data-testid="tutorial-done"]');
-  step('campaign started (France, seed 2024), tutorial completed');
+  step('campaign started (France, seed 2044), tutorial completed');
 
   // 2. Improve production: upgrade Industrial Works in Paris.
   const paris = await provincePoint('fr-paris');

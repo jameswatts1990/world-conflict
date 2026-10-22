@@ -96,7 +96,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 ### 2.6 Balance and presentation
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
+- [ ] Campaigns that sometimes end by objectives: in a 6-seed AI-vs-AI batch, 2 now do (at 66 and 119 minutes);
+      confirm the pace in human playtests
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -106,6 +107,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
+- [x] AI: armies hold a province they are capturing instead of being pulled back to the frontier and sent in
+      again (a third of all AI move orders were straight reversals; `scripts/dev/ai-moves.ts` traces them)
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation

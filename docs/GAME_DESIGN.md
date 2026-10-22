@@ -259,8 +259,8 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
 - **Recruitment:** an upkeep budget and an army cap that grow with territory and income. The mix follows
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units.
-- **Military:** armies about to break fall back before they rout; starving or worn-out armies go home to
-  recover; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
+- **Military:** armies about to break fall back before they rout; armies taking a province hold it until it falls
+  (unless they would starve first); starving or worn-out armies go home to recover; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
   guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
@@ -338,7 +338,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 15 VP / 90 s reachable for a human in 2–3 hours? AI-vs-AI campaigns currently end on the time limit.
+- Is 15 VP / 90 s reachable for a human in 2–3 hours? Most AI-vs-AI campaigns end on the time limit; in a 6-seed
+  batch, 2 ended on objectives (at 66 and 119 minutes).
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
