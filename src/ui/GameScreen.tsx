@@ -430,52 +430,55 @@ export function GameScreen({
               )}
             </div>
 
-            <div className="alert-stack">
-              {offers.map((o) => (
-                <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
-                  <Flag id={o.from} size={22} />
-                  <div className="alert-body">
-                    <div className="alert-title">Peace proposal</div>
-                    <div>
-                      <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
-                    </div>
-                    <div className="offer-timer" title="Time left to answer">
-                      <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
-                    </div>
-                    <div className="btn-row">
-                      <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
-                        Accept
-                      </button>
-                      <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
-                      <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+            {/* The results dialog is the last word: alerts wait behind it until it closes. */}
+            {!(outcome && !outcomeSeen) && (
+              <div className="alert-stack">
+                {offers.map((o) => (
+                  <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
+                    <Flag id={o.from} size={22} />
+                    <div className="alert-body">
+                      <div className="alert-title">Peace proposal</div>
+                      <div>
+                        <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
+                      </div>
+                      <div className="offer-timer" title="Time left to answer">
+                        <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
+                      </div>
+                      <div className="btn-row">
+                        <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
+                          Accept
+                        </button>
+                        <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
+                        <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {alerts.map(({ event: e, tone }) => (
-                <div
-                  key={e.id}
-                  className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
-                  onClick={() => e.province && focusOn(e.province)}
-                  title={e.province ? 'Show on the map' : undefined}
-                >
-                  <span className="alert-icon">
-                    <Icon name={eventIcon(e)} size={18} />
-                  </span>
-                  <div className="alert-body">{e.text}</div>
-                  <button
-                    className="icon-btn"
-                    aria-label="Dismiss"
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
-                    }}
+                ))}
+                {alerts.map(({ event: e, tone }) => (
+                  <div
+                    key={e.id}
+                    className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
+                    onClick={() => e.province && focusOn(e.province)}
+                    title={e.province ? 'Show on the map' : undefined}
                   >
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <span className="alert-icon">
+                      <Icon name={eventIcon(e)} size={18} />
+                    </span>
+                    <div className="alert-body">{e.text}</div>
+                    <button
+                      className="icon-btn"
+                      aria-label="Dismiss"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
+                      }}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <EventLog
