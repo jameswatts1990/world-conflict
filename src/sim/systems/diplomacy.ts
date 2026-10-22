@@ -15,7 +15,7 @@ export function declareWar(state: GameState, world: World, a: NationId, b: Natio
   shockNation(state, world, a, MORALE.declareWarShock);
   shockNation(state, world, b, MORALE.rallyShock);
   state.peaceOffers = state.peaceOffers.filter((o) => !((o.from === a && o.to === b) || (o.from === b && o.to === a)));
-  pushEvent(state, 'war', `${sentence(nationName(world, a))} declared war on ${nationName(world, b)}!`, { severity: 'bad' });
+  pushEvent(state, 'war', `${sentence(nationName(world, a))} declared war on ${nationName(world, b)}!`, { actor: a, subject: b, severity: 'bad' });
 }
 
 export function makePeace(state: GameState, world: World, a: NationId, b: NationId): void {
@@ -24,6 +24,8 @@ export function makePeace(state: GameState, world: World, a: NationId, b: Nation
   state.nations[b].relations[a] = { status: 'peace', since: state.tick, truceUntil };
   state.peaceOffers = state.peaceOffers.filter((o) => !((o.from === a && o.to === b) || (o.from === b && o.to === a)));
   pushEvent(state, 'peace', `${sentence(nationName(world, a))} and ${nationName(world, b)} signed a peace treaty. Current borders stand.`, {
+    actor: a,
+    subject: b,
     severity: 'good',
   });
   // Armies standing in the other side's territory withdraw home.

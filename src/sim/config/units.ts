@@ -422,8 +422,7 @@ export const UNITS_BY_CLASS: Record<UnitClass, UnitType[]> = {
   armour: ['lightTank', 'tank', 'heavyTank', 'tankDestroyer'],
 };
 
-/** Generic model names, used when a nation has no named design. */
-export const GEN_LABEL: Record<UnitGen, string> = { ww1: 'Great War pattern', interwar: 'Interwar pattern', ww2: '1940 pattern' };
+/** Year each equipment generation stands for. */
 export const GEN_YEAR: Record<UnitGen, string> = { ww1: '1914', interwar: '1928', ww2: '1940' };
 
 /** First generation in which a type exists. */
@@ -484,7 +483,7 @@ export const ARMY_RULES = {
   reconDamage: 1.1,
   /** Capture time multiplier with a reconnaissance unit present. */
   reconCapture: 0.7,
-  /** Damage multiplier for an army fighting straight off a sea crossing (before tech). */
+  /** Share of its damage an army loses fighting straight off a sea crossing (before tech). */
   amphibiousPenalty: 0.25,
   /** Manpower refunded when a unit is disbanded (fraction of its cost). */
   disbandManpowerRefund: 0.5,

@@ -2,9 +2,10 @@
 import { BUILDINGS } from '../config/buildings';
 import { MORALE } from '../config/rules';
 import { TECH_BY_ID } from '../config/research';
-import { ARMY_RULES, UNITS } from '../config/units';
+import { ARMY_RULES } from '../config/units';
 import { pushEvent } from '../events';
 import { spend } from '../ledger';
+import { currentModel } from '../names';
 import { canAfford, isArmyInTransit, recruitXp, researchSlots, researchSpeed, scaledTicks, unitMoraleCap } from '../queries';
 import { createArmy, createUnit } from '../state';
 import { NEUTRAL, type GameState, type NationId, type ProvinceId, type UnitType } from '../types';
@@ -37,7 +38,7 @@ export function recruitmentSystem(state: GameState, world: World): void {
     if (job.remaining > 0) continue;
     p.recruitQueue.shift();
     spawnUnit(state, p.owner, id, job.unitType);
-    pushEvent(state, 'recruitment', `${UNITS[job.unitType].name} ready in ${world.provinces[id].city.name}.`, {
+    pushEvent(state, 'recruitment', `${currentModel(state, world, p.owner, job.unitType).name} ready in ${world.provinces[id].city.name}.`, {
       nations: [p.owner],
       province: id,
       severity: 'good',

@@ -45,7 +45,7 @@ import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/ada
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { fmtPopulation, fmtRate, formatDuration } from '../format';
+import { countOf, fmtPopulation, fmtRate, formatDuration } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
 import { Cost, MoraleMeter, Progress, Section } from './Common';
@@ -102,7 +102,7 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
             <span className="bs-role muted"> · {s.owner === defender ? 'defending' : 'attacking'}</span>
           </span>
           <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; below ${Math.round(MORALE.routThreshold * 100)}% an army breaks`}>
-            {s.c.count} units · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
+            {countOf(s.c.count, 'unit')} · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
           </span>
           <span className="ar-bars">
             <span className="ar-str" title={`${Math.round(s.c.strength * 100)}% average strength`}>
@@ -152,7 +152,7 @@ export function ProvincePanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={owner} province={pid} size={16} />
           <span className="hero-owner">
-            {def.name} · {ownerLabel(world, owner, pid)}
+            {ownerShortName(world, owner, pid) === def.name ? ownerLabel(world, owner, pid) : `${def.name} · ${ownerLabel(world, owner, pid)}`}
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
             <Icon name="close" size={16} />
@@ -354,6 +354,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 
       {mine && (
         <Section title="Build" icon="plus">
+          {ps.construction && <p className="muted small build-note">One project at a time: new orders open when the current work is done.</p>}
           {(['economy', 'military', 'civic', 'infrastructure'] as BuildingCategory[]).map((cat) => {
             const rows = BUILDING_ORDER.filter((b) => BUILDINGS[b].category === cat).filter((b) => {
               const cfg = BUILDINGS[b];
@@ -392,6 +393,9 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
   const locked = !!lockedBy && !state.nations[human].research.completed.includes(lockedBy);
   const nextLevel = level + 1;
   const demolishable = level > 0 && cfg.category !== 'infrastructure';
+  // Why it cannot be ordered here (the city's one-job-at-a-time rule is explained once, above the list).
+  const fullCity = cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, pid);
+  const why = locked || maxed || rules.ok ? null : fullCity ? 'No free slot' : rules.reason.replace(/\.$/, '');
   return (
     <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}`}>
       <span className="bld-icon">
@@ -412,6 +416,7 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
             <span className="muted">Not built</span>
           )}
         </span>
+        {why && <span className="bld-why">{why}</span>}
       </span>
       {locked ? null : maxed ? (
         <span className="b-action">
@@ -661,7 +666,7 @@ function ArmiesTab({
                   className={`army-row${selectedArmies.includes(a.id) ? ' selected' : ''}${a.owner === human ? ' own' : ''}`}
                   onClick={(e) => onSelectArmy(a.id, e.shiftKey)}
                   data-army-row={a.id}
-                  title={`${a.units.length} formations · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
+                  title={`${countOf(a.units.length, 'formation')} · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
                 >
                   <OwnerFlag world={world} owner={a.owner} province={a.province} size={13} />
                   <span className="ar-name">{name}</span>

@@ -9,10 +9,12 @@ import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTrans
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   armyMorale,
+  atWar,
   buildingSlots,
   findPath,
   isArmyInTransit,
   isRouted,
+  nationName,
   unitGen,
   type Army,
   type ArmyId,
@@ -52,6 +54,8 @@ export interface MapViewProps {
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
 const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2, cityModels: 1.15 };
+/** Closest zoom (relative to the fit): beyond it the baked relief texture turns blurry. */
+const MAX_ZOOM = 7;
 
 /**
  * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
@@ -620,6 +624,14 @@ function armyTarget(army: Army): ProvinceId {
   return army.move?.leg ? army.move.leg.to : army.province;
 }
 
+/** Stationary counters sit above their city in rows of two (screen pixels). */
+const STACK = { base: 19, row: 27, half: 23 };
+
+/** Army ids by creation order: "a9" before "a10". */
+function byCreation(a: Army, b: Army): number {
+  return Number(a.id.slice(1)) - Number(b.id.slice(1)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+}
+
 function ArmyMarker({
   army,
   state,
@@ -713,17 +725,41 @@ function ArmyLayer({
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
   const relations = state.nations[human].relations;
-  const stacks = new Map<ProvinceId, number>();
-  const armies = Object.values(state.armies).sort((a, b) => (a.id < b.id ? -1 : 1));
+  const armies = Object.values(state.armies).sort(byCreation);
+
+  // Armies standing in a province fill rows of two above its city (or its 3D model),
+  // yours first, so a crowded province grows a short pyramid rather than a tower over
+  // its neighbours.
+  const stacks = new Map<ProvinceId, Army[]>();
+  for (const a of armies) {
+    if (isArmyInTransit(a)) continue;
+    const list = stacks.get(a.province) ?? [];
+    list.push(a);
+    stacks.set(a.province, list);
+  }
+  const offsets = new Map<ArmyId, [number, number]>();
+  for (const [pid, list] of stacks) {
+    const lift = cities?.[pid]?.lift ?? 0;
+    list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
+    list.forEach((a, i) => {
+      const lone = i % 2 === 0 && i === list.length - 1;
+      const dx = lone ? 0 : i % 2 === 0 ? -STACK.half : STACK.half;
+      offsets.set(a.id, [dx / k, -(STACK.base + lift + Math.floor(i / 2) * STACK.row) / k]);
+    });
+  }
+  // Drawn bottom to top: other nations' armies, then yours (marching ones above those
+  // standing still), the selection last, so clicks land on what you most likely meant.
+  const layer = (a: Army) => (selected.has(a.id) ? 4 : 0) + (a.owner === human ? 2 : 0) + (isArmyInTransit(a) ? 1 : 0);
+  const drawOrder = [...armies].sort((a, b) => layer(a) - layer(b) || byCreation(a, b));
 
   const routes: ReactNode[] = [];
   const markers: ReactNode[] = [];
-  for (const army of armies) {
+  for (const army of drawOrder) {
     let [x, y] = armyPosition(geo, army, alpha);
-    if (!isArmyInTransit(army)) {
-      const n = stacks.get(army.province) ?? 0;
-      stacks.set(army.province, n + 1);
-      y -= (19 + (cities?.[army.province]?.lift ?? 0) + n * 27) / k;
+    const offset = offsets.get(army.id);
+    if (offset) {
+      x += offset[0];
+      y += offset[1];
     }
     const own = army.owner === human;
     if (army.move && (own || selected.has(army.id))) {
@@ -886,6 +922,24 @@ function fitFor(width: number, height: number, inset: number) {
   return { k, transform: zoomIdentity.translate((usable - MAP_WIDTH * k) / 2, (height - MAP_HEIGHT * k) / 2).scale(k) };
 }
 
+/**
+ * Opening view: the player's own territory, somewhat closer than the whole theatre and
+ * framed above the field reports (bottom left), which would otherwise hide Iberia.
+ */
+function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: number, inset: number): ZoomTransform {
+  const fit = fitFor(width, height, inset);
+  if (pids.length === 0) return fit.transform;
+  let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
+  for (const pid of pids) {
+    const [[a, b], [c, d]] = geo.provinceBounds[pid];
+    [x0, y0, x1, y1] = [Math.min(x0, a), Math.min(y0, b), Math.max(x1, c), Math.max(y1, d)];
+  }
+  const w = Math.max(240, width - inset);
+  const h = Math.max(240, height * 0.68);
+  const k = Math.max(fit.k, Math.min(fit.k * 1.6, 0.7 * Math.min(w / (x1 - x0), h / (y1 - y0))));
+  return zoomIdentity.translate(w / 2 - ((x0 + x1) / 2) * k, h / 2 - ((y0 + y1) / 2) * k).scale(k);
+}
+
 export function MapView(props: MapViewProps) {
   const { ctrl, geo } = props;
   const { world, state, human } = ctrl;
@@ -931,7 +985,7 @@ export function MapView(props: MapViewProps) {
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
     const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
     const behavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([minK, fit.k * 14])
+      .scaleExtent([minK, fit.k * MAX_ZOOM])
       .translateExtent([
         [x0, y0],
         [x1, y1],
@@ -943,7 +997,8 @@ export function MapView(props: MapViewProps) {
     setSize([width, height]);
     const sel = select(svg);
     sel.call(behavior).on('dblclick.zoom', null);
-    sel.call(behavior.transform, fit.transform);
+    const home = world.provinceIds.filter((id) => ctrl.state.provinces[id].owner === ctrl.human);
+    sel.call(behavior.transform, homeView(geo, home, width, height, insetRef.current));
     const ro = new ResizeObserver(() => {
       const r = svg.getBoundingClientRect();
       setSize([r.width, r.height]);
@@ -953,7 +1008,7 @@ export function MapView(props: MapViewProps) {
       ro.disconnect();
       sel.on('.zoom', null);
     };
-  }, [geo]);
+  }, [geo, world, ctrl]);
 
   const centreOn = useCallback((x: number, y: number, k: number | null, duration: number) => {
     const svg = svgRef.current;
@@ -1019,9 +1074,13 @@ export function MapView(props: MapViewProps) {
     const from = army.move?.leg ? army.move.leg.to : army.province;
     if (hovered === from) return null;
     const route = findPath(state, world, army, from, hovered);
-    if (!route) return { to: hovered, path: null, ticks: 0 };
+    if (!route) {
+      const owner = state.provinces[hovered].owner;
+      const peace = owner !== human && owner !== 'neutral' && !atWar(state, human, owner);
+      return { to: hovered, path: null, ticks: 0, blocked: peace ? `At peace with ${nationName(world, owner)}` : 'No route' };
+    }
     const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
-    return { to: hovered, path: [from, ...route.path], ticks: route.ticks + legLeft };
+    return { to: hovered, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownArmySelected, hovered, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
 
@@ -1149,7 +1208,7 @@ export function MapView(props: MapViewProps) {
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
                   <g transform={`translate(${geo.anchors[preview.to].join(',')}) scale(${1 / k})`}>
                     <Plate
-                      text={preview.path ? `${world.provinces[preview.to].city.name} · ${formatDuration(preview.ticks, state)}` : 'No route'}
+                      text={preview.path ? `${world.provinces[preview.to].city.name} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
                       y={-34}
                       size={10.5}
                       className="eta"

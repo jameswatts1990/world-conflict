@@ -135,6 +135,29 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Removed dead code and config (unused exports, icons, styles, AI keys, unit and building codes)
 - [x] Randomised invariant test; the browser playthrough no longer hangs after finishing
 
+### Polish pass 2 (done)
+
+Found by playing full campaigns in the browser and reading the code end to end.
+
+- [x] Clicks reached the wrong army where counters overlapped (a passing foreign army over your own): counters are now
+      drawn other nations' first, then yours, then the selection. Armies in one province sit in rows of two instead of
+      towers that buried neighbouring cities
+- [x] The browser playthrough raced the British AI to Belgium and failed at random; it now plays Spain into Portugal,
+      which no other power can reach
+- [x] The campaign opens on your own territory (Iberia used to sit under the field reports); zoom stops before the
+      relief texture blurs
+- [x] Research waiting for funds said "No research"; the top bar and research window now name the queued project and
+      what it lacks. Tree nodes ellipsize long names; node times follow research speed; clearer infantry branch icon
+- [x] Build rows say why they are unavailable; one project per city is explained once; a building cannot be demolished
+      while something that needs it is under construction
+- [x] Other powers' wars and treaties alert in a neutral tone; hover card lists units by nation ("2 Danish units");
+      "Denmark · Denmark" headers, "1 formations", the morale target line through its label fixed; merging keeps the
+      senior army's name
+- [x] Events name the army that halted, withdrew or starved; recruits are reported by national design ("Poilus ready
+      in Paris"); neutral garrisons are "overwhelmed", not "encircled"
+- [x] Corrected equipment details (Panhard 178, 105 mm mle 1935 B, Polish 20TP) and tech and speciality descriptions
+      that overstated their effects; removed dead code and styles
+
 ## M4 — Fog of war and diplomacy
 
 - [ ] Fog of war and reconnaissance (recon units gain a sight bonus)

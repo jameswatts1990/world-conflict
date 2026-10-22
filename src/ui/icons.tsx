@@ -1,78 +1,14 @@
-// Inline SVG iconography: unit-class silhouettes, resource and building glyphs
-// and a line-icon set for the HUD. All original artwork, no external assets.
+// Inline SVG iconography: resource and building glyphs and a line-icon set for
+// the HUD. All original artwork, no external assets.
 // Detailed unit, building and branch artwork lives in src/ui/art.
 import type { ReactElement } from 'react';
-import { UNITS } from '../sim/config/units';
-import type { BuildingType, ResourceKey, Terrain, UnitType } from '../sim';
+import type { BuildingType, ResourceKey, Terrain } from '../sim';
 import { BuildingGlyphArt } from './art/adapters';
 
 interface IconProps {
   size?: number;
   className?: string;
   title?: string;
-}
-
-// ---------------------------------------------------------------------------
-// Unit silhouettes (24 × 14 box, facing right)
-// ---------------------------------------------------------------------------
-
-/** Which of the three silhouettes stands for a unit type: guns, vehicles or men. */
-function silhouette(type: UnitType): 'infantry' | 'artillery' | 'tank' {
-  const cls = UNITS[type].class;
-  if (cls === 'support') return 'artillery';
-  if (cls === 'armour' || type === 'armouredCar') return 'tank';
-  return 'infantry';
-}
-
-/** Unit-class silhouette as an SVG group in a 24 × 14 box; used in the map key and compact lists. */
-export function UnitShape({ type, color = '#fff', detail = 'rgba(0,0,0,0.45)' }: { type: UnitType; color?: string; detail?: string }) {
-  const shape = silhouette(type);
-  if (shape === 'tank') {
-    return (
-      <g fill={color}>
-        <path d="M2.4 8.6L4.8 5.8H19.2L21.8 8.6Z" />
-        <path d="M7.6 5.9L8.7 3.1H14.2L15.3 5.9Z" />
-        <rect x={14} y={3.9} width={9.4} height={1.3} rx={0.4} />
-        <path d="M2.6 9.3H21.4A2.2 2.2 0 0 1 21.4 13.7H2.6A2.2 2.2 0 0 1 2.6 9.3Z" />
-        {[4, 8, 12, 16, 20].map((x) => (
-          <circle key={x} cx={x} cy={11.5} r={1.15} fill={detail} />
-        ))}
-      </g>
-    );
-  }
-  if (shape === 'artillery') {
-    return (
-      <g fill={color}>
-        <path d="M7.2 7.6L21.6 1.6L22.6 3.1L8.6 9.6Z" />
-        <path d="M11.4 3.6L13.4 3V9.2L11.4 9.7Z" />
-        <path d="M7.6 9.2L9.4 10.6L2 13.9L1 12.7Z" />
-        <path fillRule="evenodd" d="M9.2 5.6a4.2 4.2 0 1 1 0 8.4a4.2 4.2 0 1 1 0-8.4zM9.2 7.4a2.4 2.4 0 1 0 0 4.8a2.4 2.4 0 1 0 0-4.8z" />
-        <circle cx={9.2} cy={9.8} r={0.9} />
-      </g>
-    );
-  }
-  // Infantry: advancing soldier, rifle and bayonet levelled.
-  return (
-    <g fill={color}>
-      <circle cx={10.2} cy={3.1} r={1.6} />
-      <path d="M7.4 2.7Q10.2 -0.4 13 2.7Z" />
-      <rect x={6.8} y={2.4} width={6.8} height={0.8} rx={0.4} />
-      <path d="M8.8 4.8L11.8 4.5L13.2 8.8L9.7 9.4Z" />
-      <path d="M9.4 8.7L11.2 9.3L8.6 13.9L6.7 13.6Z" />
-      <path d="M11.2 9L13 8.7L14.9 13.6L13 13.9Z" />
-      <path d="M10.6 5L15.6 6.6L15.2 7.6L10.3 6.3Z" />
-      <path d="M8.8 7.9L23.4 4.6L23.6 5.4L9 8.8Z" />
-    </g>
-  );
-}
-
-/** Unit silhouette as a standalone icon (width = size). */
-export function UnitGlyph({ type, size = 22, color = 'currentColor' }: { type: UnitType; size?: number; color?: string }) {
-  return (
-    <svg className="unit-glyph" width={size} height={(size * 14) / 24} viewBox="0 0 24 14" aria-label={type} role="img">
-      <UnitShape type={type} color={color} detail="rgba(0,0,0,0.5)" />
-    </svg>
-  );
 }
 
 // ---------------------------------------------------------------------------

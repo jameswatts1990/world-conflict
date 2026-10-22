@@ -14,7 +14,7 @@ What is in it (Milestone 2, Depth):
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   small 3D model of what it holds (barracks, factories, a tank works, empty plots for free slots); the city view adds
   a skyline.
-- A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
+- A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
 
@@ -74,10 +74,11 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
-The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**)
-changes the map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the
-bottom right. With one of your armies selected, pointing at a province or an enemy army previews the route and arrival
-time. Point at a resource in the top bar for its income and upkeep.
+The campaign opens on your own territory; the **fit** button under the zoom controls shows the whole theatre. The left
+command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**) changes the
+map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the bottom right. With
+one of your armies selected, pointing at a province or an enemy army previews the route and arrival time (or why there
+is none, such as a nation you are at peace with). Point at a resource in the top bar for its income and upkeep.
 Zoom in one step and every city turns into a 3D model of its buildings, each on a plinth in its category's colour
 (economy, military, civic, infrastructure), with empty plots for free building slots and the rim in the owner's colour;
 pointing at a province lists the same buildings. Click a field report or an alert to jump to its

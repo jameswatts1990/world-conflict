@@ -23,7 +23,7 @@ import { UnitIconArt } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { formatDuration } from '../format';
+import { countOf, formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
 import { composition, ownerShortName } from '../labels';
 import { MoraleMeter, Progress, Section, moraleClass } from './Common';
@@ -128,7 +128,7 @@ export function ArmyPanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={army.owner} province={army.province} size={16} />
           <span className="hero-owner">
-            {ownerShortName(world, army.owner, army.province)} · {army.units.length} formations
+            {ownerShortName(world, army.owner, army.province)} · {countOf(army.units.length, 'formation')}
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close army panel">
             <Icon name="close" size={16} />
@@ -238,10 +238,11 @@ export function ArmyPanel({
               className="order-btn"
               disabled={sameProvinceOwn.length < 2 || !!leg}
               onClick={() => {
-                const ids = [army.id, ...sameProvinceOwn.filter((a) => a.id !== army.id).map((a) => a.id)];
-                if (ctrl.submit({ type: 'merge', nation: human, armyIds: ids }).ok) onSelectArmies([army.id]);
+                // The senior (lowest-numbered) army absorbs the others and keeps its name.
+                const ids = [...sameProvinceOwn].sort((a, b) => a.serial - b.serial).map((a) => a.id);
+                if (ctrl.submit({ type: 'merge', nation: human, armyIds: ids }).ok) onSelectArmies([ids[0]]);
               }}
-              title="Merge all your armies in this province into this one"
+              title="Merge all your armies in this province into the senior one"
             >
               <Icon name="merge" size={18} />
               <span>Merge here</span>

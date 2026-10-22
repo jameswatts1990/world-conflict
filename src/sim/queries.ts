@@ -10,7 +10,6 @@ import {
   UNIT_GENS,
   type Army,
   type BuildingType,
-  type CityTier,
   type Effect,
   type Era,
   type GameState,
@@ -93,6 +92,22 @@ export function nationEra(state: GameState, nation: NationId): Era {
 
 export function researchSlots(state: GameState, nation: NationId): number {
   return RESEARCH_RULES.baseSlots + techEffects(state, nation).filter((e) => e.kind === 'researchSlot').length;
+}
+
+/**
+ * The queued project that starts next when a slot is free (the first whose prerequisites
+ * are done), with what the treasury still lacks for it: the queue waits for funds in order.
+ */
+export function nextQueuedResearch(state: GameState, nation: NationId): { tech: TechId; shortfall: PartialResources } | null {
+  const n = state.nations[nation];
+  const tech = n.research.queue.find((t) => TECH_BY_ID[t]?.requires.every((r) => n.research.completed.includes(r)));
+  if (!tech) return null;
+  const shortfall: PartialResources = {};
+  for (const k of RESOURCE_KEYS) {
+    const need = TECH_BY_ID[tech].cost[k] ?? 0;
+    if (n.resources[k] + 1e-9 < need) shortfall[k] = need - n.resources[k];
+  }
+  return { tech, shortfall };
 }
 
 /** Research progress per tick (1 = nominal). Universities and research add speed. */
@@ -348,10 +363,6 @@ export function cityPopulation(state: GameState, world: World, province: Provinc
   const next = CITY.growthToNext[p.tier];
   const progress = Number.isFinite(next) ? p.growth / next : 0;
   return def.population * scale * (1 + 0.15 * progress);
-}
-
-export function cityTierName(tier: CityTier): string {
-  return CITY.tierNames[tier];
 }
 
 // ---------------------------------------------------------------------------

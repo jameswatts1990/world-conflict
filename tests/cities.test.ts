@@ -6,7 +6,7 @@ import type { GeometryCollection, Topology } from 'topojson-specification';
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS, CITY } from '../src/sim/config/buildings';
 import { MORALE } from '../src/sim/config/rules';
-import { applyCommand, buildingSlots, checkBuild, provinceOutput, type BuildingType } from '../src/sim';
+import { applyCommand, buildingSlots, checkBuild, checkBuildRules, provinceOutput, type BuildingType } from '../src/sim';
 import { quietGame, richen, run, world } from './helpers';
 
 const build = (state: ReturnType<typeof quietGame>, province: string, building: BuildingType) =>
@@ -40,6 +40,27 @@ describe('cities', () => {
     expect(applyCommand(state, world, { type: 'demolish', nation: 'fr', province: town, building: 'armsWorks' }).ok).toBe(true);
     expect(checkBuild(state, world, 'fr', town, 'barracks').ok).toBe(false); // already built
     expect(build(state, town, 'market').ok).toBe(false); // markets need a City
+  });
+
+  it('a building cannot be demolished while something that needs it is being built', () => {
+    const state = quietGame();
+    richen(state, 'fr');
+    expect(build(state, 'fr-paris', 'academy').ok).toBe(true);
+    const demolish = applyCommand(state, world, { type: 'demolish', nation: 'fr', province: 'fr-paris', building: 'barracks' });
+    expect(demolish.ok).toBe(false);
+    if (!demolish.ok) expect(demolish.reason).toBe('Military Academy, under construction, depends on it.');
+    finish(state, 'fr-paris');
+    expect(applyCommand(state, world, { type: 'demolish', nation: 'fr', province: 'fr-paris', building: 'barracks' }).ok).toBe(false);
+  });
+
+  it('one construction at a time: the rules still pass while the city is busy', () => {
+    const state = quietGame();
+    richen(state, 'fr');
+    expect(build(state, 'fr-paris', 'university').ok).toBe(true);
+    expect(checkBuildRules(state, world, 'fr', 'fr-paris', 'market').ok).toBe(true);
+    const busy = checkBuild(state, world, 'fr', 'fr-paris', 'market');
+    expect(busy.ok).toBe(false);
+    if (!busy.ok) expect(busy.reason).toMatch(/one project at a time/);
   });
 
   it('higher building levels and some buildings need a bigger city', () => {

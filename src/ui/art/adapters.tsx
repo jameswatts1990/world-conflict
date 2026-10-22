@@ -6,7 +6,6 @@ import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { PLINTH_COLORS, buildCityModel } from './CityModel';
 import { CitySkyline } from './CitySkyline';
-import { NationInsignia } from './Insignia';
 import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
 
 function artNation(owner: OwnerId): ArtNation {
@@ -124,8 +123,4 @@ export function citySprite(props: Omit<CitySceneProps, 'width'> & { freeSlots: n
     if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
   }
   return sprite;
-}
-
-export function NationEmblem({ nation, size = 16 }: { nation: OwnerId; size?: number }) {
-  return <NationInsignia nation={artNation(nation)} size={size} />;
 }

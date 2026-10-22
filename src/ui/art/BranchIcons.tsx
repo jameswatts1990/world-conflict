@@ -3,9 +3,6 @@ import type { ReactElement } from 'react';
 
 export type ResearchBranch = 'infantry' | 'artillery' | 'armour' | 'industry' | 'logistics' | 'society';
 
-/** One rifle lying along x, muzzle (with bayonet) left, stock right. */
-const RIFLE = 'M.4 9.85L2.4 8.9h8.2v-.5H14l5.4.6.4 3.4-5.8-1h-3.4v-.6H2.4zM11.6 11.4h1.8l-.5 1.8h-1.3z';
-
 function gearPath(cx: number, cy: number, teeth: number, rOut: number, rIn: number, rHole: number): string {
   const step = (Math.PI * 2) / teeth;
   const pt = (a: number, r: number): string => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
@@ -21,11 +18,12 @@ function gearPath(cx: number, cy: number, teeth: number, rOut: number, rIn: numb
 const GEAR = gearPath(10, 10, 8, 8.8, 6.4, 2.6);
 
 const BRANCH_GLYPHS: Record<ResearchBranch, ReactElement> = {
-  // crossed rifles
+  // steel helmet with chin strap
   infantry: (
     <>
-      <path d={RIFLE} transform="rotate(45 10 10)" />
-      <path d={RIFLE} transform="translate(20 0) scale(-1 1) rotate(45 10 10)" />
+      <path d="M3.4 11.6C3.4 6.6 6.3 3.4 10 3.4s6.6 3.2 6.6 8.2z" />
+      <path d="M.9 12.4h18.2l-1.6 2.3H2.5z" />
+      <path d="M6.4 15.6c1 1.8 2.2 2.6 3.6 2.6s2.6-.8 3.6-2.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
     </>
   ),
   // field gun: barrel, shield, spoked wheel, trail
