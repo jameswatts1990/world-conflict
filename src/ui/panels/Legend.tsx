@@ -1,6 +1,6 @@
 // Map key popover: explains the symbols used on the strategy map.
 import { CITY } from '../../sim/config/buildings';
-import type { BuildingCategory, NationId, OwnerId, UnitType, World } from '../../sim';
+import { hasNeutrals, type BuildingCategory, type NationId, type OwnerId, type UnitType, type World } from '../../sim';
 import { CounterArt, citySprite, plinthColor } from '../art/adapters';
 import { Flag } from '../flags';
 import { Icon } from '../icons';
@@ -88,7 +88,11 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </div>
       )}
       <div className="lg-grid">
-        <span className="lg-swatch neutral" /> Neutral state (may be invaded)
+        {hasNeutrals(world) && (
+          <>
+            <span className="lg-swatch neutral" /> Neutral state (may be invaded)
+          </>
+        )}
         <span className="lg-swatch outside" /> Outside this campaign's theatre
         <Sample>
           <g className="city-icon capital">

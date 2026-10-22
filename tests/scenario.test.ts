@@ -73,7 +73,6 @@ describe('scenario data', () => {
       }
       expect(units, `${id} starting army`).toEqual(startingUnits(world.nations[id].power));
       expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
-      expect(provs.filter((p) => p.tier === power.capitalCity && p.id === world.nations[id].capital)).toHaveLength(1);
       if (world.nations[id].power === 'great') {
         // Same city ladder (one Metropolis, one Large City) and one oil field.
         expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);

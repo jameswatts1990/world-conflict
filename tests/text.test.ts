@@ -11,9 +11,9 @@ describe('names in messages', () => {
     expect(sentence(nationName(world, 'uk'))).toBe('The United Kingdom');
     expect(nationName(world, 'fr')).toBe('France');
     expect(provinceName(world, 'uk-midlands')).toBe('the Midlands');
-    expect(provinceName(world, 'nt-netherlands')).toBe('the Netherlands');
-    expect(ownerName(world, 'neutral', 'nt-netherlands')).toBe('the Netherlands');
-    expect(ownerName(world, 'neutral', 'nt-benelux')).toBe('Belgium & Luxembourg');
+    expect(provinceName(world, 'nl-amsterdam')).toBe('the Netherlands');
+    expect(nationName(world, 'nl')).toBe('the Netherlands');
+    expect(ownerName(world, 'be', 'be-brussels')).toBe('Belgium & Luxembourg');
   });
 
   it('formats durations', () => {
@@ -38,20 +38,27 @@ describe('event wording', () => {
     expect(texts(state, 'capture')).toContain('The United Kingdom liberated London & the South East from Germany (objective, 3 VP).');
   });
 
-  it('occupying a neutral state names it once', () => {
+  it('a one-province country is named once when it falls and when it is retaken', () => {
     const state = quietGame();
     clearArmies(state);
-    place(state, 'fr', 'nt-netherlands', { infantry: 3 });
+    setWar(state, 'fr', 'nl');
+    // A second province keeps the Netherlands in the war after Amsterdam falls.
+    state.provinces['de-north'].owner = 'nl';
+    place(state, 'fr', 'nl-amsterdam', { infantry: 3 });
     run(state, 40);
-    expect(texts(state, 'capture')).toEqual(['France occupied the Netherlands (objective, 1 VP).']);
+    expect(texts(state, 'capture')).toEqual(['France captured the Netherlands (objective, 1 VP).']);
+    clearArmies(state, 'nl-amsterdam');
+    place(state, 'nl', 'nl-amsterdam', { infantry: 3 });
+    run(state, 40);
+    expect(texts(state, 'capture').at(-1)).toBe('The Netherlands drove France out (objective, 1 VP).');
   });
 
   it('battles name the attacker first, and a battle stopped by peace has no winner', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    place(state, 'de', 'nt-benelux', { infantry: 3 });
-    place(state, 'fr', 'nt-benelux', { infantry: 3 });
+    place(state, 'de', 'be-brussels', { infantry: 3 });
+    place(state, 'fr', 'be-brussels', { infantry: 3 });
     run(state, 11);
     expect(texts(state, 'battle')).toEqual(['Battle of Brussels: Germany vs France.']);
     // Skip ahead to when peace talks may open, without fighting all that time.
@@ -66,12 +73,12 @@ describe('event wording', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    place(state, 'de', 'nt-benelux', { infantry: 3 });
-    place(state, 'fr', 'nt-benelux', { infantry: 3 });
-    const uk = place(state, 'uk', 'nt-benelux', { infantry: 1 });
+    place(state, 'de', 'be-brussels', { infantry: 3 });
+    place(state, 'fr', 'be-brussels', { infantry: 3 });
+    const uk = place(state, 'uk', 'be-brussels', { infantry: 1 });
     run(state, 11);
     expect(texts(state, 'battle')).toEqual(['Battle of Brussels: Germany vs France.']);
-    expect(state.battles['nt-benelux'].owners).not.toContain('uk');
+    expect(state.battles['be-brussels'].owners).not.toContain('uk');
     delete state.armies[uk.id];
     state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
     applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
@@ -94,18 +101,19 @@ describe('event wording', () => {
     expect(texts(state, 'battle-end')).toEqual(['The Battle of Essen ended.']);
   });
 
-  it('losses name who suffered them, even a neutral garrison', () => {
+  it('losses name who suffered them, even a minor power', () => {
     const state = quietGame();
     clearArmies(state);
-    // A shaken garrison breaks before it can be destroyed and, with nowhere to retreat, surrenders.
-    place(state, 'neutral', 'nt-netherlands', { infantry: 1 }).units[0].morale = 0.3;
-    place(state, 'fr', 'nt-netherlands', { infantry: 6, artillery: 2 });
+    setWar(state, 'fr', 'nl');
+    // A shaken army breaks before it can be destroyed and, with nowhere to retreat, surrenders.
+    place(state, 'nl', 'nl-amsterdam', { infantry: 1 }).units[0].morale = 0.3;
+    place(state, 'fr', 'nl-amsterdam', { infantry: 6, artillery: 2 });
     run(state, 200);
     const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
-    expect(lost.text).toBe('Overwhelmed at Amsterdam, the Dutch garrison surrendered to France — 1 unit lost.');
-    expect(lost.subject).toBe('neutral');
+    expect(lost.text).toBe('Encircled at Amsterdam, the Dutch 2nd Army surrendered to France — 1 unit lost.');
+    expect(lost.subject).toBe('nl');
     const captured = state.events.find((e) => e.kind === 'capture')!;
-    expect(captured.subject).toBe('neutral');
+    expect(captured.subject).toBe('nl');
   });
 
   it('recruits are reported by the nation\'s own design name', () => {
@@ -137,8 +145,9 @@ describe('event wording', () => {
   it('the defender is named last when invading', () => {
     const state = quietGame();
     clearArmies(state);
-    place(state, 'neutral', 'nt-netherlands', { infantry: 1 });
-    place(state, 'uk', 'nt-netherlands', { infantry: 4 });
+    setWar(state, 'uk', 'nl');
+    place(state, 'nl', 'nl-amsterdam', { infantry: 1 });
+    place(state, 'uk', 'nl-amsterdam', { infantry: 4 });
     run(state, 11);
     expect(texts(state, 'battle')).toEqual(['Battle of Amsterdam: the United Kingdom vs the Netherlands.']);
   });

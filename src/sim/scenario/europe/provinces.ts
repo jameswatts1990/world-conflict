@@ -118,20 +118,21 @@ export const ROWS: ProvinceRow[] = [
   { id: 'hu-southwest', name: 'Southern Transdanubia', core: 'hu', terrain: 'hills', tier: 'town', city: { name: 'Pécs', coord: [18.233, 46.072], size: 'town' }, pop: 240,
     towns: [['Kaposvár', 17.797, 46.359], ['Szekszárd', 18.704, 46.348], ['Mohács', 18.683, 45.993], ['Siófok', 18.049, 46.905]] },
 
-  // Neutral minor states (capturable; garrisoned; never attack)
-  { id: 'nt-benelux', name: 'Belgium & Luxembourg', core: null, neutral: { name: 'Belgium & Luxembourg', adjective: 'Belgian' }, terrain: 'plains', tier: 'industrial', city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true, vp: 1, garrison: { infantry: 4 }, buildings: { fortifications: 1 },
+  // Minor powers: one province each, computer-controlled. Their cities keep the sizes they had as neutral
+  // states, and the old border forts stand.
+  { id: 'be-brussels', name: 'Belgium & Luxembourg', core: 'be', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true, buildings: { fortifications: 1 },
     towns: [['Antwerp', 4.402, 51.219], ['Ghent', 3.725, 51.054], ['Liège', 5.58, 50.633], ['Luxembourg', 6.13, 49.611]] },
-  { id: 'nt-netherlands', name: 'Netherlands', article: 'the', core: null, neutral: { name: 'Netherlands', adjective: 'Dutch', article: 'the' }, terrain: 'marsh', tier: 'city', cityTier: 3, city: { name: 'Amsterdam', coord: [4.904, 52.368], size: 'capital' }, pop: 2500, coast: true, oil: true, vp: 1, garrison: { infantry: 3 },
+  { id: 'nl-amsterdam', name: 'Netherlands', article: 'the', core: 'nl', terrain: 'marsh', tier: 'capital', cityTier: 3, city: { name: 'Amsterdam', coord: [4.904, 52.368], size: 'capital' }, pop: 2500, coast: true, oil: true,
     towns: [['Rotterdam', 4.478, 51.924], ['The Hague', 4.3, 52.07], ['Utrecht', 5.121, 52.091], ['Eindhoven', 5.47, 51.441]] },
-  { id: 'nt-denmark', name: 'Denmark', core: null, neutral: { name: 'Denmark', adjective: 'Danish' }, terrain: 'plains', tier: 'town', cityTier: 3, city: { name: 'Copenhagen', coord: [12.576, 55.694], size: 'capital' }, pop: 2100, coast: true, vp: 1, garrison: { infantry: 2 },
+  { id: 'dk-copenhagen', name: 'Denmark', core: 'dk', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Copenhagen', coord: [12.576, 55.694], size: 'capital' }, pop: 2100, coast: true,
     towns: [['Aarhus', 10.204, 56.163], ['Odense', 10.388, 55.404], ['Aalborg', 9.922, 57.048]] },
-  { id: 'nt-switzerland', name: 'Switzerland', core: null, neutral: { name: 'Switzerland', adjective: 'Swiss' }, terrain: 'mountains', tier: 'city', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, pop: 420, vp: 1, garrison: { infantry: 4 }, buildings: { fortifications: 2 },
+  { id: 'ch-bern', name: 'Switzerland', core: 'ch', terrain: 'mountains', tier: 'capital', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, pop: 420, buildings: { fortifications: 2 },
     towns: [['Zürich', 8.541, 47.377], ['Geneva', 6.143, 46.204], ['Basel', 7.588, 47.56], ['Lausanne', 6.633, 46.52]] },
-  { id: 'nt-austria', name: 'Austria', core: null, neutral: { name: 'Austria', adjective: 'Austrian' }, terrain: 'mountains', tier: 'city', cityTier: 3, city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, pop: 2900, oil: true, vp: 1, garrison: { infantry: 3 },
+  { id: 'at-vienna', name: 'Austria', core: 'at', terrain: 'mountains', tier: 'capital', cityTier: 3, city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, pop: 2900, oil: true,
     towns: [['Graz', 15.439, 47.071], ['Linz', 14.286, 48.306], ['Salzburg', 13.055, 47.809], ['Innsbruck', 11.404, 47.269]] },
-  { id: 'nt-czechia', name: 'Czechia', core: null, neutral: { name: 'Czechia', adjective: 'Czech' }, terrain: 'hills', tier: 'industrial', city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, pop: 2700, vp: 1, garrison: { infantry: 4, artillery: 1 }, buildings: { fortifications: 1 },
+  { id: 'cz-prague', name: 'Czechia', core: 'cz', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, pop: 2700, buildings: { fortifications: 1 },
     towns: [['Brno', 16.607, 49.195], ['Ostrava', 18.262, 49.835], ['Plzeň', 13.378, 49.738]] },
-  { id: 'nt-portugal', name: 'Portugal', core: null, neutral: { name: 'Portugal', adjective: 'Portuguese' }, terrain: 'hills', tier: 'city', cityTier: 3, city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, pop: 2900, coast: true, vp: 1, garrison: { infantry: 3 },
+  { id: 'pt-lisbon', name: 'Portugal', core: 'pt', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, pop: 2900, coast: true,
     towns: [['Porto', -8.611, 41.15], ['Coimbra', -8.43, 40.205], ['Faro', -7.935, 37.019]] },
 ];
 

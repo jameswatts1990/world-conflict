@@ -73,13 +73,13 @@ export const PROVINCE_SOURCES = [
   { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
   { id: 'hu-southwest', country: 'HUN', regions: ['Southern Transdanubia'] },
 
-  // Neutral minor states (one province each)
-  { id: 'nt-benelux', country: 'BEL', whole: true },
-  { id: 'nt-benelux', country: 'LUX', whole: true },
-  { id: 'nt-netherlands', country: 'NLD', whole: true, exclude: ['Bonaire', 'Saba', 'St. Eustatius'] },
-  { id: 'nt-switzerland', country: 'CHE', whole: true },
-  { id: 'nt-austria', country: 'AUT', whole: true },
-  { id: 'nt-czechia', country: 'CZE', whole: true },
-  { id: 'nt-denmark', country: 'DNK', whole: true },
-  { id: 'nt-portugal', country: 'PRT', whole: true, exclude: ['Madeira', 'Azores'] },
+  // Minor powers (one province each; Belgium and Luxembourg share one)
+  { id: 'be-brussels', country: 'BEL', whole: true },
+  { id: 'be-brussels', country: 'LUX', whole: true },
+  { id: 'nl-amsterdam', country: 'NLD', whole: true, exclude: ['Bonaire', 'Saba', 'St. Eustatius'] },
+  { id: 'ch-bern', country: 'CHE', whole: true },
+  { id: 'at-vienna', country: 'AUT', whole: true },
+  { id: 'cz-prague', country: 'CZE', whole: true },
+  { id: 'dk-copenhagen', country: 'DNK', whole: true },
+  { id: 'pt-lisbon', country: 'PRT', whole: true, exclude: ['Madeira', 'Azores'] },
 ];

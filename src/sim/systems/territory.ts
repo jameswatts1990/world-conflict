@@ -79,10 +79,18 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   const who = sentence(nationName(world, newOwner));
   const where = provinceName(world, pid);
   const objective = important ? ` (objective, ${def.objectiveVp} VP)` : '';
+  // A one-province country's province carries the country's name: say it once.
+  const loser = oldOwner === NEUTRAL ? '' : nationName(world, oldOwner);
   const text =
     oldOwner === NEUTRAL
       ? `${who} occupied ${where}${objective}.`
-      : `${who} ${def.core === newOwner ? 'liberated' : 'captured'} ${where} from ${nationName(world, oldOwner)}${objective}.`;
+      : def.core === newOwner
+        ? where === nationName(world, newOwner)
+          ? `${who} drove ${loser} out${objective}.`
+          : `${who} liberated ${where} from ${loser}${objective}.`
+        : where === loser
+          ? `${who} captured ${where}${objective}.`
+          : `${who} captured ${where} from ${loser}${objective}.`;
   pushEvent(state, 'capture', text, {
     nations: important ? [] : [newOwner, ...(oldOwner === NEUTRAL ? [] : [oldOwner])],
     province: pid,

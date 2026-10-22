@@ -1,7 +1,7 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Seven modern nations on recognisable Earth geography start with
-Great War technology and research their way towards the Second World War. The current build is a local
+A browser-based, real-time global strategy game. Seven great powers and seven minor powers on recognisable Earth
+geography start with Great War technology and research their way towards the Second World War. The current build is a local
 single-player campaign on the **European theatre** at **Standard** speed (target ~2–3 hours).
 
 What is in it (Milestone 2, Depth):
@@ -16,6 +16,9 @@ What is in it (Milestone 2, Depth):
 - **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
   get output, starting armies, objectives and size from their tier, so a new country is province rows,
   connections and one line.
+- **Seven minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal):
+  one-province nations run by the computer that recruit, research, make war and peace, and must be fought to be
+  taken. They keep a garrison of about five units rather than a field army.
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
@@ -121,8 +124,8 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **17 of the 42 objective victory points** (★ capitals 3 VP, industrial heartlands 2 VP, neutral capitals
-1 VP) continuously for **90 seconds**, or have the **highest score** when the **2 h 30 min** time limit ends.
+Hold **17 of the 42 objective victory points** (★ great-power capitals 3 VP, industrial heartlands 2 VP,
+minor-power capitals 1 VP) continuously for **90 seconds**, or have the **highest score** when the **2 h 30 min** time limit ends.
 You lose if your nation is eliminated or another power wins.
 
 ## Saving
@@ -132,7 +135,8 @@ when you return to the main menu).
 Saves live in the browser's `localStorage` and can be exported or imported as JSON files.
 **The campaign is paused while closed**: hiding the tab pauses the game and loading resumes exactly where the save
 was made. Offline progression belongs to the later server-backed version. A save made before a country was added
-still loads: the newcomer joins at its starting position, under computer control and at peace.
+still loads: the newcomer joins at its starting position, under computer control and at peace. Saves made before
+the neutral states became minor powers cannot be loaded.
 
 ## Project layout
 

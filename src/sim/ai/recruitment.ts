@@ -67,7 +67,7 @@ export function handleRecruitment(ctx: Ctx): void {
   // Army size is bounded by what the treasury and the territory can sustain.
   const share = (AI.upkeepShare + 0.3 * ctx.mem.aggression) * (ctx.enemies.length > 0 ? 1.25 : 1);
   const budget = ctx.eco.income.money * share;
-  const cap = ctx.owned.length * AI.unitsPerProvince + AI.unitsFlat + ctx.eco.income.money / AI.unitsPerIncome;
+  const cap = ctx.owned.length * AI.unitsPerProvince + AI.unitsFlat[world.nations[me].power] + ctx.eco.income.money / AI.unitsPerIncome;
   const rich = state.nations[me].resources.money > 3000;
   let upkeep = ctx.eco.upkeep.money + queuedUpkeep;
 

@@ -138,18 +138,18 @@ const REGIONS: Record<string, Region> = {
   alpine: { walls: ['#ece6d6', '#e0d5bd', '#d4c3a1'], roofs: ['#5e4a3e', '#6d5a4c', '#545a62'] },
 };
 
-const NEUTRAL_REGION: Record<string, string> = {
-  'nt-netherlands': 'nl',
-  'nt-benelux': 'fr',
-  'nt-denmark': 'dk',
-  'nt-switzerland': 'alpine',
-  'nt-austria': 'alpine',
-  'nt-czechia': 'de',
-  'nt-portugal': 'es',
+/** Countries that build like a neighbour, by the province id's country prefix. */
+const REGION_ALIAS: Record<string, string> = {
+  be: 'fr',
+  ch: 'alpine',
+  at: 'alpine',
+  cz: 'de',
+  pt: 'es',
 };
 
 function regionOf(seed: string): Region {
-  return REGIONS[NEUTRAL_REGION[seed] ?? seed.slice(0, 2)] ?? REGIONS.de;
+  const country = seed.slice(0, 2);
+  return REGIONS[REGION_ALIAS[country] ?? country] ?? REGIONS.de;
 }
 
 const GROUND: Record<ArtTerrain, string> = {

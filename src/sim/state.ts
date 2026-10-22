@@ -172,7 +172,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
   pushEvent(
     state,
     'start',
-    'The campaign begins. The powers hold modern borders with Great War arsenals. Neutral states stand between them.',
+    'The campaign begins. The powers hold modern borders with Great War arsenals.',
     { severity: 'system' },
   );
   return state;

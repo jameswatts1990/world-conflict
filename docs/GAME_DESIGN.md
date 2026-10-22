@@ -31,8 +31,12 @@ espionage, naval and air warfare, later eras, multiplayer.
 - **Seven playable nations:** United Kingdom, France, Germany, Italy, Spain, Poland and Hungary. The human picks
   one; the AI plays the rest. Hungary's other modern neighbours lie outside the theatre, so its only road out runs
   through Austria.
-- **Seven neutral minor states:** Belgium & Luxembourg, Netherlands, Denmark, Switzerland, Austria, Czechia and
-  Portugal. They are garrisoned, never attack, and can be invaded by anyone at any time.
+- **Seven minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia and
+  Portugal, one province each and always computer-controlled. They are nations like the others: they recruit,
+  research, declare war and make peace, and invading one means declaring war on it. The AI keeps a minor power to a
+  garrison of about five units (its starting four plus one, more as its economy grows), not a field army. Their
+  capitals keep their old city sizes and border forts (Switzerland 2, Belgium and Czechia 1). The engine still
+  supports neutral states (garrisoned, never attack, open to invasion without war); this scenario has none.
 - **56 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
@@ -51,7 +55,7 @@ broadly balanced:
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
 | Minor | No (computer-controlled) | 70 / 35 / 20 | 4 units | Capital 1 | 1–2 |
 
-All seven current nations are great powers. Each great power has one oil province, the same city ladder (one
+Europe has seven great powers and seven minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF
 and 1 cavalry in the field. The smaller tiers keep the same share of income on starting upkeep. Starting buildings
 and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
@@ -199,7 +203,7 @@ Specialities are optional: a nation without one shows its bloc instead.
 - An army is a stack of units. Leg time is set by the **slowest unit for that leg**: each type has its own speed and
   its own factors for passes, straits and terrain (mountain troops climb, lorries bog down). Owned railway
   junctions speed legs up. The minimum leg is 15 s.
-- Orders use Dijkstra over legal provinces: own territory, nations at war, and neutral states.
+- Orders use Dijkstra over legal provinces: own territory, nations at war, and any neutral states.
 - Armies on a multi-leg order **hold** to fight and to capture each hostile province, then continue. An explicit
   new order leaves immediately (retreat). Split, merge and **disband** (half the manpower returns) are available
   while stationary.
@@ -265,7 +269,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 42 VP in total (capitals 3, industrial heartlands 2, neutral capitals 1). Holding **40% (17
+- **Objectives:** 42 VP in total (great-power capitals 3, industrial heartlands 2, minor-power capitals 1). Holding **40% (17
   VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 3 × provinces + 2 × technologies.
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
@@ -332,8 +336,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
   cities and counters where possible. Province names take over when zoomed in. Cities have dark name plates with an
   owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
-  capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states are hatched
-  with lines that keep the same spacing at every zoom.
+  capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states (none in
+  the current scenario) are hatched with lines that keep the same spacing at every zoom.
 - **City models.** From one zoom step in, each city is a small isometric 3D model on a round token whose rim carries
   the owner's colour, so its contents read at a glance. Every building has its own recognisable model (smoking factory
   chimneys, a barracks with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank

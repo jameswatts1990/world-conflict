@@ -106,10 +106,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
-- [ ] Hungary takes Austria the moment neutrals may be invaded (minute 8 in every AI test campaign) and ranks near
-      the top, while Germany finishes last more often (4–5 of 8 runs, against 3 of 8 before Hungary). One level of
-      Austrian fortifications made no difference. Options: a stronger Austrian garrison, Hungary's neighbours in the
-      theatre, or AI patience with a neutral that is its only exit
+- [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
+      campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
+- [ ] Germany is still the weakest great power in AI campaigns (mean rank 5.9 of 7, last in 2 of 8 runs): it borders
+      six minor powers and two great powers
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
@@ -173,7 +173,7 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [ ] Fog of war and reconnaissance (recon units gain a sight bonus)
 - [ ] Alliances, right of passage, non-aggression pacts, coalition victory
 - [ ] Peace terms: province transfers and reparations
-- [ ] Neutral states that can be courted or guaranteed, and that react to invasions
+- [ ] Minor powers that can be courted or guaranteed, and that react to invasions of their neighbours
 
 ## M5 — Air and naval warfare
 
@@ -196,6 +196,7 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Power tiers (great, major, minor; minor powers computer-only) that scale output, treasury, starting army,
       objective VP, capital size and province count
 - [x] Starting setups generated from each nation's tier and its province rows
+- [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
 - [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
 - [ ] Hungary's missing neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia), then Eastern-bloc nations east of

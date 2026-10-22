@@ -22,8 +22,11 @@ the starting buildings and army.
 | `minor` | No: always computer-controlled | 70 / 35 / 20 | 4: capital 3 INF, field 1 INF | Capital 1 | City | 1–2 |
 
 The smaller tiers spend the same share of income on army upkeep at the start as a great power (about a sixth).
-All seven current nations are great powers. Minor powers are real nations: they have an economy, research,
-recruit, and the AI plays them. Players can't pick them on the nation picker.
+Europe has seven great powers and seven one-province minor powers (the former neutral states). Minor powers are
+real nations: they have an economy, research, recruit, make war and peace, and the AI plays them. Players can't
+pick them on the nation picker. The AI keeps a minor to a garrison of about five units (`unitsFlat` in
+`config/ai.ts`): a focused seven-unit attack takes its capital, while six defenders that refill repel it most of
+the time.
 
 **Field units** go where the province rows put them (`garrison`). If a nation's rows place none, they are dealt
 out one at a time over its border provinces first, then its other provinces, then its capital. The original six
@@ -89,7 +92,7 @@ optionally `oil`. The role is `capital`, `industrial`, `city` or `town`; every n
 scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
 
 Optional fields: `recruiting: true` for a great power's second recruiting city, `garrison` to place field units
-by hand, `buildings` for extras such as fortifications. Neutral states use `garrison`, `buildings` and `vp`
+by hand, `buildings` for extras such as fortifications. Neutral states (`core: null`, none in Europe now) use `garrison`, `buildings` and `vp`
 directly.
 
 ### 3. Connections ★ — `src/sim/scenario/europe/connections.ts`

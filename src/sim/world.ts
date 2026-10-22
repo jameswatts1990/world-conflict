@@ -89,6 +89,11 @@ export function buildWorld(scenario: ScenarioDef): World {
   };
 }
 
+/** Whether any province starts unowned: neutral states, garrisoned, that anyone may invade. */
+export function hasNeutrals(world: World): boolean {
+  return world.provinceIds.some((id) => !world.provinces[id].core);
+}
+
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {
   return world.neighbors[a]?.find((n) => n.id === b);
 }

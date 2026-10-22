@@ -21,7 +21,7 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'de', name: 'Germany', adjective: 'German', color: '#5f6b75', capital: 'de-berlin', power: 'great', bloc: 'central',
     trait: 'Encircled',
-    blurb: 'Central and exposed. Borders six neutral states and two great powers.',
+    blurb: 'Central and exposed. Borders six minor powers and two great powers.',
   },
   {
     id: 'it', name: 'Italy', adjective: 'Italian', color: '#3b9a58', capital: 'it-rome', power: 'great', bloc: 'western',
@@ -43,6 +43,16 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
     trait: 'One gateway',
     blurb: 'Landlocked behind Austria. The only road out runs through Vienna, and it is the only road in.',
   },
+  // Minor powers: one province each, always computer-controlled. Blocs follow who armed them: Belgium,
+  // Denmark and Portugal Entente-style; the Netherlands, Switzerland, Austria and Czechia with
+  // Schwarzlose guns, Škoda artillery and German-pattern kit.
+  { id: 'be', name: 'Belgium & Luxembourg', adjective: 'Belgian', color: '#a39a3c', capital: 'be-brussels', power: 'minor', bloc: 'western' },
+  { id: 'nl', name: 'Netherlands', article: 'the', adjective: 'Dutch', color: '#e8873a', capital: 'nl-amsterdam', power: 'minor', bloc: 'central' },
+  { id: 'dk', name: 'Denmark', adjective: 'Danish', color: '#c8414b', capital: 'dk-copenhagen', power: 'minor', bloc: 'western' },
+  { id: 'ch', name: 'Switzerland', adjective: 'Swiss', color: '#d97a6c', capital: 'ch-bern', power: 'minor', bloc: 'central' },
+  { id: 'at', name: 'Austria', adjective: 'Austrian', color: '#4f86b8', capital: 'at-vienna', power: 'minor', bloc: 'central' },
+  { id: 'cz', name: 'Czechia', adjective: 'Czech', color: '#8a6a44', capital: 'cz-prague', power: 'minor', bloc: 'central' },
+  { id: 'pt', name: 'Portugal', adjective: 'Portuguese', color: '#2e8b6e', capital: 'pt-lisbon', power: 'minor', bloc: 'western' },
 ];
 
 export const NATIONS: NationDef[] = base.map((n) => ({ ...n, speciality: SPECIALITIES[n.id], identity: nationIdentity(n.bloc, IDENTITIES[n.id]) }));

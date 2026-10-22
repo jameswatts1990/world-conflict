@@ -1,4 +1,4 @@
-// Simplified national flags (3:2) for the powers and the neutral states.
+// Simplified national flags (3:2) for the nations, and the plain neutral flag.
 // Drawn inline so the UI needs no image assets. A nation without one here
 // shows the plain neutral flag (and flies one in its own colour on the map).
 import { useId, type ReactElement } from 'react';
@@ -20,9 +20,9 @@ const STRIPED: Record<string, FlagStripes> = {
   it: { dir: 'v', colors: ['#0c8a46', '#f4f4f4', '#cd2b37'] },
   pl: { dir: 'h', colors: ['#f4f4f4', '#dc143c'] },
   hu: { dir: 'h', colors: ['#cd2a3e', '#f4f4f4', '#436f4d'] },
-  'nt-benelux': { dir: 'v', colors: ['#151515', '#fdda24', '#ef3340'] },
-  'nt-netherlands': { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
-  'nt-austria': { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
+  be: { dir: 'v', colors: ['#151515', '#fdda24', '#ef3340'] },
+  nl: { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
+  at: { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
 };
 
 function stripes({ dir, colors }: FlagStripes): ReactElement {
@@ -60,28 +60,28 @@ const FLAGS: Record<string, ReactElement> = {
       <rect y={5} width={W} height={10} fill="#f6c100" />
     </>
   ),
-  'nt-denmark': (
+  dk: (
     <>
       <rect width={W} height={H} fill="#c8102e" />
       <rect x={9} width={3.4} height={H} fill="#fff" />
       <rect y={8.3} width={W} height={3.4} fill="#fff" />
     </>
   ),
-  'nt-switzerland': (
+  ch: (
     <>
       <rect width={W} height={H} fill="#d52b1e" />
       <rect x={13.2} y={4.5} width={3.6} height={11} fill="#fff" />
       <rect x={9.5} y={8.2} width={11} height={3.6} fill="#fff" />
     </>
   ),
-  'nt-czechia': (
+  cz: (
     <>
       <rect width={W} height={H / 2} fill="#f4f4f4" />
       <rect y={H / 2} width={W} height={H / 2} fill="#d7141a" />
       <path d={`M0 0L15 10L0 ${H}Z`} fill="#11457e" />
     </>
   ),
-  'nt-portugal': (
+  pt: (
     <>
       <rect width={W} height={H} fill="#e41e20" />
       <rect width={12} height={H} fill="#046a38" />

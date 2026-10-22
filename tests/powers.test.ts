@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { buildProvinces, buildStartingSetup, type ProvinceRow } from '../src/sim/scenario/build';
 import {
+  applyCommand,
+  armyName,
   buildWorld,
   createInitialState,
   nationIdentity,
@@ -120,6 +122,15 @@ describe('power tiers', () => {
   it('refuse a nation that lacks a province its tier needs', () => {
     expect(() => buildStartingSetup(rows({ 'aa-ind': { tier: 'city' } }), NATIONS, CONNECTIONS)).toThrow(/needs an industrial province/);
     expect(() => buildStartingSetup(rows({ 'mm-cap': { tier: 'town' } }), NATIONS, CONNECTIONS)).toThrow(/no capital/);
+  });
+
+  it('leave neutral states open to invasion without war, defended by their own garrison', () => {
+    const world = buildWorld(scenario());
+    const state = createInitialState(world, { seed: 1, humanNation: 'bb' });
+    const army = Object.values(state.armies).find((a) => a.owner === 'mm')!;
+    expect(applyCommand(state, world, { type: 'move', nation: 'mm', armyId: army.id, to: 'nt-x' }).ok).toBe(true);
+    const garrison = Object.values(state.armies).find((a) => a.owner === 'neutral')!;
+    expect(armyName(world, garrison)).toBe('X garrison');
   });
 
   it('keep minor powers computer-controlled, and let them play', () => {
