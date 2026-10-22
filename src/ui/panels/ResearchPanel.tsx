@@ -20,6 +20,7 @@ import type { GameController } from '../game/GameController';
 import { costParts, formatDuration, shortfallText } from '../format';
 import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
 import { Icon } from '../icons';
+import { useTouch } from '../layout';
 import { Cost, Modal, Progress } from './Common';
 
 /** Compact m:ss for node footers. */
@@ -127,6 +128,9 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
   const res = state.nations[human].resources;
   const [hover, setHover] = useState<TechId | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  // Touch screens cannot hover to trace a path (and a hover that restyles the tree can eat the first tap).
+  const touch = useTouch();
+  const click = touch ? 'tap' : 'click';
 
   const done = new Set(research.completed);
   const activeIds = new Set(research.active.map((j) => j.tech));
@@ -211,7 +215,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
         </div>
         <div className="research-queue">
           <span className="muted">Queue:</span>
-          {research.queue.length === 0 && <span className="muted"> empty — click a locked technology to queue its whole path</span>}
+          {research.queue.length === 0 && <span className="muted"> empty — {click} a locked technology to queue its whole path</span>}
           {research.queue.map((t, i) => (
             <button key={t} className="chip queued" title="Remove from queue (and anything that depends on it)" onClick={() => ctrl.submit({ type: 'unqueueResearch', nation: human, tech: t })}>
               {i + 1}. {TECH_BY_ID[t].name} <Icon name="close" size={11} />
@@ -282,8 +286,8 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
                 className={cls}
                 style={{ left: p.x, top: p.y, width: NODE_W, height: NODE_H }}
                 onClick={() => onClickTech(t.id)}
-                onMouseEnter={() => setHover(t.id)}
-                onMouseLeave={() => setHover((h) => (h === t.id ? null : h))}
+                onMouseEnter={touch ? undefined : () => setHover(t.id)}
+                onMouseLeave={touch ? undefined : () => setHover((h) => (h === t.id ? null : h))}
                 data-tech={t.id}
                 title={`${t.name}\n\n${t.description}${t.requires.length ? `\n\nRequires: ${t.requires.map((r) => TECH_BY_ID[r].name).join(', ')}` : ''}\n\n${hint}`}
               >
@@ -315,10 +319,10 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
       </div>
       <div className="tree-legend muted">
         <span className="lg-node done" /> researched <span className="lg-node available" /> available <span className="lg-node active" /> in progress{' '}
-        <span className="lg-node queued" /> queued <span className="lg-node locked" /> needs prerequisites · Hover to trace a path; click to research or
-        queue it with its prerequisites. Unit pictures show the equipment a technology brings.
+        <span className="lg-node queued" /> queued <span className="lg-node locked" /> needs prerequisites · {touch ? 'Tap' : 'Hover to trace a path; click'} to
+        research or queue it with its prerequisites. Unit pictures show the equipment a technology brings.
       </div>
-      <div className="muted small" style={{ marginTop: 4 }}>
+      <div className="muted small research-era-note" style={{ marginTop: 4 }}>
         Your nation enters the Interwar era after {ERA_RULES.interwar.count} technologies from the Twenties onwards, and the Second World War after{' '}
         {ERA_RULES.ww2.count} from 1935 onwards. Equipment upgrades reach every existing unit of the type.
       </div>

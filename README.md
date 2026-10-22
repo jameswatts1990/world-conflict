@@ -41,12 +41,13 @@ Other scripts:
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
-| `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
+| `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
+| `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build` first; about 20 seconds): upright, then turned on its side |
 
-The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and the browser playthrough on
+The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and both browser playthroughs on
 every push and pull request.
 
 ## Deploy to GitHub Pages
@@ -85,6 +86,21 @@ pointing at a province lists the same buildings. Click a field report or an aler
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
+
+### On a phone or tablet
+
+Narrow screens get a compact layout: resources and the clock in a two-row top bar, Research, Diplomacy, Reports and
+More (save, load, help, main menu) in a tab bar at the bottom, and the selected city or army in a sheet that slides up
+from the bottom; drag its handle to see more, or down to close it. Turned on its side, the phone keeps a one-row top bar,
+a slim command rail on the left and the selection in a panel on the right.
+
+| Touch | Action |
+| --- | --- |
+| Tap province / army counter | Open its city / select the army |
+| **Move**, then tap a province or an enemy army | Preview the route and arrival time; tap it again (or **Confirm**) to march |
+| Drag / pinch | Pan / zoom the map (the **fit** button shows the whole theatre) |
+| Tap a resource | Its income, upkeep and net change |
+| Pause button or the **Paused** banner | Pause / resume; **1x** and **2x** set the speed (DEV speeds are keyboard only) |
 
 ## How to win
 
@@ -129,6 +145,7 @@ tests/              Simulation tests
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
-- Single desktop layout; not tuned for touch or small screens. The main bundle is ~910 KB (298 KB gzipped).
+- The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
+  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~925 KB (302 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.

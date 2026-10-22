@@ -23,7 +23,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
         wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
         sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}. Neutral states may be invaded at any time.
       </p>
-      <table className="dip-table">
+      {/* A table on the desktop; one card per nation on small screens (the cells are named for that). */}
+      <table className="dip-table dip-relations">
         <thead>
           <tr>
             <th>Nation</th>
@@ -50,7 +51,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             const outgoing = state.peaceOffers.some((o) => o.from === human && o.to === s.nation);
             return (
               <tr key={s.nation} className={`${me ? 'me' : ''}${n.eliminated ? ' eliminated' : ''}`} data-nation={s.nation}>
-                <td>
+                <td className="dc-nation">
                   <span className="dip-nation">
                     <Flag id={s.nation} size={20} />
                     <span>
@@ -62,8 +63,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     </span>
                   </span>
                 </td>
-                <td>{n.eliminated ? '—' : <span className="era-pill">{nationEra(state, s.nation)}</span>}</td>
-                <td>
+                <td className="dc-era">{n.eliminated ? '—' : <span className="era-pill">{nationEra(state, s.nation)}</span>}</td>
+                <td className="dc-rel">
                   {me ? (
                     <span className="muted">—</span>
                   ) : n.eliminated ? (
@@ -79,15 +80,21 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                   )}
                   {!me && truce ? <span className="muted truce"> truce {formatDuration(rel.truceUntil - state.tick, state)}</span> : null}
                 </td>
-                <td>
+                <td className="dc-power">
                   <span className="power-bar" title={`Military power ${Math.round(power)}`}>
                     <span style={{ width: `${(power / maxPower) * 100}%`, background: def.color }} />
                   </span>
                   <span className="power-val">{Math.round(power)}</span>
                 </td>
-                <td className="num">{s.provinces}</td>
-                <td className="num">{s.vp}</td>
-                <td className="num score">{s.score}</td>
+                <td className="num dc-prov" data-label="Prov.">
+                  {s.provinces}
+                </td>
+                <td className="num dc-vp" data-label="VP">
+                  {s.vp}
+                </td>
+                <td className="num score dc-score" data-label="Score">
+                  {s.score}
+                </td>
                 <td className="actions">
                   {!me && !n.eliminated && rel.status === 'peace' && (
                     <button
