@@ -262,9 +262,10 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
   forts where threatened, railways and hospitals on active fronts. It keeps the last free slot for valuable builds.
 - **Recruitment:** an upkeep budget and an army cap that grow with territory and income. The mix follows
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
-  alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units.
+  alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units (only at home, never
+  occupiers abroad).
 - **Military:** armies about to break fall back before they rout; starving or worn-out armies go home to
-  recover; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
+  recover; armies occupying a hostile province stay until it falls; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
   guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
