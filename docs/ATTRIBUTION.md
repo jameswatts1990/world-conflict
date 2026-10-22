@@ -47,6 +47,17 @@ next to it in `scripts/audio/sources.mjs`.
    repeats without a seam, encodes MP3 into `src/audio/files/` and rewrites the table below.
 
 <!-- audio:start -->
+| File | What | By | Licence | |
+| --- | --- | --- | --- | --- |
+| `music-menu-mars.mp3` | Holst, "Mars, the Bringer of War" (The Planets) | Gustav Holst; London Symphony Orchestra conducted by the composer (Columbia, 1923) | Public domain | [source](https://archive.org/details/1923-the-planets-holst-acoustic-vresion-with-marching-song-holst-conducting-uk-c) |
+| `music-venus.mp3` | Holst, "Venus, the Bringer of Peace" (The Planets) | Gustav Holst; London Symphony Orchestra conducted by the composer (Columbia, 1923) | Public domain | [source](https://archive.org/details/1923-the-planets-holst-acoustic-vresion-with-marching-song-holst-conducting-uk-c) |
+| `music-uk-colonel-bogey.mp3` | Alford, "Colonel Bogey" march | Kenneth J. Alford; The Guards Silver Band (Beltona, 1922) | Public domain | [source](https://archive.org/details/78_colonel-bogey_the-guards-silver-band-k-j-afford_gbia3014344b) |
+| `music-fr-pere-la-victoire.mp3` | Ganne, "Le Père la Victoire" march | Louis Ganne; United States Marine Band (Edison 51311, 1923) | Public domain | [source](https://archive.org/details/edison-51311_01_9196) |
+| `music-de-alte-kameraden.mp3` | Teike, "Alte Kameraden" march | Carl Teike; United States Marine Band (Edison 50895, 1921) | Public domain | [source](https://archive.org/details/78_old-comrades-march_united-states-marine-band-c-teike_gbia0023213b) |
+| `music-it-aida.mp3` | Verdi, Triumphal March from "Aida" | Giuseppe Verdi; Sodero's Band (Edison 80371, 1917) | Public domain | [source](https://archive.org/details/edison-80371_01_5321) |
+| `music-es-sevilla.mp3` | Albéniz, "Sevilla" (Suite española) | Isaac Albéniz; Banda Municipal de Madrid conducted by Ricardo Villa (Odeon, 1922) | Public domain | [source](https://archive.org/details/78_sevilla_banda-municipal-de-madrid-albeniz-mtro-ricardo-villa_gbia0038713b) |
+| `music-pl-polonaise.mp3` | Chopin, Polonaise in A major, Op. 40 No. 1 "Military" | Frédéric Chopin; United States Marine Band (Edison 50922, 1922) | Public domain | [source](https://archive.org/details/78_polonaise-militaire_united-states-marine-band-chopin_gbia0276598a) |
+| `music-granada.mp3` | Albéniz, "Granada" (Suite española) | Isaac Albéniz; Banda Municipal de Madrid conducted by Ricardo Villa (Odeon, 1922) | Public domain | [source](https://archive.org/details/78_granada_banda-municipal-de-madrid-albeniz-mtro-ricardo-villa_gbia0038713a) |
 <!-- audio:end -->
 
 ## Code dependencies

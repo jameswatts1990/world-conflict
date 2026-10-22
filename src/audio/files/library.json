@@ -1,5 +1,61 @@
 {
   "cues": {},
   "battleLoop": null,
-  "music": []
+  "music": [
+    {
+      "file": "music-menu-mars",
+      "title": "Holst, \"Mars, the Bringer of War\" (The Planets)",
+      "menu": true
+    },
+    {
+      "file": "music-venus",
+      "title": "Holst, \"Venus, the Bringer of Peace\" (The Planets)"
+    },
+    {
+      "file": "music-uk-colonel-bogey",
+      "title": "Alford, \"Colonel Bogey\" march",
+      "nations": [
+        "uk"
+      ]
+    },
+    {
+      "file": "music-fr-pere-la-victoire",
+      "title": "Ganne, \"Le Père la Victoire\" march",
+      "nations": [
+        "fr"
+      ]
+    },
+    {
+      "file": "music-de-alte-kameraden",
+      "title": "Teike, \"Alte Kameraden\" march",
+      "nations": [
+        "de"
+      ]
+    },
+    {
+      "file": "music-it-aida",
+      "title": "Verdi, Triumphal March from \"Aida\"",
+      "nations": [
+        "it"
+      ]
+    },
+    {
+      "file": "music-es-sevilla",
+      "title": "Albéniz, \"Sevilla\" (Suite española)",
+      "nations": [
+        "es"
+      ]
+    },
+    {
+      "file": "music-pl-polonaise",
+      "title": "Chopin, Polonaise in A major, Op. 40 No. 1 \"Military\"",
+      "nations": [
+        "pl"
+      ]
+    },
+    {
+      "file": "music-granada",
+      "title": "Albéniz, \"Granada\" (Suite española)"
+    }
+  ]
 }

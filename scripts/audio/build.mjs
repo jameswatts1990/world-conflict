@@ -4,7 +4,7 @@
 //   - the battle loop: cross-faded end into start so it repeats without a seam
 //   - music: loudness-normalised to -20 LUFS (quiet, behind the game), mono for the old 78 rpm transfers
 // Requires ffmpeg on the PATH.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -17,16 +17,11 @@ const tmp = mkdtempSync(join(tmpdir(), 'wc-audio-'));
 mkdirSync(outDir, { recursive: true });
 
 const ffmpeg = (args) => execFileSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
-const ffmpegStderr = (args) => {
-  try {
-    execFileSync('ffmpeg', ['-hide_banner', '-nostats', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
-    return '';
-  } catch (e) {
-    return String(e.stderr);
-  }
-};
-const probeDuration = (file) =>
-  Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]).toString().trim());
+/** For the measuring filters, which report on stderr. */
+const ffmpegStderr = (args) => spawnSync('ffmpeg', ['-hide_banner', '-nostats', ...args], { encoding: 'utf8' }).stderr;
+const probe = (file, entry) =>
+  execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'a:0', '-show_entries', entry, '-of', 'csv=p=0', file]).toString().trim();
+const probeDuration = (file) => Number(probe(file, 'format=duration'));
 
 /** The raw file for a source, extracting the entry from a zip when there is one. */
 function input(src) {
@@ -38,16 +33,20 @@ function input(src) {
   return out;
 }
 
-/** Trim, clean and fade to an intermediate WAV. */
+/** Trim, correct the speed, clean and fade to an intermediate WAV. */
 function cut(src, file) {
   const dur = probeDuration(file);
   const [start, end] = src.trim ?? [0, dur];
-  const len = Math.min(end, dur) - start;
+  const speed = src.speed ?? 1;
+  const len = (Math.min(end, dur) - start) / speed;
   const fadeIn = src.fade?.[0] ?? 0.004;
   const fadeOut = src.fade?.[1] ?? Math.min(0.05, len / 4);
+  const rate = Number(probe(file, 'stream=sample_rate'));
   const filters = [
-    `atrim=start=${start}:end=${start + len}`,
+    `atrim=start=${start}:end=${Math.min(end, dur)}`,
     'asetpts=PTS-STARTPTS',
+    // Like correcting a turntable: pitch and tempo together.
+    ...(speed !== 1 ? [`asetrate=${Math.round(rate * speed)}`, `aresample=${rate}`] : []),
     ...(src.filters ?? []),
     `afade=t=in:d=${fadeIn}`,
     `afade=t=out:st=${Math.max(0, len - fadeOut)}:d=${fadeOut}`,
@@ -57,10 +56,13 @@ function cut(src, file) {
   return wav;
 }
 
+/** MP3 for every browser. Mono music is band-limited 78s, so 40 kbps at 32 kHz loses nothing audible. */
 function encode(wav, src, filters) {
   const out = join(outDir, `${src.out}.mp3`);
-  const bitrate = src.bitrate ?? (src.kind === 'music' ? (src.stereo ? '112k' : '64k') : '96k');
-  ffmpeg(['-i', wav, ...(filters.length ? ['-af', filters.join(',')] : []), '-ar', '44100', '-c:a', 'libmp3lame', '-b:a', bitrate, out]);
+  const music = src.kind === 'music';
+  const bitrate = src.bitrate ?? (music ? (src.stereo ? '96k' : '40k') : '96k');
+  const rate = music && !src.stereo ? '32000' : '44100';
+  ffmpeg(['-i', wav, ...(filters.length ? ['-af', filters.join(',')] : []), '-map_metadata', '-1', '-ar', rate, '-c:a', 'libmp3lame', '-b:a', bitrate, out]);
   return out;
 }
 
