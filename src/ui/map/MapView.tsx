@@ -57,6 +57,8 @@ export interface MapViewProps {
   insetBottom: number;
   /** Pan the selected province into view when it falls under a panel (compact layouts). */
   followSelection: boolean;
+  /** Phone layouts: the map opens close in on the capital, detail waits for a closer zoom, and there is no overview map. */
+  compact: boolean;
   /**
    * Touch input: there is no pointer to hover with, so in move mode the first tap on a
    * destination previews the route (`moveTarget`) and a second tap on it gives the order.
@@ -82,6 +84,13 @@ const MAX_ZOOM = 7;
  * zoomed in to their scale.
  */
 const MIN_ZOOM_BASE = 0.8;
+/**
+ * On a phone, names and 3D cities wait for a closer zoom than on the desktop: it opens
+ * closer in (COMPACT_OPENING, against the desktop base) with the cities no bigger, so
+ * they stand apart.
+ */
+const COMPACT_DETAIL = 1.3;
+const COMPACT_OPENING = 2.1;
 
 /**
  * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
@@ -1253,9 +1262,24 @@ function fitFor(width: number, height: number, inset: number, insetBottom: numbe
 /**
  * Opening view: the player's own territory, somewhat closer than the whole theatre and
  * framed above the field reports (bottom left), which would otherwise hide Iberia.
+ * A phone opens closer still, on the capital.
  */
-function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: number, inset: number, insetBottom: number): ZoomTransform {
+function homeView(
+  geo: MapGeometry,
+  pids: ProvinceId[],
+  capital: ProvinceId,
+  compact: boolean,
+  width: number,
+  height: number,
+  inset: number,
+  insetBottom: number,
+): ZoomTransform {
   const fit = fitFor(width, height, inset, insetBottom);
+  if (compact) {
+    const k = Math.max(fit.k, MIN_ZOOM_BASE * COMPACT_OPENING);
+    const [x, y] = geo.anchors[capital];
+    return zoomIdentity.translate(Math.max(240, width - inset) / 2 - x * k, Math.max(240, height - insetBottom) / 2 - y * k).scale(k);
+  }
   if (pids.length === 0) return fit.transform;
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const pid of pids) {
@@ -1278,6 +1302,8 @@ export function MapView(props: MapViewProps) {
   insetRef.current = props.insetRight;
   const insetBottomRef = useRef(props.insetBottom);
   insetBottomRef.current = props.insetBottom;
+  const compactRef = useRef(props.compact);
+  compactRef.current = props.compact;
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
@@ -1334,7 +1360,8 @@ export function MapView(props: MapViewProps) {
     const sel = select(svg);
     sel.call(behavior).on('dblclick.zoom', null);
     const home = world.provinceIds.filter((id) => ctrl.state.provinces[id].owner === ctrl.human);
-    sel.call(behavior.transform, homeView(geo, home, width, height, insetRef.current, insetBottomRef.current));
+    const capital = world.nations[ctrl.human].capital;
+    sel.call(behavior.transform, homeView(geo, home, capital, compactRef.current, width, height, insetRef.current, insetBottomRef.current));
     const ro = new ResizeObserver(() => {
       const r = svg.getBoundingClientRect();
       setSize([r.width, r.height]);
@@ -1459,7 +1486,7 @@ export function MapView(props: MapViewProps) {
   });
 
   const k = transform.k;
-  const ratio = k / Math.max(fitK, MIN_ZOOM_BASE);
+  const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
   const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
   const showDetail = ratio >= ZOOM.detail;
 
@@ -1600,14 +1627,17 @@ export function MapView(props: MapViewProps) {
             <Icon name="fit" />
           </button>
         </div>
-        <MiniMap
-          geo={geo}
-          world={world}
-          owners={ownersSig}
-          ownerOf={ownerOf}
-          view={view}
-          onNavigate={(x, y, animate) => centreOn(x, y, null, animate ? 250 : 0)}
-        />
+        {/* Phones and touch screens pan with a finger: the overview would only take room. */}
+        {!props.compact && !props.touch && (
+          <MiniMap
+            geo={geo}
+            world={world}
+            owners={ownersSig}
+            ownerOf={ownerOf}
+            view={view}
+            onNavigate={(x, y, animate) => centreOn(x, y, null, animate ? 250 : 0)}
+          />
+        )}
       </div>
     </div>
   );

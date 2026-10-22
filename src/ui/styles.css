@@ -3347,6 +3347,7 @@ button.chip.queued:hover {
 .tutorial {
   display: flex;
   width: min(680px, 94vw);
+  max-height: 100%;
   overflow: hidden;
   pointer-events: auto;
   background: linear-gradient(180deg, #17222d, #0f161e);
@@ -3382,9 +3383,27 @@ button.chip.queued:hover {
   letter-spacing: 0.14em;
   color: var(--accent);
 }
+/* On a short screen the text scrolls; the title and the buttons stay in view. */
 .tutorial-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   padding: 14px 18px 14px;
+}
+.tutorial-main > * {
+  flex-shrink: 0;
+}
+.tutorial-main > p {
+  flex-shrink: 1;
+  overflow-y: auto;
+}
+/* Small screens: the text takes the whole width, without the portrait. */
+@media (max-width: 700px), (max-height: 600px) {
+  .tutorial-side {
+    display: none;
+  }
 }
 .tutorial-step {
   display: flex;
@@ -3411,7 +3430,9 @@ button.chip.queued:hover {
 }
 .tutorial-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
 }
@@ -3849,7 +3870,7 @@ button.chip.queued:hover {
    .layout-portrait   narrow screens: two-row top bar, tab bar at the bottom, the
                       selection in a bottom sheet;
    .layout-landscape  short screens (a phone on its side): one-row top bar, slim
-                      rail, the selection in a side sheet;
+                      tab bar at the bottom, the selection in a side sheet;
    .compact           either of the two;
    .touch             no hover: a touch screen is the main input. */
 
@@ -3962,44 +3983,56 @@ body {
   height: auto;
   padding-right: 8px;
 }
+.compact .topbar {
+  gap: 6px;
+}
+/* Resources, minified: a plain icon beside the stock, the change per minute under it. */
 .compact .tb-res {
   min-width: 0;
-  gap: 5px;
-  padding: 2px 6px 2px 2px;
+  gap: 4px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 14px 5px 5px 14px;
 }
 .compact .tb-res-icon {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
 }
 .compact .tb-res-icon svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
 }
 .compact .tb-res-text {
   min-width: 0;
   overflow: hidden;
 }
 .compact .tb-res-val {
-  font-size: 15px;
+  font-size: 14.5px;
 }
 .compact .tb-res-rate {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 .compact .tb-morale {
   min-width: 0;
-  padding: 0 6px;
+  padding: 0 5px;
 }
 .compact .tb-morale-val {
-  font-size: 17px;
+  font-size: 16px;
 }
 .compact .tb-sub {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 .compact .tb-vp {
   min-width: 0;
+  overflow: hidden;
 }
 .compact .tb-vp-val {
-  font-size: 15px;
+  font-size: 14.5px;
+}
+.compact .tb-vp-val .muted {
+  font-size: 12px;
 }
 .compact .tb-vp-bar {
   margin-bottom: 0;
@@ -4013,16 +4046,16 @@ body {
 }
 .compact .tb-clock {
   height: auto;
-  padding: 0 6px;
+  padding: 0 5px;
   gap: 5px;
 }
 .compact .tb-clock-val {
-  font-size: 15px;
+  font-size: 14.5px;
 }
 .compact .speed-btn {
-  min-width: 34px;
+  min-width: 32px;
   min-height: 32px;
-  padding: 4px 7px;
+  padding: 4px 6px;
 }
 /* The resource breakdown opens on a tap, across the width of the bar. */
 .compact .tb-res {
@@ -4077,25 +4110,29 @@ body {
 .layout-portrait .tb-speed {
   grid-area: speed;
 }
-/* The narrowest phones: plain resource icons leave the numbers room. */
-@media (max-width: 400px) {
-  .layout-portrait .tb-res {
-    gap: 3px;
-    padding: 2px 4px 2px 3px;
+/* The narrowest phones: the flag gives the resources its room. */
+@media (max-width: 340px) {
+  .layout-portrait .topbar {
+    grid-template-areas:
+      'res res res res res'
+      'vp vp clock morale speed';
   }
-  .layout-portrait .tb-res-icon {
-    width: 18px;
-    height: 18px;
-    background: none;
-    border: none;
+  .layout-portrait .tb-nation {
+    display: none;
   }
 }
 
 .layout-landscape .topbar {
-  gap: 8px;
   height: calc(48px + env(safe-area-inset-top));
   padding-left: 8px;
   padding-right: 8px;
+}
+/* A small phone on its side: the flag and the time left give way. */
+@media (max-width: 640px) {
+  .layout-landscape .tb-nation,
+  .layout-landscape .tb-clock .tb-sub {
+    display: none;
+  }
 }
 .layout-landscape .tb-resources {
   gap: 4px;
@@ -4106,15 +4143,15 @@ body {
   margin-left: auto;
 }
 
-/* ---- Command bar: tabs along the bottom (portrait) or a slim rail (landscape) */
-.layout-portrait .game-body {
+/* ---- Command bar: tabs along the bottom, the map's full width above them */
+.compact .game-body {
   flex-direction: column;
 }
 /* The tab bar reaches under the home indicator itself. */
-.game-screen.layout-portrait {
+.game-screen.compact {
   padding-bottom: 0;
 }
-.layout-portrait .nav-rail {
+.compact .nav-rail {
   order: 2;
   flex-direction: row;
   width: auto;
@@ -4123,39 +4160,39 @@ body {
   border-top: 1px solid var(--line);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
 }
-.layout-portrait .rail-btn {
+.compact .rail-btn {
   flex: 1;
   margin: 0;
   padding: 6px 2px 7px;
 }
-.layout-portrait .rail-fill {
+.compact .rail-fill {
   display: none;
 }
 .layout-portrait .rail-badge {
   right: calc(50% - 26px);
 }
-.layout-portrait .more-menu {
+.compact .more-menu {
   right: 6px;
   bottom: calc(100% + 6px);
 }
+/* A phone on its side is short: a slim bar, each icon beside its label. */
 .layout-landscape .nav-rail {
-  width: 60px;
-  padding: 4px 0;
+  padding-top: 2px;
+  padding-bottom: calc(2px + env(safe-area-inset-bottom));
 }
 .layout-landscape .rail-btn {
-  margin: 0 4px;
-  padding: 7px 0 8px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 2px 6px;
 }
-.layout-landscape .rail-label {
-  font-size: 9.5px;
-  letter-spacing: 0.02em;
+.layout-landscape .rail-btn .icon {
+  width: 20px;
+  height: 20px;
 }
 .layout-landscape .rail-badge {
-  right: 3px;
-}
-.layout-landscape .more-menu {
-  left: calc(100% + 6px);
-  bottom: 6px;
+  position: static;
+  box-shadow: none;
 }
 
 /* ---- Map overlays */
@@ -4167,9 +4204,6 @@ body {
 .compact .segmented button,
 .compact .chip-btn {
   padding: 8px 9px;
-}
-.compact .minimap {
-  display: none;
 }
 .compact .zoom-controls button {
   width: 38px;
@@ -4284,25 +4318,23 @@ body {
   right: calc(min(340px, 46vw) + 14px);
 }
 
-/* ---- Field reports: a sheet of their own, opened from the command bar */
+/* ---- Field reports: a sheet rising from their tab in the bottom bar */
 .compact .event-log {
   z-index: 4;
-  width: auto;
+  bottom: 0;
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
 }
 .layout-portrait .event-log {
   left: 0;
   right: 0;
-  bottom: 0;
+  width: auto;
   max-height: 55%;
-  border-bottom: none;
-  border-radius: 14px 14px 0 0;
 }
 .layout-landscape .event-log {
-  top: 6px;
-  bottom: 6px;
   left: 6px;
-  width: min(380px, 48vw);
-  max-height: none;
+  width: min(420px, 52vw);
+  max-height: calc(100% - 12px);
 }
 .compact .event-log header {
   padding: 10px 12px;
@@ -4361,6 +4393,13 @@ body {
   bottom: 6px;
   width: min(340px, 46vw);
   scrollbar-gutter: auto;
+}
+/* A phone on its side is short: the skyline keeps its rooftops, not its sky, and the tabs come into view. */
+.layout-landscape .city-scene-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 84px;
+  overflow: hidden;
 }
 
 /* ---- Panels: larger touch targets; orders come first in the army panel */
@@ -4532,18 +4571,14 @@ body {
   white-space: normal;
 }
 
-/* ---- Briefing: one column, above the bottom edge */
+/* ---- Briefing: one column, above the tab bar */
 .compact .tutorial-backdrop {
-  padding: 0 8px calc(8px + env(safe-area-inset-bottom));
-}
-.compact .tutorial {
-  max-height: calc(100% - 16px);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
 }
 .compact .tutorial-side {
   display: none;
 }
 .compact .tutorial-main {
-  overflow-y: auto;
   padding: 12px 14px;
 }
 .compact .tutorial h3 {
@@ -4557,8 +4592,21 @@ body {
 .compact .tutorial-foot button {
   min-height: 38px;
 }
+.compact .step-dots span {
+  width: 12px;
+}
 .layout-portrait .tutorial-backdrop {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+.layout-landscape .tutorial-backdrop {
+  padding-bottom: calc(48px + env(safe-area-inset-bottom));
+}
+.layout-landscape .tutorial-step {
+  display: none;
+}
+.layout-landscape .tutorial h3 {
+  margin-top: 0;
+  font-size: 18px;
 }
 
 /* ---- Main menu (outside the game screen, so on its own queries) */

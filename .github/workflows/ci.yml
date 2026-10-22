@@ -24,6 +24,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # The runner's Microsoft apt source can fail apt-get update (403, "no longer signed").
+      # Chromium's system packages come from the Ubuntu archive, so leave that source out.
+      - run: grep -rl packages.microsoft.com /etc/apt/sources.list.d/ | xargs -r sudo rm -f
       # Browser playthrough of the full gameplay loop against the production build.
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
