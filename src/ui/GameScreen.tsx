@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { CITY } from '../sim/config/buildings';
+import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
   armiesIn,
   armyMorale,
   armyName,
+  buildingSlots,
   eventsFor,
   isRouted,
   nationName,
@@ -19,7 +20,8 @@ import {
   type ProvinceId,
   unitGen,
 } from '../sim';
-import { UnitIconArt } from './art/adapters';
+import { BuildingGlyphArt, UnitIconArt, plinthColor } from './art/adapters';
+import { lighten } from './color';
 import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
 import { formatDuration } from './format';
@@ -473,6 +475,10 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const otherUnits = armies.filter((a) => a.owner !== human).reduce((n, a) => n + a.units.length, 0);
     const army = armyId ? state.armies[armyId] : undefined;
     const c = army ? composition(army) : null;
+    // What the city's model shows, spelt out: its buildings, free slots and work in progress.
+    const built = BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0);
+    const job = ps.construction?.building ?? null;
+    const free = buildingSlots(state, pid) - slotsUsed(ps.buildings, job);
     body = (
       <>
         {army && c && (
@@ -516,6 +522,17 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
           </span>
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}
         </div>
+        {(built.length > 0 || free > 0 || job) && (
+          <div className="hc-row hc-buildings">
+            {built.map((b) => (
+              <span key={b} style={{ color: lighten(plinthColor(BUILDINGS[b].category), 0.35) }}>
+                <BuildingGlyphArt kind={b} size={14} />
+              </span>
+            ))}
+            {free > 0 && <span className="hc-free">{free === 1 ? '1 free slot' : `${free} free slots`}</span>}
+            {job && <span className="warn-text">Building {BUILDINGS[job].name}</span>}
+          </div>
+        )}
         {owner !== 'neutral' && (
           <div className="hc-row">
             <span className={ps.morale >= 60 ? 'ok' : ps.morale < 35 ? 'bad' : 'warn-text'}>
