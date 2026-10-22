@@ -27,6 +27,15 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
   2: (state) => {
     for (const n of Object.values(state.nations)) delete (n as unknown as Record<string, unknown>).lastRates;
   },
+  // 4: armies no longer rout or surrender; the scoreboard counts ordered withdrawals instead.
+  3: (state) => {
+    for (const a of Object.values(state.armies)) delete (a as unknown as Record<string, unknown>).routedUntil;
+    for (const n of Object.values(state.nations)) {
+      const stats = n.stats as typeof n.stats & { armiesSurrendered?: number };
+      delete stats.armiesSurrendered;
+      stats.retreats = 0;
+    }
+  },
 };
 
 /**

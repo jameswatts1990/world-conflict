@@ -5,7 +5,7 @@ import { EUROPE_SCENARIO, Simulation, buildWorld, createInitialState, nationEra,
 const seeds = Number(process.argv[2] ?? 6);
 const minutes = Number(process.argv[3] ?? 150);
 const world = buildWorld(EUROPE_SCENARIO);
-const kinds = ['rout', 'surrender', 'capture', 'war', 'peace', 'city-growth', 'disband'];
+const kinds = ['rout', 'capture', 'war', 'peace', 'city-growth', 'disband'];
 const totals: Record<string, number> = {};
 const t0 = performance.now();
 for (let seed = 1; seed <= seeds; seed++) {

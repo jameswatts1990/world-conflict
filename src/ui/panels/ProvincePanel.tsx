@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
 import { BUILDING_UNLOCKED_BY, TECH_BY_ID, UNIT_UNLOCKED_BY } from '../../sim/config/research';
-import { ECONOMY, MORALE } from '../../sim/config/rules';
+import { ECONOMY } from '../../sim/config/rules';
 import { UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
 import {
   RESOURCE_KEYS,
@@ -101,7 +101,7 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
             {ownerShortName(world, s.owner, pid)}
             <span className="bs-role muted"> · {s.owner === defender ? 'defending' : 'attacking'}</span>
           </span>
-          <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; below ${Math.round(MORALE.routThreshold * 100)}% an army breaks`}>
+          <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; low morale blunts firepower`}>
             {countOf(s.c.count, 'unit')} · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
           </span>
           <span className="ar-bars">

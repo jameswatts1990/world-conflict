@@ -9,7 +9,6 @@ import {
   atWar,
   buildingSlots,
   eventsFor,
-  isRouted,
   nationName,
   provinceName,
   scaledTicks,
@@ -100,13 +99,12 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
       // Our own attacks are no surprise; an enemy attacking our land is.
       return e.province && state.provinces[e.province].owner === human ? 'bad' : null;
     case 'army-destroyed':
-    case 'rout':
     case 'peace-rejected':
-      // Our army lost or broken, or our offer turned down.
+      // Our army lost, or our offer turned down.
       return e.subject === human ? 'bad' : null;
-    case 'surrender':
-      // An encircled army gave up: ours, or one that surrendered to us.
-      return e.subject === human ? 'bad' : e.nations.includes(human) ? 'good' : null;
+    case 'rout':
+      // An enemy pulled out of a battle with us.
+      return e.subject !== human && e.nations.includes(human) ? 'good' : null;
     default:
       return null;
   }
@@ -714,8 +712,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
                 {Math.round(c.strength * 100)}% strength · morale {Math.round(armyMorale(army) * 100)}
               </span>
             </div>
-            {isRouted(state, army) && <div className="hc-row bad">Routed: falling back</div>}
-            {army.move?.leg && !isRouted(state, army) && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
+            {army.move?.leg && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
             {!army.supplied && <div className="hc-row bad">Out of supply</div>}
           </div>
         )}

@@ -100,9 +100,9 @@ describe('event wording', () => {
     place(state, 'neutral', 'nt-netherlands', { infantry: 1 });
     place(state, 'fr', 'nt-netherlands', { infantry: 6, artillery: 2 });
     run(state, 200);
-    // With nowhere to retreat, the broken garrison surrenders.
-    const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
-    expect(lost.text).toBe('Overwhelmed at Amsterdam, the Dutch garrison surrendered to France — 1 unit lost.');
+    // The garrison fights to the last man.
+    const lost = state.events.find((e) => e.kind === 'army-destroyed')!;
+    expect(lost.text).toBe('The Netherlands lost the Dutch garrison at Amsterdam.');
     expect(lost.subject).toBe('neutral');
     const captured = state.events.find((e) => e.kind === 'capture')!;
     expect(captured.subject).toBe('neutral');

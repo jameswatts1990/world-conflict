@@ -177,8 +177,8 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields its own 
   junctions speed legs up. The minimum leg is 15 s.
 - Orders use Dijkstra over legal provinces: own territory, nations at war, and neutral states.
 - Armies on a multi-leg order **hold** to fight and to capture each hostile province, then continue. An explicit
-  new order leaves immediately (retreat). Split, merge and **disband** (half the manpower returns) are available
-  while stationary.
+  new order leaves immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and
+  **disband** (half the manpower returns; not in battle) are available while stationary.
 
 ### 6.6 Capture and supply
 
@@ -195,11 +195,12 @@ Morale works on three levels.
 **Unit morale (0–1).** Every hit costs morale as well as strength: hp damage × the shooter's **shock**
 (tanks 1.4, heavy tanks 1.6, siege guns 1.4, assault troops 1.4, artillery 1.25, infantry 1.0) × 1.3, divided
 by the target's **resilience** (type, veterancy, nation) and by 1.3 for defenders on their own ground. Each round
-also drains a little morale, more when outnumbered, and every destroyed unit shakes the rest of its army. When an
-army's strength-weighted morale falls below **25%** it **routs**: it flees to an adjacent friendly province with
-no enemy in it (supplied and well-garrisoned ones preferred), losing 8% strength (4% with recon), and cannot take
-orders for 30 s. **An army with nowhere to run surrenders** — encirclement is the way to destroy armies.
-Neutral garrisons cannot retreat and surrender when broken, but are 40% more resilient. Out of combat, morale
+also drains a little morale, more when outnumbered, and every destroyed unit shakes the rest of its army. Low
+morale blunts firepower (down to half at zero), but **armies never break: they fight to the death** unless their
+owner orders them out. **A withdrawal under fire** costs every unit 15 strength points (7.5 with recon screening
+it) and 10% morale; units too weak to get away are left behind and count as destroyed, so an army already cut to
+pieces may not escape at all. Encirclement still matters: with no friendly province next door there is nowhere to
+withdraw to. Neutral garrisons never withdraw, and are 40% more resilient. Out of combat, morale
 recovers 5% per 10 s (×1.5 in supplied home territory, ×2 at a hospital, ×0.5 while marching), up to a **cap**
 set by national morale.
 
@@ -263,7 +264,8 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
 - **Recruitment:** an upkeep budget and an army cap that grow with territory and income. The mix follows
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units.
-- **Military:** armies about to break fall back before they rout; starving or worn-out armies go home to
+- **Military:** armies fight to the death, withdrawing only when the battle is hopeless (under a fifth of the
+  enemy's power there) and the army's morale is spent (below 30%); starving or worn-out armies go home to
   recover; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
   guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
@@ -328,7 +330,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; the name plate hangs in
   front of the built-up area. The cursor tooltip lists the same buildings and free slots.
 - **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
-  formations, and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of
+  formations, and strength and morale bars; Your armies have a white rim, armies of
   nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
   Armies standing in one province fill rows of two above its city, yours first, so a crowded province grows a short
   pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
@@ -360,7 +362,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   slot, wars and peace offers. The selected army and province open as floating cards on the right; the overview map
   and zoom buttons sit below them. Field reports (the event log) sit bottom left; alerts pop up top left for wars,
   peace, research, eliminations, shortages, objective captures, provinces you win or lose, enemy attacks on your
-  territory, armies you lose, routs and surrenders, and rejected peace offers. A war declared on you is red, your own
+  territory, armies you lose, enemy withdrawals, and rejected peace offers. A war declared on you is red, your own
   declaration orange, and other powers' wars and treaties neutral. Alerts only count down while the game runs. A cursor
   tooltip summarises the province (city size, morale, units present by nation) and the army under the mouse.
 - **City view** (click a province): a procedural skyline that grows with the city and shows every building,
@@ -375,7 +377,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   queue. Diplomacy shows flags, relation pills, national specialities and morale, military power bars, objective chips
   and answers to incoming peace offers. Declaring war and leaving the campaign ask for confirmation, and Escape closes
   the innermost window first. The opening tutorial is a Chief of Staff briefing. The results screen ranks the powers
-  with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
+  with their provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner
   brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
   national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons

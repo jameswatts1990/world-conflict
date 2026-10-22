@@ -10,7 +10,6 @@ import {
   findPath,
   formationName,
   hostileArmiesIn,
-  isRouted,
   provinceName,
   rankName,
   scaledTicks,
@@ -65,17 +64,13 @@ export function ArmyPanel({
   const dest = army.move ? army.move.path[army.move.path.length - 1] : null;
   const hostiles = hostileArmiesIn(state, army.province, army.owner);
   const p = state.provinces[army.province];
-  const routed = isRouted(state, army);
   const c = composition(army);
   const morale = armyMorale(army);
 
   let status: string;
   let statusIcon: IconName;
   const here = provinceName(world, army.province);
-  if (routed) {
-    status = `Routed — falling back to ${provinceName(world, leg?.to ?? army.province)}`;
-    statusIcon = 'warning';
-  } else if (leg) {
+  if (leg) {
     status = `Marching to ${provinceName(world, leg.to)}`;
     statusIcon = 'move';
   } else if (hostiles.length > 0) {
@@ -135,7 +130,7 @@ export function ArmyPanel({
           </button>
         </div>
         <h3>{title}</h3>
-        <div className={`army-status${(hostiles.length && !leg) || routed ? ' battle' : ''}`}>
+        <div className={`army-status${hostiles.length && !leg ? ' battle' : ''}`}>
           <Icon name={statusIcon} size={14} /> {status}
         </div>
         <div className="army-summary">
@@ -154,7 +149,7 @@ export function ArmyPanel({
             </span>
             <span className="tb-sub">strength</span>
           </span>
-          <span className={`as-str as-morale ${moraleClass(morale * 100)}`} title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+          <span className={`as-str as-morale ${moraleClass(morale * 100)}`} title="Low morale blunts firepower; armies never break and fight on until ordered out">
             <span className="as-str-val">{Math.round(morale * 100)}</span>
             <span className="tb-sub">morale</span>
           </span>
@@ -168,14 +163,14 @@ export function ArmyPanel({
             <Progress value={c.strength} label={`${Math.round(c.strength * 100)}%`} color={strengthColor(c.strength)} />
           </div>
           <div className="meter-row">
-            <span className="meter-label" title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+            <span className="meter-label" title="Low morale blunts firepower; armies never break and fight on until ordered out">
               Morale
             </span>
             <MoraleMeter value={morale * 100} />
           </div>
         </div>
 
-        {army.move && dest && !routed && (
+        {army.move && dest && (
           <div className="march-box">
             {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
             <div className="march-meta">
@@ -192,10 +187,14 @@ export function ArmyPanel({
           </div>
         )}
 
-        {routed && (
+        {own && hostiles.length > 0 && !leg && (
           <div className="warn">
             <Icon name="warning" size={15} />
-            <span>Routed: the army broke and is falling back. It can take orders again in {formatDuration(army.routedUntil - state.tick, state)}.</span>
+            <span>
+              In battle: it fights to the death unless you order it out. Retreating under fire costs every unit{' '}
+              {Math.round(MORALE.retreatLoss * 100)} strength points{army.units.some((u) => UNITS[u.type].recon) ? ' (halved: recon screens the withdrawal)' : ''}, and
+              units too weak to get away are lost.
+            </span>
           </div>
         )}
         {!army.supplied && (
@@ -218,7 +217,6 @@ export function ArmyPanel({
           <div className="orders">
             <button
               className={`order-btn${moveMode ? ' active' : ''}`}
-              disabled={routed}
               onClick={() => onMoveMode(!moveMode)}
               title="Then click a destination (or right-click a province any time) — M"
               data-testid="move-mode"
@@ -226,7 +224,7 @@ export function ArmyPanel({
               <Icon name="move" size={18} />
               <span>{moveMode ? 'Pick target' : 'Move'}</span>
             </button>
-            <button className="order-btn" disabled={!army.move || routed} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
+            <button className="order-btn" disabled={!army.move} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
               <Icon name="stop" size={18} />
               <span>Stop</span>
             </button>

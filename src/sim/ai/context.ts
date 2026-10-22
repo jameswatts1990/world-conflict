@@ -9,7 +9,6 @@ import {
   armyPower,
   atWar,
   isArmyInTransit,
-  isRouted,
   nationEconomy,
   scaledTicks,
   type NationEconomy,
@@ -134,12 +133,12 @@ export function affordableWithReserve(ctx: Ctx, cost: PartialResources): boolean
   });
 }
 
-/** Armies free to receive orders: stationary, not marching and not routed. */
+/** Armies free to receive orders: stationary and not marching. */
 export function idleArmies(ctx: Ctx): Army[] {
   return Object.keys(ctx.state.armies)
     .sort()
     .map((id) => ctx.state.armies[id])
-    .filter((a) => a.owner === ctx.me && !a.move && !isArmyInTransit(a) && !isRouted(ctx.state, a));
+    .filter((a) => a.owner === ctx.me && !a.move && !isArmyInTransit(a));
 }
 
 export function avgStrength(army: Army): number {

@@ -146,10 +146,6 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Strength (top) and morale (bottom)
         <Sample>
-          <path d="M-3,8 L-3,-8 L7,-5 L-3,-2" className="routed-flag" />
-        </Sample>
-        Routed army falling back
-        <Sample>
           <g className="army-badge warn">
             <circle r={6} />
             <text y={3.2}>!</text>
