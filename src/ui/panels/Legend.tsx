@@ -16,7 +16,7 @@ function Sample({ children, w = 34, h = 20 }: { children: React.ReactNode; w?: n
   );
 }
 
-/** A small town as the zoomed-in map draws it. */
+/** A small town as the zoomed-in map draws it: its streets, and its buildings on them. */
 function CitySample({ color }: { color: string }) {
   const sp = citySprite({
     seed: 'fr-nord',
@@ -26,12 +26,26 @@ function CitySample({ color }: { color: string }) {
     construction: null,
     freeSlots: 1,
     terrain: 'plains',
-    coastal: false,
     nationColor: color,
     battle: false,
   });
-  const k = 44 / sp.width;
-  return <image href={sp.href} x={-sp.cx * k} y={-sp.cy * k + 2} width={sp.width * k} height={sp.height * k} />;
+  // The built-up area fills the sample, on a patch of the owner's land.
+  const k = 44 / (2 * sp.rx);
+  const [dx, dy] = [-sp.mid * k, ((sp.back - sp.front) / 2) * k];
+  return (
+    <>
+      <clipPath id="lg-city-patch">
+        <rect x={-23} y={-15} width={46} height={30} rx={3} />
+      </clipPath>
+      <g clipPath="url(#lg-city-patch)">
+        <rect x={-23} y={-15} width={46} height={30} className="lg-land" />
+        <rect x={-23} y={-15} width={46} height={30} fill={color} fillOpacity={0.45} />
+        {[sp.ground, sp.structures].map((im, i) => (
+          <image key={i} href={im.href} x={-im.cx * k + dx} y={-im.cy * k + dy} width={im.width * k} height={im.height * k} />
+        ))}
+      </g>
+    </>
+  );
 }
 
 const CATEGORIES: BuildingCategory[] = ['economy', 'military', 'civic', 'infrastructure'];
@@ -111,13 +125,13 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         <Sample w={46} h={30}>
           <CitySample color={world.nations[human].color} />
         </Sample>
-        Zoomed in, each city is a model of everything built there; its rim shows the owner
+        Zoomed in, each city is a web of streets with a model of everything built there; its flags show the owner
         <Sample w={46}>
           {CATEGORIES.map((c, i) => (
             <rect key={c} x={-21 + i * 11} y={-5} width={9} height={9} rx={1.5} fill={plinthColor(c)} stroke="rgba(0,0,0,0.5)" />
           ))}
         </Sample>
-        Building plinths: economy, military, civic, infrastructure
+        Building pads: economy, military, civic, infrastructure
         <Sample>
           <path d="M-13,0 L0,-6.5 L13,0 L0,6.5 Z" className="lg-plot" />
         </Sample>
