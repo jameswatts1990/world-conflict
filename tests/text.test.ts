@@ -97,10 +97,10 @@ describe('event wording', () => {
   it('losses name who suffered them, even a neutral garrison', () => {
     const state = quietGame();
     clearArmies(state);
-    place(state, 'neutral', 'nt-netherlands', { infantry: 1 });
+    // A shaken garrison breaks before it can be destroyed and, with nowhere to retreat, surrenders.
+    place(state, 'neutral', 'nt-netherlands', { infantry: 1 }).units[0].morale = 0.3;
     place(state, 'fr', 'nt-netherlands', { infantry: 6, artillery: 2 });
     run(state, 200);
-    // With nowhere to retreat, the broken garrison surrenders.
     const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
     expect(lost.text).toBe('Overwhelmed at Amsterdam, the Dutch garrison surrendered to France — 1 unit lost.');
     expect(lost.subject).toBe('neutral');

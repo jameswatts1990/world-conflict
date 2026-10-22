@@ -675,6 +675,7 @@ function byCreation(a: Army, b: Army): number {
 
 function ArmyMarker({
   army,
+  world,
   state,
   x,
   y,
@@ -687,6 +688,7 @@ function ArmyMarker({
   onHover,
 }: {
   army: Army;
+  world: World;
   state: GameState;
   x: number;
   y: number;
@@ -722,7 +724,7 @@ function ArmyMarker({
     >
       <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
       <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
-      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
+      <CounterArt world={world} type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
       <text x={12.2} y={4.7} className="army-count">
         {army.units.length}
       </text>
@@ -762,7 +764,7 @@ function ArmyLayer({
 }) {
   // Re-render every animation frame for smooth interpolation of marching armies.
   useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
-  const { state, human } = ctrl;
+  const { state, human, world } = ctrl;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
   const relations = state.nations[human].relations;
@@ -825,6 +827,7 @@ function ArmyLayer({
       <ArmyMarker
         key={army.id}
         army={army}
+        world={world}
         state={state}
         x={x}
         y={y}

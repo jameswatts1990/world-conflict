@@ -12,7 +12,7 @@ import type { ArtGen, ArtNation, ArtUnitType } from './types';
 import { drawArmouredCar, drawMotorised } from './vehiclesArt';
 
 export type { ArtGen, ArtNation, ArtUnitType, ArtVariant } from './types';
-export { ART_GENS, ART_NATIONS, ART_UNIT_TYPES } from './types';
+export { ART_GENS, ART_NATIONS, ART_UNIT_TYPES, NATIONAL_STYLES } from './types';
 
 const GEN_ORDER: ArtGen[] = ['ww1', 'interwar', 'ww2'];
 
@@ -68,16 +68,18 @@ export interface UnitArtProps {
   type: ArtUnitType;
   gen: ArtGen;
   nation: ArtNation;
+  /** Insignia colour for the bloc styles (the owning nation's colour). */
+  accent?: string;
   width?: number;
   variant?: 'full' | 'icon';
   className?: string;
   title?: string;
 }
 
-export function UnitArt({ type, gen, nation, width, variant = 'full', className, title }: UnitArtProps): JSX.Element {
+export function UnitArt({ type, gen, nation, accent, width, variant = 'full', className, title }: UnitArtProps): JSX.Element {
   const icon = variant === 'icon';
   const drawGen = resolveArtGen(type, gen);
-  const ctx = makeCtx(nation, drawGen, icon);
+  const ctx = makeCtx(nation, drawGen, icon, accent);
   const vw = icon ? 40 : 96;
   const vh = icon ? 24 : 60;
   const w = width ?? vw;

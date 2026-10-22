@@ -10,6 +10,7 @@ export * from './hash';
 export * from './loop';
 export * from './events';
 export * from './names';
+export * from './blocs';
 export * from './text';
 export { findPath } from './pathfinding';
 export { legTicks } from './systems/movement';

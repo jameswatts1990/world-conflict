@@ -10,8 +10,9 @@ through eras. Recognisable Earth with **modern national borders** is the stage f
 power starts with **Great War (WWI) technology** and broadly balanced capabilities, then researches its way
 through the Interwar period to **WWII**. Later milestones continue to the Cold War, Modern and plausible Future eras.
 
-Each nation should feel like itself: its own named equipment, formations numbered in its own language, its own
-uniforms and insignia, and one small national speciality.
+Each great power should feel like itself: its own named equipment, formations numbered in its own language, its
+own uniforms and insignia, and one small national speciality. To scale to every country, nations belong to an
+equipment **bloc** that supplies all of that by default (§6.3); a nation overrides only what makes it distinct.
 
 Two campaign speeds (targets, tuned by playtesting):
 
@@ -27,14 +28,15 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ## 3. The theatre
 
-- **Six playable nations:** United Kingdom, France, Germany, Italy, Spain and Poland. The human picks one; the AI
-  plays the rest.
+- **Seven playable nations:** United Kingdom, France, Germany, Italy, Spain, Poland and Hungary. The human picks
+  one; the AI plays the rest. Hungary's other modern neighbours lie outside the theatre, so its only road out runs
+  through Austria.
 - **Seven neutral minor states:** Belgium & Luxembourg, Netherlands, Denmark, Switzerland, Austria, Czechia and
   Portugal. They are garrisoned, never attack, and can be invaded by anyone at any time.
-- **50 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
+- **56 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
-- **109 explicit movement connections**: 90 land, 12 mountain passes and 7 sea crossings. Connections are
+- **119 explicit movement connections**: 100 land, 12 mountain passes and 7 sea crossings. Connections are
   authored data, separate from the map shapes.
 - The rest of the world is drawn hatched grey as context.
 
@@ -156,8 +158,16 @@ Units gain experience each round fought (+0.08) and for winning a battle (+0.4):
 Regulars; recruits are Green unless raised in a city with a Military Academy.
 
 Every unit is a numbered formation and every army a numbered army, named in its nation's style ("12e Division
-d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields its own named equipment per generation
+d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields named equipment per generation
 (Mark IV, Renault FT, A7V, Fiat 3000, Trubia A4, 7TP …). A few unbuilt projects fill gaps and are labelled so.
+
+**Blocs** (`src/sim/blocs.ts`) are equipment families that follow who armed whom between 1914 and 1942:
+**Western** (French and British exports: Renault FT, Vickers 6-ton, the 75), **Central** (Škoda guns and German
+armour) and **Eastern** (Russian and Soviet designs: T-26, BT-7, T-34). Each supplies a complete identity and a
+unit look (uniform colours, headgear, insignia). A nation names its bloc and overrides any part: the original six
+override nearly everything, Hungary only its hussars and five armour designs. Within a bloc, nations are told
+apart by counter colour and by the bloc insignia drawn in each nation's colour. Blocs are equipment, not
+alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
 
 ### 6.4 National specialities
 
@@ -169,6 +179,9 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields its own 
 | Italy | Alpini | Mountain troops +20% attack and defence, 20% less money to raise |
 | Spain | La Legión | Assault infantry +20% resilience, +10% attack, always raised as Regulars |
 | Poland | Ułani | Cavalry +25% attack, +10% speed, +15% resilience |
+| Hungary | Huszárok | Cavalry and armoured cars +15% attack, 10% faster; cavalry always raised as Regulars |
+
+Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.5 Armies and movement
 
@@ -241,7 +254,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 37 VP in total (capitals 3, industrial heartlands 2, neutral capitals 1). Holding **40% (15
+- **Objectives:** 42 VP in total (capitals 3, industrial heartlands 2, neutral capitals 1). Holding **40% (17
   VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 3 × provinces + 2 × technologies.
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
@@ -317,8 +330,9 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   for fortifications, gun pits for coastal batteries) standing on a plinth in its category's colour (the same colours
   as the city view's slot tiles); ports have a steamer moored offshore. Free building slots are empty plots, construction shows scaffolding
   and a crane, battles smoke and fire. Generic housing, in the region's style (slate in Britain, zinc in France, red
-  tile in Germany, terracotta in the south), grows denser and taller with the tier, and the six capitals have their
-  landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal Castle). Every building
+  tile in Germany, terracotta in the south), grows denser and taller with the tier, and the powers' capitals have
+  their landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal Castle, and a
+  domed parliament for Budapest). Every building
   has a fixed home cell in its district, so building something never moves the rest. Models are drawn in code
   (`src/ui/art/CityModel.ts`, `iso3d.ts`) and cached as one image per city look, so panning stays cheap; army counters
   stand on the token's back edge. The cursor tooltip lists the same buildings and free slots.
@@ -357,8 +371,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   the innermost window first. The opening tutorial is a Chief of Staff briefing. The results screen ranks the powers
   with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
   brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
-- **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
-  national uniforms, headgear, camouflage and insignia), city skylines, 3D city models, building, branch and HUD icons
+- **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
+  neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 14. Open questions for playtesting

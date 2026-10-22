@@ -3,14 +3,25 @@ import { geoContains } from 'd3-geo';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import { feature } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
+import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
+import { UNITS } from '../src/sim/config/units';
 import { NATION_OUTPUT_TARGET } from '../src/sim/scenario/europe/provinces';
 import { world } from './helpers';
 
 describe('scenario data', () => {
-  it('has six nations and 30–50 playable provinces', () => {
-    expect(world.nationIds).toHaveLength(6);
-    expect(world.provinceIds.length).toBeGreaterThanOrEqual(30);
-    expect(world.provinceIds.length).toBeLessThanOrEqual(50);
+  it('every nation has a core capital, a bloc and a name for every unit it can field', () => {
+    expect(world.nationIds.length).toBeGreaterThanOrEqual(2);
+    for (const id of world.nationIds) {
+      const def = world.nations[id];
+      expect(world.provinces[def.capital].core).toBe(id);
+      expect(BLOC_IDS).toContain(def.bloc);
+      for (const type of UNIT_TYPES) {
+        expect(def.identity.formations[type]).toMatch(/\{(n|ord|fr-f|fr-m)\}/);
+        for (const gen of UNIT_GENS) {
+          if (UNITS[type].models[gen]) expect(def.identity.units[type]?.[gen]?.name, `${id} ${type} ${gen}`).toBeTruthy();
+        }
+      }
+    }
   });
 
   it('every province has a shape and every shape has a province', () => {

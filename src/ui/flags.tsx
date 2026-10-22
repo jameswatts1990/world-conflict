@@ -1,5 +1,6 @@
-// Simplified national flags (3:2) for the six powers and the neutral states.
-// Drawn inline so the UI needs no image assets.
+// Simplified national flags (3:2) for the powers and the neutral states.
+// Drawn inline so the UI needs no image assets. A nation without one here
+// shows the plain neutral flag.
 import { useId, type ReactElement } from 'react';
 import type { OwnerId, ProvinceId, World } from '../sim';
 
@@ -48,6 +49,7 @@ const FLAGS: Record<string, ReactElement> = {
       <rect y={H / 2} width={W} height={H / 2} fill="#dc143c" />
     </>
   ),
+  hu: h3('#cd2a3e', '#f4f4f4', '#436f4d'),
   'nt-benelux': v3('#151515', '#fdda24', '#ef3340'),
   'nt-netherlands': h3('#ae1c28', '#f4f4f4', '#21468b'),
   'nt-austria': h3('#c8102e', '#f4f4f4', '#c8102e'),

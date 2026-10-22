@@ -18,7 +18,11 @@ export type ArtUnitType =
 
 export type ArtGen = 'ww1' | 'interwar' | 'ww2';
 
-export type ArtNation = 'uk' | 'fr' | 'de' | 'it' | 'es' | 'pl' | 'neutral';
+/**
+ * Art style: the six powers' own looks, one per bloc (worn by every nation of that bloc
+ * that has no look of its own), and the neutral garrisons'.
+ */
+export type ArtNation = 'uk' | 'fr' | 'de' | 'it' | 'es' | 'pl' | 'western' | 'central' | 'eastern' | 'neutral';
 
 export type ArtVariant = 'full' | 'icon';
 
@@ -40,7 +44,10 @@ export const ART_UNIT_TYPES: readonly ArtUnitType[] = [
 
 export const ART_GENS: readonly ArtGen[] = ['ww1', 'interwar', 'ww2'];
 
-export const ART_NATIONS: readonly ArtNation[] = ['uk', 'fr', 'de', 'it', 'es', 'pl', 'neutral'];
+export const ART_NATIONS: readonly ArtNation[] = ['uk', 'fr', 'de', 'it', 'es', 'pl', 'western', 'central', 'eastern', 'neutral'];
+
+/** Nations drawn in a look of their own; every other nation wears its bloc's. */
+export const NATIONAL_STYLES: readonly ArtNation[] = ['uk', 'fr', 'de', 'it', 'es', 'pl'];
 
 export type ArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
   | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'

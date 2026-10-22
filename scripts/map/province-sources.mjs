@@ -63,6 +63,16 @@ export const PROVINCE_SOURCES = [
   { id: 'pl-lesser', country: 'POL', names: ['Lesser Poland', 'Subcarpathian', 'Świętokrzyskie'] },
   { id: 'pl-east', country: 'POL', names: ['Lublin', 'Podlachian', 'Warmian-Masurian'] },
 
+  // Hungary (admin-1 units are counties and cities with county rights, grouped
+  // by statistical region; the two northern Transdanubian regions form one
+  // province so Budapest's neighbours are not crowded onto it)
+  { id: 'hu-budapest', country: 'HUN', regions: ['Central Hungary'] },
+  { id: 'hu-north', country: 'HUN', regions: ['Northern Hungary'] },
+  { id: 'hu-east', country: 'HUN', regions: ['Northern Great Plain'] },
+  { id: 'hu-south', country: 'HUN', regions: ['Great Southern Plain'] },
+  { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
+  { id: 'hu-southwest', country: 'HUN', regions: ['Southern Transdanubia'] },
+
   // Neutral minor states (one province each)
   { id: 'nt-benelux', country: 'BEL', whole: true },
   { id: 'nt-benelux', country: 'LUX', whole: true },

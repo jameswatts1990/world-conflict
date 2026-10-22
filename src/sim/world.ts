@@ -74,7 +74,7 @@ export function buildWorld(scenario: ScenarioDef): World {
       seaLandings.add(c.b);
     }
   }
-  specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality.effects])));
+  specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality?.effects ?? []])));
 
   return {
     scenario,

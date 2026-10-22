@@ -13,12 +13,12 @@ export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 820;
 
 const topo = mapJson as unknown as Topology<{
-  provinces: GeometryCollection<{ pid: string }>;
+  provinces: GeometryCollection<{ pid: string; iso: string }>;
   countries: GeometryCollection<{ iso: string; name: string }>;
 }>;
 
 /** Countries that are (partly) represented by playable provinces. */
-export const THEATRE_ISO = new Set(['GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'POL', 'BEL', 'LUX', 'NLD', 'CHE', 'AUT', 'CZE', 'DNK', 'PRT']);
+export const THEATRE_ISO = new Set(topo.objects.provinces.geometries.map((g) => (g.properties as { iso: string }).iso));
 
 export interface CountryShape {
   iso: string;
@@ -80,7 +80,7 @@ export function mapGeometry(world: World): MapGeometry {
 }
 
 export function buildMapGeometry(world: World): MapGeometry {
-  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
+  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string; iso: string }>;
   const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
   const projection = geoMercator().fitExtent(

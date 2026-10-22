@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, type GameSettings, type GameState, type NationId } from '../sim';
+import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, joinNewcomers, type GameSettings, type GameState, type NationId } from '../sim';
 import { GameController } from './game/GameController';
 import { GameScreen } from './GameScreen';
 import { MainMenu } from './MainMenu';
@@ -27,6 +27,8 @@ export function App() {
   };
 
   const load = (state: GameState) => {
+    // Countries added to the scenario since the save was made join it now.
+    joinNewcomers(state, world);
     const ctrl = new GameController(world, state);
     setSession({ ctrl, tutorial: false, key: Date.now() });
   };

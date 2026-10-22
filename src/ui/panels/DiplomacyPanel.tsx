@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
-import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
+import { BLOCS, checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration, proseDuration } from '../format';
@@ -57,8 +57,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <span>
                       <strong>{def.name}</strong>
                       {me && <span className="you-tag">You</span>}
-                      <span className="dip-sub" title={def.speciality.description}>
-                        {def.speciality.name} · morale {Math.round(n.morale)}
+                      <span className="dip-sub" title={def.speciality?.description ?? BLOCS[def.bloc].description}>
+                        {def.speciality?.name ?? BLOCS[def.bloc].name} · morale {Math.round(n.morale)}
                       </span>
                     </span>
                   </span>

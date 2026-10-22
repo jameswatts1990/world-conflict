@@ -3,8 +3,8 @@
 //   npm run map:fetch   # once: downloads raw Natural Earth GeoJSON into data-src/
 //   npm run map:build   # writes src/assets/map/map.topo.json
 //
-// Output is one TopoJSON file with two objects: `provinces` (the playable theatre)
-// and `countries` (world context). Both come from the same 10m admin-1 source and
+// Output is one TopoJSON file with two objects: `provinces` (the playable theatre,
+// each tagged with its country's code) and `countries` (world context). Both come from the same 10m admin-1 source and
 // are simplified together, so every coast and border they share is the same arc:
 // the world underlay can never show slivers beside, or gaps under, the provinces.
 // Only geometry and ids are emitted; all gameplay data lives in src/sim/.
@@ -114,7 +114,7 @@ async function buildMap() {
     const pid = matchRule(p);
     if (pid) used.set(pid, (used.get(pid) ?? 0) + 1);
     if (pid) {
-      features.push({ type: 'Feature', properties: { key: pid, kind: 'provinces', pid, ivl: intervalFor(0) }, geometry: f.geometry });
+      features.push({ type: 'Feature', properties: { key: pid, kind: 'provinces', pid, iso: p.adm0_a3, ivl: intervalFor(0) }, geometry: f.geometry });
       continue;
     }
     // Units of theatre countries that no province claims (overseas territories,
@@ -140,7 +140,7 @@ async function buildMap() {
     '-filter-islands min-area=120km2 remove-empty',
     '-clean',
     '-split kind',
-    '-filter-fields target=provinces pid',
+    '-filter-fields target=provinces pid,iso',
     '-filter-fields target=countries iso,name',
     // One file, one quantisation grid: shared arcs stay identical in both objects.
     '-o target=* map.topo.json format=topojson quantization=100000',

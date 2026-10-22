@@ -1,46 +1,52 @@
 // Bridges simulation ids to the artwork components, so panels and the map
 // never import the art modules directly.
 import { memo } from 'react';
-import type { BuildingCategory, BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType } from '../../sim';
+import type { BuildingCategory, BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType, World } from '../../sim';
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { PLINTH_COLORS, buildCityModel } from './CityModel';
 import { CitySkyline } from './CitySkyline';
-import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
+import { NATIONAL_STYLES, UnitArt, type ArtNation } from './UnitArt';
 
-function artNation(owner: OwnerId): ArtNation {
-  return (ART_NATIONS as readonly string[]).includes(owner) ? (owner as ArtNation) : 'neutral';
+/**
+ * How an owner's units are drawn: in its own look if it has one, otherwise in
+ * its bloc's, with the insignia in the nation's own colour.
+ */
+function artOf(world: World, owner: OwnerId): { nation: ArtNation; accent?: string } {
+  if ((NATIONAL_STYLES as readonly string[]).includes(owner)) return { nation: owner as ArtNation };
+  const def = world.nations[owner];
+  return def ? { nation: def.bloc, accent: def.color } : { nation: 'neutral' };
 }
 
 /** Small unit picture for tree nodes. */
-export function TechUnitIcon({ type, gen, nation, title }: { type: UnitType; gen: UnitGen; nation: NationId; title?: string }) {
-  return <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={34} title={title} />;
+export function TechUnitIcon({ world, type, gen, nation, title }: { world: World; type: UnitType; gen: UnitGen; nation: NationId; title?: string }) {
+  return <UnitArt type={type} gen={gen} {...artOf(world, nation)} variant="icon" width={34} title={title} />;
 }
 
 /** Large side-view illustration for unit cards. */
-export function UnitPicture({ type, gen, nation, width = 96 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+export function UnitPicture({ world, type, gen, nation, width = 96 }: { world: World; type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
   return (
     <span className="unit-picture">
-      <UnitArt type={type} gen={gen} nation={artNation(nation)} width={width} />
+      <UnitArt type={type} gen={gen} {...artOf(world, nation)} width={width} />
     </span>
   );
 }
 
 /** Compact silhouette for unit rows. */
-export const UnitIconArt = memo(function UnitIconArt({ type, gen, nation, width = 32 }: { type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
-  return <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={width} />;
+export const UnitIconArt = memo(function UnitIconArt({ world, type, gen, nation, width = 32 }: { world: World; type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
+  return <UnitArt type={type} gen={gen} {...artOf(world, nation)} variant="icon" width={width} />;
 });
 
 /**
  * Map-counter silhouette drawn inside the map's SVG. Memoised: counters move
  * every frame, but their drawing only changes with type, generation or owner.
  */
-export const CounterArt = memo(function CounterArt({ type, gen, nation, x, y, width }: { type: UnitType; gen: UnitGen; nation: OwnerId; x: number; y: number; width: number }) {
+export const CounterArt = memo(function CounterArt({ world, type, gen, nation, x, y, width }: { world: World; type: UnitType; gen: UnitGen; nation: OwnerId; x: number; y: number; width: number }) {
   const h = width * 0.6;
   return (
     <g transform={`translate(${x},${y})`}>
       <rect width={width} height={h} rx={1.5} className="counter-art-bg" />
-      <UnitArt type={type} gen={gen} nation={artNation(nation)} variant="icon" width={width} />
+      <UnitArt type={type} gen={gen} {...artOf(world, nation)} variant="icon" width={width} />
     </g>
   );
 });

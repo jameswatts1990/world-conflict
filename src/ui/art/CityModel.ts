@@ -12,7 +12,7 @@ export interface CityModelProps {
   /** Province id, e.g. 'uk-north': picks the regional architecture and drives variety. */
   seed: string;
   tier: 1 | 2 | 3 | 4 | 5;
-  /** A capital: gets a landmark (a national one for the six powers' capitals). */
+  /** A capital: gets a landmark (a national one for the powers' capitals). */
   capital?: boolean;
   /** Building -> level (0 or absent = not built). */
   buildings: Partial<Record<ArtBuilding, number>>;
@@ -673,6 +673,8 @@ const NATIONAL_LANDMARKS: Record<string, LandmarkKind> = {
   'it-rome': 'dome',
   'es-madrid': 'palace',
   'pl-warsaw': 'castle',
+  // A domed parliament on the river, like Berlin's.
+  'hu-budapest': 'reichstag',
 };
 
 function landmark(l: Lot, kind: LandmarkKind, ctx: Ctx): void {

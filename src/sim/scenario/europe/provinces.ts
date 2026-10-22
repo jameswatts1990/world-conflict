@@ -138,6 +138,20 @@ const ROWS: Row[] = [
   { id: 'pl-east', name: 'Eastern Poland', core: 'pl', terrain: 'marsh', tier: 'town', city: { name: 'Lublin', coord: [22.568, 51.247], size: 'town' }, pop: 650,
     towns: [['Białystok', 23.164, 53.133], ['Olsztyn', 20.49, 53.778], ['Zamość', 23.251, 50.723]] },
 
+  // Hungary
+  { id: 'hu-budapest', name: 'Budapest & Pest', core: 'hu', terrain: 'urban', tier: 'capital', city: { name: 'Budapest', coord: [19.04, 47.498], size: 'capital' }, pop: 3000, vp: 3,
+    towns: [['Vác', 19.133, 47.776], ['Gödöllő', 19.354, 47.597], ['Cegléd', 19.799, 47.172], ['Érd', 18.913, 47.391]] },
+  { id: 'hu-north', name: 'Northern Hungary', core: 'hu', terrain: 'hills', tier: 'industrial', city: { name: 'Miskolc', coord: [20.784, 48.104], size: 'major' }, pop: 300, vp: 2,
+    towns: [['Eger', 20.377, 47.903], ['Salgótarján', 19.803, 48.098], ['Ózd', 20.29, 48.218], ['Tokaj', 21.409, 48.117]] },
+  { id: 'hu-east', name: 'Northern Great Plain', article: 'the', core: 'hu', terrain: 'plains', tier: 'major', city: { name: 'Debrecen', coord: [21.627, 47.531], size: 'major' }, pop: 330,
+    towns: [['Nyíregyháza', 21.717, 47.956], ['Szolnok', 20.196, 47.175], ['Hajdúszoboszló', 21.396, 47.443], ['Jászberény', 19.912, 47.5]] },
+  { id: 'hu-south', name: 'Southern Great Plain', article: 'the', core: 'hu', terrain: 'plains', tier: 'major', city: { name: 'Szeged', coord: [20.148, 46.253], size: 'major' }, pop: 250,
+    towns: [['Kecskemét', 19.689, 46.906], ['Békéscsaba', 21.087, 46.68], ['Hódmezővásárhely', 20.333, 46.418], ['Baja', 18.956, 46.18]] },
+  { id: 'hu-west', name: 'Northern Transdanubia', core: 'hu', terrain: 'plains', tier: 'major', city: { name: 'Győr', coord: [17.635, 47.687], size: 'major' }, pop: 200, oil: true,
+    towns: [['Székesfehérvár', 18.411, 47.186], ['Sopron', 16.585, 47.685], ['Szombathely', 16.622, 47.231], ['Veszprém', 17.909, 47.093], ['Nagykanizsa', 16.991, 46.453]] },
+  { id: 'hu-southwest', name: 'Southern Transdanubia', core: 'hu', terrain: 'hills', tier: 'town', city: { name: 'Pécs', coord: [18.233, 46.072], size: 'town' }, pop: 240,
+    towns: [['Kaposvár', 17.797, 46.359], ['Szekszárd', 18.704, 46.348], ['Mohács', 18.683, 45.993], ['Siófok', 18.049, 46.905]] },
+
   // Neutral minor states (capturable; garrisoned; never attack)
   { id: 'nt-benelux', name: 'Belgium & Luxembourg', core: null, neutral: { name: 'Belgium & Luxembourg', adjective: 'Belgian' }, terrain: 'plains', tier: 'industrial', city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true, vp: 1,
     towns: [['Antwerp', 4.402, 51.219], ['Ghent', 3.725, 51.054], ['Liège', 5.58, 50.633], ['Luxembourg', 6.13, 49.611]] },

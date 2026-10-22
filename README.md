@@ -1,14 +1,18 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Six modern nations on recognisable Earth geography start with
+A browser-based, real-time global strategy game. Seven modern nations on recognisable Earth geography start with
 Great War technology and research their way towards the Second World War. The current build is a local
 single-player campaign on the **European theatre** at **Standard** speed (target ~2–3 hours).
 
 What is in it (Milestone 2, Depth):
 
-- **13 unit types** in four classes with 1914, interwar and 1940 equipment, each nation fielding its **own named
-  designs** and art (Poilus, Alpini, Ułani; Mark IV, Renault FT, A7V, 7TP …), numbered formations in its own
-  language, veterancy, and one **national speciality**.
+- **13 unit types** in four classes with 1914, interwar and 1940 equipment, with **named designs** and art
+  (Poilus, Alpini, Ułani; Mark IV, Renault FT, A7V, 7TP …), numbered formations, veterancy, and one **national
+  speciality**. Each nation belongs to an equipment **bloc** (Western, Central or Eastern) that supplies its
+  designs, formation names and unit art; the original six override nearly all of it with their own, Hungary a
+  few signature designs.
+- **Hungary**, the first nation added through the bloc system: six provinces behind Austria, Central-pattern
+  equipment, its own hussars and Toldi, Turán and Zrínyi armour.
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
@@ -20,6 +24,7 @@ What is in it (Milestone 2, Depth):
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
+- Adding a country: [docs/ADDING_A_COUNTRY.md](docs/ADDING_A_COUNTRY.md) (blocs, the checklist, what to streamline next)
 - Map data and licence: [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md)
 
 ## Run it
@@ -104,7 +109,7 @@ a slim command rail on the left and the selection in a panel on the right.
 
 ## How to win
 
-Hold **15 of the 37 objective victory points** (★ capitals 3 VP, industrial heartlands 2 VP, neutral capitals
+Hold **17 of the 42 objective victory points** (★ capitals 3 VP, industrial heartlands 2 VP, neutral capitals
 1 VP) continuously for **90 seconds**, or have the **highest score** when the **2 h 30 min** time limit ends.
 You lose if your nation is eliminated or another power wins.
 
@@ -114,14 +119,16 @@ Save and load from the left command rail (three slots plus an autosave every 2 m
 when you return to the main menu).
 Saves live in the browser's `localStorage` and can be exported or imported as JSON files.
 **The campaign is paused while closed**: hiding the tab pauses the game and loading resumes exactly where the save
-was made. Offline progression belongs to the later server-backed version.
+was made. Offline progression belongs to the later server-backed version. A save made before a country was added
+still loads: the newcomer joins at its starting position, under computer control and at peace.
 
 ## Project layout
 
 ```
 src/sim/            Framework-free simulation (could run on a server unchanged)
   config/           Balance and timing values: units, buildings, research, rules, AI, timing
-  scenario/europe/  Nations and their identity, province gameplay data, connections, starting setup
+  blocs.ts          Equipment blocs: the named designs and formation names nations inherit
+  scenario/europe/  Nations (bloc, overrides, speciality), province gameplay data, connections, starting setup
   systems/          Economy, production, movement, combat (morale, rout), supply, civic (morale, growth),
                     territory, diplomacy, victory
   ai/               Computer opponents: context, diplomacy, economy, recruitment, military
@@ -140,12 +147,14 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  every campaign ends on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up
+  every campaign ends on the time limit: nobody reaches the 17 VP objective threshold, partly because the AI gangs up
   on a leader.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~925 KB (302 KB gzipped).
+  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~940 KB (307 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
+- Hungary's other modern neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia) are not in the theatre yet, so its
+  only way out is through Austria.

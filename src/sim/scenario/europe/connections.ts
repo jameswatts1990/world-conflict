@@ -127,6 +127,18 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('pl-lesser', 'pl-east'),
   mountain('pl-silesia', 'nt-czechia', 'Sudetes'),
 
+  // Hungary (its other modern neighbours lie outside the theatre)
+  land('hu-budapest', 'hu-north'),
+  land('hu-budapest', 'hu-east'),
+  land('hu-budapest', 'hu-south'),
+  land('hu-budapest', 'hu-west'),
+  land('hu-north', 'hu-east'),
+  land('hu-east', 'hu-south'),
+  land('hu-south', 'hu-west'),
+  land('hu-south', 'hu-southwest'),
+  land('hu-west', 'hu-southwest'),
+  land('hu-west', 'nt-austria'),
+
   // Between neutral states
   land('nt-benelux', 'nt-netherlands'),
   land('nt-austria', 'nt-czechia'),

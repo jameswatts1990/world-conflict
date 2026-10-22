@@ -37,11 +37,11 @@ function CitySample({ color }: { color: string }) {
 const CATEGORIES: BuildingCategory[] = ['economy', 'military', 'civic', 'infrastructure'];
 
 /** A miniature army counter, as drawn on the map. */
-function ArmySample({ color, rim, owner, type, count }: { color: string; rim: string; owner: OwnerId; type: UnitType; count: number }) {
+function ArmySample({ world, color, rim, owner, type, count }: { world: World; color: string; rim: string; owner: OwnerId; type: UnitType; count: number }) {
   return (
     <g transform="scale(0.8)">
       <rect x={-21} y={-11} width={42} height={20} rx={4} fill={color} stroke={rim} strokeWidth={1.4} />
-      <CounterArt type={type} gen="ww1" nation={owner} x={-19.5} y={-8.6} width={23} />
+      <CounterArt world={world} type={type} gen="ww1" nation={owner} x={-19.5} y={-8.6} width={23} />
       <text x={12.2} y={4.7} className="army-count">
         {count}
       </text>
@@ -119,11 +119,11 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Empty plot: a free building slot (a crane means building work)
         <Sample w={46}>
-          <ArmySample color={world.nations[human].color} rim="#fff" owner={human} type="tank" count={4} />
+          <ArmySample world={world} color={world.nations[human].color} rim="#fff" owner={human} type="tank" count={4} />
         </Sample>
         Your army: main unit and number of formations
         <Sample w={46}>
-          <ArmySample color={world.scenario.nations.find((n) => n.id !== human)!.color} rim="#ff5a45" owner={world.scenario.nations.find((n) => n.id !== human)!.id} type="infantry" count={6} />
+          <ArmySample world={world} color={world.scenario.nations.find((n) => n.id !== human)!.color} rim="#ff5a45" owner={world.scenario.nations.find((n) => n.id !== human)!.id} type="infantry" count={6} />
         </Sample>
         Army of a nation at war with you
         <Sample w={46}>

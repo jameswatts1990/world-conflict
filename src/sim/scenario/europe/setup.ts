@@ -7,17 +7,17 @@ export const STARTING_RESOURCES: Resources = { money: 1200, materials: 500, fuel
 
 export const STARTING_BUILDINGS: ScenarioDef['startingBuildings'] = [
   // Capitals
-  ...['uk-london', 'fr-paris', 'de-berlin', 'it-rome', 'es-madrid', 'pl-warsaw'].map((province) => ({
+  ...['uk-london', 'fr-paris', 'de-berlin', 'it-rome', 'es-madrid', 'pl-warsaw', 'hu-budapest'].map((province) => ({
     province,
     buildings: { industry: 1, barracks: 1, armsWorks: 1, supplyDepot: 1 },
   })),
   // Industrial heartlands
-  ...['uk-midlands', 'fr-nord', 'de-ruhr', 'it-lombardy', 'es-catalonia', 'pl-silesia'].map((province) => ({
+  ...['uk-midlands', 'fr-nord', 'de-ruhr', 'it-lombardy', 'es-catalonia', 'pl-silesia', 'hu-north'].map((province) => ({
     province,
     buildings: { industry: 1, barracks: 1, supplyDepot: 1 },
   })),
   // A second recruiting city
-  ...['uk-north', 'fr-rhone', 'de-saxony', 'it-piedmont', 'es-north', 'pl-greater'].map((province) => ({
+  ...['uk-north', 'fr-rhone', 'de-saxony', 'it-piedmont', 'es-north', 'pl-greater', 'hu-west'].map((province) => ({
     province,
     buildings: { barracks: 1 },
   })),
@@ -70,6 +70,13 @@ export const STARTING_ARMIES: ScenarioDef['startingArmies'] = [
   { owner: 'pl', province: 'pl-pomerania', units: { infantry: 2 } },
   { owner: 'pl', province: 'pl-lesser', units: { infantry: 1 } },
   { owner: 'pl', province: 'pl-east', units: { infantry: 1 } },
+  // Hungary
+  { owner: 'hu', province: 'hu-budapest', units: { infantry: 3, artillery: 1 } },
+  { owner: 'hu', province: 'hu-north', units: { infantry: 2, artillery: 1 } },
+  { owner: 'hu', province: 'hu-west', units: { infantry: 2 } },
+  { owner: 'hu', province: 'hu-east', units: { infantry: 1, cavalry: 1 } },
+  { owner: 'hu', province: 'hu-south', units: { infantry: 1 } },
+  { owner: 'hu', province: 'hu-southwest', units: { infantry: 1 } },
   // Neutral garrisons (never move or attack; must be defeated to capture)
   { owner: 'neutral', province: 'nt-benelux', units: { infantry: 4 } },
   { owner: 'neutral', province: 'nt-netherlands', units: { infantry: 3 } },

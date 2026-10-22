@@ -43,9 +43,9 @@ function Wheels({ ctx, xs, y, r }: { ctx: Ctx; xs: number[]; y: number; r: numbe
 // Foot and horse
 
 function mountainKit(ctx: Ctx): { kit: Kit; edelweiss: boolean } {
-  if (ctx.nation === 'it') return { kit: withHeadgear(ctx, 'alpini'), edelweiss: false };
-  if (ctx.nation === 'fr') return { kit: withHeadgear(ctx, 'beret'), edelweiss: false };
-  if (ctx.nation === 'de' && ctx.gen !== 'ww1') return { kit: withHeadgear(ctx, 'bergmutze'), edelweiss: true };
+  if (ctx.pattern === 'it') return { kit: withHeadgear(ctx, 'alpini'), edelweiss: false };
+  if (ctx.pattern === 'fr') return { kit: withHeadgear(ctx, 'beret'), edelweiss: false };
+  if (ctx.pattern === 'de' && ctx.gen !== 'ww1') return { kit: withHeadgear(ctx, 'bergmutze'), edelweiss: true };
   return { kit: ctx.kit, edelweiss: false };
 }
 
@@ -62,7 +62,7 @@ function iconInfantry(ctx: Ctx): ReactElement {
 }
 
 function iconStormtroopers(ctx: Ctx): ReactElement {
-  if (ctx.nation === 'it') {
+  if (ctx.pattern === 'it') {
     const kit = { ...(ctx.gen === 'ww1' ? withHeadgear(ctx, 'fez') : ctx.kit), flash: '#151515' };
     return (
       <g>
@@ -82,7 +82,7 @@ function iconStormtroopers(ctx: Ctx): ReactElement {
   return (
     <g>
       <Shadow rx={12} />
-      <Soldier kit={ctx.kit} pose="throw" x={19} y={G} s={0.72} ow={FIG_OW} hand={ctx.nation === 'de' ? 'stickGrenade' : 'eggGrenade'} back="slungRifle" bold />
+      <Soldier kit={ctx.kit} pose="throw" x={19} y={G} s={0.72} ow={FIG_OW} hand={ctx.pattern === 'de' ? 'stickGrenade' : 'eggGrenade'} back="slungRifle" bold />
     </g>
   );
 }
@@ -100,13 +100,13 @@ function iconMountain(ctx: Ctx): ReactElement {
 }
 
 function iconCavalry(ctx: Ctx): ReactElement {
-  const { nation, gen } = ctx;
+  const { nation, pattern, gen } = ctx;
   let kit: Kit = { ...ctx.kit, jackboots: true };
   let cuirass = false;
-  if (gen === 'ww1' && nation === 'fr') {
+  if (gen === 'ww1' && pattern === 'fr') {
     kit = { ...withHeadgear(ctx, 'cuirassier'), jackboots: true };
     cuirass = true;
-  } else if (gen === 'ww1' && nation === 'de') kit = { ...withHeadgear(ctx, 'czapka'), jackboots: true };
+  } else if (gen === 'ww1' && pattern === 'de') kit = { ...withHeadgear(ctx, 'czapka'), jackboots: true };
   const s = 0.43;
   const hx = 18.4;
   const coat = HORSE_COATS[nation];
@@ -114,7 +114,7 @@ function iconCavalry(ctx: Ctx): ReactElement {
   return (
     <g>
       <Shadow rx={13} />
-      <Horse x={hx} y={G} s={s} ow={FIG_OW * 0.9} coat={coat.coat} mane={coat.mane} cloth={shade(ctx.kit.uniform, -0.42)} nation={nation} bold />
+      <Horse x={hx} y={G} s={s} ow={FIG_OW * 0.9} coat={coat.coat} mane={coat.mane} cloth={shade(ctx.kit.uniform, -0.42)} nation={nation} accent={ctx.accent} bold />
       <Soldier
         kit={kit}
         pose={pose}
@@ -292,7 +292,7 @@ function iconHeavyArtillery(ctx: Ctx): ReactElement {
 function iconAntiTank(ctx: Ctx): ReactElement {
   const { ow } = ctx;
   const v = ctx.pal.vehicle;
-  if (ctx.gen !== 'ww2' && ctx.nation === 'pl') {
+  if (ctx.gen !== 'ww2' && ctx.pattern === 'pl') {
     return (
       <g>
         <Shadow />
@@ -365,7 +365,7 @@ function iconTank(ctx: Ctx): ReactElement {
   const { ow } = ctx;
   const v = ctx.pal.vehicle;
   if (ctx.gen === 'ww1') {
-    if (ctx.nation === 'de') {
+    if (ctx.pattern === 'de') {
       return (
         <g>
           <Shadow />
@@ -377,7 +377,7 @@ function iconTank(ctx: Ctx): ReactElement {
         </g>
       );
     }
-    if (ctx.nation === 'fr') {
+    if (ctx.pattern === 'fr') {
       return (
         <g>
           <Shadow />
