@@ -34,8 +34,10 @@ espionage, naval and air warfare, later eras, multiplayer.
 - **50 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
-- **109 explicit movement connections**: 90 land, 12 mountain passes and 7 sea crossings. Connections are
-  authored data, separate from the map shapes.
+- **112 explicit movement connections**: 90 land, 12 mountain passes and 10 sea crossings. Connections are
+  authored data, separate from the map shapes. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña)
+  and western Mediterranean (Barcelona–Palermo) crossings give every power except Poland at least two neighbouring
+  powers, so France is not the only target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -142,8 +144,11 @@ Infantry, field artillery and cavalry are available from the start; everything e
 - **Hardness:** damage blends soft and hard values by the target's armour hardness (infantry 0, armoured cars
   0.55, tanks 0.8–0.95).
 - Damage = value × terrain × (0.4 + 0.6 × strength) × (0.5 + 0.5 × morale) × veterancy × random ±20% × army
-  modifiers (supply, treasury, combined arms, recon +10%, sea landing −25%), reduced by the defender's
+  modifiers (supply, treasury, combined arms, recon +10%, sea landing −25%, home soil), reduced by the defender's
   fortifications (less the attacker's fort-busting share). Damage is divided by the target's max HP.
+- **Home soil:** an army fighting in one of its own nation's home provinces, defending it or liberating it, hits
+  harder and holds its nerve better: by nothing at national morale 30 or below, rising to +20% at 90 or above
+  (about +13% at the starting 70). The battle view shows each side's bonus.
 - **Sea landings:** an army that arrived by sea crossing fights at −25% until the province is won (Amphibious
   Doctrine cuts this by 70%; Britain's speciality removes it).
 - Destroyed units are removed. A battle ends when no hostile pair remains standing in the province.
@@ -210,7 +215,8 @@ capital is occupied. Shocks: declaring war −3 (the victim's people rally +2); 
 (45 if liberated); its neighbours lose 8; losing the capital costs every core province 15.
 
 **National morale** is the population-weighted average of core province morale. It caps unit morale
-(`0.45 + 0.0085 × national morale`, between 0.5 and 1) and the AI sues for peace when it falls low.
+(`0.45 + 0.0085 × national morale`, between 0.5 and 1), sets how much harder armies fight on home soil (from
+nothing at 30 to +20% at 90), and the AI sues for peace when it falls low.
 
 ## 8. Research
 
@@ -362,7 +368,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Do national specialities feel distinct without breaking the starting balance?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player? Normal declares war
   on an idle player at 7–13 minutes, sometimes two powers at once.
-- France is the weakest position. It borders four powers, and Britain, Italy and Spain have little else to fight,
-  so it suffers about four declarations of war per campaign against one or two for the others. In 80 AI-only
-  campaigns it never wins and is eliminated in 28 (49 before capitals were garrisoned and wars got limited aims);
-  Germany, also central, in 15 (25 before). Should the map, the starting forces or the rules compensate?
+- The central powers survive but rarely win. In 80 full AI-only campaigns France wins 1 and is eliminated in 18 (33
+  before home soil and the North Sea, Biscay and Mediterranean crossings; 49 before capitals were garrisoned and
+  wars got limited aims) and holds 5.4 provinces after two hours (2.7 before). Germany wins 2 and is eliminated in
+  16. The powers with a quiet rear win most: Poland 23, Britain 21, Italy 20, Spain 13. Do central powers need a
+  way to exploit their interior lines?

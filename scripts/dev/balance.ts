@@ -43,6 +43,8 @@ interface PowerRun {
 interface Run {
   seed: number;
   winner: NationId | null;
+  /** Leader on score when the campaign ran to its time limit. */
+  scoreWinner: NationId | null;
   reason: string | null;
   minute: number | null;
   powers: Record<string, PowerRun>;
@@ -97,7 +99,7 @@ function play(seed: number): Run {
   // A campaign that ends early keeps its final map for the later snapshots.
   for (const n of world.nationIds) while (powers[n].provinces.length < SNAPSHOTS.length && SNAPSHOTS[powers[n].provinces.length] <= minutes) powers[n].provinces.push(count(n));
   const o = s.outcome;
-  return { seed, winner: o?.reason === 'timeLimit' ? null : (o?.winner ?? null), reason: o?.reason ?? null, minute: o ? Math.round(o.tick / 60) : null, powers };
+  return { seed, winner: o?.reason === 'timeLimit' ? null : (o?.winner ?? null), scoreWinner: o?.reason === 'timeLimit' ? o.winner : null, reason: o?.reason ?? null, minute: o ? Math.round(o.tick / 60) : null, powers };
 }
 
 if (range) {
@@ -139,7 +141,7 @@ const decided = runs.filter((r) => r.winner);
 
 console.log(`${runs.length} seeds × ${minutes} min, difficulty ${difficulty}, all AI — ${((performance.now() - t0) / 1000).toFixed(0)}s`);
 console.log(`${decided.length} decided (${decided.map((r) => r.minute!).sort((a, b) => a - b).join(' ')} min); the rest ran to the limit\n`);
-const head = ['power', 'wins', 'out', ...snaps.map((t) => `prov@${t}`), 'capital lost', 'wars by/on', 'enemies', 'land lost to'];
+const head = ['power', 'wins', 'on time', 'out', ...snaps.map((t) => `prov@${t}`), 'capital lost', 'wars by/on', 'enemies', 'land lost to'];
 const rows = world.nationIds.map((n) => {
   const p = runs.map((r) => r.powers[n]);
   const lost: Record<string, number> = {};
@@ -149,6 +151,7 @@ const rows = world.nationIds.map((n) => {
   return [
     n,
     String(decided.filter((r) => r.winner === n).length),
+    String(runs.filter((r) => r.scoreWinner === n).length),
     String(p.filter((x) => x.eliminated !== null).length),
     ...snaps.map((_, i) => mean(p.map((x) => x.provinces[i] ?? 0)).toFixed(1)),
     capitals.length ? `${capitals.length} (~${median(capitals)}m)` : '0',
@@ -163,5 +166,5 @@ const rows = world.nationIds.map((n) => {
 });
 const width = head.map((h, i) => Math.max(h.length, ...rows.map((r) => r[i].length)));
 for (const r of [head, ...rows]) console.log(r.map((c, i) => c.padEnd(width[i])).join('  '));
-console.log(`\nwins: decided campaigns won · out: eliminated · prov@t: provinces held (start: ${world.nationIds.map((n) => world.provinceIds.filter((p) => world.provinces[p].core === n).length).join('/')})`);
+console.log(`\nwins: decided campaigns won · on time: led on score at the time limit · out: eliminated · prov@t: provinces held (start: ${world.nationIds.map((n) => world.provinceIds.filter((p) => world.provinces[p].core === n).length).join('/')})`);
 console.log('wars by/on: declarations made and suffered per campaign · enemies: powers at war with it at once, on average while alive');

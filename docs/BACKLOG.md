@@ -121,8 +121,14 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       and winning AIs settle once they hold two enemy home provinces. Over 80 campaigns France's capital fell in 49
       instead of 66 and Germany's in 26 instead of 44 (at about minute 56 instead of 22); France is eliminated in 28
       instead of 49, Germany in 15 instead of 25
-- [ ] Balance: France is still everyone's neighbour (about four wars declared on it per campaign) and never wins;
-      compensate through the map, its starting position or the rules
+- [x] Home soil: armies fight harder in their own nation's home provinces, by up to +20% with national morale
+      (nothing at 30, the full bonus at 90); the battle view and the morale tooltip show it
+- [x] Sea crossings: North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western Mediterranean
+      (Barcelona–Palermo), so every power but Poland has at least two neighbouring powers. Over 80 full campaigns
+      France is eliminated in 18 instead of 33 and holds twice the land after two hours; any pair of the three
+      routes made a new bully (Spain or Italy), all three spread the wins
+- [ ] Balance: the central powers survive but rarely win (France 1 and Germany 2 of 80 campaigns, the others 13–23);
+      let them exploit interior lines (railway redeployment, picking off the weakest front)
 - [ ] AI: don't pile into a province already falling uncontested (3–5% of orders), and don't snatch a neutral another
       power is halfway through capturing
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment

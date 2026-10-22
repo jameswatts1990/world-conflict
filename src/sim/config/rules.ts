@@ -21,6 +21,13 @@ export const MORALE = {
   hitFactor: 1.3,
   /** Defenders on their own ground hold their nerve better. */
   defenderResilience: 1.3,
+  /**
+   * Armies fighting on their own nation's home soil, defending or liberating it, hit harder and hold firmer: by up
+   * to this much, scaled by national morale from nothing at `homeSoilFrom` to all of it at `homeSoilFull`.
+   */
+  homeSoil: 0.2,
+  homeSoilFrom: 30,
+  homeSoilFull: 90,
   /** Base morale drain per combat round, scaled by how outnumbered the army is. */
   roundDrain: 0.012,
   /** Morale lost by the rest of an army each time one of its units is destroyed. */

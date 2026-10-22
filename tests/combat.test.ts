@@ -6,6 +6,7 @@ import {
   applyCommand,
   armyMorale,
   hashState,
+  homeSoilMult,
   isArmyInTransit,
   type GameState,
   type ProvinceId,
@@ -251,5 +252,38 @@ describe('morale in battle', () => {
       return t;
     };
     expect(capture({ infantry: 2, cavalry: 1 })).toBeLessThan(capture({ infantry: 3 }));
+  });
+});
+
+describe('home soil', () => {
+  it('helps a nation on its own home provinces, defending or liberating them, by more the higher its morale', () => {
+    const state = quietGame();
+    state.nations.de.morale = MORALE.homeSoilFull;
+    expect(homeSoilMult(state, world, 'de', 'de-hesse')).toBeCloseTo(1 + MORALE.homeSoil);
+    state.nations.de.morale = (MORALE.homeSoilFrom + MORALE.homeSoilFull) / 2;
+    expect(homeSoilMult(state, world, 'de', 'de-hesse')).toBeCloseTo(1 + MORALE.homeSoil / 2);
+    state.nations.de.morale = MORALE.homeSoilFrom;
+    expect(homeSoilMult(state, world, 'de', 'de-hesse')).toBe(1);
+    state.nations.de.morale = 70;
+    // Still home soil when occupied: liberators fight harder too.
+    state.provinces['de-hesse'].owner = 'fr';
+    expect(homeSoilMult(state, world, 'de', 'de-hesse')).toBeGreaterThan(1);
+    expect(homeSoilMult(state, world, 'fr', 'de-hesse')).toBe(1);
+    expect(homeSoilMult(state, world, 'neutral', 'nt-benelux')).toBe(1);
+  });
+
+  it('defenders of their homeland hit harder when national morale is high', () => {
+    // Both morale levels leave the unit morale cap at 100%, so only home soil differs.
+    const attackerLosses = (morale: number) => {
+      const state = quietGame(3);
+      clearArmies(state);
+      setWar(state, 'fr', 'de');
+      state.nations.de.morale = morale;
+      const att = place(state, 'fr', 'de-hesse', { infantry: 4 });
+      place(state, 'de', 'de-hesse', { infantry: 4 });
+      for (let i = 0; i < 6; i++) combatSystem(state, world);
+      return att.units.reduce((s, u) => s + (1 - u.strength), 0);
+    };
+    expect(attackerLosses(90)).toBeGreaterThan(attackerLosses(66) * 1.04);
   });
 });

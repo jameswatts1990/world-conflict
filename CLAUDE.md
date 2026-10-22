@@ -51,7 +51,8 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
 - **Balanced between the powers.** Positions may differ (an island is safe, a central power has many neighbours),
   but across many campaigns every power should have a real chance. Check `scripts/dev/balance.ts` before and after
   any change that could shift who wins. Fix imbalances with general mechanics (how the AI defends, when it makes
-  peace) rather than per-nation tweaks: the map is meant to grow to the whole world.
+  peace, home soil, routes that give every region more than one neighbour) rather than per-nation tweaks: the map is
+  meant to grow to the whole world. A new route or rule can make a new bully: measure every variant.
 
 ### Difficulty
 
@@ -82,7 +83,8 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
-  once, and who takes its land. Currently France is the weakest position: about four wars a campaign, never a win.
+  once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
+  limit). Currently the central powers survive but rarely win: France 1 and Germany 2 of 80, the others 13–23.
 - **Challenge**: when war comes to an idle player and when they fall (currently 7–13 and about 30 minutes at
   Normal, 13–27 and about 45 at Easy). An idle player should lose, just not at once.
 

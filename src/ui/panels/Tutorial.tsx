@@ -25,7 +25,7 @@ export function tutorialSteps(world: World, nationName: string, limitMinutes: nu
     {
       title: 'Morale',
       icon: 'morale',
-      body: "Civilian morale (0–100) drives each province's output: war, enemies at the border, battles and a lost capital lower it; garrisons, propaganda, housing and time raise it. Conquered provinces start resentful. Your national morale, shown in the top bar, caps how high your soldiers' spirits can climb.",
+      body: "Civilian morale (0–100) drives each province's output: war, enemies at the border, battles and a lost capital lower it; garrisons, propaganda, housing and time raise it. Conquered provinces start resentful. Your national morale, shown in the top bar, caps how high your soldiers' spirits can climb, and the higher it is, the harder they fight on home soil.",
     },
     {
       title: 'Armies',

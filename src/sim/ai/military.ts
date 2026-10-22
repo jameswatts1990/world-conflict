@@ -13,7 +13,17 @@
 //   7. anything left moves up to the front.
 import { AI } from '../config/ai';
 import { MORALE, SUPPLY } from '../config/rules';
-import { areHostile, armyMorale, armyPower, canEnterProvince, captureTicks, fortificationReduction, hostileArmiesIn, scaledTicks } from '../queries';
+import {
+  areHostile,
+  armyMorale,
+  armyPower,
+  canEnterProvince,
+  captureTicks,
+  fortificationReduction,
+  homeSoilMult,
+  hostileArmiesIn,
+  scaledTicks,
+} from '../queries';
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
@@ -78,7 +88,8 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   }
   const fort = state.provinces[pid].buildings.fortifications ?? 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
-  return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience;
+  // Home soil helps both their firepower and their nerve.
+  return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience * homeSoilMult(state, world, owner, pid) ** 2;
 }
 
 /** Defenders wanted in a province against a given threat, allowing for its forts and terrain. */
@@ -89,7 +100,9 @@ function garrisonNeed(ctx: Ctx, pid: ProvinceId, threat: number): number {
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
-  return defenderPower(ctx, pid) * ctx.level.attackRatio * (1.2 - ctx.mem.aggression * 0.4) + 6;
+  // Liberating my own home soil, my armies fight harder too.
+  const liberation = homeSoilMult(ctx.state, ctx.world, ctx.me, pid) ** 2;
+  return (defenderPower(ctx, pid) * ctx.level.attackRatio * (1.2 - ctx.mem.aggression * 0.4)) / liberation + 6;
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {

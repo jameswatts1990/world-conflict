@@ -18,6 +18,7 @@ import {
   cityGrowthPerMinute,
   cityPopulation,
   constructionCost,
+  homeSoilMult,
   constructionTicks,
   currentModel,
   isUnitUnlocked,
@@ -79,7 +80,8 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const sides = owners.map((owner: OwnerId) => {
     const theirs = armies.filter((a) => a.owner === owner);
     const morale = theirs.reduce((s, a) => s + armyMorale(a) * a.units.length, 0) / Math.max(1, theirs.reduce((s, a) => s + a.units.length, 0));
-    return { owner, c: composition(theirs), morale, power: theirs.reduce((s, a) => s + armyPower(state, a), 0) };
+    const homeSoil = Math.round((homeSoilMult(state, world, owner, pid) - 1) * 100);
+    return { owner, c: composition(theirs), morale, homeSoil, power: theirs.reduce((s, a) => s + armyPower(state, a), 0) };
   });
   const total = sides.reduce((s, x) => s + x.power, 0) || 1;
   return (
@@ -112,6 +114,11 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
               <span style={{ width: `${s.morale * 100}%` }} />
             </span>
           </span>
+          {s.homeSoil > 0 && (
+            <span className="bs-note" title="Fighting on its own home soil: it hits harder and holds firmer, the more so the higher its national morale">
+              On home soil: +{s.homeSoil}% firepower and nerve
+            </span>
+          )}
         </div>
       ))}
     </div>

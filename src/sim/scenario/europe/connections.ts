@@ -21,6 +21,8 @@ export const CONNECTIONS: ConnectionDef[] = [
   strait('uk-london', 'fr-normandy', 'English Channel'),
   strait('uk-london', 'nt-benelux', 'North Sea crossing'),
   strait('uk-north', 'nt-netherlands', 'North Sea crossing'),
+  strait('uk-north', 'de-north', 'North Sea crossing'),
+  strait('uk-west', 'es-galicia', 'Bay of Biscay crossing'),
 
   // France
   land('fr-paris', 'fr-nord'),
@@ -52,6 +54,7 @@ export const CONNECTIONS: ConnectionDef[] = [
   mountain('fr-aquitaine', 'es-catalonia', 'Central Pyrenees'),
   land('fr-aquitaine', 'es-north'),
   strait('fr-midi', 'it-islands', 'Strait of Bonifacio'),
+  strait('es-catalonia', 'it-islands', 'Western Mediterranean crossing'),
 
   // Germany
   land('de-berlin', 'de-north'),
