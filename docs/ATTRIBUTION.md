@@ -30,6 +30,25 @@ groupings, names and all gameplay data are original to this project.
 The bundled files contain only geometry and ids. Province adjacency is defined separately, by hand, in
 `src/sim/scenario/europe/connections.ts`.
 
+## Sound and music
+
+Every sound effect is **CC0** (public domain dedication) or a **public domain** work; every music track is a
+**public domain** recording of a public domain composition: recorded and published in 1925 or earlier (public
+domain in the United States since 2026 and long expired in the UK and EU) of a work whose composers all died before
+1956, or an official recording by a United States federal government band. The reasoning for each track is recorded
+next to it in `scripts/audio/sources.mjs`.
+
+### How the bundled files were produced
+
+1. `npm run audio:fetch` downloads every source listed in `scripts/audio/sources.mjs` into `data-src/audio/`
+   (git-ignored).
+2. `npm run audio:build` (`scripts/audio/build.mjs`, using [FFmpeg](https://ffmpeg.org/) as a build-time tool)
+   trims each recording, levels it (effects to a -1 dBFS peak, music to -20 LUFS), cross-fades the battle loop so it
+   repeats without a seam, encodes MP3 into `src/audio/files/` and rewrites the table below.
+
+<!-- audio:start -->
+<!-- audio:end -->
+
 ## Code dependencies
 
 Runtime: React (MIT), d3-geo, d3-zoom, d3-selection, d3-transition (ISC), topojson-client (ISC).
