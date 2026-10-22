@@ -114,7 +114,9 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
 - [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim rail,
       side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
-- [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
+- [x] Research on phones: one branch at a time as a list, era by era; on any touch screen a tap shows a technology's
+      details (what it brings, needs and leads to) and the order is given from there
+- [ ] Phones: try on real devices (iOS Safari, Android Chrome)
 - [ ] Code-split the bundle; lazy-load the world context layer
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too

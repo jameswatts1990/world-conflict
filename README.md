@@ -92,7 +92,8 @@ Declaring war and leaving the campaign ask for confirmation.
 Narrow screens get a compact layout: resources and the clock in a two-row top bar, Research, Diplomacy, Reports and
 More (save, load, help, main menu) in a tab bar at the bottom, and the selected city or army in a sheet that slides up
 from the bottom; drag its handle to see more, or down to close it. Turned on its side, the phone keeps a one-row top bar,
-a slim command rail on the left and the selection in a panel on the right.
+a slim command rail on the left and the selection in a panel on the right. On a phone, Research lists one branch at a
+time, era by era; tablets keep the tree.
 
 | Touch | Action |
 | --- | --- |
@@ -100,6 +101,7 @@ a slim command rail on the left and the selection in a panel on the right.
 | **Move**, then tap a province or an enemy army | Preview the route and arrival time; tap it again (or **Confirm**) to march |
 | Drag / pinch | Pan / zoom the map (the **fit** button shows the whole theatre) |
 | Tap a resource | Its income, upkeep and net change |
+| Tap a technology in Research | Its details; research it, or queue the path to it, from there (a tap alone spends nothing) |
 | Pause button or the **Paused** banner | Pause / resume; **1x** and **2x** set the speed (DEV speeds are keyboard only) |
 
 ## How to win
@@ -146,6 +148,6 @@ tests/              Simulation tests
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~925 KB (302 KB gzipped).
+  devices. The main bundle is ~935 KB (304 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
