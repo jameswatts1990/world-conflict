@@ -92,7 +92,10 @@ Declaring war and leaving the campaign ask for confirmation.
 Narrow screens get a compact layout: resources and the clock in a two-row top bar, Research, Diplomacy, Reports and
 More (save, load, help, main menu) in a tab bar at the bottom, and the selected city or army in a sheet that slides up
 from the bottom; drag its handle to see more, or down to close it. Turned on its side, the phone keeps a one-row top bar,
-a slim command rail on the left and the selection in a panel on the right.
+a slim tab bar along the bottom and the selection in a panel on the right. The map opens close in on your capital with
+nothing selected and no overview map, and names and 3D cities wait for a closer zoom than on the desktop, so they do not
+crowd the screen. Field reports open from their tab, which counts the reports that came in since you last looked. The
+briefing drops the Chief of Staff's portrait to give its text the width.
 
 | Touch | Action |
 | --- | --- |
