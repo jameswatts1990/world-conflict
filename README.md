@@ -17,6 +17,8 @@ What is in it (Milestone 2, Depth):
 - A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
+- **Sound and period music**: bugle calls, field reports and distant artillery as the war unfolds, and public-domain
+  recordings from 1917–1923 (Holst conducting *Mars*, a march or dance for each nation).
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -44,6 +46,7 @@ Other scripts:
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
+| `npm run audio:fetch && npm run audio:build` | Re-download the recordings in `scripts/audio/sources.mjs` and rebuild the bundled sound (needs FFmpeg) |
 | `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 
 The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and the browser playthrough on
@@ -71,6 +74,7 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |
 | **V** | Cycle map view: political, terrain, supply, morale, city size |
 | **K** | Show or hide the map key |
+| **N** | Mute or unmute sound and music (remembered) |
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
@@ -114,8 +118,10 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
   art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city models (a small
                     isometric renderer in iso3d.ts), building and branch icons
+src/audio/          Sound: Web Audio engine, event-to-cue mapping, page-wide interface sounds; files/ holds the
+                    processed recordings (built from scripts/audio/sources.mjs)
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and world in one topology (shapes only)
-scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
+scripts/            Map and audio pipelines, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
 

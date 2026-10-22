@@ -1,6 +1,71 @@
 {
-  "cues": {},
-  "battleLoop": null,
+  "cues": {
+    "ui.click": [
+      "ui-click-1",
+      "ui-click-2",
+      "ui-click-3"
+    ],
+    "ui.tab": [
+      "ui-tab"
+    ],
+    "ui.error": [
+      "ui-error"
+    ],
+    "ui.open": [
+      "ui-open"
+    ],
+    "army.select": [
+      "army-select-1",
+      "army-select-2"
+    ],
+    "army.order": [
+      "army-order"
+    ],
+    "report": [
+      "report-1",
+      "report-2"
+    ],
+    "report.bad": [
+      "report-bad"
+    ],
+    "war": [
+      "war"
+    ],
+    "peace": [
+      "peace"
+    ],
+    "research": [
+      "research"
+    ],
+    "construction": [
+      "construction"
+    ],
+    "recruitment": [
+      "recruitment"
+    ],
+    "capture.won": [
+      "capture-won"
+    ],
+    "capture.lost": [
+      "capture-lost"
+    ],
+    "battle": [
+      "battle"
+    ],
+    "rout": [
+      "rout"
+    ],
+    "campaign.start": [
+      "campaign-start"
+    ],
+    "victory": [
+      "victory"
+    ],
+    "defeat": [
+      "defeat"
+    ]
+  },
+  "battleLoop": "battle-loop",
   "music": [
     {
       "file": "music-menu-mars",

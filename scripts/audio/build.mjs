@@ -66,9 +66,14 @@ function encode(wav, src, filters) {
   return out;
 }
 
-function peakGain(wav) {
-  const max = Number(/max_volume: (-?[\d.]+) dB/.exec(ffmpegStderr(['-i', wav, '-af', 'volumedetect', '-f', 'null', '-']))?.[1] ?? 0);
-  return -1 - max;
+const peak = (wav) => Number(/max_volume: (-?[\d.]+) dB/.exec(ffmpegStderr(['-i', wav, '-af', 'volumedetect', '-f', 'null', '-']))?.[1] ?? 0);
+const peakGain = (wav) => -1 - peak(wav);
+
+/** An effect starts on its first sound (40 dB under its peak), so a click answers at once. */
+function trimLead(wav, src) {
+  const out = join(tmp, `${src.out}-lead.wav`);
+  ffmpeg(['-i', wav, '-af', `silenceremove=start_periods=1:start_threshold=${peak(wav) - 40}dB:start_silence=0.003,afade=t=in:d=0.003`, out]);
+  return out;
 }
 
 function loudnorm(wav) {
@@ -78,14 +83,33 @@ function loudnorm(wav) {
   return `loudnorm=${target}:measured_I=${m.input_i}:measured_TP=${m.input_tp}:measured_LRA=${m.input_lra}:measured_thresh=${m.input_thresh}:offset=${m.target_offset}:linear=true`;
 }
 
+/** Mix extra recordings over the main one (e.g. a bell after typing), each cut like a source. */
+function addLayers(wav, src) {
+  let out = wav;
+  (src.layers ?? []).forEach((layer, i) => {
+    const lw = cut({ ...layer, out: `${src.out}-layer${i}` }, input({ ...layer, out: `${src.out}-layer${i}` }));
+    const mixed = join(tmp, `${src.out}-mix${i}.wav`);
+    const ms = Math.round((layer.delay ?? 0) * 1000);
+    ffmpeg([
+      '-i', out, '-i', lw,
+      '-filter_complex', `[1]adelay=delays=${ms}:all=1,volume=${layer.gain ?? 0}dB[l];[0][l]amix=inputs=2:duration=longest:normalize=0`,
+      mixed,
+    ]);
+    out = mixed;
+  });
+  return out;
+}
+
 /** Cross-fade the last `seconds` into the first, so the loop's end flows into its start. */
 function seamless(wav, seconds) {
   const looped = join(tmp, `loop-${Date.now()}.wav`);
   const x = Math.min(seconds, probeDuration(wav) / 3);
+  // The file is read twice: acrossfade needs all of its first input before the second, so asplit would stall.
   ffmpeg([
     '-i', wav,
+    '-i', wav,
     '-filter_complex',
-    `[0]asplit[a][b];[a]atrim=start=${x},asetpts=PTS-STARTPTS[body];[b]atrim=end=${x},asetpts=PTS-STARTPTS[head];` +
+    `[0]atrim=start=${x},asetpts=PTS-STARTPTS[body];[1]atrim=end=${x},asetpts=PTS-STARTPTS[head];` +
       `[body][head]acrossfade=d=${x}:c1=qsin:c2=qsin`,
     looped,
   ]);
@@ -96,8 +120,9 @@ for (const f of readdirSync(outDir)) if (f.endsWith('.mp3')) rmSync(join(outDir,
 
 const library = { cues: {}, battleLoop: null, music: [] };
 for (const src of SOURCES) {
-  let wav = cut(src, input(src));
+  let wav = addLayers(cut(src, input(src)), src);
   const filters = [];
+  if (src.kind === 'effect') wav = trimLead(wav, src);
   if (src.kind === 'loop') wav = seamless(wav, src.crossfade ?? 2);
   if (src.kind === 'music') filters.push(loudnorm(wav));
   else filters.push(`volume=${(peakGain(wav) + (src.gain ?? 0)).toFixed(2)}dB`);

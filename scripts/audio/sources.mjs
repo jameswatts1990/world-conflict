@@ -121,7 +121,135 @@ const MUSIC = [
   ...m,
 }));
 
-export const SOURCES = [...MUSIC];
+// ---------------------------------------------------------------- Effects
+const CC0 = 'CC0 1.0';
+const USGOV = 'Public domain (US government work)';
+// The USC sound effect archive: 1930s–80s Hollywood effects (USC Cinema and Sunset Editorial), restored by
+// Craig Smith and published by the Internet Archive under CC0.
+const USC = 'CC0 1.0 (USC sound effect archive)';
+const IA = 'https://archive.org/download/';
+const KENNEY_UI = 'https://kenney.nl/media/pages/assets/ui-audio/490d233f68-1677590494/kenney_ui-audio.zip';
+const KENNEY_RPG = 'https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip';
+const KENNEY_IMPACT = 'https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip';
+const MORSE = `${IA}psalm-23-1-morse-code/Psalm23_1_CW.flac`;
+const MORSE_PAGE = 'https://archive.org/details/psalm-23-1-morse-code';
+// Off-air Morse, played faster (and so higher) than it was keyed, with the radio noise around the tone cut.
+const MORSE_FILTERS = ['highpass=f=600', 'lowpass=f=2500'];
+const RIFLE = `${IA}SSE_Library_GUNS/MECHANISM/GUNMech_Cocking%20bolt%20action%20rifle%3B%20indoors_CS_USC.flac`;
+const BELLS_PAGE = 'https://archive.org/details/Red_Library_Bells_Horns_Whistles';
+
+const kenney = (out, cue, title, url, page, zip, extra = {}) => ({
+  out, cue, title, url, zip, page, author: 'Kenney (kenney.nl)', licence: CC0, ...extra,
+});
+
+const EFFECTS = [
+  kenney('ui-click-1', 'ui.click', 'Mechanical switch', KENNEY_UI, 'https://kenney.nl/assets/ui-audio', 'Audio/switch11.ogg', { filters: ['lowpass=f=7000'] }),
+  kenney('ui-click-2', 'ui.click', 'Mechanical switch', KENNEY_UI, 'https://kenney.nl/assets/ui-audio', 'Audio/switch28.ogg', { filters: ['lowpass=f=7000'] }),
+  kenney('ui-click-3', 'ui.click', 'Mechanical switch', KENNEY_UI, 'https://kenney.nl/assets/ui-audio', 'Audio/switch30.ogg', { filters: ['lowpass=f=7000'] }),
+  kenney('ui-tab', 'ui.tab', 'Page turn', KENNEY_RPG, 'https://kenney.nl/assets/rpg-audio', 'Audio/bookFlip3.ogg'),
+  kenney('ui-error', 'ui.error', 'Dull thud', KENNEY_IMPACT, 'https://kenney.nl/assets/impact-sounds', 'Audio/impactSoft_heavy_003.ogg'),
+  {
+    out: 'ui-open', cue: 'ui.open', title: 'Unfolding a paper map', author: 'Spring Spring (OpenGameArt)', licence: CC0,
+    url: 'https://opengameart.org/sites/default/files/snd_use_map.wav',
+    page: 'https://opengameart.org/content/opening-and-closing-a-map-sounds',
+    trim: [0.1, 0.9], fade: [0.01, 0.15],
+  },
+  {
+    out: 'army-select-1', cue: 'army.select', title: 'Bolt-action rifle: bolt up and back', author: 'USC sound effect archive', licence: USC,
+    url: RIFLE, page: 'https://archive.org/details/SSE_Library_GUNS', trim: [0.12, 0.52], fade: [0.005, 0.06],
+  },
+  {
+    out: 'army-select-2', cue: 'army.select', title: 'Bolt-action rifle: bolt forward and down', author: 'USC sound effect archive', licence: USC,
+    url: RIFLE, page: 'https://archive.org/details/SSE_Library_GUNS', trim: [0.52, 0.98], fade: [0.005, 0.06],
+  },
+  {
+    out: 'army-order', cue: 'army.order', title: 'Morse acknowledgement (dit-dah)', author: 'Uploader "testhamradio" (Internet Archive)', licence: CC0,
+    url: MORSE, page: MORSE_PAGE, trim: [15.58, 16.75], speed: 1.6, filters: MORSE_FILTERS, fade: [0.01, 0.05],
+  },
+  {
+    out: 'report-1', cue: 'report', title: 'Morse traffic', author: 'Uploader "testhamradio" (Internet Archive)', licence: CC0,
+    url: MORSE, page: MORSE_PAGE, trim: [16.85, 19.7], speed: 1.5, filters: MORSE_FILTERS, fade: [0.01, 0.08],
+  },
+  {
+    out: 'report-2', cue: 'report', title: 'Morse traffic', author: 'Uploader "testhamradio" (Internet Archive)', licence: CC0,
+    url: MORSE, page: MORSE_PAGE, trim: [11.38, 13.32], speed: 1.5, filters: MORSE_FILTERS, fade: [0.01, 0.08],
+  },
+  {
+    out: 'report-bad', cue: 'report.bad', title: 'Hand-cranked alarm bell', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}SSE_Library_ALARMS/BELL/ALRMBell_Old%20style%20fire%20alarm%20bell%3B%20hand%20cranked_CS_USC.flac`,
+    page: 'https://archive.org/details/SSE_Library_ALARMS', trim: [0.2, 1.8], fade: [0.01, 0.5],
+  },
+  {
+    out: 'war', cue: 'war', title: '"To Arms" bugle call (opening)', author: 'United States Marine Band', licence: USGOV,
+    url: `${IA}ToArms/to_arms.mp3`, page: 'https://archive.org/details/ToArms', trim: [0.2, 5.0], fade: [0.02, 0.4],
+  },
+  {
+    out: 'peace', cue: 'peace', title: 'Many church bells ringing', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}Red_Library_Bells_Horns_Whistles/R28-05-Many%20Church%20Bells%20Ring.flac`, page: BELLS_PAGE,
+    trim: [5.4, 13.0], fade: [0.3, 2.5],
+  },
+  {
+    out: 'research', cue: 'research', title: 'Manual typewriter, then a signal bell', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}Red_Library_Communications/R20-02-Manual%20Typewriter.flac`, page: 'https://archive.org/details/Red_Library_Communications',
+    trim: [1.0, 2.0], fade: [0.01, 0.1],
+    layers: [
+      {
+        url: `${IA}SSE_Library_BELLS/MISC/BELLMisc-NAVY_Submarine%20signal%20bell_CS_USC.flac`,
+        trim: [0.95, 3.0], fade: [0.005, 1.0], delay: 1.0, gain: -4,
+      },
+    ],
+  },
+  {
+    out: 'construction', cue: 'construction', title: 'Blacksmith\'s hammer on an anvil', author: 'VishwaJai (OpenGameArt)', licence: CC0,
+    url: 'https://opengameart.org/sites/default/files/blacksmithhammer.wav', page: 'https://opengameart.org/content/blacksmiths-hammer',
+  },
+  {
+    out: 'recruitment', cue: 'recruitment', title: 'Troops marching in step', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}Red_Library_Footsteps_3/R11-19-Army%20Marching%20Steadily.flac`, page: 'https://archive.org/details/Red_Library_Footsteps_3',
+    trim: [10.0, 12.8], fade: [0.3, 0.6],
+  },
+  {
+    out: 'capture-won', cue: 'capture.won', title: 'Ruffles and flourishes (first)', author: 'United States Marine Band', licence: USGOV,
+    url: `${IA}RufflesAndFlourishes/Ruffles_and_Flourishes.mp3`, page: 'https://archive.org/details/RufflesAndFlourishes',
+    trim: [0.7, 2.9], fade: [0.02, 0.3],
+  },
+  {
+    out: 'capture-lost', cue: 'capture.lost', title: 'Gong', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}Red_Library_Music/R05-02-Gong%20Hit.flac`, page: 'https://archive.org/details/Red_Library_Music',
+    trim: [0.2, 5.0], fade: [0.005, 2.0],
+  },
+  {
+    out: 'battle', cue: 'battle', title: 'Cannon shot', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}SSE_Library_GUNS/CANNON/GUNCano_Cannon%20shot_CS_USC.flac`, page: 'https://archive.org/details/SSE_Library_GUNS',
+    trim: [0, 3.5], fade: [0.005, 1.0],
+  },
+  {
+    out: 'rout', cue: 'rout', title: 'Whistle blast', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}Red_Library_Bells_Horns_Whistles/R21-45-High-Pitched%20Whistle.flac`, page: BELLS_PAGE,
+    trim: [1.65, 3.2], fade: [0.01, 0.15],
+  },
+  {
+    out: 'campaign-start', cue: 'campaign.start', title: '"Reveille" bugle call (first part)', author: 'U.S. Army Bands', licence: USGOV,
+    url: `${IA}Reveille/reveille.mp3`, page: 'https://archive.org/details/Reveille', trim: [0.6, 7.1], fade: [0.02, 0.3],
+  },
+  {
+    out: 'victory', cue: 'victory', title: '"To the Colors" bugle call', author: 'U.S. Army Bands', licence: USGOV,
+    url: `${IA}ToTheColors/To_The_Color.mp3`, page: 'https://archive.org/details/ToTheColors', trim: [0.5, 16.2], fade: [0.02, 1.2],
+  },
+  {
+    out: 'defeat', cue: 'defeat', title: '"Taps" bugle call (first phrases)', author: 'U.S. Army Bands', licence: USGOV,
+    url: `${IA}TapsBugleCall/taps.mp3`, page: 'https://archive.org/details/TapsBugleCall', trim: [0.7, 15.2], fade: [0.02, 1.0],
+  },
+  {
+    out: 'battle-loop', kind: 'loop', title: 'Distant bombardment (loop)', author: 'USC sound effect archive', licence: USC,
+    url: `${IA}SSE_Library_GUNS/CANNON/GUNCano_Bombardment%20with%20distant%20explosions%3B%20Good_CHS_USC.flac`,
+    page: 'https://archive.org/details/SSE_Library_GUNS', trim: [59, 89], crossfade: 2,
+    // Further away: less of the crack, more of the rumble.
+    filters: ['lowpass=f=3000'],
+  },
+].map((e) => ({ kind: 'effect', ...e }));
+
+export const SOURCES = [...EFFECTS, ...MUSIC];
 
 /** Local file name for a download: readable, and unique per URL. */
 export function rawName(url) {

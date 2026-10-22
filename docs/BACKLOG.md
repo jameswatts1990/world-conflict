@@ -113,7 +113,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       done, rejected peace offers)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
 - [ ] Responsive layout and touch controls (the HUD now fits 1280 × 720; phones and touch are still out of scope)
-- [ ] Code-split the bundle; lazy-load the world context layer
+- [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
+- [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
+- [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
+- [ ] Volume controls in the interface (after the mobile layout)
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
 - [x] Map underlay and provinces built as one topology from the same Natural Earth data, so coasts line up; softer,
