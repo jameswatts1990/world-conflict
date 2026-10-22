@@ -6,6 +6,7 @@ import {
   armiesIn,
   armyMorale,
   armyName,
+  atWar,
   eventsFor,
   isRouted,
   nationName,
@@ -16,15 +17,16 @@ import {
   type EventSeverity,
   type GameEvent,
   type GameState,
+  type OwnerId,
   type ProvinceId,
   unitGen,
 } from '../sim';
 import { UnitIconArt } from './art/adapters';
 import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
-import { formatDuration } from './format';
+import { countOf, formatDuration } from './format';
 import { Icon, type IconName } from './icons';
-import { TERRAIN_LABEL, composition, ownerLabel } from './labels';
+import { TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
 import { mapGeometry } from './map/geo';
 import { MapView, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
@@ -65,7 +67,10 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
   const { state, world, human } = ctrl;
   switch (e.kind) {
     case 'war':
+      // War on us is bad news; our own declaration and other powers' wars are worth knowing.
+      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : 'info';
     case 'peace':
+      return e.subject === human || e.actor === human ? 'good' : 'info';
     case 'research':
     case 'shortage':
     case 'eliminated':
@@ -468,9 +473,12 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const def = world.provinces[pid];
     const ps = state.provinces[pid];
     const owner = ps.owner;
-    const armies = armiesIn(state, pid);
-    const ownUnits = armies.filter((a) => a.owner === human).reduce((n, a) => n + a.units.length, 0);
-    const otherUnits = armies.filter((a) => a.owner !== human).reduce((n, a) => n + a.units.length, 0);
+    // Units standing here by owner, yours first.
+    const units = new Map<OwnerId, number>();
+    for (const a of armiesIn(state, pid).sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
+      units.set(a.owner, (units.get(a.owner) ?? 0) + a.units.length);
+    }
+    const adjective = (o: OwnerId) => (o === 'neutral' ? (def.neutral?.adjective ?? 'neutral') : world.nations[o].adjective);
     const army = armyId ? state.armies[armyId] : undefined;
     const c = army ? composition(army) : null;
     body = (
@@ -504,7 +512,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
         )}
         <div className="hc-head">
           <OwnerFlag world={world} owner={owner} province={pid} size={14} />
-          <span className="hc-owner">{ownerLabel(world, owner, pid)}</span>
+          <span className="hc-owner">{owner === 'neutral' && ownerShortName(world, owner, pid) === def.name ? 'Neutral state' : ownerLabel(world, owner, pid)}</span>
         </div>
         <div className="hc-name">{def.name}</div>
         <div className="hc-row">
@@ -523,10 +531,19 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
             </span>
           </div>
         )}
-        {(ownUnits > 0 || otherUnits > 0 || state.battles[pid] || ps.capture) && (
+        {(units.size > 0 || state.battles[pid] || ps.capture) && (
           <div className="hc-row">
-            {ownUnits > 0 && <span className="ok">{ownUnits} of your units</span>}
-            {otherUnits > 0 && <span className={owner === human ? 'bad' : ''}>{otherUnits} foreign units</span>}
+            {[...units].map(([o, n]) =>
+              o === human ? (
+                <span key={o} className="ok">
+                  {n} of your units
+                </span>
+              ) : (
+                <span key={o} className={o !== 'neutral' && atWar(state, human, o) ? 'bad' : ''}>
+                  {countOf(n, `${adjective(o)} unit`)}
+                </span>
+              ),
+            )}
             {state.battles[pid] && (
               <span className="bad">
                 <Icon name="swords" size={13} /> Battle

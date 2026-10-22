@@ -14,6 +14,11 @@ export function formatDuration(ticks: number, state?: GameState): string {
   return durationText(ticks / (state?.settings.durationScale ?? 1));
 }
 
+/** "1 formation", "3 formations". */
+export function countOf(n: number, noun: string, plural = `${noun}s`): string {
+  return `${n} ${n === 1 ? noun : plural}`;
+}
+
 /** Whole seconds in running prose: "90 seconds", "1 minute", "4 minutes". */
 export function proseDuration(seconds: number): string {
   if (seconds % 60 !== 0) return `${seconds} seconds`;
@@ -41,6 +46,13 @@ export function fmtRate(n: number): string {
 
 export function costParts(cost: PartialResources): { key: (typeof RESOURCE_KEYS)[number]; amount: number }[] {
   return RESOURCE_KEYS.filter((k) => (cost[k] ?? 0) > 0).map((k) => ({ key: k, amount: cost[k]! }));
+}
+
+/** What is still missing, in prose: "390 money and 20 fuel". */
+export function shortfallText(missing: PartialResources): string {
+  return costParts(missing)
+    .map(({ key, amount }) => `${fmt(Math.ceil(amount))} ${key}`)
+    .join(' and ');
 }
 
 /** Population in thousands -> "9.0 M" / "650 k". */

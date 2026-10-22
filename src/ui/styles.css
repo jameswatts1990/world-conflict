@@ -345,12 +345,16 @@ kbd {
   flex: 1;
   color: var(--text);
 }
+.tb-research-name,
+.tb-research-text .tb-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .tb-research-name {
   font: 600 13.5px var(--font-display);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .tb-research-bar,
 .tb-vp-bar {
@@ -879,9 +883,6 @@ kbd {
 }
 .army-shadow {
   fill: rgba(0, 0, 0, 0.3);
-}
-.army-icon-bg {
-  fill: rgba(0, 0, 0, 0.28);
 }
 .army-count {
   font: 700 13px var(--font-display);
@@ -1847,63 +1848,11 @@ kbd {
 .cost-item.short {
   color: var(--bad);
 }
-.recruit-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.unit-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px 7px;
-  border-radius: 7px;
-  background: linear-gradient(180deg, #223040, #151e28);
-}
-.unit-art {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 100%;
-  height: 40px;
-  color: #ece6d6;
-  background: radial-gradient(ellipse at 50% 75%, rgba(240, 166, 58, 0.22), transparent 70%);
-  border-radius: 5px;
-}
-.unit-lock {
-  position: absolute;
-  top: 1px;
-  right: 3px;
-  color: #ff9b8a;
-}
-.unit-card.locked .unit-art {
-  opacity: 0.45;
-  background: none;
-}
 .unit-req {
   font-size: 11px;
   line-height: 1.25;
   text-align: center;
   color: #ff9b8a;
-}
-.unit-card-name {
-  font: 700 13.5px var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-.unit-card .cost {
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1px 6px;
-  font-size: 11.5px;
-}
-.unit-card-time {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11px;
-  color: var(--muted);
 }
 .queue li {
   display: grid;
@@ -2231,6 +2180,25 @@ kbd {
   color: var(--bad);
   margin-top: 1px;
 }
+/* A state to wait out, not an error: same shape as .warn in amber. */
+.warn.pending {
+  color: #f6dfb0;
+  background: rgba(240, 166, 58, 0.1);
+  border-color: rgba(240, 166, 58, 0.55);
+}
+.warn.pending .icon {
+  color: var(--accent);
+}
+.bld-why {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 1.25;
+  color: #e9b98a;
+}
+.build-note {
+  margin: 2px 0 6px;
+}
 .notice {
   margin-top: 10px;
   color: var(--good);
@@ -2317,15 +2285,16 @@ kbd {
 .progress.morale.low .progress-fill {
   background: linear-gradient(90deg, #a8321f, #e8553f);
 }
+/* Ticks at the top and bottom edges mark the target without striking through the label. */
 .morale-target {
   position: absolute;
   top: -1px;
   bottom: -1px;
   width: 2px;
   margin-left: -1px;
-  background: #fff;
-  opacity: 0.85;
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+  background: linear-gradient(#fff 0 4px, transparent 4px calc(100% - 4px), #fff calc(100% - 4px));
+  opacity: 0.9;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.6));
 }
 .slot-grid {
   display: flex;
@@ -2990,9 +2959,14 @@ button.chip.queued:hover {
   display: flex;
   align-items: center;
   gap: 3px;
-  overflow: hidden;
+  min-width: 0;
   font: 700 14px var(--font-display);
   letter-spacing: 0.03em;
+}
+/* Ellipsis needs a block box: the flex row above cannot clip its own text. */
+.tn-title {
+  min-width: 0;
+  overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -3006,6 +2980,9 @@ button.chip.queued:hover {
   overflow: hidden;
 }
 .tn-chips .chip {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   padding: 0 6px;
   font-size: 10.5px;

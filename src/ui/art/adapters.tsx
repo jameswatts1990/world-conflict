@@ -5,7 +5,6 @@ import type { BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, Un
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { CitySkyline } from './CitySkyline';
-import { NationInsignia } from './Insignia';
 import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
 
 function artNation(owner: OwnerId): ArtNation {
@@ -72,8 +71,4 @@ export interface CitySceneProps {
 
 export function CityScene(props: CitySceneProps) {
   return <CitySkyline {...props} width={props.width ?? 340} />;
-}
-
-export function NationEmblem({ nation, size = 16 }: { nation: OwnerId; size?: number }) {
-  return <NationInsignia nation={artNation(nation)} size={size} />;
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deserializeGame, nationName, sentence, type GameState, type World } from '../../sim';
+import { deserializeGame, englishOrdinal, nationName, sentence, type GameState, type World } from '../../sim';
 import { downloadSave, listSlots, loadFromSlot, saveToSlot, slotLabel, SLOTS, type SlotId } from '../game/storage';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
@@ -166,10 +166,6 @@ export function HelpDialog({ onReplayBriefing, onClose }: { onReplayBriefing: ()
   );
 }
 
-function ordinal(n: number): string {
-  return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
-}
-
 export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController; onMenu: () => void; onClose: () => void }) {
   const { state, world, human } = ctrl;
   const o = state.outcome!;
@@ -193,7 +189,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
               {!won && rank > 0 && o.reason !== 'humanEliminated' && (
                 <span className="muted">
                   {' '}
-                  {sentence(nationName(world, human))} finished {ordinal(rank)} of {o.scores.length}.
+                  {sentence(nationName(world, human))} finished {englishOrdinal(rank)} of {o.scores.length}.
                 </span>
               )}
             </div>

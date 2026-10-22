@@ -3,12 +3,13 @@
 // prerequisites it still needs.
 import { useMemo, useState, type ReactNode } from 'react';
 import { BUILDINGS } from '../../sim/config/buildings';
-import { BRANCHES, ERAS, TECHS, TECH_BY_ID, type TechConfig } from '../../sim/config/research';
+import { BRANCHES, ERAS, ERA_RULES, RESEARCH_RULES, TECHS, TECH_BY_ID, type TechConfig } from '../../sim/config/research';
 import { UNITS, baseGen } from '../../sim/config/units';
 import {
   checkResearch,
   modelName,
   nationEra,
+  nextQueuedResearch,
   researchSlots,
   researchSpeed,
   unitGen,
@@ -16,14 +17,15 @@ import {
   type TechId,
 } from '../../sim';
 import type { GameController } from '../game/GameController';
-import { formatDuration } from '../format';
+import { costParts, formatDuration, shortfallText } from '../format';
 import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
 import { Icon } from '../icons';
 import { Cost, Modal, Progress } from './Common';
 
 /** Compact m:ss for node footers. */
 function formatClockShort(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+  const s = Math.ceil(seconds);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
 const COL_W = 224;
@@ -120,7 +122,7 @@ function unlockChips(ctrl: GameController, tech: TechConfig): ReactNode[] {
 }
 
 export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose: () => void }) {
-  const { state, world, human } = ctrl;
+  const { state, human } = ctrl;
   const research = state.nations[human].research;
   const res = state.nations[human].resources;
   const [hover, setHover] = useState<TechId | null>(null);
@@ -131,6 +133,9 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
   const planned = new Set([...done, ...activeIds, ...research.queue]);
   const slots = researchSlots(state, human);
   const speed = researchSpeed(state, human);
+  const next = research.active.length < slots ? nextQueuedResearch(state, human) : null;
+  const waitingFor = next && costParts(next.shortfall).length ? shortfallText(next.shortfall) : null;
+  const refund = `${Math.round(RESEARCH_RULES.cancelRefund * 100)}% refund`;
 
   const highlight = useMemo(() => (hover ? ancestors(hover) : new Set<TechId>()), [hover]);
   const hoverPath = hover ? pathTo(planned, hover) : [];
@@ -198,7 +203,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
             <div key={j.tech} className="research-job">
               <span>{TECH_BY_ID[j.tech].name}</span>
               <Progress value={1 - j.remaining / j.total} label={formatDuration(Math.ceil(j.remaining / speed), state)} />
-              <button className="icon-btn" title="Cancel (50% refund)" onClick={() => ctrl.submit({ type: 'cancelResearch', nation: human, tech: j.tech })}>
+              <button className="icon-btn" title={`Cancel (${refund})`} onClick={() => ctrl.submit({ type: 'cancelResearch', nation: human, tech: j.tech })}>
                 <Icon name="close" size={13} />
               </button>
             </div>
@@ -213,6 +218,11 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
             </button>
           ))}
         </div>
+        {waitingFor && (
+          <div className="warn pending" data-testid="research-waiting">
+            <Icon name="clock" size={13} /> Waiting for funds: {TECH_BY_ID[next!.tech].name} needs another {waitingFor}.
+          </div>
+        )}
         {message && (
           <div className="warn">
             <Icon name="warning" size={13} /> {message}
@@ -283,7 +293,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
                 <span className="tn-body">
                   <span className="tn-name">
                     {isDone && <Icon name="check" size={12} />}
-                    {t.name}
+                    <span className="tn-title">{t.name}</span>
                   </span>
                   <span className="tn-chips">{unlockChips(ctrl, t).slice(0, 2)}</span>
                   {job ? (
@@ -291,7 +301,9 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
                   ) : !isDone ? (
                     <span className="tn-foot">
                       <Cost cost={t.cost} have={res} />
-                      <span className="muted tn-time">{formatClockShort(t.seconds)}</span>
+                      <span className="muted tn-time" title="Research time at your current speed">
+                        {formatClockShort(t.seconds / speed)}
+                      </span>
                     </span>
                   ) : null}
                 </span>
@@ -307,7 +319,8 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
         queue it with its prerequisites. Unit pictures show the equipment a technology brings.
       </div>
       <div className="muted small" style={{ marginTop: 4 }}>
-        Interwar era after 3 technologies from the Twenties onwards; Second World War after 3 from 1935 onwards. {world.scenario.name}.
+        Your nation enters the Interwar era after {ERA_RULES.interwar.count} technologies from the Twenties onwards, and the Second World War after{' '}
+        {ERA_RULES.ww2.count} from 1935 onwards. Equipment upgrades reach every existing unit of the type.
       </div>
     </Modal>
   );

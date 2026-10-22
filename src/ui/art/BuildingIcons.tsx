@@ -1,5 +1,4 @@
 // Monochrome building glyphs (20x20, currentColor) and the coloured slot tiles built from them.
-// Same bold silhouette style as the placeholder icons in ../icons.tsx.
 import { useId } from 'react';
 import type { ReactElement } from 'react';
 import type { ArtBuilding } from './CitySkyline';
