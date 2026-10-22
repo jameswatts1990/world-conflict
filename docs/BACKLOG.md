@@ -112,11 +112,11 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
       done, rejected peace offers)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
-- [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim rail,
+- [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim tab bar,
       side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
-- [x] Research on phones: one branch at a time as a list, era by era; on any touch screen a tap shows a technology's
-      details (what it brings, needs and leads to) and the order is given from there
-- [ ] Phones: try on real devices (iOS Safari, Android Chrome)
+- [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
+      top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
+- [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
 - [ ] Code-split the bundle; lazy-load the world context layer
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too

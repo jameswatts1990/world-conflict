@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react';
 /**
  * The full desktop HUD, or one of two compact layouts for phones and small tablets:
  * - portrait: narrow screens. Two-row top bar, tab bar at the bottom, a bottom sheet for the selection.
- * - landscape: short screens (a phone on its side). One-row top bar, slim command rail, a side sheet.
+ * - landscape: short screens (a phone on its side). One-row top bar, slim tab bar at the bottom, a side sheet.
  */
 export type Layout = 'desktop' | 'portrait' | 'landscape';
 

@@ -1,5 +1,5 @@
 // Browser check of the phone layouts against the production build: a touch screen
-// held upright (bottom tab bar, bottom sheet), then turned on its side (slim rail,
+// held upright (bottom tab bar, bottom sheet), then turned on its side (slim tab bar,
 // side sheet). It plays a short stretch as Spain through the touch controls only:
 // build, recruit, the sheet's handle, a move previewed and confirmed, research,
 // field reports, pause and save; and checks that nothing spills off the screen.
@@ -42,8 +42,8 @@ function step(name, detail = {}) {
 
 await waitForServer();
 const browser = await chromium.launch();
-// A mid-sized phone held upright.
-const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+// A common Android phone held upright: narrower than most iPhones.
+const context = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await context.newPage();
 page.on('pageerror', (e) => summary.errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => {
@@ -94,6 +94,20 @@ async function armyPoint(id) {
 
 const tapAt = (p) => page.touchscreen.tap(p.x, p.y);
 
+/** Fails if the briefing's text or buttons reach past the dialog or the screen. */
+async function checkBriefingFits(label) {
+  const problem = await page.evaluate(() => {
+    const box = document.querySelector('.tutorial').getBoundingClientRect();
+    for (const el of document.querySelectorAll('.tutorial h3, .tutorial p, .tutorial-foot button')) {
+      const r = el.getBoundingClientRect();
+      if (r.left < box.left - 0.5 || r.right > box.right + 0.5 || r.top < box.top - 0.5 || r.bottom > box.bottom + 0.5) return `${el.textContent.slice(0, 30)} spills out of the briefing`;
+    }
+    if (box.left < 0 || box.top < 0 || box.right > window.innerWidth || box.bottom > window.innerHeight) return 'the briefing runs off the screen';
+    return null;
+  });
+  if (problem) throw new Error(`${label}: ${problem}`);
+}
+
 /** Fails if any part of the HUD reaches past the screen's edges or a resource readout is clipped. */
 async function checkFits(label) {
   const problems = await page.evaluate(() => {
@@ -126,8 +140,9 @@ try {
   const layout = await page.getAttribute('.game-screen', 'class');
   if (!layout.includes('layout-portrait') || !layout.includes('touch')) throw new Error(`expected the portrait touch layout, got "${layout}"`);
   let touchCopy = false;
-  while (!(await page.$('[data-testid="tutorial-done"]'))) {
+  for (let n = 1; !(await page.$('[data-testid="tutorial-done"]')); n++) {
     touchCopy ||= (await page.textContent('.tutorial')).includes('Tap an army counter');
+    await checkBriefingFits(`briefing ${n}`);
     await page.tap('.tutorial button.primary');
   }
   if (!touchCopy) throw new Error('the briefing did not explain the touch controls');
@@ -135,8 +150,10 @@ try {
   await page.tap('[data-testid="tutorial-done"]');
   await settle();
   await checkFits('portrait');
+  if (await page.$('.selection-dock')) throw new Error('the map should open clear, with nothing selected');
+  if (await page.$('.minimap')) throw new Error('phones have no overview map');
   await shot('03-portrait');
-  step('campaign started on an upright phone; briefing in touch terms; HUD fits the screen');
+  step('campaign started on an upright phone; briefing in touch terms and on screen; map clear; HUD fits the screen');
 
   // 2. Tap Madrid: its city opens in the bottom sheet, halfway up. Build and recruit there.
   await tapAt(await provincePoint('es-madrid'));
@@ -164,7 +181,7 @@ try {
   const full = await page.locator('[data-testid="sheet-handle"]').boundingBox();
   await page.mouse.move(hx, full.y + full.height / 2);
   await page.mouse.down();
-  await page.mouse.move(hx, 830, { steps: 8 });
+  await page.mouse.move(hx, 770, { steps: 8 });
   await page.mouse.up();
   await settle();
   if (await page.$('.selection-dock')) throw new Error('dragging the handle down did not close the sheet');
@@ -239,17 +256,19 @@ try {
   await page.tap('.modal [aria-label="Close"]');
   step('saved from the More menu');
 
-  // 9. Turn the phone on its side: slim rail, side sheet, one-row top bar.
+  // 9. Turn the phone on its side: slim tab bar along the bottom, side sheet, one-row top bar.
   await page.setViewportSize({ width: 844, height: 390 });
   await settle();
   const turned = await page.getAttribute('.game-screen', 'class');
   if (!turned.includes('layout-landscape')) throw new Error(`expected the landscape layout, got "${turned}"`);
+  const bar = await page.locator('.nav-rail').boundingBox();
+  if (bar.width < 840 || bar.y + bar.height < 389 || bar.height > 48) throw new Error(`expected a slim tab bar along the bottom, got ${JSON.stringify(bar)}`);
   await tapAt(await provincePoint('es-madrid'));
   await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
   await settle();
   await checkFits('landscape');
   await shot('08-landscape');
-  step('turned the phone: landscape layout with the city in a side sheet; HUD fits the screen');
+  step('turned the phone: landscape layout with the tab bar along the bottom and the city in a side sheet; HUD fits the screen');
 } catch (e) {
   summary.errors.push(`step failed: ${e.message}`);
   await shot('error').catch(() => {});
