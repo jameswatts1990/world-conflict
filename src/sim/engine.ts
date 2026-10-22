@@ -5,8 +5,9 @@ import { runAi } from './ai/controller';
 import { applyCommand, type Command, type CommandResult } from './commands';
 import { INTERVALS } from './config/timing';
 import { scaledTicks } from './queries';
-import { economySystem } from './systems/economy';
+import { civicSystem } from './systems/civic';
 import { combatSystem } from './systems/combat';
+import { economySystem } from './systems/economy';
 import { diplomacySystem } from './systems/diplomacy';
 import { movementSystem } from './systems/movement';
 import { constructionSystem, recruitmentSystem, researchSystem } from './systems/production';
@@ -30,6 +31,7 @@ export function stepState(state: GameState, world: World): void {
   if (every(INTERVALS.combatRound)) combatSystem(state, world);
   captureSystem(state, world);
   if (every(INTERVALS.armyUpkeepStep)) armyConditionSystem(state, world);
+  if (every(INTERVALS.civicUpdate)) civicSystem(state, world);
   diplomacySystem(state, world);
   for (const id of world.nationIds) {
     if (state.nations[id].controller === 'ai') runAi(state, world, id);

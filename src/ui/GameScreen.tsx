@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { CITY } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
-  UNIT_TYPES,
   armiesIn,
+  armyMorale,
+  armyName,
   eventsFor,
+  isRouted,
   nationName,
   provinceName,
   scaledTicks,
@@ -14,12 +17,14 @@ import {
   type GameEvent,
   type GameState,
   type ProvinceId,
+  unitGen,
 } from '../sim';
+import { UnitIconArt } from './art/adapters';
 import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
 import { formatDuration } from './format';
-import { Icon, UnitGlyph } from './icons';
-import { TERRAIN_LABEL, armyName, composition, ownerLabel } from './labels';
+import { Icon, type IconName } from './icons';
+import { TERRAIN_LABEL, composition, ownerLabel } from './labels';
 import { mapGeometry } from './map/geo';
 import { MapView, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
@@ -40,6 +45,14 @@ const DOCK_INSET = 396;
 const ALERT_MS = 8000;
 const ALERT_STEP_MS = 250;
 const MAX_ALERTS = 4;
+/** Map modes in toolbar order; V cycles through them. */
+const MAP_MODES: [MapMode, string, IconName][] = [
+  ['political', 'Political', 'flag'],
+  ['terrain', 'Terrain', 'mountains'],
+  ['supply', 'Supply', 'supply'],
+  ['morale', 'Morale', 'morale'],
+  ['development', 'Cities', 'city'],
+];
 
 interface Alert {
   event: GameEvent;
@@ -69,9 +82,13 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
       // Our own attacks are no surprise; an enemy attacking our land is.
       return e.province && state.provinces[e.province].owner === human ? 'bad' : null;
     case 'army-destroyed':
+    case 'rout':
     case 'peace-rejected':
-      // Our army lost, or our offer turned down.
+      // Our army lost or broken, or our offer turned down.
       return e.subject === human ? 'bad' : null;
+    case 'surrender':
+      // An encircled army gave up: ours, or one that surrendered to us.
+      return e.subject === human ? 'bad' : e.nations.includes(human) ? 'good' : null;
     default:
       return null;
   }
@@ -213,6 +230,7 @@ export function GameScreen({
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
       } else if (key === 'l') setFeedOpen((o) => !o);
       else if (key === 'k') setLegendOpen((o) => !o);
+      else if (key === 'v') setMapMode((m) => MAP_MODES[(MAP_MODES.findIndex(([id]) => id === m) + 1) % MAP_MODES.length][0]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -259,14 +277,8 @@ export function GameScreen({
 
           <div className="map-toolbar">
             <div className="segmented" role="group" aria-label="Map mode">
-              {(
-                [
-                  ['political', 'Political', 'flag'],
-                  ['terrain', 'Terrain', 'mountains'],
-                  ['supply', 'Supply', 'supply'],
-                ] as const
-              ).map(([m, label, icon]) => (
-                <button key={m} className={mapMode === m ? 'active' : ''} onClick={() => setMapMode(m)} data-map-mode={m} title={`${label} map`}>
+              {MAP_MODES.map(([m, label, icon]) => (
+                <button key={m} className={mapMode === m ? 'active' : ''} onClick={() => setMapMode(m)} data-map-mode={m} title={`${label} map (V cycles)`}>
                   <Icon name={icon} size={15} />
                   <span className="seg-label">{label}</span>
                 </button>
@@ -467,17 +479,26 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
           <div className="hc-army">
             <div className="hc-head">
               <OwnerFlag world={world} owner={army.owner} province={army.province} size={14} />
-              <span className="hc-owner">{armyName(world, army)}</span>
+              <span className="hc-owner">
+                {armyName(world, army)}
+                {army.owner !== 'neutral' ? ` · ${world.nations[army.owner].adjective}` : ''}
+              </span>
             </div>
             <div className="hc-units">
-              {UNIT_TYPES.filter((t) => c[t] > 0).map((t) => (
+              {c.types.slice(0, 4).map(([t, n]) => (
                 <span key={t}>
-                  <UnitGlyph type={t} size={18} /> {c[t]}
+                  <span className="unit-plate">
+                    <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={20} />
+                  </span>{' '}
+                  {n}
                 </span>
               ))}
-              <span className="hc-str">{Math.round(c.strength * 100)}% strength</span>
+              <span className="hc-str">
+                {Math.round(c.strength * 100)}% strength · morale {Math.round(armyMorale(army) * 100)}
+              </span>
             </div>
-            {army.move?.leg && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
+            {isRouted(state, army) && <div className="hc-row bad">Routed: falling back</div>}
+            {army.move?.leg && !isRouted(state, army) && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
             {!army.supplied && <div className="hc-row bad">Out of supply</div>}
           </div>
         )}
@@ -491,10 +512,17 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
             <Icon name={def.terrain} size={13} /> {TERRAIN_LABEL[def.terrain]}
           </span>
           <span>
-            <Icon name="city" size={13} /> {def.city.name}
+            <Icon name="city" size={13} /> {def.city.name} · {CITY.tierNames[ps.tier]}
           </span>
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}
         </div>
+        {owner !== 'neutral' && (
+          <div className="hc-row">
+            <span className={ps.morale >= 60 ? 'ok' : ps.morale < 35 ? 'bad' : 'warn-text'}>
+              <Icon name="morale" size={13} /> Morale {Math.round(ps.morale)}
+            </span>
+          </div>
+        )}
         {(ownUnits > 0 || otherUnits > 0 || state.battles[pid] || ps.capture) && (
           <div className="hc-row">
             {ownUnits > 0 && <span className="ok">{ownUnits} of your units</span>}

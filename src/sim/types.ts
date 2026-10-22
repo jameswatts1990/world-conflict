@@ -15,20 +15,108 @@ export type Resources = Record<ResourceKey, number>;
 export type PartialResources = Partial<Resources>;
 
 export type Terrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
-export type UnitType = 'infantry' | 'artillery' | 'tank';
-export const UNIT_TYPES: readonly UnitType[] = ['infantry', 'artillery', 'tank'];
+
+export type UnitType =
+  | 'infantry'
+  | 'stormtroopers'
+  | 'mountain'
+  | 'motorised'
+  | 'cavalry'
+  | 'armouredCar'
+  | 'artillery'
+  | 'heavyArtillery'
+  | 'antiTank'
+  | 'lightTank'
+  | 'tank'
+  | 'heavyTank'
+  | 'tankDestroyer';
+export const UNIT_TYPES: readonly UnitType[] = [
+  'infantry',
+  'stormtroopers',
+  'mountain',
+  'motorised',
+  'cavalry',
+  'armouredCar',
+  'artillery',
+  'heavyArtillery',
+  'antiTank',
+  'lightTank',
+  'tank',
+  'heavyTank',
+  'tankDestroyer',
+];
+export type UnitClass = 'infantry' | 'mobile' | 'support' | 'armour';
+/** Equipment generation: Great War, interwar, 1940. */
+export type UnitGen = 'ww1' | 'interwar' | 'ww2';
+export const UNIT_GENS: readonly UnitGen[] = ['ww1', 'interwar', 'ww2'];
+
 export type BuildingType =
   | 'industry'
-  | 'barracks'
-  | 'armsWorks'
-  | 'tankWorks'
+  | 'market'
+  | 'powerPlant'
   | 'refinery'
+  | 'housing'
+  | 'university'
+  | 'barracks'
+  | 'academy'
+  | 'armsWorks'
+  | 'motorPool'
+  | 'tankWorks'
+  | 'hospital'
+  | 'propaganda'
+  | 'garrisonHq'
   | 'fortifications'
-  | 'supplyDepot';
+  | 'supplyDepot'
+  | 'railway'
+  | 'coastalBattery';
+export type BuildingCategory = 'economy' | 'military' | 'civic' | 'infrastructure';
+/** 1 Town, 2 City, 3 Large City, 4 Metropolis, 5 World City. */
+export type CityTier = 1 | 2 | 3 | 4 | 5;
+
 export type TechId = string;
+export type TechBranch = 'infantry' | 'artillery' | 'armour' | 'industry' | 'logistics' | 'society';
 export type Relation = 'war' | 'peace';
 export type ConnectionKind = 'land' | 'mountain' | 'strait';
 export type Era = 'WWI' | 'Interwar' | 'WWII';
+
+/** Which unit types an effect applies to. */
+export type UnitSelector = readonly UnitType[] | 'all';
+
+/**
+ * Declarative modifiers granted by technologies and national specialities.
+ * The UI describes them and the simulation applies them.
+ */
+export type Effect =
+  | { kind: 'production'; resource: ResourceKey; mult: number }
+  | { kind: 'unitStat'; units: UnitSelector; stat: 'attack' | 'defence' | 'speed' | 'resilience' | 'shock'; mult: number }
+  | { kind: 'unitModel'; units: readonly UnitType[]; gen: UnitGen }
+  | { kind: 'unlockUnit'; unit: UnitType }
+  | { kind: 'unlockBuilding'; building: BuildingType }
+  | { kind: 'recruitTime'; mult: number; units?: UnitSelector }
+  | { kind: 'recruitCost'; resource: ResourceKey; mult: number; units?: UnitSelector }
+  | { kind: 'startXp'; units: UnitSelector; xp: number }
+  | { kind: 'xpGain'; mult: number }
+  | { kind: 'constructionTime'; mult: number }
+  | { kind: 'constructionCost'; mult: number; building?: BuildingType }
+  | { kind: 'fortification'; mult: number }
+  | { kind: 'syntheticFuel' }
+  | { kind: 'refinery'; mult: number }
+  | { kind: 'combinedArms'; mult: number }
+  | { kind: 'researchSlot' }
+  | { kind: 'researchSpeed'; mult: number }
+  /** Province morale target in core provinces. */
+  | { kind: 'morale'; amount: number }
+  /** Province morale target in occupied provinces. */
+  | { kind: 'occupationMorale'; amount: number }
+  | { kind: 'propaganda'; mult: number }
+  | { kind: 'cityGrowth'; mult: number }
+  | { kind: 'buildingSlots'; amount: number }
+  | { kind: 'supplyRange'; amount: number }
+  | { kind: 'attritionGrace'; seconds: number }
+  | { kind: 'healing'; mult: number }
+  /** Scales the penalty for attacking straight off a sea crossing. */
+  | { kind: 'amphibious'; mult: number }
+  | { kind: 'movement'; mult: number };
 
 // ---------------------------------------------------------------------------
 // Static scenario definition (never mutated during play)
@@ -39,6 +127,11 @@ export interface CityDef {
   /** [longitude, latitude] — also the province's movement anchor. */
   coord: [number, number];
   size: 'capital' | 'major' | 'town';
+}
+
+export interface TownDef {
+  name: string;
+  coord: [number, number];
 }
 
 /** Names that read with "the" in running text ("the United Kingdom", "the Midlands"). */
@@ -61,6 +154,14 @@ export interface ProvinceDef {
   neutral?: NeutralStateDef;
   terrain: Terrain;
   city: CityDef;
+  /** Starting city tier. */
+  tier: CityTier;
+  /** Urban population of the principal city in thousands (display and growth). */
+  population: number;
+  /** Smaller towns drawn on the map at close zoom (no gameplay effect). */
+  towns: TownDef[];
+  /** Has a sea coast (skyline art; coastal batteries also need a sea crossing). */
+  coastal: boolean;
   /** Base output per minute (Standard speed) before buildings and research. */
   production: Resources;
   /** Oil deposits allow refineries without Synthetic Fuel research. */
@@ -77,6 +178,25 @@ export interface ConnectionDef {
   label?: string;
 }
 
+export interface NationSpeciality {
+  name: string;
+  description: string;
+  effects: Effect[];
+}
+
+/** National flavour: equipment and formation names in the nation's own style. */
+export interface NationIdentity {
+  /** Named equipment per unit type and generation, e.g. tank/ww1 = Mark IV. */
+  units: Partial<Record<UnitType, Partial<Record<UnitGen, { name: string; detail: string }>>>>;
+  /**
+   * Formation name templates per unit type. Tokens: {n} number, {ord} English
+   * ordinal (1st), {fr-f}/{fr-m} French feminine/masculine ordinal (1re, 1er).
+   */
+  formations: Record<UnitType, string>;
+  /** Army name template, same tokens. */
+  army: string;
+}
+
 export interface NationDef {
   id: NationId;
   name: string;
@@ -84,6 +204,8 @@ export interface NationDef {
   adjective: string;
   color: string;
   capital: ProvinceId;
+  speciality: NationSpeciality;
+  identity: NationIdentity;
 }
 
 export interface StartingArmyDef {
@@ -101,6 +223,8 @@ export interface ScenarioDef {
   startingBuildings: { province: ProvinceId; buildings: Partial<Record<BuildingType, number>> }[];
   startingArmies: StartingArmyDef[];
   startingResources: Resources;
+  /** Technologies every nation knows at the start. */
+  startingTechs: TechId[];
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +236,12 @@ export interface Unit {
   type: UnitType;
   /** Fraction of full strength, 0..1. Max HP comes from config + research. */
   strength: number;
+  /** Fighting spirit, 0..1. Broken armies rout. */
+  morale: number;
+  /** Combat experience; ranks Green, Regular, Veteran, Elite. */
+  xp: number;
+  /** Formation number within its owner and type, e.g. 12 for "12th Infantry Division". */
+  serial: number;
 }
 
 export interface MoveLeg {
@@ -131,6 +261,8 @@ export interface ArmyMove {
 export interface Army {
   id: ArmyId;
   owner: OwnerId;
+  /** Army number within its owner, e.g. 3 for "3rd Army". */
+  serial: number;
   /** Province the army is in, or departed from while a leg is in progress. */
   province: ProvinceId;
   units: Unit[];
@@ -138,6 +270,10 @@ export interface Army {
   supplied: boolean;
   /** Consecutive ticks spent out of supply. */
   unsuppliedTicks: number;
+  /** How the army reached its current province (sea landings fight at a penalty). */
+  arrivedVia: ConnectionKind | null;
+  /** A routed army cannot take orders until this tick. */
+  routedUntil: number;
 }
 
 export interface ConstructionJob {
@@ -174,6 +310,11 @@ export interface ProvinceState {
   supplied: boolean;
   /** Tick of the last ownership change (0 at start). */
   ownerSince: number;
+  /** Civilian morale 0..100: drives output. */
+  morale: number;
+  tier: CityTier;
+  /** Growth points towards the next city tier. */
+  growth: number;
 }
 
 export interface RelationState {
@@ -185,9 +326,19 @@ export interface RelationState {
   peaceOfferAfter?: number;
 }
 
+export interface ResearchJob {
+  tech: TechId;
+  /** Remaining work in ticks at research speed 1. */
+  remaining: number;
+  total: number;
+}
+
 export interface ResearchState {
   completed: TechId[];
-  active: { tech: TechId; remaining: number; total: number } | null;
+  /** One job per research slot in use. */
+  active: ResearchJob[];
+  /** Starts automatically, in order, when a slot is free and the cost is affordable. */
+  queue: TechId[];
 }
 
 export interface AiMemory {
@@ -195,7 +346,11 @@ export interface AiMemory {
   aggression: number;
   /** 0..1, preference for economy over military spending. */
   economyBias: number;
+  /** Research and recruitment emphasis. */
+  doctrine: 'armour' | 'infantry' | 'artillery';
   nextThinkTick: number;
+  /** Provinces currently being massed against (kept between thinks to avoid dithering). */
+  campaigns: ProvinceId[];
 }
 
 export interface NationState {
@@ -207,8 +362,10 @@ export interface NationState {
   eliminated: boolean;
   /** True when an upkeep bill could not be paid in full this minute. */
   shortages: { money: boolean; fuel: boolean };
+  /** Home-front morale 0..100 (population-weighted core province morale). */
+  morale: number;
   ai: AiMemory | null;
-  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number };
+  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; armiesSurrendered: number };
 }
 
 export interface PeaceOffer {
@@ -275,6 +432,8 @@ export interface GameState {
   provinces: Record<ProvinceId, ProvinceState>;
   armies: Record<ArmyId, Army>;
   nextId: number;
+  /** Last formation number issued, keyed by `${owner}:${unitType}` or `${owner}:army`. */
+  serials: Record<string, number>;
   peaceOffers: PeaceOffer[];
   battles: Record<ProvinceId, BattleState>;
   events: GameEvent[];

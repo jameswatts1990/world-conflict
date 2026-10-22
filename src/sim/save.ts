@@ -22,12 +22,20 @@ export function serializeGame(state: GameState, label: string, now = new Date())
 
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
-  // 2: rates are derived by the UI, so nations no longer store lastRates. Job prices and
+  // 3: rates are derived by the UI, so nations no longer store lastRates. Job prices and
   // the peace retry delay are optional fields that older saves simply lack.
-  1: (state) => {
+  2: (state) => {
     for (const n of Object.values(state.nations)) delete (n as unknown as Record<string, unknown>).lastRates;
   },
 };
+
+/**
+ * Saves from before cities, morale and the research tree (schema 1, and schema 2 from builds
+ * without them) hold a different game state and cannot be upgraded.
+ */
+function hasDepth(state: GameState): boolean {
+  return Object.values(state.nations).every((n) => Array.isArray(n.research?.active));
+}
 
 export function deserializeGame(json: string, expectedScenario?: string): SaveFile {
   let data: unknown;
@@ -48,6 +56,9 @@ export function deserializeGame(json: string, expectedScenario?: string): SaveFi
   }
   if (expectedScenario && file.state.scenarioId !== expectedScenario) {
     throw new Error(`Save belongs to a different scenario (${file.state.scenarioId}).`);
+  }
+  if (version < SCHEMA_VERSION && (!MIGRATIONS[version] || !hasDepth(file.state))) {
+    throw new Error('This save comes from an earlier version of the game, before cities, morale and the research tree, and cannot be loaded.');
   }
   for (let v = version; v < SCHEMA_VERSION; v++) MIGRATIONS[v](file.state);
   file.schemaVersion = file.state.schemaVersion = SCHEMA_VERSION;

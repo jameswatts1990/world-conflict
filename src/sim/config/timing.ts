@@ -24,8 +24,10 @@ export const INTERVALS = {
   combatRound: 10,
   supplyUpdate: 5,
   victoryCheck: 5,
-  /** Healing / attrition step for armies. */
+  /** Healing / attrition / unit morale step for armies. */
   armyUpkeepStep: 10,
+  /** Province morale, national morale and city growth. */
+  civicUpdate: 10,
 };
 
 /**

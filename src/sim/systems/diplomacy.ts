@@ -1,15 +1,19 @@
 // War and peace between nations.
-import { DIPLOMACY } from '../config/rules';
+import { DIPLOMACY, MORALE } from '../config/rules';
 import { pushEvent } from '../events';
 import { isArmyInTransit, scaledTicks } from '../queries';
 import { nationName, sentence } from '../text';
 import type { GameState, NationId } from '../types';
 import type { World } from '../world';
+import { shockNation } from './civic';
 import { withdrawArmy } from './territory';
 
+/** `a` declares war on `b`: the aggressor's people grumble, the victim's rally. */
 export function declareWar(state: GameState, world: World, a: NationId, b: NationId): void {
   state.nations[a].relations[b] = { status: 'war', since: state.tick, truceUntil: 0 };
   state.nations[b].relations[a] = { status: 'war', since: state.tick, truceUntil: 0 };
+  shockNation(state, world, a, MORALE.declareWarShock);
+  shockNation(state, world, b, MORALE.rallyShock);
   state.peaceOffers = state.peaceOffers.filter((o) => !((o.from === a && o.to === b) || (o.from === b && o.to === a)));
   pushEvent(state, 'war', `${sentence(nationName(world, a))} declared war on ${nationName(world, b)}!`, { severity: 'bad' });
 }

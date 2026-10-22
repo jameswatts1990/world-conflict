@@ -1,21 +1,34 @@
 // Strategy map: baked shaded-relief terrain under translucent ownership tints,
-// glowing national borders, plated city labels and army counters with unit
-// silhouettes. Static geography is projected once and memoised; ownership,
+// glowing national borders, plated city labels, towns and army counters with
+// national unit art. Static geography is projected once and memoised; ownership,
 // labels (on zoom) and army markers (every frame) update.
 import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { findPath, isArmyInTransit, type Army, type ArmyId, type GameState, type NationId, type ProvinceId, type World } from '../../sim';
+import {
+  armyMorale,
+  findPath,
+  isArmyInTransit,
+  isRouted,
+  unitGen,
+  type Army,
+  type ArmyId,
+  type GameState,
+  type NationId,
+  type ProvinceId,
+  type World,
+} from '../../sim';
+import { CounterArt } from '../art/adapters';
 import { darken, lighten, ownerColor, strengthColor } from '../color';
 import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
-import { Icon, UnitShape } from '../icons';
+import { Icon } from '../icons';
 import { composition, mainUnitType } from '../labels';
 import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
-export type MapMode = 'political' | 'terrain' | 'supply';
+export type MapMode = 'political' | 'terrain' | 'supply' | 'morale' | 'development';
 
 export interface MapViewProps {
   ctrl: GameController;
@@ -35,7 +48,27 @@ export interface MapViewProps {
 }
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
-const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75 };
+const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2 };
+
+/** Red → amber → green ramp for 0..1. */
+export function rampColor(t: number): string {
+  const x = Math.max(0, Math.min(1, t));
+  const stops = [
+    [176, 64, 52],
+    [214, 168, 72],
+    [92, 150, 84],
+  ];
+  const seg = x < 0.5 ? 0 : 1;
+  const f = x < 0.5 ? x * 2 : (x - 0.5) * 2;
+  const c = stops[seg].map((v, i) => Math.round(v + (stops[seg + 1][i] - v) * f));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/** Province morale mapped onto the ramp: 20 or less is red, 85 or more green. */
+export const moraleRamp = (morale: number) => rampColor((morale - 20) / 65);
+
+/** City tier 1–5 colours for the development map mode. */
+export const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
 
 // ---------------------------------------------------------------------------
 // Static layers
@@ -91,6 +124,8 @@ interface ProvinceLayerProps {
   world: World;
   owners: string; // ownership signature, forces re-render when it changes
   supplied: string; // supply signature, for the supply map mode
+  /** Per-province morale (morale mode) or city tier (development mode), joined by '|'. */
+  values: string;
   ownerOf: Record<ProvinceId, string>;
   human: NationId;
   mode: MapMode;
@@ -99,9 +134,14 @@ interface ProvinceLayerProps {
   onHover: (pid: ProvinceId | null) => void;
 }
 
-function tint(p: ProvinceLayerProps, id: ProvinceId, i: number): { fill: string; opacity: number } {
+function tint(p: ProvinceLayerProps, id: ProvinceId, i: number, values: string[]): { fill: string; opacity: number } {
   const owner = p.ownerOf[id];
   const neutral = owner === 'neutral';
+  if (p.mode === 'morale') {
+    if (neutral) return { fill: ownerColor(p.world, owner), opacity: 0.12 };
+    return { fill: moraleRamp(Number(values[i])), opacity: 0.66 };
+  }
+  if (p.mode === 'development') return { fill: TIER_COLORS[Number(values[i])], opacity: 0.66 };
   if (p.mode === 'supply') {
     if (owner === p.human) return { fill: p.supplied[i] === '1' ? '#3fae5a' : '#e0473a', opacity: 0.55 };
     return { fill: ownerColor(p.world, owner), opacity: 0.12 };
@@ -111,11 +151,12 @@ function tint(p: ProvinceLayerProps, id: ProvinceId, i: number): { fill: string;
 }
 
 const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
+  const values = p.values.split('|');
   return (
     <g className="province-layer">
       {p.world.provinceIds.map((id, i) => {
         const owner = p.ownerOf[id];
-        const t = tint(p, id, i);
+        const t = tint(p, id, i, values);
         return (
           <path
             key={id}
@@ -133,6 +174,7 @@ const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
       })}
       {/* Hatch overlay marks neutral minor states */}
       {p.mode !== 'supply' &&
+        p.mode !== 'development' &&
         p.world.provinceIds
           .filter((id) => p.ownerOf[id] === 'neutral')
           .map((id) => <path key={`h-${id}`} d={p.geo.provincePaths[id]} className="neutral-hatch" pointerEvents="none" />)}
@@ -383,6 +425,19 @@ function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: G
   const s = 1 / k;
   return (
     <g className="city-layer" pointerEvents="none">
+      {ratio >= ZOOM.townDots &&
+        world.provinceIds.map((id) =>
+          geo.towns[id].map((t) => (
+            <g key={`${id}-${t.name}`} transform={`translate(${t.x},${t.y}) scale(${s})`}>
+              <circle r={1.8} className="town-dot" />
+              {ratio >= ZOOM.townNames && (
+                <text y={-4.5} className="town-label">
+                  {t.name}
+                </text>
+              )}
+            </g>
+          )),
+        )}
       {world.provinceIds.map((id) => {
         const def = world.provinces[id];
         const [x, y] = geo.anchors[id];
@@ -390,6 +445,8 @@ function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: G
         const capture = ps.capture;
         const size = def.city.size;
         const isCapital = size === 'capital';
+        // Markers grow with the city: tier 1 (town) to tier 5 (world city).
+        const tierScale = 0.76 + ps.tier * 0.12;
         const showName = isCapital ? ratio >= ZOOM.capitals : size === 'major' ? ratio >= ZOOM.majorCities : ratio >= ZOOM.towns;
         return (
           <g key={id} transform={`translate(${x},${y}) scale(${s})`}>
@@ -405,19 +462,21 @@ function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: G
                 />
               </g>
             )}
-            {isCapital ? (
-              <g className={`city-icon capital${def.core ? ' national' : ''}`}>
-                <circle r={6.6} />
-                <path d={STAR} transform="scale(0.72)" />
-              </g>
-            ) : size === 'major' ? (
-              <g className="city-icon major">
-                <circle r={4.2} />
-                <circle r={1.6} className="dot" />
-              </g>
-            ) : (
-              <circle r={2.7} className="city-icon town" />
-            )}
+            <g transform={`scale(${tierScale})`}>
+              {isCapital ? (
+                <g className={`city-icon capital${def.core ? ' national' : ''}`}>
+                  <circle r={6.6} />
+                  <path d={STAR} transform="scale(0.72)" />
+                </g>
+              ) : size === 'major' ? (
+                <g className="city-icon major">
+                  <circle r={4.2} />
+                  <circle r={1.6} className="dot" />
+                </g>
+              ) : (
+                <circle r={2.7} className="city-icon town" />
+              )}
+            </g>
             {def.objectiveVp ? (
               <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
                 <circle r={5.6} />
@@ -472,6 +531,7 @@ function armyTarget(army: Army): ProvinceId {
 
 function ArmyMarker({
   army,
+  state,
   x,
   y,
   k,
@@ -483,6 +543,7 @@ function ArmyMarker({
   onHover,
 }: {
   army: Army;
+  state: GameState;
   x: number;
   y: number;
   k: number;
@@ -496,10 +557,12 @@ function ArmyMarker({
   const c = composition(army);
   const main = mainUnitType(c);
   const avg = c.strength;
+  const morale = armyMorale(army);
+  const routed = isRouted(state, army);
   return (
     <g
       transform={`translate(${x},${y}) scale(${1 / k})`}
-      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}`}
+      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`}
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
@@ -514,23 +577,22 @@ function ArmyMarker({
       onMouseLeave={() => onHover(null)}
     >
       <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
-      <ellipse cx={1} cy={14} rx={20} ry={3.2} className="army-shadow" />
-      <rect x={-19} y={-9} width={21} height={16} rx={2.5} className="army-icon-bg" />
-      <g transform="translate(-18.1,-6.6) scale(0.8)">
-        <UnitShape type={main} color="#fff" detail="rgba(0,0,0,0.55)" />
-      </g>
-      <text x={11.6} y={4.7} className="army-count">
+      <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
+      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
+      <text x={12.2} y={4.7} className="army-count">
         {army.units.length}
       </text>
-      <rect x={-21} y={10.6} width={42} height={3.2} rx={1.6} className="army-hp-bg" />
-      <rect x={-21} y={10.6} width={42 * avg} height={3.2} rx={1.6} fill={strengthColor(avg)} />
+      <rect x={-21} y={10.6} width={42} height={6.2} rx={1.6} className="army-hp-bg" />
+      <rect x={-21} y={10.6} width={42 * avg} height={3} rx={1.5} fill={strengthColor(avg)} />
+      <rect x={-21} y={14} width={42 * morale} height={2.6} rx={1.3} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
+      {routed && <path d="M15,-10 L15,-22 L24,-19 L15,-16" className="routed-flag" />}
       {!army.supplied && (
         <g transform="translate(20,-11)" className="army-badge warn">
           <circle r={5.4} />
           <text y={2.9}>!</text>
         </g>
       )}
-      {selected && <rect x={-25.5} y={-15.5} width={51} height={33.5} rx={6} className="army-select" />}
+      {selected && <rect x={-25.5} y={-15.5} width={51} height={36.5} rx={6} className="army-select" />}
     </g>
   );
 }
@@ -568,7 +630,7 @@ function ArmyLayer({
     if (!isArmyInTransit(army)) {
       const n = stacks.get(army.province) ?? 0;
       stacks.set(army.province, n + 1);
-      y -= (19 + n * 24) / k;
+      y -= (19 + n * 27) / k;
     }
     const own = army.owner === human;
     if (army.move && (own || selected.has(army.id))) {
@@ -593,6 +655,7 @@ function ArmyLayer({
       <ArmyMarker
         key={army.id}
         army={army}
+        state={state}
         x={x}
         y={y}
         k={k}
@@ -823,6 +886,13 @@ export function MapView(props: MapViewProps) {
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
   const suppliedSig = world.provinceIds.map((id) => (state.provinces[id].supplied ? '1' : '0')).join('');
+  // Morale is shown in steps of 2 so the layer re-renders only on visible changes.
+  const valuesSig =
+    props.mapMode === 'morale'
+      ? world.provinceIds.map((id) => Math.round(state.provinces[id].morale / 2) * 2).join('|')
+      : props.mapMode === 'development'
+        ? world.provinceIds.map((id) => state.provinces[id].tier).join('|')
+        : '';
   const ownerOf = useMemo(() => {
     const o: Record<ProvinceId, string> = {};
     world.provinceIds.forEach((id, i) => (o[id] = ownersSig.split(',')[i]));
@@ -917,6 +987,7 @@ export function MapView(props: MapViewProps) {
             world={world}
             owners={ownersSig}
             supplied={suppliedSig}
+            values={valuesSig}
             ownerOf={ownerOf}
             human={human}
             mode={props.mapMode}

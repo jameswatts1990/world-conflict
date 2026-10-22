@@ -1,14 +1,42 @@
 import { useState } from 'react';
-import { SUPPLY } from '../../sim/config/rules';
+import { MORALE, SUPPLY } from '../../sim/config/rules';
 import { UNITS } from '../../sim/config/units';
-import { UNIT_TYPES, armiesIn, armySpeedKmPerTick, findPath, hostileArmiesIn, provinceName, scaledTicks, unitStats, type ArmyId } from '../../sim';
+import {
+  armiesIn,
+  armyMorale,
+  armyName,
+  armySpeedKmPerTick,
+  currentModel,
+  findPath,
+  formationName,
+  hostileArmiesIn,
+  isRouted,
+  provinceName,
+  rankName,
+  scaledTicks,
+  unitGen,
+  unitStats,
+  veterancyRank,
+  type ArmyId,
+} from '../../sim';
+import { UnitIconArt } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
-import { Icon, UnitGlyph, type IconName } from '../icons';
-import { armyName, composition, ownerShortName } from '../labels';
-import { Progress, Section } from './Common';
+import { Icon, type IconName } from '../icons';
+import { composition, ownerShortName } from '../labels';
+import { MoraleMeter, Progress, Section, moraleClass } from './Common';
+
+/** Rank chevrons: none for Green, one to three for Regular to Elite. */
+export function RankChevrons({ xp }: { xp: number }) {
+  const rank = veterancyRank(xp);
+  return (
+    <span className={`vet-rank vet-${rank}`} title={`${rankName(xp)} (${xp.toFixed(1)} XP)`}>
+      {rank === 0 ? '·' : '❯'.repeat(rank)}
+    </span>
+  );
+}
 
 export function ArmyPanel({
   ctrl,
@@ -27,20 +55,27 @@ export function ArmyPanel({
 }) {
   const { state, world, human } = ctrl;
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [confirmDisband, setConfirmDisband] = useState(false);
   const army = state.armies[armyIds[0]];
   if (!army) return null;
   const own = army.owner === human;
   const color = ownerColor(world, army.owner);
+  const title = armyName(world, army);
   const leg = army.move?.leg;
   const dest = army.move ? army.move.path[army.move.path.length - 1] : null;
   const hostiles = hostileArmiesIn(state, army.province, army.owner);
   const p = state.provinces[army.province];
+  const routed = isRouted(state, army);
   const c = composition(army);
+  const morale = armyMorale(army);
 
   let status: string;
   let statusIcon: IconName;
   const here = provinceName(world, army.province);
-  if (leg) {
+  if (routed) {
+    status = `Routed — falling back to ${provinceName(world, leg?.to ?? army.province)}`;
+    statusIcon = 'warning';
+  } else if (leg) {
     status = `Marching to ${provinceName(world, leg.to)}`;
     statusIcon = 'move';
   } else if (hostiles.length > 0) {
@@ -75,40 +110,72 @@ export function ArmyPanel({
     }
   };
 
+  const disband = () => {
+    if (!confirmDisband) {
+      setConfirmDisband(true);
+      setTimeout(() => setConfirmDisband(false), 2500);
+      return;
+    }
+    const ids = checked.size > 0 ? army.units.filter((u) => checked.has(u.id)).map((u) => u.id) : undefined;
+    ctrl.submit({ type: 'disband', nation: human, armyId: army.id, unitIds: ids });
+    setChecked(new Set());
+    setConfirmDisband(false);
+  };
+
   return (
     <section className="panel army-panel" data-testid="army-panel" data-army={army.id}>
       <header className="panel-hero army-hero" style={{ '--owner': color } as React.CSSProperties}>
         <div className="hero-top">
           <OwnerFlag world={world} owner={army.owner} province={army.province} size={16} />
           <span className="hero-owner">
-            {ownerShortName(world, army.owner, army.province)} · Army #{army.id.slice(1)}
+            {ownerShortName(world, army.owner, army.province)} · {army.units.length} formations
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close army panel">
             <Icon name="close" size={16} />
           </button>
         </div>
-        <h3>{armyName(world, army)}</h3>
-        <div className={`army-status${hostiles.length && !leg ? ' battle' : ''}`}>
+        <h3>{title}</h3>
+        <div className={`army-status${(hostiles.length && !leg) || routed ? ' battle' : ''}`}>
           <Icon name={statusIcon} size={14} /> {status}
         </div>
         <div className="army-summary">
-          {UNIT_TYPES.map((t) => (
-            <span key={t} className={`as-unit${c[t] ? '' : ' none'}`} title={UNITS[t].name}>
-              <UnitGlyph type={t} size={26} />
-              <span>{c[t]}</span>
+          {c.types.slice(0, 4).map(([t, n]) => (
+            <span key={t} className="as-unit" title={currentModel(state, world, army.owner, t).name}>
+              <span className="unit-plate">
+                <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={30} />
+              </span>
+              <span>{n}</span>
             </span>
           ))}
+          {c.types.length > 4 && <span className="as-more muted">+{c.types.length - 4}</span>}
           <span className="as-str" title="Average strength">
             <span className="as-str-val" style={{ color: strengthColor(c.strength) }}>
               {Math.round(c.strength * 100)}%
             </span>
             <span className="tb-sub">strength</span>
           </span>
+          <span className={`as-str as-morale ${moraleClass(morale * 100)}`} title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+            <span className="as-str-val">{Math.round(morale * 100)}</span>
+            <span className="tb-sub">morale</span>
+          </span>
         </div>
       </header>
 
       <div className="panel-body">
-        {army.move && dest && (
+        <div className="army-meters">
+          <div className="meter-row">
+            <span className="meter-label">Strength</span>
+            <Progress value={c.strength} label={`${Math.round(c.strength * 100)}%`} color={strengthColor(c.strength)} />
+          </div>
+          <div className="meter-row">
+            <span className="meter-label" title={`Below ${Math.round(MORALE.routThreshold * 100)}% the army breaks and routs`}>
+              Morale
+            </span>
+            <MoraleMeter value={morale * 100} />
+          </div>
+        </div>
+
+        {army.move && dest && !routed && (
           <div className="march-box">
             {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
             <div className="march-meta">
@@ -125,6 +192,12 @@ export function ArmyPanel({
           </div>
         )}
 
+        {routed && (
+          <div className="warn">
+            <Icon name="warning" size={15} />
+            <span>Routed: the army broke and is falling back. It can take orders again in {formatDuration(army.routedUntil - state.tick, state)}.</span>
+          </div>
+        )}
         {!army.supplied && (
           <div className="warn">
             <Icon name="warning" size={15} />
@@ -134,18 +207,30 @@ export function ArmyPanel({
             </span>
           </div>
         )}
+        {army.arrivedVia === 'strait' && p.owner !== army.owner && (
+          <div className="warn">
+            <Icon name="anchor" size={15} />
+            <span>Landed from the sea: fighting at a disadvantage until the beachhead is won.</span>
+          </div>
+        )}
 
         {own && (
           <div className="orders">
-            <button className={`order-btn${moveMode ? ' active' : ''}`} onClick={() => onMoveMode(!moveMode)} title="Then click a destination (or right-click a province any time) — M" data-testid="move-mode">
+            <button
+              className={`order-btn${moveMode ? ' active' : ''}`}
+              disabled={routed}
+              onClick={() => onMoveMode(!moveMode)}
+              title="Then click a destination (or right-click a province any time) — M"
+              data-testid="move-mode"
+            >
               <Icon name="move" size={18} />
               <span>{moveMode ? 'Pick target' : 'Move'}</span>
             </button>
-            <button className="order-btn" disabled={!army.move} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
+            <button className="order-btn" disabled={!army.move || routed} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
               <Icon name="stop" size={18} />
               <span>Stop</span>
             </button>
-            <button className="order-btn" disabled={checked.size === 0 || checked.size === army.units.length || !!leg} onClick={split} title="Split ticked units into a new army">
+            <button className="order-btn" disabled={checked.size === 0 || checked.size === army.units.length || !!leg} onClick={split} title="Split ticked formations into a new army">
               <Icon name="split" size={18} />
               <span>Split</span>
             </button>
@@ -161,17 +246,37 @@ export function ArmyPanel({
               <Icon name="merge" size={18} />
               <span>Merge here</span>
             </button>
+            <button
+              className={`order-btn danger${confirmDisband ? ' active' : ''}`}
+              disabled={!!leg}
+              onClick={disband}
+              title={checked.size > 0 ? 'Disband the ticked formations (half their manpower returns)' : 'Disband the whole army (half its manpower returns)'}
+              data-testid="disband"
+            >
+              <Icon name="exit" size={18} />
+              <span>{confirmDisband ? 'Confirm' : checked.size > 0 ? `Disband ${checked.size}` : 'Disband'}</span>
+            </button>
           </div>
         )}
         {own && armyIds.length > 1 && <div className="muted multi-note">{armyIds.length} armies selected — move orders apply to all.</div>}
 
-        <Section title={`Units (${army.units.length})`} icon="shield" extra={<span className="muted">{(armySpeedKmPerTick(state, army) * 60).toFixed(0)} km/min</span>}>
-          <ul className="unit-list">
+        <Section
+          title={`Formations (${army.units.length})`}
+          icon="shield"
+          extra={
+            <span className="muted" title="On open ground; the slowest unit sets the pace">
+              {(armySpeedKmPerTick(state, army) * 60 * state.settings.durationScale).toFixed(0)} km/min
+            </span>
+          }
+        >
+          <ul className="unit-list formation-list">
             {army.units.map((u) => {
               const s = unitStats(state, army.owner, u.type);
+              const model = currentModel(state, world, army.owner, u.type);
+              const name = formationName(world, army.owner, u);
               return (
                 <li key={u.id} className={checked.has(u.id) ? 'checked' : ''}>
-                  {own && (
+                  {own ? (
                     <input
                       type="checkbox"
                       checked={checked.has(u.id)}
@@ -181,15 +286,21 @@ export function ArmyPanel({
                         else next.delete(u.id);
                         setChecked(next);
                       }}
-                      aria-label={`select ${s.name}`}
+                      aria-label={`select ${name}`}
                     />
+                  ) : (
+                    <span />
                   )}
-                  <span className="unit-icon">
-                    <UnitGlyph type={u.type} size={28} />
+                  <span className="unit-icon unit-plate">
+                    <UnitIconArt type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={32} />
                   </span>
-                  <span className="unit-name" title={UNITS[u.type].description}>
-                    {s.name}
-                    {s.model === 'ww2' && <span className="model-tag">WWII</span>}
+                  <span className="unit-text">
+                    <span className="unit-name" title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>
+                      {name} <RankChevrons xp={u.xp} />
+                    </span>
+                    <span className="unit-model">
+                      {model.name} · {model.detail}
+                    </span>
                   </span>
                   <span className="unit-stats" title="Attack (soft/hard) · Defence (soft/hard)">
                     <span>
@@ -200,6 +311,9 @@ export function ArmyPanel({
                     </span>
                   </span>
                   <Progress value={u.strength} label={`${Math.round(u.strength * 100)}%`} color={strengthColor(u.strength)} />
+                  <div className={`mini-morale ${moraleClass(u.morale * 100)}`} title={`Morale ${Math.round(u.morale * 100)}%`}>
+                    <div style={{ width: `${u.morale * 100}%` }} />
+                  </div>
                 </li>
               );
             })}

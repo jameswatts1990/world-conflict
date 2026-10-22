@@ -1,8 +1,20 @@
-# World Conflict — first playable
+# World Conflict
 
 A browser-based, real-time global strategy game. Six modern nations on recognisable Earth geography start with
-Great War technology and research their way towards the Second World War. This milestone is a local
+Great War technology and research their way towards the Second World War. The current build is a local
 single-player campaign on the **European theatre** at **Standard** speed (target ~2–3 hours).
+
+What is in it (Milestone 2, Depth):
+
+- **13 unit types** in four classes with 1914, interwar and 1940 equipment, each nation fielding its **own named
+  designs** and art (Poilus, Alpini, Ułani; Mark IV, Renault FT, A7V, 7TP …), numbered formations in its own
+  language, veterancy, and one **national speciality**.
+- **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
+  integrate over time) and nations.
+- **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
+- A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
+- **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
+  power close to victory.
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -26,8 +38,11 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
+| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
+| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (start → build → recruit → research → move → capture → save/load → campaign end); run `npm run build` first |
+| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 
 The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and the browser playthrough on
 every push and pull request.
@@ -44,24 +59,26 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 
 | Input | Action |
 | --- | --- |
-| Left-click province | Select it: output, buildings, recruitment, forces present, routes |
+| Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, forces present, routes |
 | Left-click army counter | Select army (Shift-click adds more of your armies) |
 | Right-click province or enemy army | March the selected armies there (or press **M** / the **Move** button, then left-click) |
 | **S** | Stop the selected armies after their current leg |
 | Drag / mouse wheel | Pan / zoom |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
-| **R** / **D** / **L** | Research / Diplomacy & objectives / toggle field reports |
+| **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |
+| **V** | Cycle map view: political, terrain, supply, morale, city size |
 | **K** | Show or hide the map key |
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
-The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch changes the map
-view (Political, Terrain, Supply); the overview map and zoom buttons sit at the bottom right. With one of your armies
-selected, pointing at a province or an enemy army previews the route and arrival time. Point at a resource in the top
-bar for its income and upkeep. Click a field report or an alert to jump to its province. Peace offers (with time left to
-answer) and key events pop up at the top left: wars, research, objectives, provinces you win or lose, attacks on your
-territory. Alerts wait while the game is paused. Declaring war and leaving the campaign ask for confirmation.
+The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**)
+changes the map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the
+bottom right. With one of your armies selected, pointing at a province or an enemy army previews the route and arrival
+time. Point at a resource in the top bar for its income and upkeep. Click a field report or an alert to jump to its
+province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
+provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
+Declaring war and leaving the campaign ask for confirmation.
 
 ## How to win
 
@@ -82,14 +99,16 @@ was made. Offline progression belongs to the later server-backed version.
 ```
 src/sim/            Framework-free simulation (could run on a server unchanged)
   config/           Balance and timing values: units, buildings, research, rules, AI, timing
-  scenario/europe/  Nations, province gameplay data, movement connections, starting setup
-  systems/          Economy, production, movement, combat, supply, territory, diplomacy, victory
-  ai/               Computer opponents (issue the same commands as the player)
+  scenario/europe/  Nations and their identity, province gameplay data, connections, starting setup
+  systems/          Economy, production, movement, combat (morale, rout), supply, civic (morale, growth),
+                    territory, diplomacy, victory
+  ai/               Computer opponents: context, diplomacy, economy, recruitment, military
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
+  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, building and branch icons
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON (shapes only)
-scripts/            Map pipeline, headless campaign, browser playthrough
+scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
 
@@ -98,10 +117,11 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  campaigns end either by objectives (about 100–130 min) or on the time limit.
-- AI armies can grow large (100+ units in one stack) late in a campaign. No unit disbanding yet; a bankrupt AI keeps
-  its army but fights at reduced effectiveness.
+  every campaign ends on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up
+  on a leader.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
-- Single desktop layout; not tuned for touch or small screens.
+- Single desktop layout; not tuned for touch or small screens. The main bundle is ~850 KB (274 KB gzipped).
+- Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
+  loaded.

@@ -1,7 +1,10 @@
-// Inline SVG iconography: unit silhouettes, resource and building glyphs and a
-// line-icon set for the HUD. All original artwork, no external assets.
+// Inline SVG iconography: unit-class silhouettes, resource and building glyphs
+// and a line-icon set for the HUD. All original artwork, no external assets.
+// Detailed unit, building and branch artwork lives in src/ui/art.
 import type { ReactElement } from 'react';
+import { UNITS } from '../sim/config/units';
 import type { BuildingType, ResourceKey, Terrain, UnitType } from '../sim';
+import { BuildingGlyphArt } from './art/adapters';
 
 interface IconProps {
   size?: number;
@@ -13,9 +16,18 @@ interface IconProps {
 // Unit silhouettes (24 × 14 box, facing right)
 // ---------------------------------------------------------------------------
 
-/** Unit silhouette as an SVG group in a 24 × 14 box; used on map counters and in panels. */
+/** Which of the three silhouettes stands for a unit type: guns, vehicles or men. */
+function silhouette(type: UnitType): 'infantry' | 'artillery' | 'tank' {
+  const cls = UNITS[type].class;
+  if (cls === 'support') return 'artillery';
+  if (cls === 'armour' || type === 'armouredCar') return 'tank';
+  return 'infantry';
+}
+
+/** Unit-class silhouette as an SVG group in a 24 × 14 box; used in the map key and compact lists. */
 export function UnitShape({ type, color = '#fff', detail = 'rgba(0,0,0,0.45)' }: { type: UnitType; color?: string; detail?: string }) {
-  if (type === 'tank') {
+  const shape = silhouette(type);
+  if (shape === 'tank') {
     return (
       <g fill={color}>
         <path d="M2.4 8.6L4.8 5.8H19.2L21.8 8.6Z" />
@@ -28,7 +40,7 @@ export function UnitShape({ type, color = '#fff', detail = 'rgba(0,0,0,0.45)' }:
       </g>
     );
   }
-  if (type === 'artillery') {
+  if (shape === 'artillery') {
     return (
       <g fill={color}>
         <path d="M7.2 7.6L21.6 1.6L22.6 3.1L8.6 9.6Z" />
@@ -108,26 +120,11 @@ export function ResourceIcon({ kind, size = 16, title }: IconProps & { kind: Res
 }
 
 // ---------------------------------------------------------------------------
-// Buildings (20 × 20, single colour)
+// Buildings (single colour, drawn in src/ui/art)
 // ---------------------------------------------------------------------------
 
-const BUILDING_PATHS: Record<BuildingType, ReactElement> = {
-  industry: <path d="M2 17V9l4 2.5V9l4 2.5V9l4 2.5V4h3v13z" />,
-  barracks: <path d="M3 17V8l7-5 7 5v9h-5v-5H8v5z" />,
-  armsWorks: <path d="M8 3h4v3l2 2v9H6V8l2-2z" />,
-  tankWorks: <path d="M2 13h16v3H2zM4 9h10v4H4zM8 6h4v3H8zM12 7h6v1.5h-6z" />,
-  refinery: <path d="M9 2h2l3 15h-2.2L10 8l-1.8 9H6zM5 17h10" />,
-  fortifications: <path d="M2 17V8h3v2h2V8h3v2h2V8h3v2h1V8h2v9z" />,
-  supplyDepot: <path d="M3 7l7-4 7 4v10H3zM7 11h6v6H7z" />,
-};
-
 export function BuildingIcon({ kind, size = 16, title }: IconProps & { kind: BuildingType }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 20 20" role="img" aria-label={title ?? kind} fill="currentColor">
-      {title && <title>{title}</title>}
-      {BUILDING_PATHS[kind]}
-    </svg>
-  );
+  return <BuildingGlyphArt kind={kind} size={size} title={title} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -162,6 +159,7 @@ const LINE = {
   road: 'M8 4L5 20M16 4l3 16M12 5v2.5M12 10.5v3M12 16.5V19',
   city: 'M4 20V10l4-2v12M8 20V5h7v15M15 20v-8h5v8M3 20h18M10.5 8.5h2M10.5 12h2M10.5 15.5h2',
   flag: 'M6 21V4M6 4h11l-2.5 4 2.5 4H6',
+  bolt: 'M13 3L5 14h6l-1 7 8-11h-6z',
   truck: 'M2 6.5h11V15H2zM13 9.5h4.2l2.8 3.2V15h-7M8.5 17a2 2 0 1 1-4 0a2 2 0 1 1 4 0M18.5 17a2 2 0 1 1-4 0a2 2 0 1 1 4 0',
   dice: 'M7 4h10a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9.4 8.5a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0M16.4 8.5a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0M12.9 12a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0M9.4 15.5a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0M16.4 15.5a.9.9 0 1 1-1.8 0a.9.9 0 1 1 1.8 0',
   radio: 'M4 10h16v10H4zM8 10L5.5 3M17.4 15a2.4 2.4 0 1 1-4.8 0a2.4 2.4 0 1 1 4.8 0M7 13.5h3.5M7 16.5h3.5',
@@ -169,6 +167,7 @@ const LINE = {
   factory: 'M3 20V10l5 3v-3l5 3v-3l5 3V4h3v16zM3 20h18',
   gear: 'M12 8.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7zM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1',
   shield: 'M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z',
+  morale: 'M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z',
   oil: 'M12 3.5c3.2 4.3 5.8 7.4 5.8 10.6a5.8 5.8 0 0 1-11.6 0c0-3.2 2.6-6.3 5.8-10.6z',
   plains: 'M3 19h18M7 19l-1.5-4M7 19l1.5-4.5M12 19l-1.5-5M12 19l1.5-6M17 19l-1.5-4M17 19l1.5-4.5',
   forest: 'M12 3l5 7h-3l4 6H6l4-6H7zM12 16v5',

@@ -1,8 +1,10 @@
 // Map key popover: explains the symbols used on the strategy map.
-import type { NationId, UnitType, World } from '../../sim';
+import { CITY } from '../../sim/config/buildings';
+import type { NationId, OwnerId, UnitType, World } from '../../sim';
+import { CounterArt } from '../art/adapters';
 import { Flag } from '../flags';
-import { Icon, UnitShape } from '../icons';
-import type { MapMode } from '../map/MapView';
+import { Icon } from '../icons';
+import { TIER_COLORS, moraleRamp, type MapMode } from '../map/MapView';
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
@@ -15,15 +17,12 @@ function Sample({ children, w = 34 }: { children: React.ReactNode; w?: number })
 }
 
 /** A miniature army counter, as drawn on the map. */
-function ArmySample({ color, rim, type, count }: { color: string; rim: string; type: UnitType; count: number }) {
+function ArmySample({ color, rim, owner, type, count }: { color: string; rim: string; owner: OwnerId; type: UnitType; count: number }) {
   return (
-    <g transform="scale(0.9)">
-      <rect x={-21} y={-10} width={42} height={18} rx={4} fill={color} stroke={rim} strokeWidth={1.4} />
-      <rect x={-19} y={-8} width={21} height={14} rx={2.5} fill="rgba(0,0,0,0.28)" />
-      <g transform="translate(-18.1,-6.6) scale(0.8)">
-        <UnitShape type={type} />
-      </g>
-      <text x={11.6} y={4} className="army-count">
+    <g transform="scale(0.8)">
+      <rect x={-21} y={-11} width={42} height={20} rx={4} fill={color} stroke={rim} strokeWidth={1.4} />
+      <CounterArt type={type} gen="ww1" nation={owner} x={-19.5} y={-8.6} width={23} />
+      <text x={12.2} y={4.7} className="army-count">
         {count}
       </text>
     </g>
@@ -44,6 +43,20 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         <div className="lg-grid">
           <span className="lg-swatch" style={{ background: '#3fae5a' }} /> Your province, connected to a supply hub
           <span className="lg-swatch" style={{ background: '#e0473a' }} /> Your province, cut off from supply
+        </div>
+      ) : mode === 'morale' ? (
+        <div className="lg-ramp">
+          <span>Morale 20</span>
+          <span className="ramp" style={{ background: `linear-gradient(90deg, ${moraleRamp(20)}, ${moraleRamp(52)}, ${moraleRamp(85)})` }} />
+          <span>85+</span>
+        </div>
+      ) : mode === 'development' ? (
+        <div className="lg-tiers">
+          {[1, 2, 3, 4, 5].map((t) => (
+            <span key={t}>
+              <span className="lg-swatch" style={{ background: TIER_COLORS[t] }} /> {CITY.tierNames[t]}
+            </span>
+          ))}
         </div>
       ) : (
         <div className="lg-nations">
@@ -72,13 +85,22 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Objective worth victory points
         <Sample w={46}>
-          <ArmySample color={world.nations[human].color} rim="#fff" type="tank" count={4} />
+          <ArmySample color={world.nations[human].color} rim="#fff" owner={human} type="tank" count={4} />
         </Sample>
-        Your army: main unit type and unit count
+        Your army: main unit and number of formations
         <Sample w={46}>
-          <ArmySample color={world.scenario.nations.find((n) => n.id !== human)!.color} rim="#ff5a45" type="infantry" count={6} />
+          <ArmySample color={world.scenario.nations.find((n) => n.id !== human)!.color} rim="#ff5a45" owner={world.scenario.nations.find((n) => n.id !== human)!.id} type="infantry" count={6} />
         </Sample>
         Army of a nation at war with you
+        <Sample w={46}>
+          <rect x={-18} y={-5} width={36} height={4} rx={1.5} fill="#66cc6c" />
+          <rect x={-18} y={0} width={26} height={3.6} rx={1.5} className="army-morale mid" />
+        </Sample>
+        Strength (top) and morale (bottom)
+        <Sample>
+          <path d="M-3,8 L-3,-8 L7,-5 L-3,-2" className="routed-flag" />
+        </Sample>
+        Routed army falling back
         <Sample>
           <g className="army-badge warn">
             <circle r={6} />

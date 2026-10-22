@@ -56,6 +56,9 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <span>
                       <strong>{def.name}</strong>
                       {me && <span className="you-tag">You</span>}
+                      <span className="dip-sub" title={def.speciality.description}>
+                        {def.speciality.name} · morale {Math.round(n.morale)}
+                      </span>
                     </span>
                   </span>
                 </td>

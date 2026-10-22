@@ -13,4 +13,5 @@ export const EUROPE_SCENARIO: ScenarioDef = {
   startingBuildings: STARTING_BUILDINGS,
   startingArmies: STARTING_ARMIES,
   startingResources: STARTING_RESOURCES,
+  startingTechs: [],
 };

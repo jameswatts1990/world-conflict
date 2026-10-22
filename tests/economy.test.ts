@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDINGS } from '../src/sim/config/buildings';
-import { ECONOMY } from '../src/sim/config/rules';
+import { ECONOMY, MORALE } from '../src/sim/config/rules';
 import { UNITS } from '../src/sim/config/units';
-import { applyCommand, constructionTicks, nationEconomy, provinceOutput, recruitCost, recruitTicks } from '../src/sim';
+import { applyCommand, constructionCost, constructionTicks, nationEconomy, provinceOutput, recruitCost, recruitTicks } from '../src/sim';
 import { clearArmies, place, quietGame, run, world } from './helpers';
 
 describe('resource accounting', () => {
@@ -51,10 +51,13 @@ describe('resource accounting', () => {
     expect(state.nations.fr.resources).toEqual(r0);
     // Cannot build in someone else's province.
     expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'de-berlin', building: 'barracks' }).ok).toBe(false);
-    // Tank Works requires Arms Works.
+    // Tank Works must be researched, then requires Arms Works.
     state.nations.fr.resources.money = 1e5;
     state.nations.fr.resources.materials = 1e5;
+    expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-paris', building: 'tankWorks' }).ok).toBe(false);
+    state.nations.fr.research.completed.push('landships');
     expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-nord', building: 'tankWorks' }).ok).toBe(false);
+    expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-paris', building: 'tankWorks' }).ok).toBe(true);
   });
 
   it('recruitment requires the right building, charges the cost and spawns after the timer', () => {
@@ -107,7 +110,7 @@ describe('resource accounting', () => {
 
   it('construction can be cancelled with the same refund rules', () => {
     const state = quietGame();
-    const cost = BUILDINGS.fortifications.cost(1);
+    const cost = constructionCost(state, 'fr', 'fortifications', 1);
     const r0 = { ...state.nations.fr.resources };
     const build = () => applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-east', building: 'fortifications' });
     const cancel = () => applyCommand(state, world, { type: 'cancelBuild', nation: 'fr', province: 'fr-east' });
@@ -127,12 +130,16 @@ describe('resource accounting', () => {
     expect(applyCommand(state, world, { type: 'cancelBuild', nation: 'de', province: 'fr-east' }).ok).toBe(false);
   });
 
-  it('occupied non-core provinces produce at the configured reduced rate', () => {
+  it('output follows province morale; occupied land also yields few recruits', () => {
     const state = quietGame();
     const core = provinceOutput(state, world, 'de-ruhr');
+    expect(state.provinces['de-ruhr'].morale).toBe(MORALE.outputPivot);
     state.provinces['de-ruhr'].owner = 'fr';
+    state.provinces['de-ruhr'].morale = MORALE.capturedOccupied;
     const occupied = provinceOutput(state, world, 'de-ruhr');
-    expect(occupied.money).toBeCloseTo(core.money * ECONOMY.nonCoreOutput, 9);
+    const f = MORALE.outputFloor + ((1 - MORALE.outputFloor) * MORALE.capturedOccupied) / MORALE.outputPivot;
+    expect(occupied.money).toBeCloseTo(core.money * f, 9);
+    expect(occupied.manpower).toBeCloseTo(core.manpower * f * ECONOMY.occupiedManpower, 9);
   });
 
   it('an empty treasury clamps at zero and flags a shortage', () => {

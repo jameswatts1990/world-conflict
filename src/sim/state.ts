@@ -1,11 +1,15 @@
 // Creates the initial GameState for a scenario.
 import { AI } from './config/ai';
+import { MORALE } from './config/rules';
 import { SPEED_PRESETS, TICKS_PER_MINUTE } from './config/timing';
+import { VETERANCY } from './config/units';
 import { pushEvent } from './events';
+import { unitMoraleCap } from './queries';
 import { random, seedToState } from './rng';
 import {
   NEUTRAL,
   UNIT_TYPES,
+  type AiMemory,
   type Army,
   type GameState,
   type NationId,
@@ -18,7 +22,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface NewGameOptions {
   seed: number;
@@ -30,23 +34,49 @@ export function newId(state: GameState, prefix: string): string {
   return `${prefix}${state.nextId++}`;
 }
 
-export function createUnit(state: GameState, type: UnitType, strength = 1): Unit {
-  return { id: newId(state, 'u'), type, strength };
+/** Next formation number for an owner's unit type (or 'army'). */
+export function nextSerial(state: GameState, owner: OwnerId, kind: UnitType | 'army'): number {
+  const key = `${owner}:${kind}`;
+  state.serials[key] = (state.serials[key] ?? 0) + 1;
+  return state.serials[key];
+}
+
+export interface NewUnitOptions {
+  strength?: number;
+  xp?: number;
+  /** Defaults to the owner's current unit morale cap. */
+  morale?: number;
+}
+
+export function createUnit(state: GameState, owner: OwnerId, type: UnitType, opts: NewUnitOptions = {}): Unit {
+  return {
+    id: newId(state, 'u'),
+    type,
+    strength: opts.strength ?? 1,
+    morale: opts.morale ?? unitMoraleCap(state, owner),
+    xp: opts.xp ?? 0,
+    serial: nextSerial(state, owner, type),
+  };
 }
 
 export function createArmy(state: GameState, owner: OwnerId, province: ProvinceId, units: Unit[]): Army {
   const army: Army = {
     id: newId(state, 'a'),
     owner,
+    serial: nextSerial(state, owner, 'army'),
     province,
     units,
     move: null,
     supplied: true,
     unsuppliedTicks: 0,
+    arrivedVia: null,
+    routedUntil: 0,
   };
   state.armies[army.id] = army;
   return army;
 }
+
+const DOCTRINES: AiMemory['doctrine'][] = ['armour', 'infantry', 'artillery'];
 
 export function createInitialState(world: World, opts: NewGameOptions): GameState {
   const preset = SPEED_PRESETS[opts.speed ?? 'standard'];
@@ -67,6 +97,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
     provinces: {},
     armies: {},
     nextId: 1,
+    serials: {},
     peaceOffers: [],
     battles: {},
     events: [],
@@ -85,6 +116,9 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       capture: null,
       supplied: true,
       ownerSince: 0,
+      morale: MORALE.start,
+      tier: p.tier,
+      growth: 0,
     };
     state.provinces[p.id] = ps;
   }
@@ -102,25 +136,30 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       id: n.id,
       controller: isHuman ? 'human' : 'ai',
       resources: { ...scenario.startingResources },
-      research: { completed: [], active: null },
+      research: { completed: [...scenario.startingTechs], active: [], queue: [] },
       relations,
       eliminated: false,
       shortages: { money: false, fuel: false },
+      morale: MORALE.start,
       // Personalities are drawn from the seeded RNG so each seed plays differently.
       ai: isHuman
         ? null
         : {
             aggression: 0.35 + random(state) * 0.6,
             economyBias: 0.3 + random(state) * 0.5,
+            doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
             nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
+            campaigns: [],
           },
-      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0 },
+      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },
     };
   }
 
   for (const sa of scenario.startingArmies) {
     const units: Unit[] = [];
-    for (const t of UNIT_TYPES) for (let i = 0; i < (sa.units[t] ?? 0); i++) units.push(createUnit(state, t));
+    for (const t of UNIT_TYPES) {
+      for (let i = 0; i < (sa.units[t] ?? 0); i++) units.push(createUnit(state, sa.owner, t, { xp: VETERANCY.startingXp }));
+    }
     createArmy(state, sa.owner, sa.province, units);
   }
 

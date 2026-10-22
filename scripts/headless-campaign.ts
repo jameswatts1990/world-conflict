@@ -28,7 +28,7 @@ function report(): void {
     const provinces = world.provinceIds.filter((p) => s.provinces[p].owner === id).length;
     const units = Object.values(s.armies).filter((a) => a.owner === id).reduce((c, a) => c + a.units.length, 0);
     const wars = world.nationIds.filter((o) => n.relations[o]?.status === 'war').join('+') || '-';
-    return `${id}:${provinces}p ${units}u ${heldVp(s, world, id)}vp $${Math.round(n.resources.money)} pw${Math.round(nationPower(s, id))} ${nationEra(s, id)} war[${wars}]`;
+    return `${id}:${provinces}p ${units}u ${heldVp(s, world, id)}vp $${Math.round(n.resources.money)} pw${Math.round(nationPower(s, id))} m${Math.round(n.morale)} t${n.research.completed.length} ${nationEra(s, id)} war[${wars}]`;
   });
   const neutral = world.provinceIds.filter((p) => s.provinces[p].owner === 'neutral').length;
   console.log(`t=${String(minute).padStart(3)}m neutral:${neutral} | ${parts.join(' | ')}`);

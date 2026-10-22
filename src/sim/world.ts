@@ -1,5 +1,5 @@
 // Static, derived lookup tables for a scenario (adjacency, distances, objectives).
-import type { ConnectionKind, NationDef, NationId, ProvinceDef, ProvinceId, ScenarioDef } from './types';
+import type { ConnectionKind, Effect, NationDef, NationId, ProvinceDef, ProvinceId, ScenarioDef } from './types';
 
 export interface Neighbor {
   id: ProvinceId;
@@ -18,6 +18,16 @@ export interface World {
   nations: Record<NationId, NationDef>;
   objectiveIds: ProvinceId[];
   totalVp: number;
+  /** Provinces where a sea crossing lands (coastal batteries allowed). */
+  seaLandings: Set<ProvinceId>;
+}
+
+// National specialities are static scenario data that effect lookups need
+// without a World in hand; buildWorld registers them by scenario id.
+const specialities = new Map<string, Record<NationId, Effect[]>>();
+
+export function specialityEffects(scenarioId: string, nation: NationId): Effect[] {
+  return specialities.get(scenarioId)?.[nation] ?? [];
 }
 
 const EARTH_RADIUS_KM = 6371;
@@ -57,6 +67,14 @@ export function buildWorld(scenario: ScenarioDef): World {
   for (const n of scenario.nations) nations[n.id] = n;
   const objectiveIds = scenario.provinces.filter((p) => p.objectiveVp).map((p) => p.id);
   const totalVp = scenario.provinces.reduce((s, p) => s + (p.objectiveVp ?? 0), 0);
+  const seaLandings = new Set<ProvinceId>();
+  for (const c of scenario.connections) {
+    if (c.kind === 'strait') {
+      seaLandings.add(c.a);
+      seaLandings.add(c.b);
+    }
+  }
+  specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality.effects])));
 
   return {
     scenario,
@@ -67,6 +85,7 @@ export function buildWorld(scenario: ScenarioDef): World {
     nations,
     objectiveIds,
     totalVp,
+    seaLandings,
   };
 }
 

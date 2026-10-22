@@ -22,6 +22,14 @@ const KIND_ICON: Record<string, IconName> = {
   outcome: 'star',
   move: 'move',
   withdraw: 'move',
+  rout: 'warning',
+  surrender: 'flag',
+  disband: 'exit',
+  demolish: 'factory',
+  'city-growth': 'city',
+  'peace-offer': 'flag',
+  'peace-rejected': 'flag',
+  'peace-expired': 'flag',
 };
 
 export function eventIcon(e: GameEvent): IconName {

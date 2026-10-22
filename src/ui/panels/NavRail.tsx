@@ -1,4 +1,5 @@
 // Left command rail: the game's main windows, one icon each.
+import { researchSlots } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Icon, type IconName } from '../icons';
 
@@ -56,7 +57,7 @@ export function NavRail({
         label="Research"
         hotkey="R"
         active={active === 'research'}
-        badge={nation.research.active ? null : '!'}
+        badge={nation.research.active.length < researchSlots(state, human) ? '!' : null}
         testId="open-research"
         onClick={() => onOpen('research')}
       />

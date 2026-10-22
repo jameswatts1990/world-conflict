@@ -1,11 +1,12 @@
 import { TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, VICTORY } from '../../sim/config/rules';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { RESOURCE_KEYS, heldVp, nationEconomy, nationEra, nationName, sentence, vpToWin, type ResourceKey } from '../../sim';
+import { RESOURCE_KEYS, heldVp, nationEconomy, nationEra, nationName, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
 import { fmt, fmtRate, formatClock, formatDuration, proseDuration } from '../format';
 import { Icon, RESOURCE_LABEL, ResourceIcon } from '../icons';
+import { moraleClass } from './Common';
 import type { PanelId } from './NavRail';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -14,13 +15,13 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 const RESOURCE_HINT: Record<ResourceKey, string> = {
   money: 'Pays for everything, including army upkeep.',
   materials: 'Mostly from industrial provinces. Needed for buildings, every unit and research.',
-  fuel: 'From oil fields and refineries. Tanks need it to be built and to keep moving.',
-  manpower: 'Grows with population; Barracks add more. Every new unit needs it.',
+  fuel: 'From oil fields and refineries. Tanks and motor vehicles need it to be built and to keep moving.',
+  manpower: 'Grows with population; Barracks and housing add more. Every new unit needs it.',
 };
 
 const SHORTAGE: Partial<Record<ResourceKey, string>> = {
   money: `Treasury empty: troops fight at ${pct(ECONOMY.unpaidCombatMult)}.`,
-  fuel: `Out of fuel: tanks move and fight at ${pct(ECONOMY.noFuelTankMult)}.`,
+  fuel: `Out of fuel: tanks and motor vehicles move and fight at ${pct(ECONOMY.noFuelVehicleMult)}.`,
 };
 
 export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: PanelId) => void }) {
@@ -31,7 +32,12 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   const remaining = state.settings.timeLimitTicks - state.tick;
   const vp = heldVp(state, world, human);
   const need = vpToWin(world);
-  const active = nation.research.active;
+  const jobs = nation.research.active;
+  const slots = researchSlots(state, human);
+  const queued = nation.research.queue.length;
+  // Show the project closest to completion.
+  const active = jobs.reduce<(typeof jobs)[number] | null>((best, j) => (!best || j.remaining < best.remaining ? j : best), null);
+  const idle = jobs.length < slots;
   const leader = state.victory.leader;
   const over = !!state.outcome;
 
@@ -79,7 +85,20 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
         })}
       </div>
 
-      <button className={`tb-research${active ? '' : ' idle'}`} onClick={() => onOpen('research')} title="Research (R)">
+      <div
+        className={`tb-morale ${moraleClass(nation.morale)}`}
+        title="National morale: the home-front average. It caps how high your units' morale can climb and decides how long the nation will fight."
+        data-testid="national-morale"
+      >
+        <span className="tb-morale-val">{Math.round(nation.morale)}</span>
+        <span className="tb-sub">morale</span>
+      </div>
+
+      <button
+        className={`tb-research${idle ? ' idle' : ''}`}
+        onClick={() => onOpen('research')}
+        title={`Research tree (R) — ${jobs.map((j) => TECH_BY_ID[j.tech].name).join(', ') || 'nothing running'}`}
+      >
         <Icon name="research" size={18} />
         {active ? (
           <span className="tb-research-text">
@@ -87,7 +106,9 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
             <span className="tb-research-bar">
               <span style={{ width: `${(1 - active.remaining / active.total) * 100}%` }} />
             </span>
-            <span className="tb-sub">{formatDuration(active.remaining, state)} left</span>
+            <span className="tb-sub">
+              {formatDuration(active.remaining, state)} left · {jobs.length}/{slots} slots{queued ? ` · +${queued} queued` : ''}
+            </span>
           </span>
         ) : (
           <span className="tb-research-text">

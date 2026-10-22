@@ -28,7 +28,8 @@ export function victorySystem(state: GameState, world: World): void {
     if (n.eliminated) continue;
     if (provincesOwnedBy(state, world, id).length > 0) continue;
     n.eliminated = true;
-    n.research.active = null;
+    n.research.active = [];
+    n.research.queue = [];
     for (const aid of Object.keys(state.armies)) if (state.armies[aid].owner === id) delete state.armies[aid];
     for (const other of world.nationIds) {
       if (other === id) continue;

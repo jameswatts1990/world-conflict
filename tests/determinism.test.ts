@@ -127,8 +127,8 @@ describe('save / load', () => {
   it('upgrades saves from the previous schema version', () => {
     const state = aiGame(5);
     run(state, 120);
-    const old = JSON.parse(serializeGame(state, 'v1'));
-    old.schemaVersion = old.state.schemaVersion = 1;
+    const old = JSON.parse(serializeGame(state, 'v2'));
+    old.schemaVersion = old.state.schemaVersion = 2;
     for (const n of Object.values(old.state.nations) as Record<string, unknown>[]) n.lastRates = { money: 1, materials: 2, fuel: 3, manpower: 4 };
     const loaded = deserializeGame(JSON.stringify(old), state.scenarioId);
     expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
@@ -143,5 +143,12 @@ describe('save / load', () => {
     bad.schemaVersion = 999;
     expect(() => deserializeGame(JSON.stringify(bad))).toThrow(/version/);
     expect(() => deserializeGame(serializeGame(state, 'x'), 'another-scenario')).toThrow(/different scenario/);
+    // Saves from before cities, morale and the research tree hold a different state.
+    const early = JSON.parse(serializeGame(state, 'x'));
+    early.schemaVersion = early.state.schemaVersion = 2;
+    for (const n of Object.values(early.state.nations) as { research: { active: unknown } }[]) n.research.active = null;
+    expect(() => deserializeGame(JSON.stringify(early))).toThrow(/earlier version/);
+    early.schemaVersion = 1;
+    expect(() => deserializeGame(JSON.stringify(early))).toThrow(/earlier version/);
   });
 });

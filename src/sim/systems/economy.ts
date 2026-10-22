@@ -23,7 +23,7 @@ export function economySystem(state: GameState, world: World): void {
       });
     }
     if (fuelShort && !nation.shortages.fuel) {
-      pushEvent(state, 'shortage', `Out of fuel: tanks move and fight at ${Math.round(ECONOMY.noFuelTankMult * 100)}%.`, {
+      pushEvent(state, 'shortage', `Out of fuel: tanks and motor vehicles move and fight at ${Math.round(ECONOMY.noFuelVehicleMult * 100)}%.`, {
         nations: [id],
         severity: 'bad',
       });

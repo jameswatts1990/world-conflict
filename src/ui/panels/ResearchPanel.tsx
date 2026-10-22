@@ -1,137 +1,313 @@
-import { ERA_RULES, TECHS, TECH_BY_ID, type TechConfig } from '../../sim/config/research';
-import { checkResearch, nationEra, type BuildingType, type Era, type UnitType } from '../../sim';
+// Classic research tree: era columns, branch rows, prerequisite lines.
+// Click a technology to research it now, or to queue it together with any
+// prerequisites it still needs.
+import { useMemo, useState, type ReactNode } from 'react';
+import { BUILDINGS } from '../../sim/config/buildings';
+import { BRANCHES, ERAS, TECHS, TECH_BY_ID, type TechConfig } from '../../sim/config/research';
+import { UNITS, baseGen } from '../../sim/config/units';
+import {
+  checkResearch,
+  modelName,
+  nationEra,
+  researchSlots,
+  researchSpeed,
+  unitGen,
+  type TechBranch,
+  type TechId,
+} from '../../sim';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
-import { BuildingIcon, Icon, UnitGlyph, type IconName } from '../icons';
+import { BranchIcon, BuildingGlyphArt, TechUnitIcon } from '../art/adapters';
+import { Icon } from '../icons';
 import { Cost, Modal, Progress } from './Common';
 
-const TIER_NAMES = { 1: 'Great War refinements', 2: 'Interwar developments', 3: 'WWII upgrades' } as const;
-const ERAS: { id: Era; label: string; years: string }[] = [
-  { id: 'WWI', label: 'Great War', years: '1914–1918' },
-  { id: 'Interwar', label: 'Interwar', years: '1919–1938' },
-  { id: 'WWII', label: 'Second World War', years: '1939–1945' },
-];
+/** Compact m:ss for node footers. */
+function formatClockShort(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
 
-type Art = { unit: UnitType } | { icon: IconName } | { building: BuildingType };
+const COL_W = 224;
+const NODE_W = 198;
+const NODE_H = 70;
+const ROW_H = 82;
+const LABEL_W = 150;
+const HEAD_H = 54;
+const BRANCH_GAP = 14;
+const PAD = 12;
 
-/** Card artwork per technology; anything unlisted falls back to what its first effect does. */
-const TECH_ART: Record<string, Art> = {
-  industrialMobilisation: { icon: 'factory' },
-  motorTransport: { icon: 'truck' },
-  syntheticFuel: { icon: 'oil' },
-  assemblyLine: { icon: 'gear' },
-  fieldRadio: { icon: 'radio' },
-  fortificationEngineering: { building: 'fortifications' },
-  combinedArms: { icon: 'swords' },
-};
+interface Layout {
+  pos: Record<TechId, { x: number; y: number }>;
+  branchTop: Record<TechBranch, { top: number; height: number }>;
+  width: number;
+  height: number;
+}
 
-function TechArt({ tech }: { tech: TechConfig }) {
-  const e = tech.effects[0];
-  const art: Art = TECH_ART[tech.id] ?? ((e.kind === 'unitStat' || e.kind === 'unitModel') && e.unit !== 'all' ? { unit: e.unit } : { icon: 'research' });
-  if ('unit' in art) return <UnitGlyph type={art.unit} size={34} />;
-  if ('building' in art) return <BuildingIcon kind={art.building} size={26} />;
-  return <Icon name={art.icon} size={26} />;
+function buildLayout(): Layout {
+  const pos: Layout['pos'] = {};
+  const branchTop = {} as Layout['branchTop'];
+  let y = HEAD_H + PAD;
+  for (const b of BRANCHES) {
+    const techs = TECHS.filter((t) => t.branch === b.id);
+    const rows = Math.max(...techs.map((t) => t.row)) + 1;
+    const height = rows * ROW_H;
+    branchTop[b.id] = { top: y, height };
+    for (const t of techs) pos[t.id] = { x: LABEL_W + PAD + t.col * COL_W, y: y + t.row * ROW_H + (ROW_H - NODE_H) / 2 };
+    y += height + BRANCH_GAP;
+  }
+  return { pos, branchTop, width: LABEL_W + PAD * 2 + 8 * COL_W, height: y };
+}
+
+const LAYOUT = buildLayout();
+
+/** Every prerequisite of a technology, transitively. */
+function ancestors(id: TechId, out = new Set<TechId>()): Set<TechId> {
+  for (const r of TECH_BY_ID[id].requires) {
+    if (!out.has(r)) {
+      out.add(r);
+      ancestors(r, out);
+    }
+  }
+  return out;
+}
+
+/** Technologies to queue, in order, to reach `id` from what is done, running or queued. */
+function pathTo(planned: Set<TechId>, id: TechId): TechId[] {
+  const out: TechId[] = [];
+  const visit = (t: TechId) => {
+    if (planned.has(t) || out.includes(t)) return;
+    for (const r of TECH_BY_ID[t].requires) visit(r);
+    out.push(t);
+  };
+  visit(id);
+  return out;
+}
+
+function TechIcon({ tech, ctrl }: { tech: TechConfig; ctrl: GameController }) {
+  const { state, world, human } = ctrl;
+  for (const e of tech.effects) {
+    if (e.kind === 'unlockUnit') {
+      const gen = unitGen(state, human, e.unit);
+      return <TechUnitIcon type={e.unit} gen={gen} nation={human} title={modelName(world, human, e.unit, gen).name} />;
+    }
+    if (e.kind === 'unitModel') return <TechUnitIcon type={e.units[0]} gen={e.gen} nation={human} title={modelName(world, human, e.units[0], e.gen).name} />;
+  }
+  for (const e of tech.effects) if (e.kind === 'unlockBuilding') return <BuildingGlyphArt kind={e.building} size={24} />;
+  return <BranchIcon branch={tech.branch} size={20} />;
+}
+
+/** Small chips naming what a technology unlocks or upgrades. */
+function unlockChips(ctrl: GameController, tech: TechConfig): ReactNode[] {
+  const { world, human } = ctrl;
+  const chips: ReactNode[] = [];
+  for (const e of tech.effects) {
+    if (e.kind === 'unlockUnit') chips.push(<span key={`u-${e.unit}`} className="chip unit">{modelName(world, human, e.unit, baseGen(e.unit)).name}</span>);
+    if (e.kind === 'unlockBuilding') chips.push(<span key={`b-${e.building}`} className="chip building">{BUILDINGS[e.building].name}</span>);
+    if (e.kind === 'unitModel') {
+      const models = e.units.filter((u) => UNITS[u].models[e.gen]);
+      if (models.length > 0) {
+        const first = modelName(world, human, models[0], e.gen).name;
+        chips.push(
+          <span key={`m-${e.gen}`} className="chip model" title={models.map((u) => modelName(world, human, u, e.gen).name).join(', ')}>
+            {first}
+            {models.length > 1 ? ` +${models.length - 1}` : ''}
+          </span>,
+        );
+      }
+    }
+    if (e.kind === 'researchSlot') chips.push(<span key="slot" className="chip slot">+1 research slot</span>);
+  }
+  return chips;
 }
 
 export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose: () => void }) {
-  const { state, human } = ctrl;
+  const { state, world, human } = ctrl;
   const research = state.nations[human].research;
   const res = state.nations[human].resources;
-  const era = nationEra(state, human);
-  const eraIndex = ERAS.findIndex((e) => e.id === era);
-  const active = research.active;
+  const [hover, setHover] = useState<TechId | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const done = new Set(research.completed);
+  const activeIds = new Set(research.active.map((j) => j.tech));
+  const planned = new Set([...done, ...activeIds, ...research.queue]);
+  const slots = researchSlots(state, human);
+  const speed = researchSpeed(state, human);
+
+  const highlight = useMemo(() => (hover ? ancestors(hover) : new Set<TechId>()), [hover]);
+  const hoverPath = hover ? pathTo(planned, hover) : [];
+
+  const onClickTech = (id: TechId) => {
+    setMessage(null);
+    if (done.has(id) || activeIds.has(id)) return;
+    if (research.queue.includes(id)) {
+      ctrl.submit({ type: 'unqueueResearch', nation: human, tech: id });
+      return;
+    }
+    if (checkResearch(state, human, id).ok) {
+      ctrl.submit({ type: 'research', nation: human, tech: id });
+      return;
+    }
+    for (const t of pathTo(planned, id)) {
+      const r = ctrl.submit({ type: 'queueResearch', nation: human, tech: t });
+      if (!r.ok) {
+        setMessage(`${TECH_BY_ID[t].name}: ${r.reason}`);
+        break;
+      }
+    }
+  };
+
+  const edges: ReactNode[] = [];
+  for (const t of TECHS) {
+    for (const r of t.requires) {
+      const a = LAYOUT.pos[r];
+      const b = LAYOUT.pos[t.id];
+      const x1 = a.x + NODE_W;
+      const y1 = a.y + NODE_H / 2;
+      const x2 = b.x;
+      const y2 = b.y + NODE_H / 2;
+      const mid = (x1 + x2) / 2;
+      const cls = done.has(r) && done.has(t.id) ? 'done' : done.has(r) ? 'open' : 'locked';
+      const lit = hover && (hover === t.id || highlight.has(t.id)) && (highlight.has(r) || r === hover);
+      edges.push(
+        <path
+          key={`${r}>${t.id}`}
+          d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`}
+          className={`tree-edge ${cls}${lit ? ' lit' : ''}`}
+        />,
+      );
+    }
+  }
+
   return (
     <Modal
       title="Research"
       icon="research"
-      subtitle={`${research.completed.length} of ${TECHS.length} technologies · one project at a time, paid up front`}
+      subtitle={`${nationEra(state, human)} era · ${research.completed.length} of ${TECHS.length} technologies researched`}
       onClose={onClose}
-      size="wide"
+      size="full"
     >
-      <div className="era-track">
-        {ERAS.map((e, i) => (
-          <div key={e.id} className={`era-step${i < eraIndex ? ' past' : ''}${i === eraIndex ? ' current' : ''}`}>
-            <span className="era-dot">{i < eraIndex ? <Icon name="check" size={14} /> : i + 1}</span>
-            <span className="era-text">
-              <span className="era-name">{e.label}</span>
-              <span className="era-years">{e.years}</span>
-            </span>
+      <div className="research-head">
+        <div className="research-status">
+          <div>
+            <strong>
+              Slots {research.active.length}/{slots}
+            </strong>
+            <span className="muted"> · speed {Math.round(speed * 100)}%</span>
+            <div className="muted small">Universities add 10% each; research can add slots.</div>
           </div>
-        ))}
-      </div>
-      <p className="intro">
-        Interwar era after {ERA_RULES.interwarTier2Count} tier-2 technologies; WWII once infantry, artillery and tanks are all upgraded. Upgrades
-        apply to existing units immediately.
-      </p>
-      {active && (
-        <div className="current-project">
-          <span className="cp-label">Current project</span>
-          <span className="cp-name">{TECH_BY_ID[active.tech].name}</span>
-          <Progress value={1 - active.remaining / active.total} label={`${formatDuration(active.remaining, state)} remaining`} tone="blue" />
+          {research.active.map((j) => (
+            <div key={j.tech} className="research-job">
+              <span>{TECH_BY_ID[j.tech].name}</span>
+              <Progress value={1 - j.remaining / j.total} label={formatDuration(Math.ceil(j.remaining / speed), state)} />
+              <button className="icon-btn" title="Cancel (50% refund)" onClick={() => ctrl.submit({ type: 'cancelResearch', nation: human, tech: j.tech })}>
+                <Icon name="close" size={13} />
+              </button>
+            </div>
+          ))}
         </div>
-      )}
-      <div className="tech-columns">
-        {([1, 2, 3] as const).map((tier) => (
-          <div key={tier} className="tech-column">
-            <h4 className="tier-head">
-              <span className="tier-num">{['I', 'II', 'III'][tier - 1]}</span>
-              {TIER_NAMES[tier]}
-            </h4>
-            {TECHS.filter((t) => t.tier === tier).map((t) => {
-              const done = research.completed.includes(t.id);
-              const running = active?.tech === t.id ? active : null;
-              const check = checkResearch(state, human, t.id);
-              const locked = t.requires.some((r) => !research.completed.includes(r));
-              return (
-                <div key={t.id} className={`tech${done ? ' done' : ''}${running ? ' active' : ''}${locked ? ' locked' : ''}`} data-tech={t.id}>
-                  <div className="tech-top">
-                    <span className="tech-art">
-                      <TechArt tech={t} />
-                    </span>
-                    <div className="tech-titles">
-                      <div className="tech-name">{t.name}</div>
-                      <div className="tech-desc">{t.description}</div>
-                    </div>
-                    {done && (
-                      <span className="tech-state ok" title="Researched">
-                        <Icon name="check" size={16} />
-                      </span>
-                    )}
-                    {locked && !done && (
-                      <span className="tech-state" title="Prerequisites missing">
-                        <Icon name="lock" size={15} />
-                      </span>
-                    )}
-                  </div>
-                  {t.requires.length > 0 && (
-                    <div className="tech-req">
-                      Requires:{' '}
-                      {t.requires.map((r, i) => (
-                        <span key={r} className={research.completed.includes(r) ? 'ok' : ''}>
-                          {i ? ', ' : ''}
-                          {TECH_BY_ID[r].name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  {running ? (
-                    <Progress value={1 - running.remaining / running.total} label={formatDuration(running.remaining, state)} tone="blue" />
-                  ) : !done ? (
-                    <div className="tech-foot">
-                      <Cost cost={t.cost} have={res} />
-                      <span className="tech-time">
-                        <Icon name="clock" size={12} /> {formatDuration(t.seconds * state.settings.durationScale, state)}
-                      </span>
-                      <button className="primary" disabled={!check.ok} title={check.ok ? 'Start research' : check.reason} onClick={() => ctrl.submit({ type: 'research', nation: human, tech: t.id })}>
-                        Research
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              );
-            })}
+        <div className="research-queue">
+          <span className="muted">Queue:</span>
+          {research.queue.length === 0 && <span className="muted"> empty — click a locked technology to queue its whole path</span>}
+          {research.queue.map((t, i) => (
+            <button key={t} className="chip queued" title="Remove from queue (and anything that depends on it)" onClick={() => ctrl.submit({ type: 'unqueueResearch', nation: human, tech: t })}>
+              {i + 1}. {TECH_BY_ID[t].name} <Icon name="close" size={11} />
+            </button>
+          ))}
+        </div>
+        {message && (
+          <div className="warn">
+            <Icon name="warning" size={13} /> {message}
           </div>
-        ))}
+        )}
+      </div>
+
+      <div className="tree-scroll">
+        <div className="tree" style={{ width: LAYOUT.width, height: LAYOUT.height }}>
+          {ERAS.map((era) => (
+            <div
+              key={era.label}
+              className="tree-era"
+              style={{ left: LABEL_W + PAD + era.cols[0] * COL_W - 8, width: COL_W * 2, height: LAYOUT.height }}
+            >
+              <div className="tree-era-title">{era.label}</div>
+              <div className="tree-era-years">{era.years}</div>
+            </div>
+          ))}
+          {BRANCHES.map((b) => (
+            <div key={b.id} className="tree-branch" style={{ top: LAYOUT.branchTop[b.id].top - 6, height: LAYOUT.branchTop[b.id].height + 4 }}>
+              <span className="tree-branch-label">
+                <BranchIcon branch={b.id} size={18} /> {b.name}
+              </span>
+            </div>
+          ))}
+          <svg className="tree-edges" width={LAYOUT.width} height={LAYOUT.height}>
+            {edges}
+          </svg>
+          {TECHS.map((t) => {
+            const p = LAYOUT.pos[t.id];
+            const isDone = done.has(t.id);
+            const job = research.active.find((j) => j.tech === t.id);
+            const qIndex = research.queue.indexOf(t.id);
+            const available = !isDone && !job && t.requires.every((r) => done.has(r));
+            const startable = checkResearch(state, human, t.id).ok;
+            const inPath = hoverPath.includes(t.id) && !isDone && !job && qIndex < 0;
+            const cls = [
+              'tree-node',
+              isDone ? 'done' : job ? 'active' : qIndex >= 0 ? 'queued' : available ? 'available' : 'locked',
+              hover === t.id ? 'hovered' : '',
+              highlight.has(t.id) ? 'ancestor' : '',
+              inPath ? 'in-path' : '',
+            ].join(' ');
+            const hint = isDone
+              ? 'Researched'
+              : job
+                ? 'In progress'
+                : qIndex >= 0
+                  ? 'Queued — click to remove'
+                  : startable
+                    ? 'Click to research now'
+                    : 'Click to queue (with any missing prerequisites)';
+            return (
+              <button
+                key={t.id}
+                className={cls}
+                style={{ left: p.x, top: p.y, width: NODE_W, height: NODE_H }}
+                onClick={() => onClickTech(t.id)}
+                onMouseEnter={() => setHover(t.id)}
+                onMouseLeave={() => setHover((h) => (h === t.id ? null : h))}
+                data-tech={t.id}
+                title={`${t.name}\n\n${t.description}${t.requires.length ? `\n\nRequires: ${t.requires.map((r) => TECH_BY_ID[r].name).join(', ')}` : ''}\n\n${hint}`}
+              >
+                <span className="tn-icon">
+                  <TechIcon tech={t} ctrl={ctrl} />
+                </span>
+                <span className="tn-body">
+                  <span className="tn-name">
+                    {isDone && <Icon name="check" size={12} />}
+                    {t.name}
+                  </span>
+                  <span className="tn-chips">{unlockChips(ctrl, t).slice(0, 2)}</span>
+                  {job ? (
+                    <Progress value={1 - job.remaining / job.total} label={formatDuration(Math.ceil(job.remaining / speed), state)} />
+                  ) : !isDone ? (
+                    <span className="tn-foot">
+                      <Cost cost={t.cost} have={res} />
+                      <span className="muted tn-time">{formatClockShort(t.seconds)}</span>
+                    </span>
+                  ) : null}
+                </span>
+                {qIndex >= 0 && <span className="tn-badge">{qIndex + 1}</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="tree-legend muted">
+        <span className="lg-node done" /> researched <span className="lg-node available" /> available <span className="lg-node active" /> in progress{' '}
+        <span className="lg-node queued" /> queued <span className="lg-node locked" /> needs prerequisites · Hover to trace a path; click to research or
+        queue it with its prerequisites. Unit pictures show the equipment a technology brings.
+      </div>
+      <div className="muted small" style={{ marginTop: 4 }}>
+        Interwar era after 3 technologies from the Twenties onwards; Second World War after 3 from 1935 onwards. {world.scenario.name}.
       </div>
     </Modal>
   );

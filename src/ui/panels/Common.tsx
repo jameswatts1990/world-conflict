@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { PartialResources, Resources } from '../../sim';
+import type { MoraleFactor, PartialResources, Resources } from '../../sim';
 import { costParts, fmt } from '../format';
 import { Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 
@@ -76,7 +76,8 @@ export function Modal({
   subtitle?: ReactNode;
   onClose: () => void;
   children: ReactNode;
-  size?: 'wide' | 'medium' | 'narrow';
+  /** 'full' is nearly full-screen (research tree). */
+  size?: 'wide' | 'medium' | 'narrow' | 'full';
 }) {
   useEscape(onClose);
   return (
@@ -98,6 +99,29 @@ export function Modal({
         </header>
         <div className="modal-body">{children}</div>
       </div>
+    </div>
+  );
+}
+
+export function moraleClass(value: number): string {
+  return value >= 60 ? 'high' : value >= 35 ? 'mid' : 'low';
+}
+
+/** Morale 0–100 with its target and, on hover, every contributing factor. */
+export function MoraleMeter({ value, target, factors }: { value: number; target?: number; factors?: MoraleFactor[] }) {
+  const tip = factors?.length
+    ? `${factors.map((f) => `${f.value > 0 ? '+' : ''}${f.value}  ${f.label}`).join('\n')}\n= ${Math.round(target ?? value)} target`
+    : undefined;
+  const arrow = target === undefined || Math.abs(target - value) < 1 ? '' : target > value ? ' ↗' : ' ↘';
+  return (
+    <div className={`progress morale ${moraleClass(value)}`} title={tip} role="meter" aria-valuenow={Math.round(value)} aria-valuemin={0} aria-valuemax={100}>
+      <div className="progress-fill" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+      {target !== undefined && <div className="morale-target" style={{ left: `${Math.max(0, Math.min(100, target))}%` }} />}
+      <span className="progress-label">
+        {Math.round(value)}
+        {arrow}
+        {target !== undefined && arrow ? ` ${Math.round(target)}` : ''}
+      </span>
     </div>
   );
 }

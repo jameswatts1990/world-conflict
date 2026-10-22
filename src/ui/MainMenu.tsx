@@ -163,6 +163,9 @@ export function MainMenu({
             </div>
           </div>
           <p>{BLURB[nation]}</p>
+          <p className="speciality" title="National speciality">
+            <Icon name="bolt" size={13} /> <em>{def.speciality.name}</em> — {def.speciality.description}
+          </p>
           <div className="mb-stats">
             <span>
               <b>{core.length}</b> provinces

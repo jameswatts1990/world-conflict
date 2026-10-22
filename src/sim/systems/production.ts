@@ -1,9 +1,11 @@
 // Timed construction, recruitment and research. Runs every tick.
 import { BUILDINGS } from '../config/buildings';
+import { MORALE } from '../config/rules';
 import { TECH_BY_ID } from '../config/research';
 import { ARMY_RULES, UNITS } from '../config/units';
 import { pushEvent } from '../events';
-import { isArmyInTransit } from '../queries';
+import { spend } from '../ledger';
+import { canAfford, isArmyInTransit, recruitXp, researchSlots, researchSpeed, scaledTicks, unitMoraleCap } from '../queries';
 import { createArmy, createUnit } from '../state';
 import { NEUTRAL, type GameState, type NationId, type ProvinceId, type UnitType } from '../types';
 import type { World } from '../world';
@@ -45,7 +47,10 @@ export function recruitmentSystem(state: GameState, world: World): void {
 
 /** New units join the largest idle army of the owner in the province, or form a new army. */
 export function spawnUnit(state: GameState, owner: NationId, province: ProvinceId, type: UnitType): void {
-  const unit = createUnit(state, type);
+  const unit = createUnit(state, owner, type, {
+    xp: recruitXp(state, owner, province, type),
+    morale: unitMoraleCap(state, owner) * MORALE.recruitShare,
+  });
   const idle = Object.values(state.armies)
     .filter(
       (a) =>
@@ -60,18 +65,45 @@ export function spawnUnit(state: GameState, owner: NationId, province: ProvinceI
   else createArmy(state, owner, province, [unit]);
 }
 
+/** Starts queued projects, in order, while research slots are free and the next one is affordable. */
+export function startQueuedResearch(state: GameState, nation: NationId): void {
+  const n = state.nations[nation];
+  const r = n.research;
+  const slots = researchSlots(state, nation);
+  let i = 0;
+  while (r.active.length < slots && i < r.queue.length) {
+    const tech = r.queue[i];
+    const cfg = TECH_BY_ID[tech];
+    if (!cfg || r.completed.includes(tech) || r.active.some((j) => j.tech === tech)) {
+      r.queue.splice(i, 1);
+      continue;
+    }
+    if (cfg.requires.some((t) => !r.completed.includes(t))) {
+      i++; // waits for a prerequisite that is still in progress or queued earlier
+      continue;
+    }
+    if (!canAfford(n.resources, cfg.cost)) break; // keep the player's order: wait for funds
+    spend(state, nation, cfg.cost);
+    const ticks = scaledTicks(state, cfg.seconds);
+    r.active.push({ tech, remaining: ticks, total: ticks });
+    r.queue.splice(i, 1);
+  }
+}
+
 export function researchSystem(state: GameState, world: World): void {
   for (const id of world.nationIds) {
     const n = state.nations[id];
-    const active = n.research.active;
-    if (!active || n.eliminated) continue;
-    active.remaining -= 1;
-    if (active.remaining > 0) continue;
-    n.research.completed.push(active.tech);
-    n.research.active = null;
-    pushEvent(state, 'research', `Research complete: ${TECH_BY_ID[active.tech].name}.`, {
-      nations: [id],
-      severity: 'good',
-    });
+    if (n.eliminated) continue;
+    const r = n.research;
+    if (r.active.length > 0) {
+      const speed = researchSpeed(state, id);
+      for (const job of r.active) job.remaining -= speed;
+      for (const job of r.active.filter((j) => j.remaining <= 1e-9)) {
+        r.completed.push(job.tech);
+        pushEvent(state, 'research', `Research complete: ${TECH_BY_ID[job.tech].name}.`, { nations: [id], severity: 'good' });
+      }
+      r.active = r.active.filter((j) => j.remaining > 1e-9);
+    }
+    if (r.queue.length > 0) startQueuedResearch(state, id);
   }
 }

@@ -35,10 +35,13 @@ describe('scenario data', () => {
       const materials = provs.reduce((s, p) => s + p.production.materials, 0);
       expect(money).toBeCloseTo(NATION_OUTPUT_TARGET.money, -1);
       expect(materials).toBeCloseTo(NATION_OUTPUT_TARGET.materials, -1);
-      const units = world.scenario.startingArmies
-        .filter((a) => a.owner === id)
-        .reduce((s, a) => s + (a.units.infantry ?? 0) + (a.units.artillery ?? 0) + (a.units.tank ?? 0), 0);
-      expect(units).toBe(13);
+      const armies = world.scenario.startingArmies.filter((a) => a.owner === id);
+      const count = (t: 'infantry' | 'artillery' | 'cavalry') => armies.reduce((s, a) => s + (a.units[t] ?? 0), 0);
+      const total = armies.reduce((s, a) => s + Object.values(a.units).reduce((x, n) => x + (n ?? 0), 0), 0);
+      expect([total, count('infantry'), count('artillery'), count('cavalry')]).toEqual([13, 10, 2, 1]);
+      // Same city ladder: one Metropolis, one Large City.
+      expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
+      expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
       expect(provs.filter((p) => p.oil)).toHaveLength(1);
       expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(5);
     }
