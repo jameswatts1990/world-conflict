@@ -116,6 +116,7 @@ const LINE = {
 const FILLED = {
   play: 'M8 5l11 7-11 7z',
   star: 'M12 2.8l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.1 6.4 20l1.1-6.2L3 9.4l6.2-.9z',
+  more: 'M5 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM12 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4zM19 10a2 2 0 1 0 0 4a2 2 0 1 0 0-4z',
 } satisfies Record<string, string>;
 
 export type IconName = keyof typeof LINE | keyof typeof FILLED;

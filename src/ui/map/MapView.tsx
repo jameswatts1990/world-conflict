@@ -5,7 +5,7 @@
 // and army markers (every frame) update.
 import { select } from 'd3-selection';
 import 'd3-transition';
-import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
+import { zoom, zoomIdentity, zoomTransform, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   armyMorale,
@@ -45,6 +45,17 @@ export interface MapViewProps {
   mapMode: MapMode;
   /** Screen pixels on the right covered by floating panels; fitting and centring avoid them. */
   insetRight: number;
+  /** Screen pixels at the bottom covered by a panel (the compact layouts' bottom sheet). */
+  insetBottom: number;
+  /** Pan the selected province into view when it falls under a panel (compact layouts). */
+  followSelection: boolean;
+  /**
+   * Touch input: there is no pointer to hover with, so in move mode the first tap on a
+   * destination previews the route (`moveTarget`) and a second tap on it gives the order.
+   */
+  touch: boolean;
+  moveTarget: ProvinceId | null;
+  onPickTarget: (pid: ProvinceId) => void;
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
   onOrderMove: (pid: ProvinceId) => void;
@@ -56,6 +67,13 @@ export interface MapViewProps {
 const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2, cityModels: 1.15 };
 /** Closest zoom (relative to the fit): beyond it the baked relief texture turns blurry. */
 const MAX_ZOOM = 7;
+/**
+ * The zoom levels above are relative to the whole-theatre fit, but never to a fit smaller
+ * than a 1280 × 720 desktop's. On a phone the theatre fits in a few hundred pixels, and
+ * counters and 3D cities, drawn at a fixed screen size, would crowd it long before it is
+ * zoomed in to their scale.
+ */
+const MIN_ZOOM_BASE = 0.8;
 
 /**
  * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
@@ -114,6 +132,29 @@ export const moraleRamp = (morale: number) => rampColor((morale - 20) / 65);
 
 /** City tier 1–5 colours for the development map mode. */
 export const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
+
+export interface RoutePreview {
+  to: ProvinceId;
+  /** Provinces from the army's next stop to the destination, or null when it cannot get there. */
+  path: ProvinceId[] | null;
+  ticks: number;
+  /** Why there is no route. */
+  blocked: string;
+}
+
+/** The route an army would take to a province, with its arrival time (null for where it already is). */
+export function routePreview(state: GameState, world: World, human: NationId, army: Army, to: ProvinceId): RoutePreview | null {
+  const from = army.move?.leg ? army.move.leg.to : army.province;
+  if (to === from) return null;
+  const route = findPath(state, world, army, from, to);
+  if (!route) {
+    const owner = state.provinces[to].owner;
+    const peace = owner !== human && owner !== 'neutral' && !atWar(state, human, owner);
+    return { to, path: null, ticks: 0, blocked: peace ? `At peace with ${nationName(world, owner)}` : 'No route' };
+  }
+  const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
+  return { to, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };
+}
 
 // ---------------------------------------------------------------------------
 // Static layers
@@ -916,18 +957,19 @@ function useStableCallback<A extends any[]>(fn: (...args: A) => void): (...args:
   return useCallback((...args: A) => ref.current(...args), []);
 }
 
-function fitFor(width: number, height: number, inset: number) {
+function fitFor(width: number, height: number, inset: number, insetBottom: number) {
   const usable = Math.max(240, width - inset);
-  const k = Math.min(usable / MAP_WIDTH, height / MAP_HEIGHT);
-  return { k, transform: zoomIdentity.translate((usable - MAP_WIDTH * k) / 2, (height - MAP_HEIGHT * k) / 2).scale(k) };
+  const usableH = Math.max(160, height - insetBottom);
+  const k = Math.min(usable / MAP_WIDTH, usableH / MAP_HEIGHT);
+  return { k, transform: zoomIdentity.translate((usable - MAP_WIDTH * k) / 2, (usableH - MAP_HEIGHT * k) / 2).scale(k) };
 }
 
 /**
  * Opening view: the player's own territory, somewhat closer than the whole theatre and
  * framed above the field reports (bottom left), which would otherwise hide Iberia.
  */
-function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: number, inset: number): ZoomTransform {
-  const fit = fitFor(width, height, inset);
+function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: number, inset: number, insetBottom: number): ZoomTransform {
+  const fit = fitFor(width, height, inset, insetBottom);
   if (pids.length === 0) return fit.transform;
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const pid of pids) {
@@ -935,8 +977,9 @@ function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: n
     [x0, y0, x1, y1] = [Math.min(x0, a), Math.min(y0, b), Math.max(x1, c), Math.max(y1, d)];
   }
   const w = Math.max(240, width - inset);
-  const h = Math.max(240, height * 0.68);
-  const k = Math.max(fit.k, Math.min(fit.k * 1.6, 0.7 * Math.min(w / (x1 - x0), h / (y1 - y0))));
+  // A bottom panel takes the place of the field reports.
+  const h = Math.max(240, insetBottom ? height - insetBottom : height * 0.68);
+  const k = Math.max(fit.k, Math.min(Math.max(fit.k, MIN_ZOOM_BASE) * 1.6, 0.7 * Math.min(w / (x1 - x0), h / (y1 - y0))));
   return zoomIdentity.translate(w / 2 - ((x0 + x1) / 2) * k, h / 2 - ((y0 + y1) / 2) * k).scale(k);
 }
 
@@ -947,6 +990,8 @@ export function MapView(props: MapViewProps) {
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const insetRef = useRef(props.insetRight);
   insetRef.current = props.insetRight;
+  const insetBottomRef = useRef(props.insetBottom);
+  insetBottomRef.current = props.insetBottom;
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
@@ -981,11 +1026,11 @@ export function MapView(props: MapViewProps) {
   useEffect(() => {
     const svg = svgRef.current!;
     const { width, height } = svg.getBoundingClientRect();
-    const fit = fitFor(width, height, insetRef.current);
+    const fit = fitFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
     const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
     const behavior = zoom<SVGSVGElement, unknown>()
-      .scaleExtent([minK, fit.k * MAX_ZOOM])
+      .scaleExtent([minK, Math.max(fit.k, MIN_ZOOM_BASE) * MAX_ZOOM])
       .translateExtent([
         [x0, y0],
         [x1, y1],
@@ -998,7 +1043,7 @@ export function MapView(props: MapViewProps) {
     const sel = select(svg);
     sel.call(behavior).on('dblclick.zoom', null);
     const home = world.provinceIds.filter((id) => ctrl.state.provinces[id].owner === ctrl.human);
-    sel.call(behavior.transform, homeView(geo, home, width, height, insetRef.current));
+    sel.call(behavior.transform, homeView(geo, home, width, height, insetRef.current, insetBottomRef.current));
     const ro = new ResizeObserver(() => {
       const r = svg.getBoundingClientRect();
       setSize([r.width, r.height]);
@@ -1016,19 +1061,39 @@ export function MapView(props: MapViewProps) {
     if (!svg || !behavior) return;
     const { width, height } = svg.getBoundingClientRect();
     const cx = Math.max(120, width - insetRef.current) / 2;
+    const cy = Math.max(120, height - insetBottomRef.current) / 2;
     const sel = select(svg);
     if (k === null) {
-      if (duration) sel.transition().duration(duration).call(behavior.translateTo, x, y, [cx, height / 2]);
-      else sel.call(behavior.translateTo, x, y, [cx, height / 2]);
+      if (duration) sel.transition().duration(duration).call(behavior.translateTo, x, y, [cx, cy]);
+      else sel.call(behavior.translateTo, x, y, [cx, cy]);
       return;
     }
     sel
       .transition()
       .duration(duration)
-      .call(behavior.transform, zoomIdentity.translate(cx - x * k, height / 2 - y * k).scale(k));
+      .call(behavior.transform, zoomIdentity.translate(cx - x * k, cy - y * k).scale(k));
   }, []);
 
-  // Centre on a province when requested (e.g. clicking an event).
+  // On a small screen the selection's panel can cover the province itself: bring it back
+  // into the open part of the map (when that part is big enough to be worth it).
+  useEffect(() => {
+    const svg = svgRef.current;
+    const pid = props.selectedProvince;
+    if (!props.followSelection || !pid || !svg) return;
+    const { width, height } = svg.getBoundingClientRect();
+    const w = width - props.insetRight;
+    const h = height - props.insetBottom;
+    if (w < 160 || h < 160) return;
+    const [x, y] = geo.anchors[pid];
+    const [sx, sy] = zoomTransform(svg).apply([x, y]);
+    // Army counters stack above the city and the map toolbar sits at the top.
+    if (sx >= 30 && sx <= w - 30 && sy >= 90 && sy <= h - 30) return;
+    centreOn(x, y, null, 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.selectedProvince, props.insetRight, props.insetBottom, props.followSelection]);
+
+  // Centre on a province when requested (e.g. clicking an event). Declared after the
+  // follow effect above: when both fire, this zoom's transition wins.
   useEffect(() => {
     if (!props.focus) return;
     const [x, y] = geo.anchors[props.focus.province];
@@ -1043,7 +1108,7 @@ export function MapView(props: MapViewProps) {
     const svg = svgRef.current;
     if (!svg || !zoomRef.current) return;
     const { width, height } = svg.getBoundingClientRect();
-    select(svg).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current).transform);
+    select(svg).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current, insetBottomRef.current).transform);
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
@@ -1067,25 +1132,21 @@ export function MapView(props: MapViewProps) {
   // Movement connections of the selected army (or the selected province) are highlighted.
   const focusIds = primaryArmy ? (primaryArmy.move?.leg?.to ?? primaryArmy.province) : (props.selectedProvince ?? '');
 
-  // Route preview for the selected own army towards the hovered province.
+  // Route preview for the selected own army towards the hovered province (on touch, the picked target).
+  const previewTo = props.touch ? (props.moveMode ? props.moveTarget : null) : hovered;
   const preview = useMemo(() => {
-    if (!ownArmySelected || !hovered) return null;
-    const army = primaryArmy!;
-    const from = army.move?.leg ? army.move.leg.to : army.province;
-    if (hovered === from) return null;
-    const route = findPath(state, world, army, from, hovered);
-    if (!route) {
-      const owner = state.provinces[hovered].owner;
-      const peace = owner !== human && owner !== 'neutral' && !atWar(state, human, owner);
-      return { to: hovered, path: null, ticks: 0, blocked: peace ? `At peace with ${nationName(world, owner)}` : 'No route' };
-    }
-    const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
-    return { to: hovered, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };
+    if (!ownArmySelected || !previewTo) return null;
+    return routePreview(state, world, human, primaryArmy!, previewTo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownArmySelected, hovered, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
+  }, [ownArmySelected, previewTo, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
 
+  /** A destination chosen in move mode: on touch, the first tap previews and the second orders. */
+  const pickDestination = (pid: ProvinceId) => {
+    if (props.touch && props.moveTarget !== pid) props.onPickTarget(pid);
+    else props.onOrderMove(pid);
+  };
   const onProvinceClick = useStableCallback((pid: ProvinceId) => {
-    if (props.moveMode && ownArmySelected) props.onOrderMove(pid);
+    if (props.moveMode && ownArmySelected) pickDestination(pid);
     else props.onSelectProvince(pid);
   });
   const onProvinceContext = useStableCallback((pid: ProvinceId, e: React.MouseEvent) => {
@@ -1099,7 +1160,7 @@ export function MapView(props: MapViewProps) {
   // Clicking another army's counter in move mode, or right-clicking it, marches there.
   const ordersTo = (army: Army) => ownArmySelected && !props.selectedArmies.includes(army.id);
   const onArmyClick = useStableCallback((army: Army, additive: boolean) => {
-    if (props.moveMode && ordersTo(army)) props.onOrderMove(armyTarget(army));
+    if (props.moveMode && ordersTo(army)) pickDestination(armyTarget(army));
     else props.onSelectArmy(army.id, additive);
   });
   const onArmyContext = useStableCallback((army: Army) => {
@@ -1107,7 +1168,7 @@ export function MapView(props: MapViewProps) {
   });
 
   const k = transform.k;
-  const ratio = k / fitK;
+  const ratio = k / Math.max(fitK, MIN_ZOOM_BASE);
   const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
   const showDetail = ratio >= ZOOM.detail;
 
@@ -1179,7 +1240,7 @@ export function MapView(props: MapViewProps) {
           <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} />
           <g className="overlay-layer" pointerEvents="none">
             {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
-            {hovered && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
+            {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
             {props.selectedProvince && (
               <>
                 <path d={geo.provincePaths[props.selectedProvince]} className="sel-casing" />

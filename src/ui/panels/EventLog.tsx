@@ -36,7 +36,21 @@ export function eventIcon(e: GameEvent): IconName {
   return KIND_ICON[e.kind] ?? 'news';
 }
 
-export function EventLog({ ctrl, open, onToggle, onFocus }: { ctrl: GameController; open: boolean; onToggle: () => void; onFocus: (pid: string) => void }) {
+/** Field reports. In the compact layouts they open from the command bar and have no collapsed tab. */
+export function EventLog({
+  ctrl,
+  open,
+  compact,
+  onToggle,
+  onFocus,
+}: {
+  ctrl: GameController;
+  open: boolean;
+  compact: boolean;
+  onToggle: () => void;
+  onFocus: (pid: string) => void;
+}) {
+  if (compact && !open) return null;
   const events = eventsFor(ctrl.state, ctrl.human).slice(-80).reverse();
   return (
     <aside className={`event-log${open ? '' : ' collapsed'}`} data-testid="event-log">
@@ -44,7 +58,13 @@ export function EventLog({ ctrl, open, onToggle, onFocus }: { ctrl: GameControll
         <Icon name="news" size={16} />
         <span className="el-title">Field reports</span>
         <span className="el-count">{events.length}</span>
-        <span className="el-chev">{open ? '▾' : '▴'}</span>
+        {compact ? (
+          <span className="el-chev" aria-label="Close field reports">
+            <Icon name="close" size={16} />
+          </span>
+        ) : (
+          <span className="el-chev">{open ? '▾' : '▴'}</span>
+        )}
       </header>
       {open && (
         <ol>

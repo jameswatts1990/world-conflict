@@ -3801,3 +3801,730 @@ button.chip.queued:hover {
   font-weight: 700;
   color: var(--accent-2);
 }
+
+/* ---------------------------------------------------------------- Compact layouts and touch
+   Phones and small tablets. The layout classes on .game-screen come from
+   src/ui/layout.ts (its media queries match the ones below the main menu's):
+   .layout-portrait   narrow screens: two-row top bar, tab bar at the bottom, the
+                      selection in a bottom sheet;
+   .layout-landscape  short screens (a phone on its side): one-row top bar, slim
+                      rail, the selection in a side sheet;
+   .compact           either of the two;
+   .touch             no hover: a touch screen is the main input. */
+
+/* The visible viewport on mobile browsers, whose toolbars come and go. */
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
+}
+body {
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+/* d3-zoom handles every gesture on the map: no browser scrolling or page zoom there. */
+.map {
+  touch-action: none;
+}
+/* Notches and home indicators (the page uses viewport-fit=cover). */
+.game-screen {
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+.topbar {
+  height: calc(60px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+.game-screen.touch {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.game-screen.touch :is(input, textarea, select) {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Banners and alerts sit apart on the desktop; .compact stacks them in one column. */
+.map-notices {
+  display: contents;
+}
+.banner.paused-banner {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Research under way, under the Research tab of the compact command bar. */
+.rail-progress {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 3px;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 2px;
+}
+.rail-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2c8fbf, var(--cyan));
+}
+/* Save, load, help and the main menu behind "More". */
+.more-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+}
+.more-menu {
+  position: absolute;
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  background: rgba(9, 14, 20, 0.98);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  animation: pop-in 0.15s ease-out;
+}
+.more-menu button {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 12px;
+  text-align: left;
+  font: 600 15px var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: transparent;
+  border-color: transparent;
+  border-radius: 7px;
+}
+.more-menu button .icon {
+  color: var(--accent);
+}
+
+/* ---- Top bar */
+.compact .tb-research,
+.compact .tb-spacer,
+.compact .tb-nation-name,
+.compact .tb-era,
+.compact .speed-slot.dev,
+.compact .tb-vp .tb-sub {
+  display: none;
+}
+.compact .tb-nation {
+  height: auto;
+  padding-right: 8px;
+}
+.compact .tb-res {
+  min-width: 0;
+  gap: 5px;
+  padding: 2px 6px 2px 2px;
+}
+.compact .tb-res-icon {
+  width: 26px;
+  height: 26px;
+}
+.compact .tb-res-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.compact .tb-res-text {
+  min-width: 0;
+  overflow: hidden;
+}
+.compact .tb-res-val {
+  font-size: 15px;
+}
+.compact .tb-res-rate {
+  font-size: 10.5px;
+}
+.compact .tb-morale {
+  min-width: 0;
+  padding: 0 6px;
+}
+.compact .tb-morale-val {
+  font-size: 17px;
+}
+.compact .tb-sub {
+  font-size: 10.5px;
+}
+.compact .tb-vp {
+  min-width: 0;
+}
+.compact .tb-vp-val {
+  font-size: 15px;
+}
+.compact .tb-vp-bar {
+  margin-bottom: 0;
+}
+/* Only news worth the room: someone is closing in on victory. */
+.compact .tb-vp:is(.alert, .winning) .tb-sub {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.compact .tb-clock {
+  height: auto;
+  padding: 0 6px;
+  gap: 5px;
+}
+.compact .tb-clock-val {
+  font-size: 15px;
+}
+.compact .speed-btn {
+  min-width: 34px;
+  min-height: 32px;
+  padding: 4px 7px;
+}
+/* The resource breakdown opens on a tap, across the width of the bar. */
+.compact .tb-res {
+  position: static;
+}
+.compact .tb-pop {
+  top: calc(100% + 4px);
+  left: 8px;
+  width: min(300px, calc(100% - 16px));
+}
+.touch .tb-res:focus .tb-pop {
+  display: block;
+}
+/* A tap leaves a hover behind on some phones: let focus alone decide which breakdown shows. */
+.touch .tb-res:hover:not(:focus) .tb-pop {
+  display: none;
+}
+
+.layout-portrait .topbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    'nation res res res res'
+    'vp vp clock morale speed';
+  align-items: center;
+  gap: 6px 6px;
+  height: auto;
+  padding: calc(6px + env(safe-area-inset-top)) 8px 6px;
+}
+.layout-portrait .tb-nation {
+  grid-area: nation;
+  padding-right: 2px;
+  border-right: none;
+}
+.layout-portrait .tb-resources {
+  grid-area: res;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+.layout-portrait .tb-vp {
+  grid-area: vp;
+  padding-left: 2px;
+}
+.layout-portrait .tb-clock {
+  grid-area: clock;
+}
+.layout-portrait .tb-morale {
+  grid-area: morale;
+  border-right: none;
+}
+.layout-portrait .tb-speed {
+  grid-area: speed;
+}
+/* The narrowest phones: plain resource icons leave the numbers room. */
+@media (max-width: 400px) {
+  .layout-portrait .tb-res {
+    gap: 3px;
+    padding: 2px 4px 2px 3px;
+  }
+  .layout-portrait .tb-res-icon {
+    width: 18px;
+    height: 18px;
+    background: none;
+    border: none;
+  }
+}
+
+.layout-landscape .topbar {
+  gap: 8px;
+  height: calc(48px + env(safe-area-inset-top));
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.layout-landscape .tb-resources {
+  gap: 4px;
+}
+.layout-landscape .tb-vp {
+  flex: 1;
+  max-width: 150px;
+  margin-left: auto;
+}
+
+/* ---- Command bar: tabs along the bottom (portrait) or a slim rail (landscape) */
+.layout-portrait .game-body {
+  flex-direction: column;
+}
+/* The tab bar reaches under the home indicator itself. */
+.game-screen.layout-portrait {
+  padding-bottom: 0;
+}
+.layout-portrait .nav-rail {
+  order: 2;
+  flex-direction: row;
+  width: auto;
+  padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+  border-right: none;
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
+}
+.layout-portrait .rail-btn {
+  flex: 1;
+  margin: 0;
+  padding: 6px 2px 7px;
+}
+.layout-portrait .rail-fill {
+  display: none;
+}
+.layout-portrait .rail-badge {
+  right: calc(50% - 26px);
+}
+.layout-portrait .more-menu {
+  right: 6px;
+  bottom: calc(100% + 6px);
+}
+.layout-landscape .nav-rail {
+  width: 60px;
+  padding: 4px 0;
+}
+.layout-landscape .rail-btn {
+  margin: 0 4px;
+  padding: 7px 0 8px;
+}
+.layout-landscape .rail-label {
+  font-size: 9.5px;
+  letter-spacing: 0.02em;
+}
+.layout-landscape .rail-badge {
+  right: 3px;
+}
+.layout-landscape .more-menu {
+  left: calc(100% + 6px);
+  bottom: 6px;
+}
+
+/* ---- Map overlays */
+.compact .map-toolbar {
+  top: 8px;
+  left: 8px;
+  gap: 6px;
+}
+.compact .segmented button,
+.compact .chip-btn {
+  padding: 8px 9px;
+}
+.compact .minimap {
+  display: none;
+}
+.compact .zoom-controls button {
+  width: 38px;
+  height: 38px;
+}
+.layout-portrait .map-nav {
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+}
+.layout-landscape .map-nav {
+  right: 8px;
+  bottom: 8px;
+}
+.layout-landscape .map-wrap.dock-open .map-nav {
+  right: calc(min(340px, 46vw) + 14px);
+}
+.compact .map-notices {
+  position: absolute;
+  top: 56px;
+  left: 8px;
+  right: 54px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+}
+.layout-landscape .map-notices {
+  right: auto;
+  width: min(380px, calc(100% - 70px));
+}
+.layout-landscape .map-wrap.dock-open .map-notices {
+  width: min(380px, calc(100% - min(340px, 46vw) - 70px));
+}
+.compact .banner-stack,
+.compact .alert-stack {
+  position: static;
+  width: auto;
+  transform: none;
+}
+.compact .banner-stack {
+  align-items: center;
+}
+.compact .banner {
+  max-width: 100%;
+  padding: 6px 13px;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  white-space: normal;
+}
+.compact .alert-stack {
+  gap: 6px;
+}
+.compact .alert-card {
+  padding: 7px 8px;
+  font-size: 12.5px;
+  pointer-events: auto;
+}
+.compact .alert-card .icon-btn {
+  min-width: 30px;
+  min-height: 30px;
+}
+/* Room for the two newest alerts; peace offers always show. */
+.compact .alert-card:not(.offer):nth-last-child(n + 3) {
+  display: none;
+}
+.compact .alert-icon {
+  width: 24px;
+  height: 24px;
+}
+/* Touch move mode: the destination waits for Confirm. */
+.banner.move-confirm {
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  padding: 7px 10px 7px 14px;
+  border-radius: 12px;
+  pointer-events: auto;
+}
+.move-confirm .mc-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.move-confirm .mc-actions {
+  display: inline-flex;
+  gap: 6px;
+}
+.banner.move-confirm button {
+  min-height: 32px;
+  padding: 4px 14px;
+}
+.compact .legend-pop {
+  top: 56px;
+  left: 8px;
+  right: 8px;
+  z-index: 6;
+  width: auto;
+  max-width: 380px;
+  max-height: calc(100% - 64px);
+  overflow-y: auto;
+}
+.compact .toast {
+  left: 8px;
+  right: 8px;
+  bottom: calc(var(--inset-bottom, 0px) + 10px);
+  max-width: none;
+  transform: none;
+}
+.layout-landscape .map-wrap.dock-open .toast {
+  right: calc(min(340px, 46vw) + 14px);
+}
+
+/* ---- Field reports: a sheet of their own, opened from the command bar */
+.compact .event-log {
+  z-index: 4;
+  width: auto;
+}
+.layout-portrait .event-log {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 55%;
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+}
+.layout-landscape .event-log {
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: min(380px, 48vw);
+  max-height: none;
+}
+.compact .event-log header {
+  padding: 10px 12px;
+}
+.compact .ev {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* ---- Selection: bottom sheet (portrait) or side sheet (landscape) */
+.layout-portrait .selection-dock.sheet {
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: auto;
+  gap: 8px;
+  padding: 0 8px 10px;
+  background: rgba(10, 15, 21, 0.97);
+  border-top: 1px solid var(--line-2);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+  scrollbar-gutter: auto;
+  overscroll-behavior: contain;
+  transition: height 0.22s ease-out;
+}
+.selection-dock.sheet.dragging {
+  transition: none;
+}
+.sheet-handle {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  height: 24px;
+  margin: 0 -8px -8px;
+  background: rgba(10, 15, 21, 0.97);
+  cursor: grab;
+  touch-action: none;
+}
+.sheet-grip {
+  width: 44px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.3);
+}
+.layout-portrait .sheet .panel {
+  box-shadow: none;
+}
+.layout-landscape .selection-dock {
+  top: 6px;
+  right: 6px;
+  bottom: 6px;
+  width: min(340px, 46vw);
+  scrollbar-gutter: auto;
+}
+
+/* ---- Panels: larger touch targets; orders come first in the army panel */
+.compact .panel .close-btn {
+  padding: 7px;
+  margin: -6px -8px -6px auto;
+}
+.compact .tabs button {
+  flex: 1;
+  justify-content: center;
+  padding: 9px 6px;
+}
+.compact .build-btn {
+  min-height: 32px;
+  padding: 5px 12px;
+}
+.compact .bld {
+  padding: 7px 0;
+}
+.compact .icon-btn {
+  min-width: 32px;
+  min-height: 32px;
+}
+.compact .order-btn {
+  padding: 9px 2px 8px;
+}
+.compact .army-panel .panel-body {
+  display: flex;
+  flex-direction: column;
+}
+.compact .army-panel .orders {
+  order: -1;
+}
+.compact .unit-list input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+}
+.compact .formation-list li {
+  grid-template-columns: 22px 36px 1fr auto;
+}
+.compact .army-row {
+  min-height: 42px;
+}
+
+/* ---- Windows: full screen, except small confirmations */
+.compact .modal:not(.narrow) {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border: none;
+  border-radius: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  animation: fade-in 0.15s ease-out;
+}
+.compact .modal-header {
+  gap: 10px;
+  padding: 8px 8px 8px 12px;
+}
+.compact .modal-header h2 {
+  font-size: 19px;
+}
+.compact .modal-icon {
+  width: 32px;
+  height: 32px;
+}
+.compact .modal-header .close-btn {
+  min-width: 40px;
+  min-height: 40px;
+}
+.compact .modal-body {
+  padding: 12px;
+}
+.compact .modal.full .modal-body {
+  padding-top: 8px;
+}
+.compact .research-job {
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+}
+.compact .research-era-note,
+.compact .research-status .small {
+  display: none;
+}
+.compact .tree-legend {
+  font-size: 11.5px;
+}
+/* Wide tables scroll sideways instead of squeezing... */
+.compact .dip-table {
+  display: block;
+  overflow-x: auto;
+}
+/* ...except relations: one card per nation, its war or peace button beside the name. */
+.compact .dip-relations thead {
+  display: none;
+}
+.compact .dip-relations tbody {
+  display: block;
+}
+.compact .dip-relations tr {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    'nation nation nation nation actions actions'
+    'rel era power prov vp score';
+  align-items: center;
+  gap: 6px 10px;
+  padding: 9px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.compact .dip-relations tr.me {
+  background: rgba(240, 166, 58, 0.07);
+}
+.compact .dip-relations td {
+  padding: 0;
+  border: none;
+  background: none;
+}
+.compact .dip-relations .dc-nation {
+  grid-area: nation;
+}
+.compact .dip-relations .dc-era {
+  grid-area: era;
+}
+.compact .dip-relations .dc-rel {
+  grid-area: rel;
+}
+.compact .dip-relations .dc-power {
+  grid-area: power;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.compact .dip-relations .power-bar {
+  flex: 1;
+  min-width: 24px;
+  max-width: 220px;
+  margin-right: 6px;
+}
+.compact .dip-relations .dc-prov {
+  grid-area: prov;
+}
+.compact .dip-relations .dc-vp {
+  grid-area: vp;
+}
+.compact .dip-relations .dc-score {
+  grid-area: score;
+}
+.compact .dip-relations .actions {
+  grid-area: actions;
+}
+.compact .dip-relations .actions button {
+  min-height: 34px;
+}
+.compact .dip-relations .num {
+  font-size: 14px;
+  line-height: 1.1;
+}
+.compact .dip-relations .num::before {
+  content: attr(data-label);
+  display: block;
+  font: 600 10px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.compact .slot-list li {
+  flex-wrap: wrap;
+}
+.compact .controls-table th {
+  white-space: normal;
+}
+
+/* ---- Briefing: one column, above the bottom edge */
+.compact .tutorial-backdrop {
+  padding: 0 8px calc(8px + env(safe-area-inset-bottom));
+}
+.compact .tutorial {
+  max-height: calc(100% - 16px);
+}
+.compact .tutorial-side {
+  display: none;
+}
+.compact .tutorial-main {
+  overflow-y: auto;
+  padding: 12px 14px;
+}
+.compact .tutorial h3 {
+  font-size: 20px;
+}
+.compact .tutorial p {
+  min-height: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.compact .tutorial-foot button {
+  min-height: 38px;
+}
+.layout-portrait .tutorial-backdrop {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+
+/* ---- Main menu (outside the game screen, so on its own queries) */
+@media (max-width: 900px), (max-height: 520px) {
+  .menu-column {
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+}

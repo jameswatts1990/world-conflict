@@ -27,6 +27,8 @@ jobs:
       # Browser playthrough of the full gameplay loop against the production build.
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
+      # The phone layouts, driven by touch: upright, then on its side.
+      - run: npm run e2e:mobile
       - uses: actions/upload-artifact@v4
         if: always()
         with:

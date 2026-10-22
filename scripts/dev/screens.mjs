@@ -1,14 +1,15 @@
 // Development aid: starts the Vite dev server, opens a campaign in headless
 // Chromium and saves screenshots of the main screens for visual review.
-//   node scripts/dev/screens.mjs <outDir> [nation] [step...]
+//   node scripts/dev/screens.mjs <outDir> [nation] [step...] [--phone | --phone-landscape]
 // Steps: menu, map, province, recruit, army, research, diplomacy, play:<seconds>, zoom:<k>, select:<pid>
+// --phone and --phone-landscape use a 390 × 844 touch screen, upright or on its side.
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
-const out = process.argv[2] ?? 'e2e-output/screens';
-const nation = process.argv[3] ?? 'fr';
-const steps = process.argv.slice(4);
+const flags = process.argv.slice(2).filter((a) => a.startsWith('--'));
+const [out = 'e2e-output/screens', nation = 'fr', ...steps] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const phone = flags.includes('--phone') ? { width: 390, height: 844 } : flags.includes('--phone-landscape') ? { width: 844, height: 390 } : null;
 mkdirSync(out, { recursive: true });
 const PORT = 5199;
 const URL = `http://localhost:${PORT}/`;
@@ -31,7 +32,10 @@ for (let i = 0; i < 150; i++) {
   await new Promise((r) => setTimeout(r, 200));
 }
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1600, height: 950 } });
+const context = await browser.newContext(
+  phone ? { viewport: phone, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { viewport: { width: 1600, height: 950 } },
+);
+const page = await context.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => m.type() === 'error' && errors.push(`console: ${m.text()}`));

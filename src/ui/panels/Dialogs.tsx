@@ -6,7 +6,7 @@ import { Flag } from '../flags';
 import { formatClock } from '../format';
 import { Icon } from '../icons';
 import { Modal } from './Common';
-import { CONTROLS } from './Tutorial';
+import { CONTROLS, TOUCH_CONTROLS } from './Tutorial';
 
 function savedAt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -137,12 +137,12 @@ export function LoadDialog({
   );
 }
 
-export function HelpDialog({ onReplayBriefing, onClose }: { onReplayBriefing: () => void; onClose: () => void }) {
+export function HelpDialog({ touch, onReplayBriefing, onClose }: { touch: boolean; onReplayBriefing: () => void; onClose: () => void }) {
   return (
-    <Modal title="Controls" icon="help" subtitle="Mouse and keyboard reference" onClose={onClose}>
+    <Modal title="Controls" icon="help" subtitle={touch ? 'Touch reference' : 'Mouse and keyboard reference'} onClose={onClose}>
       <table className="controls-table">
         <tbody>
-          {CONTROLS.map(([k, v]) => (
+          {(touch ? TOUCH_CONTROLS : CONTROLS).map(([k, v]) => (
             <tr key={k}>
               <th>
                 {k.split(' / ').map((part, i) => (
