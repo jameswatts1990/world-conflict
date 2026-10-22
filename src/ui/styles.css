@@ -2982,8 +2982,22 @@ button.chip.queued:hover {
 .tree-era:nth-child(even) {
   background: rgba(255, 255, 255, 0.018);
 }
+.tree-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  background: #0d141b;
+}
+.tree-era-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding-bottom: 8px;
+  background: linear-gradient(#0d141b 72%, rgba(13, 20, 27, 0));
+}
 .tree-era-title {
-  margin-top: 8px;
+  padding-top: 8px;
   padding-left: 10px;
   font: 700 15px var(--font-display);
   letter-spacing: 0.12em;
@@ -3005,15 +3019,26 @@ button.chip.queued:hover {
 .tree-branch-label {
   position: sticky;
   left: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  /* A frozen column: technologies scroll under the branch names, which stay over the era headers too. */
+  z-index: 4;
+  box-sizing: border-box;
+  height: 100%;
+  background: linear-gradient(90deg, #0d141b 88%, rgba(13, 20, 27, 0));
+  display: inline-block;
   width: 150px;
   padding: 8px 10px;
   font: 600 13.5px var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-2);
+}
+/* The name stays in view, under the era headers, while any of its branch is on screen. */
+.tbl-name {
+  position: sticky;
+  top: 62px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .tree-edges {
   position: absolute;
@@ -3035,6 +3060,27 @@ button.chip.queued:hover {
 .tree-edge.lit {
   stroke: var(--accent);
   stroke-width: 3;
+}
+/* From another branch: faint until it is researched or traced. */
+.tree-edge.cross:not(.lit):not(.done) {
+  stroke-dasharray: 3 5;
+  stroke-opacity: 0.5;
+}
+.layout-desktop .tree-scroll {
+  cursor: grab;
+}
+.tree-scroll.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+.era-jump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.era-jump .chip {
+  cursor: pointer;
 }
 .tree-node {
   position: absolute;

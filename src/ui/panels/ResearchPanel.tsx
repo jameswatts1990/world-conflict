@@ -190,6 +190,34 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
     if (selected) viewRef.current?.querySelector(`[data-tech="${selected}"]`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }, [selected, branch]);
 
+  /** Scroll the tree so an era's first column sits just right of the branch names. */
+  const jumpToEra = (col: number) => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    viewRef.current?.scrollTo({ left: Math.max(0, PAD + col * COL_W - 8), behavior: reduce ? 'auto' : 'smooth' });
+  };
+
+  /** With a mouse, dragging the tree's empty space pans it, as on the map. */
+  const startPan = (e: React.PointerEvent<HTMLDivElement>) => {
+    const view = viewRef.current;
+    if (!view || e.button !== 0 || e.pointerType !== 'mouse' || (e.target as Element).closest('button')) return;
+    // Pressing on a scrollbar is the browser's business.
+    const r = view.getBoundingClientRect();
+    if (e.clientX - r.left >= view.clientWidth || e.clientY - r.top >= view.clientHeight) return;
+    const [x0, y0, left, top] = [e.clientX, e.clientY, view.scrollLeft, view.scrollTop];
+    view.classList.add('panning');
+    const move = (ev: PointerEvent) => {
+      view.scrollLeft = left - (ev.clientX - x0);
+      view.scrollTop = top - (ev.clientY - y0);
+    };
+    const up = () => {
+      view.classList.remove('panning');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
   /** Research a technology now, or queue it with the prerequisites it still needs. */
   const commit = (id: TechId) => {
     setMessage(null);
@@ -229,33 +257,41 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
       const mid = (x1 + x2) / 2;
       const cls = done.has(r) && done.has(t.id) ? 'done' : done.has(r) ? 'open' : 'locked';
       const lit = traced && (traced === t.id || highlight.has(t.id)) && (highlight.has(r) || r === traced);
+      // A prerequisite from another branch crosses other rows: drawn faintly until it matters.
+      const cross = TECH_BY_ID[r].branch !== t.branch;
       edges.push(
         <path
           key={`${r}>${t.id}`}
           d={`M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`}
-          className={`tree-edge ${cls}${lit ? ' lit' : ''}`}
+          className={`tree-edge ${cls}${lit ? ' lit' : ''}${cross ? ' cross' : ''}`}
         />,
       );
     }
   }
 
   const tree = (
-    <div className="tree-scroll" ref={viewRef}>
+    <div className="tree-scroll" ref={viewRef} onPointerDown={touch ? undefined : startPan}>
       <div className="tree" style={{ width: LAYOUT.width, height: LAYOUT.height }}>
+        {/* Where the frozen era headers and branch names meet. */}
+        <div className="tree-corner" style={{ width: LABEL_W, height: HEAD_H }} />
         {ERAS.map((era) => (
           <div
             key={era.label}
             className="tree-era"
             style={{ left: LABEL_W + PAD + era.cols[0] * COL_W - 8, width: COL_W * 2, height: LAYOUT.height }}
           >
-            <div className="tree-era-title">{era.label}</div>
-            <div className="tree-era-years">{era.years}</div>
+            <div className="tree-era-head">
+              <div className="tree-era-title">{era.label}</div>
+              <div className="tree-era-years">{era.years}</div>
+            </div>
           </div>
         ))}
         {BRANCHES.map((b) => (
           <div key={b.id} className="tree-branch" style={{ top: LAYOUT.branchTop[b.id].top - 6, height: LAYOUT.branchTop[b.id].height + 4 }}>
             <span className="tree-branch-label">
-              <BranchIcon branch={b.id} size={18} /> {b.name}
+              <span className="tbl-name">
+                <BranchIcon branch={b.id} size={18} /> {b.name}
+              </span>
             </span>
           </div>
         ))}
@@ -390,6 +426,15 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
             ),
           )}
         </div>
+        {!compact && (
+          <div className="era-jump" role="group" aria-label="Jump to an era">
+            {ERAS.map((era) => (
+              <button key={era.label} className="chip" onClick={() => jumpToEra(era.cols[0])} data-era-col={era.cols[0]}>
+                {era.label} <span className="muted">{era.years}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {waitingFor && (
           <div className="warn pending" data-testid="research-waiting">
             <Icon name="clock" size={13} /> Waiting for funds: {TECH_BY_ID[next!.tech].name} needs another {waitingFor}.
