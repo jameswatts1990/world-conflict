@@ -1,6 +1,6 @@
 // What a computer opponent knows when it thinks: its territory and fronts,
 // where friendly and hostile power stands, and what the enemy fields.
-import { AI } from '../config/ai';
+import { AI, aiLevel, type AiLevel } from '../config/ai';
 import { UNITS } from '../config/units';
 import { applyCommand, type Command } from '../commands';
 import {
@@ -22,6 +22,8 @@ export interface Ctx {
   world: World;
   me: NationId;
   mem: AiMemory;
+  /** How well this game's computer opponents play. */
+  level: AiLevel;
   eco: NationEconomy;
   minutes: number;
   owned: ProvinceId[];
@@ -136,6 +138,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     world,
     me,
     mem: state.nations[me].ai!,
+    level: aiLevel(state),
     eco: nationEconomy(state, world, me),
     minutes: state.tick / 60 / state.settings.durationScale,
     owned,

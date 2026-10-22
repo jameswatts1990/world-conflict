@@ -80,7 +80,7 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
-  return defenderPower(ctx, pid) * AI.attackRatio * (1.2 - ctx.mem.aggression * 0.4) + 6;
+  return defenderPower(ctx, pid) * ctx.level.attackRatio * (1.2 - ctx.mem.aggression * 0.4) + 6;
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {
@@ -132,7 +132,7 @@ export function chooseCampaigns(ctx: Ctx, available: number): Campaign[] {
       const kind = n.kind;
       let score = targetValue(ctx, n.id) / (need + 25) - (kind === 'strait' ? 0.05 : 0);
       if (ctx.mem.campaigns.includes(n.id)) score *= AI.campaignStickiness;
-      score += random(state) * 0.01;
+      score += random(state) * ctx.level.targetNoise;
       // Stage from the bordering owned province where we are already strongest (land routes preferred).
       let staging: ProvinceId | null = null;
       let best = -Infinity;
@@ -151,7 +151,7 @@ export function chooseCampaigns(ctx: Ctx, available: number): Campaign[] {
   const chosen: Campaign[] = [];
   let budget = available;
   for (const c of options) {
-    if (chosen.length >= AI.maxCampaigns) break;
+    if (chosen.length >= ctx.level.maxCampaigns) break;
     if (c.need > budget) continue;
     chosen.push(c);
     budget -= c.need * 1.1;
@@ -185,7 +185,7 @@ export function handleMilitary(ctx: Ctx): void {
     const mine = Object.values(state.armies)
       .filter((a) => a.owner === me && a.province === army.province && !a.move)
       .reduce((s, a) => s + power(a), 0);
-    const shaky = armyMorale(army) < AI.retreatMorale && enemy >= mine * 0.8;
+    const shaky = armyMorale(army) < ctx.level.retreatMorale && enemy >= mine * 0.8;
     if (shaky || mine < enemy * 0.3) {
       const refuge = retreatTarget(state, world, army, army.province);
       if (refuge) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: refuge }, 'retreat');
@@ -236,7 +236,7 @@ export function handleMilitary(ctx: Ctx): void {
       const here = ready().filter((a) => a.province === src).sort((a, b) => power(b) - power(a) || (a.id < b.id ? -1 : 1));
       if (here.length === 0) continue;
       // What would still threaten this province with the target's defenders tied down.
-      const residual = Math.max(0, (ctx.threat.get(src) ?? 0) - (ctx.hostile.get(c.target) ?? 0)) * AI.defenceFactor;
+      const residual = Math.max(0, (ctx.threat.get(src) ?? 0) - (ctx.hostile.get(c.target) ?? 0)) * ctx.level.defenceFactor;
       let guard = 0;
       // Keep the weakest stacks as the rear guard; the strongest go forward.
       for (const a of [...here].reverse()) {
@@ -277,7 +277,7 @@ export function handleMilitary(ctx: Ctx): void {
       const threat = ctx.threat.get(pid) ?? 0;
       const fort = state.provinces[pid].buildings.fortifications ?? 0;
       const terrain = TERRAIN_DEFENCE[world.provinces[pid].terrain];
-      const need = (threat * AI.defenceFactor * (1 - fortificationReduction(state, me, fort) * 0.5)) / terrain;
+      const need = (threat * ctx.level.defenceFactor * (1 - fortificationReduction(state, me, fort) * 0.5)) / terrain;
       const importance = 1 + (world.provinces[pid].objectiveVp ?? 0) * 0.5 + (pid === capital ? 1 : 0);
       return { pid, need, importance };
     })

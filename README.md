@@ -13,8 +13,8 @@ What is in it (Milestone 2, Depth):
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
 - A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
-- **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
-  power close to victory.
+- **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
+  manage morale and gang up on a power close to victory.
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -39,7 +39,8 @@ Other scripts:
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
-| `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>` | Traces every AI army order with its reason and reports armies sent back and forth |
+| `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]` | AI behaviour report: wasted effort (back-and-forth marches, abandoned captures, idle armies), variety across seeds, and how long an idle human lasts |
+| `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>` | Traces every AI army order with its reason and shows the armies sent back and forth |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
@@ -117,9 +118,9 @@ tests/              Simulation tests
 
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
-- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  every campaign ends on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up
-  on a leader.
+- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs at
+  Normal, most campaigns now end on objectives within 50–100 minutes, short of the 2–3 hour target, and an idle
+  player is overrun in about 25 minutes (about 40 at Easy).
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

@@ -1,5 +1,5 @@
 // Creates the initial GameState for a scenario.
-import { AI } from './config/ai';
+import { aiLevel } from './config/ai';
 import { MORALE } from './config/rules';
 import { SPEED_PRESETS, TICKS_PER_MINUTE } from './config/timing';
 import { VETERANCY } from './config/units';
@@ -9,6 +9,7 @@ import { random, seedToState } from './rng';
 import {
   NEUTRAL,
   UNIT_TYPES,
+  type AiDifficulty,
   type AiMemory,
   type Army,
   type GameState,
@@ -28,6 +29,7 @@ export interface NewGameOptions {
   seed: number;
   humanNation: NationId | null;
   speed?: 'standard' | 'slow';
+  difficulty?: AiDifficulty;
 }
 
 export function newId(state: GameState, prefix: string): string {
@@ -92,6 +94,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       durationScale: preset.durationScale,
       timeLimitTicks: preset.timeLimitMinutes * TICKS_PER_MINUTE * preset.durationScale,
       humanNation: opts.humanNation,
+      difficulty: opts.difficulty ?? 'normal',
     },
     nations: {},
     provinces: {},
@@ -148,7 +151,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             aggression: 0.35 + random(state) * 0.6,
             economyBias: 0.3 + random(state) * 0.5,
             doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
-            nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
+            nextThinkTick: Math.floor(random(state) * aiLevel(state).thinkIntervalSeconds),
             campaigns: [],
           },
       stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },

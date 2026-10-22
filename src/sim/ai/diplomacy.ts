@@ -51,7 +51,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     const rel = state.nations[me].relations[offer.from];
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
     const lostGround = occupiedCores(ctx, offer.from, me) > occupiedCores(ctx, me, offer.from);
-    const losing = myPower < theirPower * AI.acceptPeaceRatio && (lostGround || morale < 55);
+    const losing = myPower < theirPower * ctx.level.acceptPeaceRatio && (lostGround || morale < 55);
     const lostCapital = state.provinces[world.nations[me].capital].owner !== me;
     const winning = occupiedCores(ctx, me, offer.from) > occupiedCores(ctx, offer.from, me) && myPower > theirPower;
     const stopTheLeader = offer.from === leader;
@@ -77,7 +77,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
   }
 
-  if (!graceOver(ctx, AI.peaceGraceSeconds)) return;
+  if (!graceOver(ctx, ctx.level.peaceGraceSeconds)) return;
 
   // A power about to win becomes everyone's target.
   if (leader && !atWar(state, me, leader) && state.tick >= state.nations[me].relations[leader].truceUntil) {
@@ -92,14 +92,14 @@ export function handleDiplomacy(ctx: Ctx): void {
   const maxWars = ctx.mem.aggression > 0.7 ? AI.maxConcurrentWars : 1;
   if (ctx.enemies.length >= maxWars) return;
   if (morale < 50) return;
-  if (random(state) > 0.02 + ctx.mem.aggression * 0.05) return;
+  if (random(state) > (0.02 + ctx.mem.aggression * 0.05) * ctx.level.warAppetite) return;
   let best: { target: NationId; score: number; ratio: number } | null = null;
   for (const target of neighbourNations(ctx)) {
     if (atWar(state, me, target)) continue;
     if (state.tick < state.nations[me].relations[target].truceUntil) continue;
-    // A nation already fighting is distracted; one fighting two wars is fair game but not a pile-on.
+    // A nation already fighting is distracted, but one fighting enough wars is not piled on.
     const wars = world.nationIds.filter((x) => atWar(state, target, x)).length;
-    if (wars >= 2) continue;
+    if (wars >= ctx.level.maxWarsOnTarget) continue;
     const theirPower = nationPower(state, target) * (1 - 0.2 * wars) + 1;
     const ratio = myPower / theirPower;
     // Prize: their objectives that border my land.

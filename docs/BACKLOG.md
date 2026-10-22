@@ -111,6 +111,13 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       again (a third of all AI move orders were straight reversals; `scripts/dev/ai-moves.ts` traces them)
 - [x] AI: neutral states are left alone for the first 10 minutes (was 2), so a player can take a neighbouring one
       first; otherwise Britain took Belgium before France in almost every game
+- [x] AI difficulty: Easy and Normal on the main menu (Easy plays worse rather than getting less)
+- [x] AI behaviour report (`scripts/dev/ai-report.ts`): wasted effort, variety across seeds, and how long an idle
+      player lasts
+- [ ] AI variety: France is in most first wars and each power's opening capture repeats in about 60% of seeds
+      (Spain → Lisbon, Poland → Prague); per-seed rivalries or opening plans would vary it
+- [ ] AI: don't pile into a province already falling uncontested (3–5% of orders), and don't snatch a neutral another
+      power is halfway through capturing
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation

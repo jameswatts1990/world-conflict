@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo, useState } from 'react';
 import { VICTORY } from '../sim/config/rules';
 import { SPEED_PRESETS } from '../sim/config/timing';
-import { vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
+import { vpToWin, type AiDifficulty, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
 import { lighten, ownerColor } from './color';
 import { Flag } from './flags';
 import { hoursText, proseDuration } from './format';
@@ -103,12 +103,13 @@ export function MainMenu({
   onLoad,
 }: {
   world: World;
-  onStart: (nation: NationId, seed: number, speed: GameSettings['speed']) => void;
+  onStart: (nation: NationId, seed: number, speed: GameSettings['speed'], difficulty: AiDifficulty) => void;
   onLoad: (state: GameState) => void;
 }) {
   const geo = useMemo(() => mapGeometry(world), [world]);
   const [nation, setNation] = useState<NationId>('fr');
   const [speed, setSpeed] = useState<GameSettings['speed']>('standard');
+  const [difficulty, setDifficulty] = useState<AiDifficulty>('normal');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [loading, setLoading] = useState(false);
   const def = world.nations[nation];
@@ -191,6 +192,13 @@ export function MainMenu({
               ))}
             </select>
           </label>
+          <label title="Easy opponents react more slowly, field smaller armies, wait longer before starting wars and never gang up on you. Normal opponents punish weakness.">
+            Opponents
+            <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as AiDifficulty)} data-testid="difficulty">
+              <option value="easy">Easy</option>
+              <option value="normal">Normal</option>
+            </select>
+          </label>
           <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
             Campaign seed
             <span className="seed-field">
@@ -206,7 +214,7 @@ export function MainMenu({
           the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. Five computer opponents control the other powers.
         </p>
         <div className="btn-row menu-actions">
-          <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">
+          <button className="primary big" onClick={() => onStart(nation, seed, speed, difficulty)} data-testid="start-campaign">
             <Icon name="play" size={16} /> Start campaign
           </button>
           <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">

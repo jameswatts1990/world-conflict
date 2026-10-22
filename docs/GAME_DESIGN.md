@@ -245,8 +245,14 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 ## 11. Computer opponents
 
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
-personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery).
+personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery). The
+bullets describe Normal difficulty.
 
+- **Difficulty** (main menu): Easy opponents get the same resources but play worse. They think every 14 s, field
+  three-quarters of the army, want a bigger edge before attacking and run one offensive at a time, garrison more
+  thinly, hang on longer before falling back and choose targets less carefully. They start wars of opportunity half
+  as often and not before 12 minutes, never join a war on a nation that is already fighting one, and accept peace
+  once they are no longer stronger. The levels live in `AI_LEVELS` (`src/sim/config/ai.ts`).
 - **Diplomacy:** it leaves neutral states alone for the first 10 minutes, so a player can take a neighbouring one
   first. After a 6-minute grace period it starts wars of opportunity against weaker or distracted
   neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
@@ -261,8 +267,8 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units.
 - **Military:** armies about to break fall back before they rout; armies taking a province hold it until it falls
-  (unless they would starve first); starving or worn-out armies go home to recover; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
-  guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
+  (unless they would starve first); starving or worn-out armies go home to recover; up to two offensives mass at a
+  staging province and strike together, frontier armies leaving a rear guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
 
@@ -332,7 +338,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   and answers to incoming peace offers. Declaring war and leaving the campaign ask for confirmation, and Escape closes
   the innermost window first. The opening tutorial is a Chief of Staff briefing. The results screen ranks the powers
   with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
-  brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
+  brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality, and sets the
+  campaign speed, the opponents' difficulty and the seed.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
   national uniforms, headgear, camouflage and insignia), city skylines, building, branch and HUD icons are inline
   SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
@@ -344,3 +351,5 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
+- Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player? Normal declares war
+  on an idle player at about 7 minutes, often two powers at once.

@@ -412,12 +412,16 @@ export interface GameOutcome {
   scores: ScoreLine[];
 }
 
+export type AiDifficulty = 'easy' | 'normal';
+
 export interface GameSettings {
   speed: 'standard' | 'slow';
   /** Multiplier applied to every duration (1 for Standard). */
   durationScale: number;
   timeLimitTicks: number;
   humanNation: NationId | null;
+  /** How well the computer opponents play (absent in older saves, which play at normal). */
+  difficulty?: AiDifficulty;
 }
 
 export interface GameState {
