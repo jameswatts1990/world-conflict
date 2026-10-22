@@ -112,15 +112,24 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
       done, rejected peace offers)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
-- [ ] Responsive layout and touch controls (the HUD now fits 1280 × 720; phones and touch are still out of scope)
+- [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim tab bar,
+      side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
+- [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
+      top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
+- [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
 - [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
-- [ ] Volume controls in the interface (after the mobile layout)
+- [ ] Volume controls in the interface
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
+- [x] 3D armies on the map: zoomed in, each army is a 3D model of its main unit for its nation and generation,
+      standing in spots around its city, marching edge to edge along its road facing its heading (troopships at sea)
 - [x] Map underlay and provinces built as one topology from the same Natural Earth data, so coasts line up; softer,
       lower-contrast relief
+- [x] Cities drawn as part of the map instead of on a round token: a web of streets that fades into the countryside,
+      main roads running on towards the neighbouring cities, the old town round the landmark and each building on its
+      pad around it; seaside cities keep to the land (streets stop at the coast) and get a port on the real coast
 
 ### Polish pass (done)
 

@@ -16,7 +16,8 @@
     "map:build": "node scripts/map/build-map.mjs",
     "audio:fetch": "node scripts/audio/fetch.mjs",
     "audio:build": "node scripts/audio/build.mjs",
-    "e2e": "node scripts/e2e/playthrough.mjs"
+    "e2e": "node scripts/e2e/playthrough.mjs",
+    "e2e:mobile": "node scripts/e2e/mobile.mjs"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",

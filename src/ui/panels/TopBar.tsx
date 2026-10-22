@@ -171,7 +171,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
           <span className="pause-label">{ctrl.loop.paused ? 'Resume' : 'Pause'}</span>
         </button>
         {CLIENT_SPEEDS.map((s, i) => (
-          <span key={s.multiplier} className="speed-slot">
+          <span key={s.multiplier} className={`speed-slot${s.dev ? ' dev' : ''}`}>
             {s.dev && !CLIENT_SPEEDS[i - 1]?.dev && (
               <span className="dev-tag" title="Development speeds, for testing only">
                 Dev

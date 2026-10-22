@@ -117,6 +117,16 @@ export function Flag({ id, size = 20, title, className }: { id: string; size?: n
   );
 }
 
+/** A flag drawn inside another SVG drawing (the map's army badges): `height` tall, top left at (x, y). */
+export function FlagMark({ id, x = 0, y = 0, height }: { id: string; x?: number; y?: number; height: number }) {
+  return (
+    <svg x={x} y={y} width={height * 1.5} height={height} viewBox={`0 0 ${W} ${H}`}>
+      {FLAGS[id] ?? FLAGS.neutral}
+      <rect x={0.75} y={0.75} width={W - 1.5} height={H - 1.5} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={1.5} />
+    </svg>
+  );
+}
+
 /** Flag for whoever owns a province (neutral states use their own flag). */
 export function OwnerFlag({ world, owner, province, size }: { world: World; owner: OwnerId; province?: ProvinceId; size?: number }) {
   const title = owner === 'neutral' ? (province ? world.provinces[province].neutral?.name : 'Neutral') : world.nations[owner]?.name;

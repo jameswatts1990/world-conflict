@@ -5,7 +5,20 @@ import { hoursText, proseDuration } from '../format';
 import { AdvisorPortrait, Icon, type IconName } from '../icons';
 import { useEscape } from './Common';
 
-export function tutorialSteps(world: World, nationName: string, limitMinutes: number): { title: string; icon: IconName; body: string }[] {
+/** How the player is playing: touch input and the compact (phone) layouts change some instructions. */
+export interface BriefingInput {
+  touch: boolean;
+  compact: boolean;
+}
+
+export function tutorialSteps(
+  world: World,
+  nationName: string,
+  limitMinutes: number,
+  { touch, compact }: BriefingInput = { touch: false, compact: false },
+): { title: string; icon: IconName; body: string }[] {
+  // Save, load and help sit behind More in the compact layouts.
+  const saveWhere = compact ? ' from More' : '';
   return [
     {
       title: `You lead ${nationName}`,
@@ -15,12 +28,16 @@ export function tutorialSteps(world: World, nationName: string, limitMinutes: nu
     {
       title: 'The map',
       icon: 'diplomacy',
-      body: 'Drag to pan, scroll to zoom, or use the overview map at the bottom right; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.',
+      body: touch
+        ? 'Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.'
+        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',
       icon: 'factory',
-      body: 'The top bar shows money, materials, fuel and manpower with their change per minute; point at one for the breakdown. Click one of your provinces to open its city on the right. Each city has building slots set by its size, so choose what to build: industry and exchanges for money and materials, housing to grow the city into a bigger tier with more slots, universities for research, barracks, arms and tank works to recruit, and infrastructure (forts, depots, railways) that needs no slot.',
+      body: `The top bar shows money, materials, fuel and manpower with their change per minute; ${touch ? 'tap' : 'point at'} one for the breakdown. ${
+        touch ? 'Tap one of your provinces to open its city' : 'Click one of your provinces to open its city on the right'
+      }. Each city has building slots set by its size, so choose what to build: industry and exchanges for money and materials, housing to grow the city into a bigger tier with more slots, universities for research, barracks, arms and tank works to recruit, and infrastructure (forts, depots, railways) that needs no slot.`,
     },
     {
       title: 'Morale',
@@ -30,24 +47,44 @@ export function tutorialSteps(world: World, nationName: string, limitMinutes: nu
     {
       title: 'Armies',
       icon: 'swords',
-      body: 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, then click). The route and arrival time show as you point. Battles wear down strength and morale: a broken army routs to a friendly neighbour, and one with nowhere to run surrenders, so encircle the enemy. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.',
+      body: `${
+        touch
+          ? 'Tap an army counter to select it, press Move, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army.'
+          : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, then click). The route and arrival time show as you point.'
+      } Battles wear down strength and morale: a broken army routs to a friendly neighbour, and one with nowhere to run surrenders, so encircle the enemy. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
     },
     {
       title: 'War, supply and research',
       icon: 'research',
-      body: 'Everyone starts at peace: declare war from Diplomacy on the left command rail. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research (R) is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; click a distant technology to queue the whole path.',
+      body: `Everyone starts at peace: declare war from Diplomacy ${compact ? 'in the command bar' : 'on the left command rail'}. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research${touch ? '' : ' (R)'} is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; ${
+        touch ? 'tap a technology for its details, then research it or queue the whole path to it' : 'click a distant technology to queue the whole path'
+      }.`,
     },
     {
       title: 'Time & saving',
       icon: 'clock',
-      body: 'Space pauses. 1x is the real campaign pace; the orange DEV speeds are for testing only. Save to a browser slot at any time: the campaign is paused while closed and resumes exactly where you left it. Press H for the controls and to replay this briefing.',
+      body: touch
+        ? `The pause button in the top bar stops the clock; 1x is the real campaign pace. Save to a browser slot${saveWhere} at any time: the campaign is paused while closed and resumes exactly where you left it. Help${saveWhere} has the controls and replays this briefing.`
+        : 'Space pauses. 1x is the real campaign pace; the orange DEV speeds are for testing only. Save to a browser slot at any time: the campaign is paused while closed and resumes exactly where you left it. Press H for the controls and to replay this briefing.',
     },
   ];
 }
 
-export function Tutorial({ world, nationName, limitMinutes, onClose }: { world: World; nationName: string; limitMinutes: number; onClose: () => void }) {
+export function Tutorial({
+  world,
+  nationName,
+  limitMinutes,
+  input,
+  onClose,
+}: {
+  world: World;
+  nationName: string;
+  limitMinutes: number;
+  input: BriefingInput;
+  onClose: () => void;
+}) {
   useEscape(onClose);
-  const steps = tutorialSteps(world, nationName, limitMinutes);
+  const steps = tutorialSteps(world, nationName, limitMinutes, input);
   const [i, setI] = useState(0);
   const step = steps[i];
   return (
@@ -104,4 +141,17 @@ export const CONTROLS: [string, string][] = [
   ['K', 'Map key'],
   ['H / ?', 'These controls'],
   ['Esc', 'Close the open window, cancel move mode, then clear the selection'],
+];
+
+/** The same reference for touch screens. */
+export const TOUCH_CONTROLS: [string, string][] = [
+  ['Tap province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
+  ['Tap army counter', 'Select the army'],
+  ['Move, then tap', 'Preview the route and arrival time; tap the same place again (or Confirm) to march'],
+  ['Stop', 'Halt the selected army after its current leg'],
+  ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],
+  ['Panel handle', 'Drag the selection panel up for more, down to close it (upright phones)'],
+  ['Tap resource', 'Income, army upkeep and net change'],
+  ['Tap technology', 'Its details in Research; research it, or queue the path to it, from there'],
+  ['Pause / 1x / 2x', 'Pause or resume (or tap the Paused banner) and set the campaign speed'],
 ];

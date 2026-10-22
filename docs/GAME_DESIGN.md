@@ -310,29 +310,49 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
   capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states are hatched
   with lines that keep the same spacing at every zoom.
-- **City models.** From one zoom step in, each city is a small isometric 3D model on a round token whose rim carries
-  the owner's colour, so its contents read at a glance. Every building has its own recognisable model (smoking factory
-  chimneys, a barracks with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank
-  works, a hospital with a red cross on the roof, a radio mast, crates at the depot, a train for the railway, walls
-  for fortifications, gun pits for coastal batteries) standing on a plinth in its category's colour (the same colours
-  as the city view's slot tiles); ports have a steamer moored offshore. Free building slots are empty plots, construction shows scaffolding
-  and a crane, battles smoke and fire. Generic housing, in the region's style (slate in Britain, zinc in France, red
-  tile in Germany, terracotta in the south), grows denser and taller with the tier, and the six capitals have their
-  landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal Castle). Every building
-  has a fixed home cell in its district, so building something never moves the rest. Models are drawn in code
-  (`src/ui/art/CityModel.ts`, `iso3d.ts`) and cached as one image per city look, so panning stays cheap; army counters
-  stand on the token's back edge. The cursor tooltip lists the same buildings and free slots.
-- **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
-  and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
-  war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Armies
-  standing in one province fill rows of two above its city, yours first, so a crowded province grows a short pyramid
-  rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above standing), then
-  the selection, so a click lands on what you most likely meant. Marching routes are animated dashed lines with
-  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy counter
-  previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At peace
-  with France"); right-clicking an enemy counter attacks it.
+- **City models.** From one zoom step in, each city is drawn as part of the map rather than on a token. On the
+  ground, a lace of white streets, densest in the old town and fraying into the countryside, with main roads running
+  on towards the neighbouring cities (the railway, once built, passes the old town with its station). On it, the old
+  town's houses round the landmark, in the region's style (slate in Britain, zinc in France, red tile in Germany,
+  terracotta in the south), growing denser and taller with the tier, and the owner's flag on the square; the six
+  capitals have their landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal
+  Castle). Around the old town, each building has its own recognisable model (smoking factory chimneys, a barracks
+  with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank works, a hospital with a
+  red cross on the roof, a radio mast, crates at the depot) on a pad in its category's colour (the same colours as the
+  city view's slot tiles): industry to the right, the military to the left, civic buildings at the front. Every
+  building has a fixed home, so building something never moves the rest. Fortifications are walls round the old
+  town, towered at higher levels; free building slots are staked-out plots, construction shows scaffolding and a
+  crane, battles smoke and fire. A seaside city keeps its buildings on land and its streets stop at the coast, and
+  its port (a quay with a steamer alongside, gun pits for coastal batteries) sits on the nearest stretch of its real
+  coast. Models are drawn in code (`src/ui/art/CityModel.ts`, `cityGround.ts`, `iso3d.ts`) and cached as two images
+  per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; the name plate hangs in
+  front of the built-up area. The cursor tooltip lists the same buildings and free slots.
+- **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
+  formations, and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of
+  nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
+  Armies standing in one province fill rows of two above its city, yours first, so a crowded province grows a short
+  pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
+  standing), then the selection, so a click lands on what you most likely meant. Marching routes are animated dashed
+  lines with arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy
+  army previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At
+  peace with France"); right-clicking an enemy army attacks it.
+- **3D armies.** Wherever the cities are 3D models, so are the armies: each is a low-poly model of its main unit, in
+  its generation's equipment and its nation's uniform, headgear, paint (and camouflage) and flag: a squad advancing
+  under its colours, assault troops with a flamethrower, mountain troops with a pack mule, a lorry and its riflemen,
+  horsemen with lances or sabres, field, heavy and anti-tank guns with their crews, armoured cars, and tanks from the
+  Mark IV, A7V and Renault FT to the sloped tanks of 1940. Each stands on a ring in the owner's colour (white-rimmed
+  for yours, red for enemies at war with you, a running dashed ring for the selection) under a badge with its flag,
+  number of formations, strength and morale. Armies in a province take spots around its city's built-up area, yours
+  first: beside it, then its corners, then wider rings, each clear of the others and of the name plate, and an army
+  keeps its spot when others arrive. They face the viewer, or the fighting when there is a battle. Marching armies
+  walk from the edge of one city to the edge of the next (abreast when several share a road), facing the way they go,
+  foot and horse bobbing; armies crossing the sea sail in a troopship with its wake. Arriving, leaving or making
+  room, an army walks to its new spot rather than jumping, and a model behind a city stands on its streets but under
+  its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings
+  and cached as one image per look.
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
-  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp.
+  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp. A phone opens closer in,
+  centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so they stand apart.
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
@@ -358,7 +378,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
   brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
-  national uniforms, headgear, camouflage and insignia), city skylines, 3D city models, building, branch and HUD icons
+  national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 14. Open questions for playtesting
