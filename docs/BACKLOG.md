@@ -114,8 +114,11 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] AI difficulty: Easy and Normal on the main menu (Easy plays worse rather than getting less)
 - [x] AI behaviour report (`scripts/dev/ai-report.ts`): wasted effort, variety across seeds, and how long an idle
       player lasts
-- [ ] AI variety: France is in most first wars and each power's opening capture repeats in about 60% of seeds
-      (Spain → Lisbon, Poland → Prague); per-seed rivalries or opening plans would vary it
+- [x] AI variety: each AI draws two claims (provinces across its land borders) and an opening (strike, expand or
+      build) from the seed. Openings overlap 10–11% between two Normal campaigns once timing counts (16–20% before);
+      what remains alike is geography (Spain → Lisbon, Poland → Prague, Germany–Poland)
+- [ ] Balance: Britain wins the most AI-only campaigns and France usually falls first (also before claims and
+      openings); look at cross-Channel invasions and how the AI defends France
 - [ ] AI: don't pile into a province already falling uncontested (3–5% of orders), and don't snatch a neutral another
       power is halfway through capturing
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment

@@ -84,7 +84,7 @@ export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {
-  if (!graceOver(ctx, AI.neutralGraceSeconds)) return false;
+  if (!graceOver(ctx, AI.neutralGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].neutrals)) return false;
   return ctx.enemies.length === 0 || ctx.mem.aggression > 0.7;
 }
 
@@ -102,6 +102,7 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
   if (def.core === ctx.me) v += 14; // reclaim lost core territory
+  if (ctx.mem.claims?.includes(pid)) v += AI.claimValue; // a province this AI covets
   // Defenders with nowhere to run surrender: a bigger prize.
   const defenders = hostileArmiesIn(state, pid, ctx.me).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {

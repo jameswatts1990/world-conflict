@@ -14,7 +14,8 @@ What is in it (Milestone 2, Depth):
 - **Cities** that grow through five tiers with building slots, 18 buildings and a skyline that shows them.
 - A **58-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
-  manage morale and gang up on a power close to victory.
+  manage morale and gang up on a power close to victory, each with its own claims and opening so that every
+  campaign plays differently.
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -120,7 +121,7 @@ tests/              Simulation tests
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs at
   Normal, most campaigns now end on objectives within 50–100 minutes, short of the 2–3 hour target, and an idle
-  player is overrun in about 25 minutes (about 40 at Easy).
+  player is overrun in about 25 minutes (about 50 at Easy).
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

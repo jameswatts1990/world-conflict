@@ -88,7 +88,8 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
   }
 
-  // Consider a new war of opportunity against a neighbour.
+  // Consider a new war of opportunity against a neighbour, once this AI's opening allows.
+  if (!graceOver(ctx, ctx.level.peaceGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].peace)) return;
   const maxWars = ctx.mem.aggression > 0.7 ? AI.maxConcurrentWars : 1;
   if (ctx.enemies.length >= maxWars) return;
   if (morale < 50) return;
@@ -108,7 +109,8 @@ export function handleDiplomacy(ctx: Ctx): void {
       if (state.provinces[pid].owner !== target) continue;
       if (world.neighbors[pid].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
     }
-    const score = ratio + prize * 0.08 + (target === leader ? 0.5 : 0);
+    const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
+    const score = ratio + prize * 0.08 + claim + (target === leader ? 0.5 : 0);
     if (!best || score > best.score) best = { target, score, ratio };
   }
   const needed = AI.warStrengthRatio + (0.5 - ctx.mem.aggression) * 0.5 + (ctx.enemies.length > 0 ? 0.6 : 0);

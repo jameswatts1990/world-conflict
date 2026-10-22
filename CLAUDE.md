@@ -36,12 +36,18 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
 - **Makes human mistakes, not broken ones.** Misjudging strength, overreaching, reacting late, picking a weaker
   target or holding on too long are fine and should be punishable. Oscillating, starving armies, wasted marches
   and stuck stacks are bugs.
-- **Spontaneous.** Each campaign should play differently. Personalities (aggression, economy bias, doctrine) come
-  from the seed and the menu draws a fresh seed for every game; openings and wars should vary from seed to seed
-  while staying sensible for the geography. Add variety through the seeded RNG, never at the cost of determinism.
+- **Spontaneous.** Each campaign should play differently, while each AI stays consistent within a campaign. The
+  menu draws a fresh seed for every game, and the seed gives each AI a personality: aggression, economy bias,
+  doctrine, two claims (provinces it covets across its land borders) and an opening (strike, expand or build) that
+  sets when it fights and when it takes neutrals. Vary behaviour through traits like these, drawn once from the
+  seeded RNG, rather than noise in every decision (noise reads as dithering), and keep it sensible for the
+  geography: Spain taking Portugal first is fine.
 - **Fair pressure.** It punishes weakness and passivity, and gangs up on a power about to win, but it should not
   dogpile a player who is still finding their feet. Grace periods give the opening to building up: no wars before
-  6 minutes (12 on Easy) and no invasions of neutral states before 10.
+  6 minutes (12 on Easy) and no invasions of neutral states before 10, longer for AIs that open by expanding or
+  building.
+- **Balanced between the powers.** No nation should win far more often than the others because of how the AI plays
+  it. Variety changes shift who wins: check the winners tally before and after.
 
 ### Difficulty
 
@@ -66,9 +72,12 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 
 - **Pathologies** should stay near zero: back-and-forth reversals about 1–2% of orders, abandoned captures 0%,
   pile-on attacks under 5%, armies idle in the interior a few per cent (Easy higher by design).
-- **Variety**: how often each power's opening repeats across seeds, and who fights the first war.
-- **Challenge**: when war comes to an idle player and when they fall (currently about 7 and 25 minutes at Normal,
-  13–19 and 35–45 at Easy). An idle player should lose, just not at once.
+- **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
+  counting timing (currently about 25% and 10% at Normal, 37% and 17% at Easy), and who fights the first war.
+- **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
+  same seeds and use 80 or more (`ai-report.ts 80 120`) before calling a shift. Britain is currently the strongest.
+- **Challenge**: when war comes to an idle player and when they fall (currently 7–13 and about 25 minutes at
+  Normal, 13–26 and about 50 at Easy). An idle player should lose, just not at once.
 
 To diagnose, `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag
 any new move order in `src/sim/ai/military.ts` with a reason. Report balance shifts (game length, how fast players

@@ -351,7 +351,14 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /** Neighbouring provinces this AI covets in this campaign, drawn from the seed (absent in older saves). */
+  claims?: ProvinceId[];
+  /** How it opens the campaign, drawn from the seed (absent in older saves, which open with 'strike'). */
+  opening?: AiOpening;
 }
+
+/** strike: war as soon as it may; expand: neutral states first; build: a longer peace to build up. */
+export type AiOpening = 'strike' | 'expand' | 'build';
 
 export interface NationState {
   id: NationId;

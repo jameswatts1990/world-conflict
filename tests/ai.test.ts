@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { captureTicks, createInitialState, setAiOrderTrace, type AiOrderTrace, type GameState } from '../src/sim';
+import { captureTicks, createInitialState, setAiOrderTrace, type AiOpening, type AiOrderTrace, type GameState } from '../src/sim';
 import { AI_LEVELS, aiLevel } from '../src/sim/config/ai';
 import { aiGame, clearArmies, place, run, setWar, world } from './helpers';
 
@@ -34,7 +34,7 @@ describe('AI difficulty', () => {
   });
 
   it('easy opponents start no wars before their longer grace period', () => {
-    // At normal, three wars have broken out by now in this seed.
+    // At normal, Germany and Poland are at war by now in this seed.
     const state = createInitialState(world, { seed: 1, humanNation: 'fr', difficulty: 'easy' });
     run(state, AI_LEVELS.easy.peaceGraceSeconds - 5);
     expect(world.nationIds.flatMap((n) => atWarWith(state, n))).toEqual([]);
@@ -46,5 +46,55 @@ describe('AI difficulty', () => {
     setWar(state, 'de', 'fr');
     run(state, 1500);
     expect(atWarWith(state, 'fr')).toEqual(['de']);
+  });
+});
+
+describe('AI personalities', () => {
+  it('each AI claims provinces across its land borders, drawn from the seed', () => {
+    const drawn = new Set<string>();
+    for (let seed = 1; seed <= 10; seed++) {
+      const state = createInitialState(world, { seed, humanNation: null });
+      for (const n of world.nationIds) {
+        const claims = state.nations[n].ai!.claims!;
+        drawn.add(`${n}:${claims.join(',')}`);
+        expect(new Set(claims).size).toBe(claims.length);
+        for (const pid of claims) {
+          expect(state.provinces[pid].owner).not.toBe(n);
+          expect(world.neighbors[pid].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n)).toBe(true);
+        }
+      }
+      // An island power has no land border to claim across.
+      expect(state.nations.uk.ai!.claims).toEqual([]);
+    }
+    expect(drawn.size).toBeGreaterThan(world.nationIds.length * 3);
+  });
+
+  it('openings vary from seed to seed', () => {
+    const drawn = new Set<AiOpening | undefined>();
+    for (let seed = 1; seed <= 10; seed++) {
+      const state = createInitialState(world, { seed, humanNation: null });
+      for (const n of world.nationIds) drawn.add(state.nations[n].ai!.opening);
+    }
+    expect([...drawn].sort()).toEqual(['build', 'expand', 'strike']);
+  });
+
+  it('an AI that opens by building keeps the peace longer than one that strikes', () => {
+    const play = (opening: AiOpening) => {
+      const state = createInitialState(world, { seed: 1, humanNation: null });
+      for (const n of world.nationIds) state.nations[n].ai!.opening = opening;
+      run(state, 715);
+      return world.nationIds.flatMap((n) => atWarWith(state, n));
+    };
+    expect(play('strike').length).toBeGreaterThan(0);
+    expect(play('build')).toEqual([]);
+  });
+
+  it('saves without claims or an opening still play', () => {
+    const state = aiGame(4, 'fr');
+    for (const n of world.nationIds) {
+      delete state.nations[n].ai?.claims;
+      delete state.nations[n].ai?.opening;
+    }
+    expect(() => run(state, 900)).not.toThrow();
   });
 });

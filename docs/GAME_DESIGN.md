@@ -245,16 +245,20 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 ## 11. Computer opponents
 
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
-personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery). The
-bullets describe Normal difficulty.
+personality drawn from the seed: aggression, economy bias, a **doctrine** (armour, infantry or artillery), two
+**claims** and an **opening**, so that each campaign plays differently. Claims are provinces across its land borders
+that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
+holding one is a likelier war target. The opening sets how it begins: *strike* starts wars of opportunity as soon as
+the grace period allows, *expand* keeps the peace 1.5 times as long and takes neutral states first, *build* keeps the
+peace twice as long and leaves neutrals alone 1.5 times as long. The bullets describe Normal difficulty.
 
 - **Difficulty** (main menu): Easy opponents get the same resources but play worse. They think every 14 s, field
   three-quarters of the army, want a bigger edge before attacking and run one offensive at a time, garrison more
   thinly, hang on longer before falling back and choose targets less carefully. They start wars of opportunity half
   as often and not before 12 minutes, never join a war on a nation that is already fighting one, and accept peace
   once they are no longer stronger. The levels live in `AI_LEVELS` (`src/sim/config/ai.ts`).
-- **Diplomacy:** it leaves neutral states alone for the first 10 minutes, so a player can take a neighbouring one
-  first. After a 6-minute grace period it starts wars of opportunity against weaker or distracted
+- **Diplomacy:** it leaves neutral states alone for at least the first 10 minutes, so a player can take a
+  neighbouring one first. After at least a 6-minute grace period it starts wars of opportunity against weaker or distracted
   neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
   VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing (ground,
   capital or morale), closes the worse of two fronts first, and keeps fighting a war it is winning.
@@ -352,4 +356,6 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player? Normal declares war
-  on an idle player at about 7 minutes, often two powers at once.
+  on an idle player at 7–13 minutes, sometimes two powers at once.
+- Britain wins the most AI-only campaigns (14 of 80 seeds; 18 before claims and openings) and France usually falls
+  first: is the island too safe, and is France too exposed?

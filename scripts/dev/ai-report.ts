@@ -4,6 +4,8 @@
 //                 captures abandoned, idle reserves, starving stacks)?
 //   variety     — do different seeds play differently, or is every opening the same?
 //   challenge   — how long does an idle human last, and who comes for them?
+// It also tallies who wins: balance between the powers needs many seeds (80 or
+// more) before differences mean anything.
 //
 //   npx vite-node scripts/dev/ai-report.ts [seeds=10] [minutes=90] [--human fr] [--difficulty easy|normal]
 import {
@@ -30,6 +32,8 @@ const minutes = Number(args[1] ?? 90);
 const world = buildWorld(EUROPE_SCENARIO);
 const city = (pid: string) => world.provinces[pid].city.name;
 const REVERSAL_WINDOW = 240;
+/** The opening: captures made and wars started in this many minutes. */
+const OPENING_MINUTES = 25;
 
 const count: Record<string, number> = {};
 const add = (k: string, n = 1) => (count[k] = (count[k] ?? 0) + n);
@@ -37,8 +41,12 @@ const firstCapture: Record<string, Record<string, number>> = {};
 const firstWar: Record<string, number> = {};
 const firstWarMinute: number[] = [];
 const outcomes: string[] = [];
+const winners: Record<string, number[]> = {};
 const humanFell: string[] = [];
 const humanAttacked: string[] = [];
+const openings: Set<string>[] = [];
+/** The same, tagged with the five-minute window it happened in. */
+const timedOpenings: Set<string>[] = [];
 const t0 = performance.now();
 
 for (let seed = 1; seed <= seeds; seed++) {
@@ -58,18 +66,29 @@ for (let seed = 1; seed <= seeds; seed++) {
 
   const startOwner = Object.fromEntries(world.provinceIds.map((p) => [p, s.provinces[p].owner]));
   const captured = new Set<string>();
+  const opening = new Set<string>();
+  const timed = new Set<string>();
+  openings.push(opening);
+  timedOpenings.push(timed);
+  const note = (m: number, event: string) => {
+    if (m >= OPENING_MINUTES || opening.has(event)) return;
+    opening.add(event);
+    timed.add(`${event} ${Math.floor(m / 5) * 5}–${Math.floor(m / 5) * 5 + 5}m`);
+  };
   let warSeen = false;
   let attacked = false;
   for (let m = 0; m < minutes && !s.outcome; m++) {
     sim.run(60);
     for (const pid of world.provinceIds) {
       const owner = s.provinces[pid].owner;
+      if (owner !== startOwner[pid] && owner !== 'neutral') note(m, `${owner} takes ${city(pid)}`);
       if (owner === startOwner[pid] || owner === 'neutral' || owner === human || captured.has(owner)) continue;
       captured.add(owner);
       ((firstCapture[owner] ??= {})[city(pid)] ??= 0);
       firstCapture[owner][city(pid)]++;
     }
     const wars = world.nationIds.flatMap((a) => world.nationIds.filter((b) => a < b && s.nations[a].relations[b]?.status === 'war').map((b) => `${a}-${b}`));
+    for (const w of wars) note(m, `war ${w}`);
     if (!warSeen && wars.length > 0) {
       warSeen = true;
       firstWarMinute.push(m + 1);
@@ -93,6 +112,7 @@ for (let seed = 1; seed <= seeds; seed++) {
   setAiOrderTrace(null);
   for (const e of s.events) if ((e.kind === 'attrition' || e.kind === 'disband') && !(human && e.nations.includes(human))) add(e.kind);
   const o = s.outcome;
+  if (o?.winner && o.reason !== 'timeLimit') (winners[o.winner] ??= []).push(Math.round(o.tick / 60));
   outcomes.push(o ? `${o.winner}:${o.reason === 'timeLimit' ? 'time' : o.reason === 'objectives' ? 'vp' : o.reason}@${Math.round(o.tick / 60)}m` : 'running');
   if (human) humanFell.push(s.nations[human].eliminated || o?.reason === 'humanEliminated' ? `${Math.round((o?.tick ?? s.tick) / 60)}m` : 'alive');
 }
@@ -118,11 +138,36 @@ for (const [nation, cities] of Object.entries(firstCapture).sort()) {
   powers++;
   console.log(`  ${nation}: ${list.map(([c, n]) => `${c} ${n}`).join(', ')}`);
 }
-console.log(`  → the most common opening repeats in ${((sameShare / Math.max(1, powers)) * 100).toFixed(0)}% of games on average`);
+console.log(`  → each power's most common first capture repeats in ${((sameShare / Math.max(1, powers)) * 100).toFixed(0)}% of games on average`);
+// How alike two campaigns' openings are: shared events over all events, averaged over every pair of seeds.
+function overlap(sets: Set<string>[]): string {
+  let sum = 0;
+  let pairs = 0;
+  for (let i = 0; i < sets.length; i++) {
+    for (let j = i + 1; j < sets.length; j++) {
+      const union = new Set([...sets[i], ...sets[j]]).size;
+      sum += union === 0 ? 1 : [...sets[i]].filter((e) => sets[j].has(e)).length / union;
+      pairs++;
+    }
+  }
+  return `${((sum / Math.max(1, pairs)) * 100).toFixed(0)}%`;
+}
+const common = new Map<string, number>();
+for (const o of openings) for (const e of o) common.set(e, (common.get(e) ?? 0) + 1);
+const top = [...common].sort((a, b) => b[1] - a[1]).slice(0, 5);
+console.log(
+  `  openings (captures and wars in the first ${OPENING_MINUTES} min) overlap ${overlap(openings)} between two seeds on average, ${overlap(timedOpenings)} counting when they happen`,
+);
+console.log(`  most common: ${top.map(([e, n]) => `${e} ${n}`).join(', ')}`);
 const wars = Object.entries(firstWar).sort((a, b) => b[1] - a[1]);
 firstWarMinute.sort((a, b) => a - b);
 console.log(`  first war: ${wars.map(([w, n]) => `${w} ${n}`).join(', ') || 'none'}; at ${firstWarMinute[0] ?? '-'}–${firstWarMinute.at(-1) ?? '-'} min`);
 console.log(`  outcomes: ${outcomes.join(' ')}`);
+const won = Object.entries(winners).sort((a, b) => b[1].length - a[1].length);
+const decided = won.reduce((n, [, t]) => n + t.length, 0);
+console.log(
+  `  winners: ${won.map(([n, t]) => `${n} ${t.length}`).join(', ') || 'none'} (${decided} of ${seeds} decided within ${minutes} min${decided ? `, earliest at ${Math.min(...won.flatMap(([, t]) => t))} min` : ''})`,
+);
 if (human) {
   console.log('\nChallenge (idle human)');
   console.log(`  first war on ${human}: ${humanAttacked.join(' ') || 'never'}`);

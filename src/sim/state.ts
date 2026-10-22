@@ -1,5 +1,5 @@
 // Creates the initial GameState for a scenario.
-import { aiLevel } from './config/ai';
+import { AI, aiLevel } from './config/ai';
 import { MORALE } from './config/rules';
 import { SPEED_PRESETS, TICKS_PER_MINUTE } from './config/timing';
 import { VETERANCY } from './config/units';
@@ -11,6 +11,7 @@ import {
   UNIT_TYPES,
   type AiDifficulty,
   type AiMemory,
+  type AiOpening,
   type Army,
   type GameState,
   type NationId,
@@ -79,6 +80,25 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
 }
 
 const DOCTRINES: AiMemory['doctrine'][] = ['armour', 'infantry', 'artillery'];
+
+function drawOpening(state: GameState): AiOpening {
+  let r = random(state);
+  for (const [opening, o] of Object.entries(AI.openings) as [AiOpening, { weight: number }][]) {
+    if (r < o.weight) return opening;
+    r -= o.weight;
+  }
+  return 'strike';
+}
+
+/** Provinces across a land border that a nation's AI covets, drawn from the seed (an island power has none). */
+function drawClaims(state: GameState, world: World, nation: NationId): ProvinceId[] {
+  const options = world.provinceIds.filter(
+    (pid) => state.provinces[pid].owner !== nation && world.neighbors[pid].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation),
+  );
+  const claims: ProvinceId[] = [];
+  while (claims.length < AI.claims && options.length > 0) claims.push(options.splice(Math.floor(random(state) * options.length), 1)[0]);
+  return claims;
+}
 
 export function createInitialState(world: World, opts: NewGameOptions): GameState {
   const preset = SPEED_PRESETS[opts.speed ?? 'standard'];
@@ -153,6 +173,8 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
             nextThinkTick: Math.floor(random(state) * aiLevel(state).thinkIntervalSeconds),
             campaigns: [],
+            claims: drawClaims(state, world, n.id),
+            opening: drawOpening(state),
           },
       stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },
     };

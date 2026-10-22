@@ -1,5 +1,5 @@
 // Computer opponent tuning.
-import type { AiDifficulty, GameState } from '../types';
+import type { AiDifficulty, AiOpening, GameState } from '../types';
 
 /** What changes with difficulty. Easier opponents get no fewer resources; they play worse. */
 export interface AiLevel {
@@ -95,4 +95,19 @@ export const AI = {
   attackStrength: 0.55,
   /** A new campaign target must beat the current one by this factor to replace it. */
   campaignStickiness: 1.25,
+  /** Provinces across its land borders that each AI covets, drawn from the seed so that every campaign opens differently. */
+  claims: 2,
+  /** Extra value of a claimed province as a target (as much as lost core land). */
+  claimValue: 14,
+  /** Added to the war score of a power that holds one of my claims. */
+  claimWarBonus: 0.5,
+  /**
+   * Openings drawn from the seed: how likely each is, and how many times the usual grace periods it waits
+   * before a war of opportunity (peace) and before invading neutral states (neutrals).
+   */
+  openings: {
+    strike: { weight: 0.35, peace: 1, neutrals: 1 },
+    expand: { weight: 0.4, peace: 1.5, neutrals: 1 },
+    build: { weight: 0.25, peace: 2, neutrals: 1.5 },
+  } satisfies Record<AiOpening, { weight: number; peace: number; neutrals: number }>,
 };
