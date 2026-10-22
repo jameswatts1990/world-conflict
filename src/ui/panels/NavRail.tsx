@@ -1,6 +1,6 @@
 // Left command rail: the game's main windows, one icon each. In the compact
-// layouts it becomes a tab bar (portrait) or a slim rail (landscape) with the
-// less frequent windows behind a "More" menu.
+// layouts it becomes a tab bar along the bottom (slimmer on a phone on its side)
+// with the less frequent windows behind a "More" menu.
 import { useState } from 'react';
 import { researchSlots } from '../../sim';
 import type { GameController } from '../game/GameController';
@@ -77,6 +77,7 @@ export function NavRail({
   ctrl,
   active,
   feedOpen,
+  unreadReports,
   compact,
   onToggleFeed,
   onOpen,
@@ -84,6 +85,8 @@ export function NavRail({
   ctrl: GameController;
   active: PanelId | null;
   feedOpen: boolean;
+  /** Field reports that came in since they were last open (compact layouts keep them closed). */
+  unreadReports: number;
   compact: boolean;
   onToggleFeed: () => void;
   onOpen: (p: PanelId) => void;
@@ -117,7 +120,15 @@ export function NavRail({
         testId="open-diplomacy"
         onClick={() => onOpen('diplomacy')}
       />
-      <RailButton icon="news" label="Reports" hotkey="L" active={feedOpen} testId="toggle-reports" onClick={onToggleFeed} />
+      <RailButton
+        icon="news"
+        label="Reports"
+        hotkey="L"
+        active={feedOpen}
+        badge={unreadReports > 99 ? '99+' : unreadReports || null}
+        testId="toggle-reports"
+        onClick={onToggleFeed}
+      />
       {compact ? (
         <>
           <div className="rail-fill" />

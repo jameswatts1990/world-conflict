@@ -7,6 +7,7 @@ import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { PLINTH_COLORS, buildCityModel, buildPortModel, type ModelLayer, type PortModelProps } from './CityModel';
 import { CitySkyline } from './CitySkyline';
 import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
+import { buildUnitModel, type UnitModelKind } from './UnitModel';
 
 function artNation(owner: OwnerId): ArtNation {
   return (ART_NATIONS as readonly string[]).includes(owner) ? (owner as ArtNation) : 'neutral';
@@ -117,34 +118,38 @@ export interface CitySpriteProps {
   battle: boolean;
 }
 
-function imageOf(layer: ModelLayer): SpriteImage {
-  const href =
-    typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
-      ? URL.createObjectURL(new Blob([layer.svg], { type: 'image/svg+xml' }))
-      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(layer.svg)}`;
-  return { href, width: layer.width, height: layer.height, cx: layer.cx, cy: layer.cy };
+/** An SVG document as an image URL: a blob in the browser, a data URL elsewhere (tests, scripts). */
+function svgHref(svg: string): string {
+  return typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
+    ? URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function release(image: SpriteImage): void {
+function imageOf(layer: ModelLayer): SpriteImage {
+  return { href: svgHref(layer.svg), width: layer.width, height: layer.height, cx: layer.cx, cy: layer.cy };
+}
+
+/** Lets an image's blob go. */
+function release(image: { href: string }): void {
   if (image.href.startsWith('blob:')) URL.revokeObjectURL(image.href);
 }
 
-/** Least recently used first: a hit moves to the back, and the oldest look goes when there are too many. */
-function cached<T>(cache: Map<string, T>, key: string, limit: number, build: () => T, drop: (old: T) => void): T {
+/** Least-recently-used cache of sprites by look; dropped sprites release their blobs. */
+function cached<T>(cache: Map<string, T>, limit: number, key: string, make: () => T, drop: (old: T) => void): T {
   const hit = cache.get(key);
   if (hit) {
     cache.delete(key);
     cache.set(key, hit);
     return hit;
   }
-  const made = build();
-  cache.set(key, made);
+  const sprite = make();
+  cache.set(key, sprite);
   if (cache.size > limit) {
     const [oldKey, old] = cache.entries().next().value!;
     cache.delete(oldKey);
     drop(old);
   }
-  return made;
+  return sprite;
 }
 
 const sprites = new Map<string, CitySprite>();
@@ -163,8 +168,8 @@ export function citySprite(props: CitySpriteProps): CitySprite {
   const key = JSON.stringify([props.seed, props.tier, props.capital, built, props.construction, props.freeSlots, props.terrain, props.exits, props.reach, props.nationColor, props.battle]);
   return cached(
     sprites,
-    key,
     SPRITE_CACHE,
+    key,
     () => {
       const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
       return { ground: imageOf(model.ground), structures: imageOf(model.structures), mid: model.mid, rx: model.rx, back: model.back, front: model.front };
@@ -181,5 +186,34 @@ export type PortSpriteProps = PortModelProps;
 /** A coastal city's port as an image for the map, anchored on its spot on the coast. */
 export function portSprite(props: PortSpriteProps): SpriteImage {
   const key = JSON.stringify([props.seed, props.facing, props.batteries, props.building, props.nationColor]);
-  return cached(ports, key, SPRITE_CACHE, () => imageOf(buildPortModel(props)), release);
+  return cached(ports, SPRITE_CACHE, key, () => imageOf(buildPortModel(props)), release);
+}
+
+export interface UnitSprite {
+  /** Image URL of the army's 3D model. */
+  href: string;
+  /** Size in model units, and where the model stands within the image. */
+  width: number;
+  height: number;
+  cx: number;
+  cy: number;
+}
+
+const unitSprites = new Map<string, UnitSprite>();
+/** Every army's look in a handful of headings. */
+const UNIT_SPRITE_CACHE = 480;
+
+/** An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings. */
+export function unitSprite(type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
+  const art = artNation(nation);
+  return cached(
+    unitSprites,
+    UNIT_SPRITE_CACHE,
+    `${type}|${gen}|${art}|${heading}`,
+    () => {
+      const model = buildUnitModel({ type: type as UnitModelKind, gen, nation: art, heading });
+      return { href: svgHref(model.svg), width: model.width, height: model.height, cx: model.cx, cy: model.cy };
+    },
+    release,
+  );
 }

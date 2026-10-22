@@ -12,6 +12,9 @@ import {
   WOOD_DARK,
   shade,
 } from './palettes';
+import type { Box, CamoSpec } from './types';
+
+export type { Box, CamoSpec } from './types';
 
 export type P = [number, number];
 
@@ -101,18 +104,6 @@ export function Segs({ segs, ow = 1.1 }: { segs: Seg[]; ow?: number }) {
 // ---------------------------------------------------------------------------
 // Camouflage
 
-export interface CamoSpec {
-  colors: string[];
-  /** Approximate patch spacing in drawing units. */
-  cell: number;
-  /** Draw thin dark borders between colour fields (German 1918 style). */
-  lines?: boolean;
-  seed?: number;
-  /** Area to cover when a shape's extent cannot be worked out (the view box). */
-  frame?: Box;
-}
-
-export type Box = [number, number, number, number];
 
 function rng(seed: number): () => number {
   let a = seed >>> 0;

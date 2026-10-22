@@ -136,6 +136,14 @@ export interface Rendered {
 export class Scene {
   private solids: Solid[] = [];
 
+  /**
+   * `exact` also orders solids by the planes of their faces, not just by their boxes:
+   * slower, but needed for models turned off the grid (units facing their march),
+   * whose boxes overlap far more often than those of axis-aligned buildings.
+   * `edge` is the width of the darker outline round every face (finer for small models).
+   */
+  constructor(private readonly opts: { exact?: boolean; edge?: number } = {}) {}
+
   private add(layer: Solid['layer'], faces: Face[], lines: Line[] = [], puffs: Puff[] = []): void {
     const min: V3 = [Infinity, Infinity, Infinity];
     const max: V3 = [-Infinity, -Infinity, -Infinity];
@@ -328,10 +336,10 @@ export class Scene {
       }
     };
     this.solids.filter((s) => s.layer === 0).forEach(draw);
-    sortSolids(this.solids.filter((s) => s.layer === 1)).forEach(draw);
+    sortSolids(this.solids.filter((s) => s.layer === 1), !!this.opts.exact).forEach(draw);
     this.solids.filter((s) => s.layer === 2).forEach(draw);
     return {
-      markup: `<g stroke-width="0.3" stroke-linejoin="round">${out.join('')}</g>`,
+      markup: `<g stroke-width="${this.opts.edge ?? 0.3}" stroke-linejoin="round">${out.join('')}</g>`,
       bounds: [bx0, by0, bx1, by1],
     };
   }
@@ -346,6 +354,38 @@ function depth(s: Solid): number {
 function behind(a: Solid, b: Solid): boolean {
   const e = 1e-6;
   return a.max[0] <= b.min[0] + e || a.max[1] <= b.min[1] + e || a.max[2] <= b.min[2] + e;
+}
+
+/**
+ * Which of two solids is behind, from a separating plane through one of their faces:
+ * -1 when `a` is drawn first, 1 when `b` is, 0 when no face plane separates them.
+ * A closed solid separates whatever lies wholly outside one of its faces; a single
+ * panel separates whatever lies wholly on either side of it.
+ */
+function planeOrder(a: Solid, b: Solid): number {
+  const side = (holder: Solid, other: Solid): number => {
+    const pts = [...other.faces.flatMap((f) => f.pts), ...other.lines.flatMap((l) => l.pts)];
+    const open = holder.faces.length === 1;
+    for (const f of holder.faces) {
+      if (f.pts.length < 3) continue;
+      const n = normalOf(f.pts);
+      const d = dot(n, f.pts[0]);
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const p of pts) {
+        const s = dot(n, p) - d;
+        lo = Math.min(lo, s);
+        hi = Math.max(hi, s);
+      }
+      // The other solid lies on the side `sign` of this face: in front of it when that side faces the viewer.
+      const sign = lo >= -1e-6 ? 1 : open && hi <= 1e-6 ? -1 : 0;
+      if (sign) return sign * dot(n, VIEW) > 0 ? -1 : 1;
+    }
+    return 0;
+  };
+  const ab = side(a, b);
+  if (ab) return ab;
+  return -side(b, a);
 }
 
 function screenBox(s: Solid): [number, number, number, number] {
@@ -367,7 +407,7 @@ function screenBox(s: Solid): [number, number, number, number] {
  * a separating axis decides which is behind; overlapping boxes fall back to the
  * depth of their middles. Ties keep insertion order, so output is deterministic.
  */
-function sortSolids(solids: Solid[]): Solid[] {
+function sortSolids(solids: Solid[], exact: boolean): Solid[] {
   const n = solids.length;
   const boxes = solids.map(screenBox);
   const deps = solids.map(depth);
@@ -383,7 +423,10 @@ function sortSolids(solids: Solid[]): Solid[] {
       let first: number;
       if (ij && !ji) first = i;
       else if (ji && !ij) first = j;
-      else first = deps[i] <= deps[j] ? i : j;
+      else {
+        const p = exact ? planeOrder(solids[i], solids[j]) : 0;
+        first = p < 0 ? i : p > 0 ? j : deps[i] <= deps[j] ? i : j;
+      }
       const second = first === i ? j : i;
       after[first].push(second);
       indeg[second]++;

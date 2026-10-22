@@ -325,20 +325,34 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   crane, battles smoke and fire. A seaside city keeps its buildings on land and its streets stop at the coast, and
   its port (a quay with a steamer alongside, gun pits for coastal batteries) sits on the nearest stretch of its real
   coast. Models are drawn in code (`src/ui/art/CityModel.ts`, `cityGround.ts`, `iso3d.ts`) and cached as two images
-  per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; army counters stand
-  behind the built-up area and the name plate hangs in front of it. The cursor tooltip lists the same buildings and
-  free slots.
-- **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
-  and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
-  war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Armies
-  standing in one province fill rows of two above its city, yours first, so a crowded province grows a short pyramid
-  rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above standing), then
-  the selection, so a click lands on what you most likely meant. Marching routes are animated dashed lines with
-  arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy counter
-  previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At peace
-  with France"); right-clicking an enemy counter attacks it.
+  per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; the name plate hangs in
+  front of the built-up area. The cursor tooltip lists the same buildings and free slots.
+- **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
+  formations, and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of
+  nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
+  Armies standing in one province fill rows of two above its city, yours first, so a crowded province grows a short
+  pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
+  standing), then the selection, so a click lands on what you most likely meant. Marching routes are animated dashed
+  lines with arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy
+  army previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At
+  peace with France"); right-clicking an enemy army attacks it.
+- **3D armies.** Wherever the cities are 3D models, so are the armies: each is a low-poly model of its main unit, in
+  its generation's equipment and its nation's uniform, headgear, paint (and camouflage) and flag: a squad advancing
+  under its colours, assault troops with a flamethrower, mountain troops with a pack mule, a lorry and its riflemen,
+  horsemen with lances or sabres, field, heavy and anti-tank guns with their crews, armoured cars, and tanks from the
+  Mark IV, A7V and Renault FT to the sloped tanks of 1940. Each stands on a ring in the owner's colour (white-rimmed
+  for yours, red for enemies at war with you, a running dashed ring for the selection) under a badge with its flag,
+  number of formations, strength and morale. Armies in a province take spots around its city's built-up area, yours
+  first: beside it, then its corners, then wider rings, each clear of the others and of the name plate, and an army
+  keeps its spot when others arrive. They face the viewer, or the fighting when there is a battle. Marching armies
+  walk from the edge of one city to the edge of the next (abreast when several share a road), facing the way they go,
+  foot and horse bobbing; armies crossing the sea sail in a troopship with its wake. Arriving, leaving or making
+  room, an army walks to its new spot rather than jumping, and a model behind a city stands on its streets but under
+  its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings
+  and cached as one image per look.
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
-  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp.
+  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp. A phone opens closer in,
+  centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so they stand apart.
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
@@ -364,7 +378,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
   brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
-  national uniforms, headgear, camouflage and insignia), city skylines, 3D city models, building, branch and HUD icons
+  national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 14. Open questions for playtesting

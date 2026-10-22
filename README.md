@@ -14,6 +14,9 @@ What is in it (Milestone 2, Depth):
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
   plots for free slots), and seaside cities have a port on the coast; the city view adds a skyline.
+- **3D armies**: zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
+  lorries, tanks) in its nation's uniforms, paint and flag. Armies gather around their city, march along the roads
+  facing the way they go, and cross the sea in troopships.
 - A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
@@ -42,7 +45,7 @@ Other scripts:
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
-| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities) |
+| `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 | `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build` first; about 20 seconds): upright, then turned on its side |
@@ -63,7 +66,7 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | Input | Action |
 | --- | --- |
 | Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, forces present, routes |
-| Left-click army counter | Select army (Shift-click adds more of your armies) |
+| Left-click army (its model or counter) | Select army (Shift-click adds more of your armies) |
 | Right-click province or enemy army | March the selected armies there (or press **M** / the **Move** button, then left-click) |
 | **S** | Stop the selected armies after their current leg |
 | Drag / mouse wheel | Pan / zoom |
@@ -84,7 +87,9 @@ Zoom in one step and every city turns into a web of streets on the map: the old 
 a 3D model of each building around it on a pad in its category's colour (economy, military, civic, infrastructure),
 empty plots for free building slots and flags in the owner's colour. Main roads run out towards the neighbouring
 cities, and a seaside city's streets stop at the coast, where it has its port; pointing at a province lists the same
-buildings. Click a field report or an alert to jump to its
+buildings. At the same zoom the army counters become 3D models standing around their cities on a ring in the owner's
+colour (white-rimmed for yours, red for enemies at war with you), each under a badge with its flag, number of
+formations, strength and morale. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
@@ -94,14 +99,18 @@ Declaring war and leaving the campaign ask for confirmation.
 Narrow screens get a compact layout: resources and the clock in a two-row top bar, Research, Diplomacy, Reports and
 More (save, load, help, main menu) in a tab bar at the bottom, and the selected city or army in a sheet that slides up
 from the bottom; drag its handle to see more, or down to close it. Turned on its side, the phone keeps a one-row top bar,
-a slim command rail on the left and the selection in a panel on the right.
+a slim tab bar along the bottom and the selection in a panel on the right. The map opens close in on your capital with
+nothing selected and no overview map, and names and 3D cities wait for a closer zoom than on the desktop, so they do not
+crowd the screen. Field reports open from their tab, which counts the reports that came in since you last looked. The
+briefing drops the Chief of Staff's portrait to give its text the width.
 
 | Touch | Action |
 | --- | --- |
-| Tap province / army counter | Open its city / select the army |
+| Tap province / army | Open its city / select the army |
 | **Move**, then tap a province or an enemy army | Preview the route and arrival time; tap it again (or **Confirm**) to march |
 | Drag / pinch | Pan / zoom the map (the **fit** button shows the whole theatre) |
 | Tap a resource | Its income, upkeep and net change |
+| Tap a technology in Research | Its details; research it, or queue the path to it, from there (a tap alone spends nothing) |
 | Pause button or the **Paused** banner | Pause / resume; **1x** and **2x** set the speed (DEV speeds are keyboard only) |
 
 ## How to win
@@ -130,8 +139,8 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
   engine.ts         Fixed 1-second tick, command log, replay
   loop.ts           Real-time fixed-timestep driver (no DOM)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
-  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city models (a small
-                    isometric renderer in iso3d.ts, streets in cityGround.ts), building and branch icons
+  art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city and army models (a
+                    small isometric renderer in iso3d.ts, streets in cityGround.ts), building and branch icons
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and world in one topology (shapes only)
 scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
@@ -148,6 +157,6 @@ tests/              Simulation tests
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The research tree is the desktop tree in a scrolling window. The main bundle is ~940 KB (308 KB gzipped).
+  devices. The main bundle is ~975 KB (320 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.

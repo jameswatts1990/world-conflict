@@ -3065,6 +3065,316 @@ button.chip.queued:hover {
   opacity: 0.6;
 }
 
+/* A technology tapped on a touch screen: its details are open below. */
+.tree-node.selected {
+  z-index: 2;
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(240, 166, 58, 0.45);
+}
+
+/* Research on phones: branch tabs over a list of technologies, era by era. */
+.research-phone {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.tech-tabs {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+  margin-bottom: 8px;
+}
+/* All six branches in one row: icon and count researched over the name. */
+.tech-tabs button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 7px 2px 5px;
+  font: 600 10.5px var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--line);
+  border-radius: 8px;
+}
+.tt-top {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.tt-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tech-tabs button.active {
+  color: #1a1206;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.tt-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.research-phone-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+.tech-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.tl-era {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 8px 2px 6px;
+  font: 700 13px var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: #111921;
+}
+.tl-era .muted {
+  margin-left: 4px;
+  font: 500 12px var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tech-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 8px 10px 8px 8px;
+  text-align: left;
+  background: linear-gradient(180deg, #1f2b38, #17212b);
+  border: 1px solid var(--line-2);
+  border-left-width: 4px;
+  border-radius: 8px;
+}
+.tech-row .tn-icon {
+  height: 38px;
+}
+.tech-row.available {
+  background: linear-gradient(180deg, #1d3026, #15221b);
+  border-color: #4f8a5a;
+}
+.tech-row.done {
+  background: linear-gradient(180deg, #3b3120, #211b12);
+  border-color: rgba(240, 166, 58, 0.6);
+}
+.tech-row.done .tn-name {
+  color: var(--accent-2);
+}
+.tech-row.active {
+  border-color: var(--cyan);
+}
+.tech-row.queued {
+  background: linear-gradient(180deg, #1b2a3a, #15202c);
+  border-color: #4f7fa8;
+}
+.tech-row.locked .tn-icon,
+.tech-row.locked .tn-name {
+  opacity: 0.7;
+}
+.tech-row.in-path {
+  border-color: var(--accent);
+  border-style: dashed;
+}
+.tech-row.selected {
+  border-color: var(--accent);
+  border-style: solid;
+  box-shadow: 0 0 0 2px rgba(240, 166, 58, 0.45);
+}
+.tr-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.tech-row .tn-name {
+  font-size: 15px;
+}
+.tech-row .progress {
+  height: 14px;
+}
+.tr-needs {
+  font-size: 12px;
+  color: #d9b77a;
+}
+.tr-chev {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+}
+.tech-row .tn-badge {
+  position: static;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* A technology's details, with its one order. */
+.tech-detail {
+  flex-shrink: 0;
+  padding: 10px 12px 12px;
+  overflow-y: auto;
+  background: #141e28;
+  border: 1px solid var(--line-2);
+  border-top: 2px solid var(--accent);
+  border-radius: 9px;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  animation: fade-in 0.15s ease-out;
+}
+.modal-body > .tech-detail {
+  max-height: 42%;
+  margin-top: 8px;
+}
+.research-phone .tech-detail {
+  max-height: 55%;
+}
+.layout-landscape .research-phone-main {
+  flex-direction: row;
+}
+.layout-landscape .research-phone .tech-detail {
+  width: min(340px, 48%);
+  max-height: none;
+}
+.td-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.td-head .tn-icon {
+  flex-basis: 40px;
+  height: 40px;
+}
+.td-titles {
+  flex: 1;
+  min-width: 0;
+}
+.td-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.td-titles h3 {
+  margin: 0;
+  font: 700 19px/1.1 var(--font-display);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.td-head .close-btn {
+  align-self: flex-start;
+}
+.td-desc {
+  margin: 8px 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+.td-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: baseline;
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+.td-facts dt {
+  font: 600 11.5px var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.td-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+}
+.td-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  font-size: 12.5px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+}
+.td-link.done {
+  color: var(--accent-2);
+  border-color: rgba(240, 166, 58, 0.5);
+}
+.td-link.available {
+  border-color: #4f8a5a;
+}
+.td-link.active {
+  border-color: var(--cyan);
+}
+.td-link.queued {
+  border-color: #4f7fa8;
+}
+.research-job .td-link {
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.td-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+/* However long the details, the order stays in reach at the panel's foot. */
+.tech-detail .td-action {
+  position: sticky;
+  bottom: -12px;
+  margin: 0 -12px -12px;
+  padding: 8px 12px 12px;
+  background: #141e28;
+  border-top: 1px solid var(--line);
+}
+.td-action > button {
+  min-height: 38px;
+  padding: 6px 18px;
+}
+.td-action .progress {
+  flex: 1 1 160px;
+}
+.td-action .notice {
+  margin-top: 0;
+  color: var(--accent-2);
+}
+.td-path {
+  flex-basis: 100%;
+  font-size: 12.5px;
+  color: var(--accent-2);
+}
+.tech-detail .warn {
+  margin-top: 8px;
+}
+
 /* ---------------------------------------------------------------- Diplomacy */
 .dip-table {
   width: 100%;
@@ -3350,6 +3660,7 @@ button.chip.queued:hover {
 .tutorial {
   display: flex;
   width: min(680px, 94vw);
+  max-height: 100%;
   overflow: hidden;
   pointer-events: auto;
   background: linear-gradient(180deg, #17222d, #0f161e);
@@ -3385,9 +3696,27 @@ button.chip.queued:hover {
   letter-spacing: 0.14em;
   color: var(--accent);
 }
+/* On a short screen the text scrolls; the title and the buttons stay in view. */
 .tutorial-main {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   padding: 14px 18px 14px;
+}
+.tutorial-main > * {
+  flex-shrink: 0;
+}
+.tutorial-main > p {
+  flex-shrink: 1;
+  overflow-y: auto;
+}
+/* Small screens: the text takes the whole width, without the portrait. */
+@media (max-width: 700px), (max-height: 600px) {
+  .tutorial-side {
+    display: none;
+  }
 }
 .tutorial-step {
   display: flex;
@@ -3414,7 +3743,9 @@ button.chip.queued:hover {
 }
 .tutorial-foot {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
 }
@@ -3735,6 +4066,47 @@ button.chip.queued:hover {
   stroke: #222;
   stroke-width: 1;
 }
+/* 3D armies: a model on a ground ring in the owner's colour, with a small badge above */
+.army-model {
+  cursor: pointer;
+}
+.army-hit {
+  fill: transparent;
+}
+.army-ring {
+  fill-opacity: 0.32;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1;
+}
+.army-model.own .army-ring {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.2;
+}
+.army-model.hostile .army-ring {
+  stroke: #ff5a45;
+  stroke-width: 1.6;
+}
+.army-model:hover .army-ring {
+  fill-opacity: 0.5;
+}
+.army-select-ring {
+  fill: none;
+  stroke: #ffcf5a;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  animation: dash-run 0.8s linear infinite;
+}
+.army-routed-img {
+  opacity: 0.6;
+}
+.army-badge3d .army-count {
+  font-size: 11px;
+  text-anchor: start;
+}
+.army-badge3d.selected .army-body {
+  stroke: #ffcf5a;
+  stroke-width: 1.8;
+}
 .lg-ramp {
   display: flex;
   align-items: center;
@@ -3811,7 +4183,7 @@ button.chip.queued:hover {
    .layout-portrait   narrow screens: two-row top bar, tab bar at the bottom, the
                       selection in a bottom sheet;
    .layout-landscape  short screens (a phone on its side): one-row top bar, slim
-                      rail, the selection in a side sheet;
+                      tab bar at the bottom, the selection in a side sheet;
    .compact           either of the two;
    .touch             no hover: a touch screen is the main input. */
 
@@ -3924,44 +4296,56 @@ body {
   height: auto;
   padding-right: 8px;
 }
+.compact .topbar {
+  gap: 6px;
+}
+/* Resources, minified: a plain icon beside the stock, the change per minute under it. */
 .compact .tb-res {
   min-width: 0;
-  gap: 5px;
-  padding: 2px 6px 2px 2px;
+  gap: 4px;
+  padding: 2px 6px 2px 4px;
+  border-radius: 14px 5px 5px 14px;
 }
 .compact .tb-res-icon {
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
 }
 .compact .tb-res-icon svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
 }
 .compact .tb-res-text {
   min-width: 0;
   overflow: hidden;
 }
 .compact .tb-res-val {
-  font-size: 15px;
+  font-size: 14.5px;
 }
 .compact .tb-res-rate {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 .compact .tb-morale {
   min-width: 0;
-  padding: 0 6px;
+  padding: 0 5px;
 }
 .compact .tb-morale-val {
-  font-size: 17px;
+  font-size: 16px;
 }
 .compact .tb-sub {
-  font-size: 10.5px;
+  font-size: 10px;
 }
 .compact .tb-vp {
   min-width: 0;
+  overflow: hidden;
 }
 .compact .tb-vp-val {
-  font-size: 15px;
+  font-size: 14.5px;
+}
+.compact .tb-vp-val .muted {
+  font-size: 12px;
 }
 .compact .tb-vp-bar {
   margin-bottom: 0;
@@ -3975,16 +4359,16 @@ body {
 }
 .compact .tb-clock {
   height: auto;
-  padding: 0 6px;
+  padding: 0 5px;
   gap: 5px;
 }
 .compact .tb-clock-val {
-  font-size: 15px;
+  font-size: 14.5px;
 }
 .compact .speed-btn {
-  min-width: 34px;
+  min-width: 32px;
   min-height: 32px;
-  padding: 4px 7px;
+  padding: 4px 6px;
 }
 /* The resource breakdown opens on a tap, across the width of the bar. */
 .compact .tb-res {
@@ -4039,25 +4423,29 @@ body {
 .layout-portrait .tb-speed {
   grid-area: speed;
 }
-/* The narrowest phones: plain resource icons leave the numbers room. */
-@media (max-width: 400px) {
-  .layout-portrait .tb-res {
-    gap: 3px;
-    padding: 2px 4px 2px 3px;
+/* The narrowest phones: the flag gives the resources its room. */
+@media (max-width: 340px) {
+  .layout-portrait .topbar {
+    grid-template-areas:
+      'res res res res res'
+      'vp vp clock morale speed';
   }
-  .layout-portrait .tb-res-icon {
-    width: 18px;
-    height: 18px;
-    background: none;
-    border: none;
+  .layout-portrait .tb-nation {
+    display: none;
   }
 }
 
 .layout-landscape .topbar {
-  gap: 8px;
   height: calc(48px + env(safe-area-inset-top));
   padding-left: 8px;
   padding-right: 8px;
+}
+/* A small phone on its side: the flag and the time left give way. */
+@media (max-width: 640px) {
+  .layout-landscape .tb-nation,
+  .layout-landscape .tb-clock .tb-sub {
+    display: none;
+  }
 }
 .layout-landscape .tb-resources {
   gap: 4px;
@@ -4068,15 +4456,15 @@ body {
   margin-left: auto;
 }
 
-/* ---- Command bar: tabs along the bottom (portrait) or a slim rail (landscape) */
-.layout-portrait .game-body {
+/* ---- Command bar: tabs along the bottom, the map's full width above them */
+.compact .game-body {
   flex-direction: column;
 }
 /* The tab bar reaches under the home indicator itself. */
-.game-screen.layout-portrait {
+.game-screen.compact {
   padding-bottom: 0;
 }
-.layout-portrait .nav-rail {
+.compact .nav-rail {
   order: 2;
   flex-direction: row;
   width: auto;
@@ -4085,39 +4473,39 @@ body {
   border-top: 1px solid var(--line);
   box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
 }
-.layout-portrait .rail-btn {
+.compact .rail-btn {
   flex: 1;
   margin: 0;
   padding: 6px 2px 7px;
 }
-.layout-portrait .rail-fill {
+.compact .rail-fill {
   display: none;
 }
 .layout-portrait .rail-badge {
   right: calc(50% - 26px);
 }
-.layout-portrait .more-menu {
+.compact .more-menu {
   right: 6px;
   bottom: calc(100% + 6px);
 }
+/* A phone on its side is short: a slim bar, each icon beside its label. */
 .layout-landscape .nav-rail {
-  width: 60px;
-  padding: 4px 0;
+  padding-top: 2px;
+  padding-bottom: calc(2px + env(safe-area-inset-bottom));
 }
 .layout-landscape .rail-btn {
-  margin: 0 4px;
-  padding: 7px 0 8px;
+  flex-direction: row;
+  justify-content: center;
+  gap: 8px;
+  padding: 5px 2px 6px;
 }
-.layout-landscape .rail-label {
-  font-size: 9.5px;
-  letter-spacing: 0.02em;
+.layout-landscape .rail-btn .icon {
+  width: 20px;
+  height: 20px;
 }
 .layout-landscape .rail-badge {
-  right: 3px;
-}
-.layout-landscape .more-menu {
-  left: calc(100% + 6px);
-  bottom: 6px;
+  position: static;
+  box-shadow: none;
 }
 
 /* ---- Map overlays */
@@ -4129,9 +4517,6 @@ body {
 .compact .segmented button,
 .compact .chip-btn {
   padding: 8px 9px;
-}
-.compact .minimap {
-  display: none;
 }
 .compact .zoom-controls button {
   width: 38px;
@@ -4246,25 +4631,23 @@ body {
   right: calc(min(340px, 46vw) + 14px);
 }
 
-/* ---- Field reports: a sheet of their own, opened from the command bar */
+/* ---- Field reports: a sheet rising from their tab in the bottom bar */
 .compact .event-log {
   z-index: 4;
-  width: auto;
+  bottom: 0;
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
 }
 .layout-portrait .event-log {
   left: 0;
   right: 0;
-  bottom: 0;
+  width: auto;
   max-height: 55%;
-  border-bottom: none;
-  border-radius: 14px 14px 0 0;
 }
 .layout-landscape .event-log {
-  top: 6px;
-  bottom: 6px;
   left: 6px;
-  width: min(380px, 48vw);
-  max-height: none;
+  width: min(420px, 52vw);
+  max-height: calc(100% - 12px);
 }
 .compact .event-log header {
   padding: 10px 12px;
@@ -4323,6 +4706,13 @@ body {
   bottom: 6px;
   width: min(340px, 46vw);
   scrollbar-gutter: auto;
+}
+/* A phone on its side is short: the skyline keeps its rooftops, not its sky, and the tabs come into view. */
+.layout-landscape .city-scene-wrap {
+  display: flex;
+  align-items: flex-end;
+  height: 84px;
+  overflow: hidden;
 }
 
 /* ---- Panels: larger touch targets; orders come first in the army panel */
@@ -4407,6 +4797,18 @@ body {
 }
 .compact .tree-legend {
   font-size: 11.5px;
+}
+/* The queue stays one line, scrolled sideways. */
+.compact .research-queue {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.compact .research-queue > * {
+  flex-shrink: 0;
+}
+.compact .research-head {
+  margin-bottom: 8px;
 }
 /* Wide tables scroll sideways instead of squeezing... */
 .compact .dip-table {
@@ -4494,18 +4896,14 @@ body {
   white-space: normal;
 }
 
-/* ---- Briefing: one column, above the bottom edge */
+/* ---- Briefing: one column, above the tab bar */
 .compact .tutorial-backdrop {
-  padding: 0 8px calc(8px + env(safe-area-inset-bottom));
-}
-.compact .tutorial {
-  max-height: calc(100% - 16px);
+  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
 }
 .compact .tutorial-side {
   display: none;
 }
 .compact .tutorial-main {
-  overflow-y: auto;
   padding: 12px 14px;
 }
 .compact .tutorial h3 {
@@ -4519,8 +4917,21 @@ body {
 .compact .tutorial-foot button {
   min-height: 38px;
 }
+.compact .step-dots span {
+  width: 12px;
+}
 .layout-portrait .tutorial-backdrop {
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
+}
+.layout-landscape .tutorial-backdrop {
+  padding-bottom: calc(48px + env(safe-area-inset-bottom));
+}
+.layout-landscape .tutorial-step {
+  display: none;
+}
+.layout-landscape .tutorial h3 {
+  margin-top: 0;
+  font-size: 18px;
 }
 
 /* ---- Main menu (outside the game screen, so on its own queries) */
