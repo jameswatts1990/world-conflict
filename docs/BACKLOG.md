@@ -96,8 +96,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 ### 2.6 Balance and presentation
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [ ] Campaigns that sometimes end by objectives: in a 6-seed AI-vs-AI batch, 2 now do (at 66 and 119 minutes);
-      confirm the pace in human playtests
+- [ ] Campaigns that sometimes end by objectives: in a 10-seed AI-vs-AI batch, 7 now do, at 47–100 minutes
+      (short of the 2–3 hour target); confirm the pace in human playtests
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -109,6 +109,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
 - [x] AI: armies hold a province they are capturing instead of being pulled back to the frontier and sent in
       again (a third of all AI move orders were straight reversals; `scripts/dev/ai-moves.ts` traces them)
+- [x] AI: neutral states are left alone for the first 10 minutes (was 2), so a player can take a neighbouring one
+      first; otherwise Britain took Belgium before France in almost every game
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation

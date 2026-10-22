@@ -3,8 +3,8 @@ export const AI = {
   thinkIntervalSeconds: 8,
   /** No AI declares war on a nation before this many seconds have passed. */
   peaceGraceSeconds: 360,
-  /** No AI invades neutral states before this. */
-  neutralGraceSeconds: 120,
+  /** No AI invades neutral states before this, so a player has time to take a neighbouring one first. */
+  neutralGraceSeconds: 600,
   maxConcurrentWars: 2,
   /** Required local strength ratio before attacking a province (scaled down by aggression). */
   attackRatio: 1.15,

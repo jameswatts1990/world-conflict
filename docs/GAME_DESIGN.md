@@ -247,7 +247,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
 personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery).
 
-- **Diplomacy:** after a 6-minute grace period it starts wars of opportunity against weaker or distracted
+- **Diplomacy:** it leaves neutral states alone for the first 10 minutes, so a player can take a neighbouring one
+  first. After a 6-minute grace period it starts wars of opportunity against weaker or distracted
   neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
   VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing (ground,
   capital or morale), closes the worse of two fronts first, and keeps fighting a war it is winning.
@@ -338,8 +339,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 15 VP / 90 s reachable for a human in 2–3 hours? Most AI-vs-AI campaigns end on the time limit; in a 6-seed
-  batch, 2 ended on objectives (at 66 and 119 minutes).
+- Is 15 VP / 90 s reachable for a human in 2–3 hours? AI-vs-AI campaigns now often end on objectives well inside
+  that: 7 of 10 seeds did, at 47–100 minutes.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
