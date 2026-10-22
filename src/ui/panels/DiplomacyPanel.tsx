@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { POWERS } from '../../sim/config/powers';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
 import { BLOCS, checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
@@ -57,8 +58,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <span>
                       <strong>{def.name}</strong>
                       {me && <span className="you-tag">You</span>}
-                      <span className="dip-sub" title={def.speciality?.description ?? BLOCS[def.bloc].description}>
-                        {def.speciality?.name ?? BLOCS[def.bloc].name} · morale {Math.round(n.morale)}
+                      <span className="dip-sub" title={def.speciality?.description ?? `${BLOCS[def.bloc].name}: ${BLOCS[def.bloc].description}`}>
+                        {def.speciality?.name ?? POWERS[def.power].name} · morale {Math.round(n.morale)}
                       </span>
                     </span>
                   </span>

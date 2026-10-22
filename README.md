@@ -13,6 +13,9 @@ What is in it (Milestone 2, Depth):
   few signature designs.
 - **Hungary**, the first nation added through the bloc system: six provinces behind Austria, Central-pattern
   equipment, its own hussars and Toldi, Turán and Zrínyi armour.
+- **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
+  get output, starting armies, objectives and size from their tier, so a new country is province rows,
+  connections and one line.
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
@@ -135,9 +138,10 @@ still loads: the newcomer joins at its starting position, under computer control
 
 ```
 src/sim/            Framework-free simulation (could run on a server unchanged)
-  config/           Balance and timing values: units, buildings, research, rules, AI, timing
+  config/           Balance and timing values: units, buildings, research, rules, AI, power tiers, timing
   blocs.ts          Equipment blocs: the named designs and formation names nations inherit
-  scenario/europe/  Nations (bloc, overrides, speciality), province gameplay data, connections, starting setup
+  scenario/build.ts Turns province rows into scenario data: output, objectives, starting buildings and armies
+  scenario/europe/  Nations (tier, bloc, overrides, speciality), province rows, connections
   systems/          Economy, production, movement, combat (morale, rout), supply, civic (morale, growth),
                     territory, diplomacy, victory
   ai/               Computer opponents: context, diplomacy, economy, recruitment, military

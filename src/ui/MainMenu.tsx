@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from 'react';
+import { POWERS } from '../sim/config/powers';
 import { VICTORY } from '../sim/config/rules';
 import { SPEED_PRESETS } from '../sim/config/timing';
 import { BLOCS, vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
@@ -116,7 +117,7 @@ export function MainMenu({
 
         <h2 className="menu-h2">Choose your nation</h2>
         <div className="nation-grid">
-          {world.scenario.nations.map((n) => (
+          {world.scenario.nations.filter((n) => POWERS[n.power].playable).map((n) => (
             <button
               key={n.id}
               className={`nation-card${nation === n.id ? ' selected' : ''}`}
@@ -139,7 +140,7 @@ export function MainMenu({
             <div>
               <div className="mb-name">{def.name}</div>
               <div className="mb-cap">
-                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name}
+                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name} · {POWERS[def.power].name}
               </div>
             </div>
           </div>

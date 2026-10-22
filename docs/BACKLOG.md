@@ -193,10 +193,11 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Equipment blocs (Western, Central, Eastern): a new nation inherits named designs, formation names and unit
       art from its bloc and overrides only what it wants (see docs/ADDING_A_COUNTRY.md)
 - [x] Hungary, the first nation added through blocs; older saves take in newly added nations
-- [ ] Power tiers (great, major, minor) that scale output, starting armies and province count, so small countries
-      can join without crowding the map
-- [ ] Generate starting setups from the template; seed land connections from the map build; propose province rows
-      from Natural Earth populated places
+- [x] Power tiers (great, major, minor; minor powers computer-only) that scale output, treasury, starting army,
+      objective VP, capital size and province count
+- [x] Starting setups generated from each nation's tier and its province rows
+- [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
+- [ ] Group minor powers in Diplomacy and on the results screen once there are many
 - [ ] Hungary's missing neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia), then Eastern-bloc nations east of
       Poland
 - [ ] A nation picker that scales past a dozen nations (pick on the map)

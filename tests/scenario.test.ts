@@ -5,7 +5,7 @@ import { feature } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
 import { UNITS } from '../src/sim/config/units';
-import { NATION_OUTPUT_TARGET } from '../src/sim/scenario/europe/provinces';
+import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { world } from './helpers';
 
 describe('scenario data', () => {
@@ -58,22 +58,28 @@ describe('scenario data', () => {
     expect(world.neighbors['uk-london'].some((n) => n.id === 'fr-nord' && n.kind === 'strait')).toBe(true);
   });
 
-  it('nations start with balanced output and the same army template', () => {
+  it('every nation matches its power tier: output, starting army, objectives and size', () => {
     for (const id of world.nationIds) {
+      const power = POWERS[world.nations[id].power];
       const provs = world.scenario.provinces.filter((p) => p.core === id);
-      const money = provs.reduce((s, p) => s + p.production.money, 0);
-      const materials = provs.reduce((s, p) => s + p.production.materials, 0);
-      expect(money).toBeCloseTo(NATION_OUTPUT_TARGET.money, -1);
-      expect(materials).toBeCloseTo(NATION_OUTPUT_TARGET.materials, -1);
-      const armies = world.scenario.startingArmies.filter((a) => a.owner === id);
-      const count = (t: 'infantry' | 'artillery' | 'cavalry') => armies.reduce((s, a) => s + (a.units[t] ?? 0), 0);
-      const total = armies.reduce((s, a) => s + Object.values(a.units).reduce((x, n) => x + (n ?? 0), 0), 0);
-      expect([total, count('infantry'), count('artillery'), count('cavalry')]).toEqual([13, 10, 2, 1]);
-      // Same city ladder: one Metropolis, one Large City.
-      expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
-      expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
-      expect(provs.filter((p) => p.oil)).toHaveLength(1);
-      expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(5);
+      expect(provs.length, `${id} provinces`).toBeGreaterThanOrEqual(power.provinces[0]);
+      expect(provs.length, `${id} provinces`).toBeLessThanOrEqual(power.provinces[1]);
+      for (const k of ['money', 'materials', 'manpower'] as const) {
+        expect(provs.reduce((s, p) => s + p.production[k], 0), `${id} ${k}`).toBeCloseTo(power.output[k], -1);
+      }
+      const units: Record<string, number> = {};
+      for (const a of world.scenario.startingArmies.filter((x) => x.owner === id)) {
+        for (const [t, n] of Object.entries(a.units)) units[t] = (units[t] ?? 0) + (n ?? 0);
+      }
+      expect(units, `${id} starting army`).toEqual(startingUnits(world.nations[id].power));
+      expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
+      expect(provs.filter((p) => p.tier === power.capitalCity && p.id === world.nations[id].capital)).toHaveLength(1);
+      if (world.nations[id].power === 'great') {
+        // Same city ladder (one Metropolis, one Large City) and one oil field.
+        expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
+        expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
+        expect(provs.filter((p) => p.oil)).toHaveLength(1);
+      }
     }
   });
 });

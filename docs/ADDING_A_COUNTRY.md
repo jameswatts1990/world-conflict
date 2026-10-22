@@ -1,8 +1,33 @@
 # Adding a country
 
-How to add a playable nation, using **Hungary** as the worked example (it was added this way). Most of the work
-is data. Equipment, formation names and unit art come from the nation's **bloc**, so a new country needs no art
-and no unit names.
+How to add a nation, using **Hungary** as the worked example (it was added this way). Adding a country is
+mostly data: one row per province, the borders between them, and one line for the nation. Two things supply
+everything else:
+
+- its **power tier** (great, major or minor) sets its output, treasury, starting buildings and army, objective
+  values and size;
+- its **bloc** sets its equipment, formation names and the look of its units.
+
+## Power tiers
+
+A tier (`src/sim/config/powers.ts`) is the template every nation of that size shares. Province rows only say
+which province is the capital, the industrial heartland and so on. The generator (`src/sim/scenario/build.ts`)
+does the rest: it scales output to the tier's totals, assigns objective VP and the capital's size, and places
+the starting buildings and army.
+
+| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Capital | Provinces |
+| --- | --- | --- | --- | --- | --- | --- |
+| `great` | Yes | 260 / 140 / 70 | 13: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, field 5 INF + 1 CAV | Capital 3, heartland 2 | Metropolis | 6–9 |
+| `major` | Yes | 150 / 80 / 40 | 8: capital 2 INF + 1 ART, heartland 2 INF, field 2 INF + 1 CAV | Capital 2, heartland 1 | Large City | 3–5 |
+| `minor` | No: always computer-controlled | 70 / 35 / 20 | 4: capital 3 INF, field 1 INF | Capital 1 | City | 1–2 |
+
+The smaller tiers spend the same share of income on army upkeep at the start as a great power (about a sixth).
+All seven current nations are great powers. Minor powers are real nations: they have an economy, research,
+recruit, and the AI plays them. Players can't pick them on the nation picker.
+
+**Field units** go where the province rows put them (`garrison`). If a nation's rows place none, they are dealt
+out one at a time over its border provinces first, then its other provinces, then its capital. The original six
+place theirs by hand; Hungary leaves its own to the generator, which happens to pick the same provinces.
 
 ## Blocs: shared armies
 
@@ -20,8 +45,8 @@ A nation names its bloc and overrides only what it wants to make its own. The or
 everything (their identities are unchanged). Hungary overrides six designs (Toldi, Turán, Zrínyi, Csaba, Tas and
 its hussars) and one formation name, and takes the rest from `central`. A new country can override nothing.
 
-Two nations in one bloc still look different on the map: counters are rimmed in the owner's colour, and the bloc
-insignia on their units is drawn in the nation's own colour.
+Two nations in one bloc still look different on the map: army counters keep the owner's colour, the 3D army
+models fly the nation's flag, and the bloc insignia on their units is drawn in the nation's own colour.
 
 Blocs are about equipment, not alliances: two `central` nations can fight each other. Adding a bloc means one
 entry in `BLOCS` and `BLOC_IDS` and one look in the art tables. TypeScript flags every table that is missing it.
@@ -32,7 +57,8 @@ Required steps are marked ★. Everything else has a fallback.
 
 ### 1. Map shapes ★ — `scripts/map/province-sources.mjs`
 
-Group the country's Natural Earth admin-1 units into provinces. Inspect what the source data offers first:
+Group the country's Natural Earth admin-1 units into provinces, as many as its tier allows. Inspect what the
+source data offers first:
 
 ```bash
 npm run map:fetch    # once; downloads ~40 MB into data-src/ (not committed)
@@ -40,10 +66,12 @@ node -e 'const j=require("./data-src/ne_10m_admin_1_states_provinces.geojson");
   for (const f of j.features) if (f.properties.adm0_a3==="HUN") console.log(f.properties.name, "|", f.properties.region)'
 ```
 
-Hungary's units carry a `region` (its seven statistical regions), so each rule is one line:
+Hungary's units carry a `region` (its seven statistical regions), so each rule is one line. A one-province
+minor power takes its whole country:
 
 ```js
 { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
+{ id: 'si-ljubljana', country: 'SVN', whole: true },   // a one-province minor power (an example, not in the game)
 ```
 
 Then `npm run map:build`. It fails if a rule matches nothing, and it tags every province with its country so the
@@ -51,14 +79,18 @@ UI knows which countries the theatre covers. No list needs updating by hand.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
-opening zoom. Merging two regions fixed it. Small countries need fewer provinces (see *At scale* below).
+opening zoom. Merging two regions fixed it. The tiers' province ranges keep small countries small.
 
-### 2. Province data ★ — `src/sim/scenario/europe/provinces.ts`
+### 2. Province rows ★ — `src/sim/scenario/europe/provinces.ts`
 
-One row per province: name, terrain, tier (`capital`, `industrial`, `major`, `town`), principal city with
-coordinates, population, two to five towns, and optionally `oil` or `vp`. Output is normalised per nation, so
-tiers only set relative weights. To keep the balance template every nation needs exactly one `capital` (3 VP),
-one `industrial` heartland (2 VP) and one `oil` province.
+One row per province: name, terrain, role, principal city with coordinates, population, two to five towns, and
+optionally `oil`. The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
+`capital`, and great and major powers one `industrial` heartland. Roles only set relative weights: output is
+scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
+
+Optional fields: `recruiting: true` for a great power's second recruiting city, `garrison` to place field units
+by hand, `buildings` for extras such as fortifications. Neutral states use `garrison`, `buildings` and `vp`
+directly.
 
 ### 3. Connections ★ — `src/sim/scenario/europe/connections.ts`
 
@@ -71,63 +103,57 @@ through Vienna.
 
 ```ts
 {
-  id: 'hu', name: 'Hungary', adjective: 'Hungarian', color: '#b0476d', capital: 'hu-budapest', bloc: 'central',
+  id: 'hu', name: 'Hungary', adjective: 'Hungarian', color: '#b0476d', capital: 'hu-budapest', power: 'great', bloc: 'central',
   trait: 'One gateway',                                          // optional; the menu shows the bloc name without it
   blurb: 'Landlocked behind Austria. The only road out runs through Vienna, and it is the only road in.', // optional
 },
 ```
 
-Pick a colour that stands apart from the neighbours'.
+A minor power needs only the first line. Pick a colour that stands apart from the neighbours'.
 
-### 5. Starting setup ★ — `src/sim/scenario/europe/setup.ts`
+That is the whole of the required work: the starting setup is generated (`setup.ts` holds no per-country data).
 
-Add the capital, heartland and second recruiting city to the three building lists, and place the standard
-13-unit army (capital 3 INF + 1 ART, heartland 2 INF + 1 ART, then 5 INF and 1 cavalry on the frontier).
-
-### 6. Optional flavour
+### 5. Optional flavour
 
 | What | Where | Fallback |
 | --- | --- | --- |
-| Flag | `src/ui/flags.tsx` (often one line: `hu: h3(red, white, green)`) | Plain neutral flag |
+| Flag | `STRIPED` in `src/ui/flags.tsx` for striped flags (one line: `hu: { dir: 'h', colors: [red, white, green] }`), `FLAGS` for others | Plain neutral flag; the 3D army models fly one in the nation's colour |
 | Own designs or formation names | `IDENTITIES` in `scenario/europe/identity.ts` (partial) | The bloc's |
-| National speciality | `SPECIALITIES` in the same file | None; Diplomacy shows the bloc |
+| National speciality | `SPECIALITIES` in the same file | None; Diplomacy shows the tier |
+| Field unit placement | `garrison` on the rows | Border provinces first |
 | Capital landmark | `NATIONAL_LANDMARKS` in `src/ui/art/CityModel.ts`, `landmarkFor` in `CitySkyline.tsx` | A cathedral on the map; the skyline picks one from the province id |
 | A look of its own | `NATIONAL_STYLES` and the tables in `src/ui/art/` | The bloc's look |
 
-### 7. Check it
+### 6. Check it
 
 ```bash
-npm run typecheck && npm test   # scenario tests check shapes, towns, connectivity, balance and names
+npm run typecheck && npm test   # scenario tests check shapes, towns, connectivity, the tier template and names
 npm run build && npm run e2e && npm run e2e:mobile
 node scripts/dev/screens.mjs e2e-output/screens hu map zoom:1   # look at the new country
 npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the bloc's art, if you added a bloc
 ```
 
 The scenario tests cover any number of nations. They check that every province has a shape, that no town falls
-outside the theatre, that the movement graph is connected, that output and the starting army match the template,
-and that every unit has a name.
+outside the theatre, that the movement graph is connected, that every nation matches its tier (output, starting
+army, objective VP, capital size, province count), and that every unit has a name.
 
 **Saves made before the country existed still load.** `joinNewcomers` (in `src/sim/save.ts`) adds it as it
-would start a new campaign: AI-controlled, at peace, at 1914 technology. Only a save holding provinces that no
-longer exist (for example after redrawing an existing country) is refused.
+would start a new campaign: AI-controlled, at peace, at 1914 technology. Only a save from a redrawn map is
+refused (provinces that no longer exist, or a new country carved out of land the save already holds).
 
 ## At scale: what to streamline next
 
-Blocs remove the biggest per-country cost: before them, each country needed about 40 named designs, 14
-formation templates and new art. What remains is about 50 lines of data per country (Hungary's: mostly
-province rows and connections). To add every country,
-these are the next bottlenecks, roughly in order:
+Blocs removed the per-country art and names; power tiers removed the per-country balance numbers and starting
+setup. What remains per country is its province rows, its connections and one nation line. The next bottlenecks:
 
-1. **Power tiers.** Every nation now gets the same output, army and VP. For about 190 countries, add a tier
-   (great, major, minor) that scales output targets, the starting template and province count. A minor country
-   would have one or two provinces and no speciality. This is also the real fix for province size.
-2. **Generated starting setup.** Starting buildings and armies follow the template, so they could be derived from
-   the province tiers and the frontier instead of listed by hand.
-3. **Seeded connections.** `build-map.mjs` could emit the land borders it already knows, leaving only mountain
+1. **Seeded connections.** `build-map.mjs` could emit the land borders it already knows, leaving only mountain
    passes and straits to curate by hand.
-4. **Province rows from data.** Natural Earth's populated places could propose cities, towns and populations to
+2. **Province rows from data.** Natural Earth's populated places could propose cities, towns and populations to
    review instead of typing them.
-5. **The map frame.** The projection fits the theatre's bounds. Adding Scandinavia or Russia changes the map's
+3. **The map frame.** The projection fits the theatre's bounds. Adding Scandinavia or Russia changes the map's
    scale, and counter sizes and zoom thresholds would need retuning. A true world map needs a different camera.
-6. **The nation picker.** A two-column card list suits a dozen nations; beyond that, picking on the map works
-   better.
+4. **The nation picker and Diplomacy.** A two-column card list and one diplomacy row per nation suit a dozen
+   or two; beyond that, picking on the map and grouping minor powers work better.
+5. **Speed.** Each AI looks over every province and army every 8 seconds, so simulation cost grows with nations
+   times map size. Fine at normal speed for a few dozen nations; fast-forward and headless balance runs will
+   need attention before a whole-world map.

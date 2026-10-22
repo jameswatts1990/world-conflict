@@ -212,6 +212,14 @@ export interface BlocDef {
   identity: NationIdentity;
 }
 
+/**
+ * How much of a power a nation is (see config/powers.ts): it sets the nation's output, starting
+ * army and buildings, objective values and size. Great and major powers are playable; minor
+ * powers are always computer-controlled.
+ */
+export type PowerTier = 'great' | 'major' | 'minor';
+export const POWER_TIERS: readonly PowerTier[] = ['great', 'major', 'minor'];
+
 /** A nation's departures from its bloc's identity; anything left out comes from the bloc. */
 export interface NationIdentityOverrides {
   units?: NationIdentity['units'];
@@ -226,6 +234,7 @@ export interface NationDef {
   adjective: string;
   color: string;
   capital: ProvinceId;
+  power: PowerTier;
   bloc: BlocId;
   /** One small national edge; optional, so a new country can start without one. */
   speciality?: NationSpeciality;
@@ -251,7 +260,6 @@ export interface ScenarioDef {
   connections: ConnectionDef[];
   startingBuildings: { province: ProvinceId; buildings: Partial<Record<BuildingType, number>> }[];
   startingArmies: StartingArmyDef[];
-  startingResources: Resources;
   /** Technologies every nation knows at the start. */
   startingTechs: TechId[];
 }

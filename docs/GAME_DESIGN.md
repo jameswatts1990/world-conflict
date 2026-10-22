@@ -42,10 +42,21 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ### Balance assumptions
 
-Each nation's core provinces are normalised to the same base output (260 money, 140 materials and 70 manpower per
-minute), one oil province, 5 objective VP, the same city ladder (one Metropolis, one Large City) and the same
-13-unit starting army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF and 1 cavalry on the borders.
-Geography stays asymmetric, and each nation has one modest speciality (§6.4).
+Every nation has a **power tier** (`src/sim/config/powers.ts`) that sets its start, so nations of one tier start
+broadly balanced:
+
+| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Provinces |
+| --- | --- | --- | --- | --- | --- |
+| Great | Yes | 260 / 140 / 70 | 13 units | Capital 3, heartland 2 | 6–9 |
+| Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
+| Minor | No (computer-controlled) | 70 / 35 / 20 | 4 units | Capital 1 | 1–2 |
+
+All seven current nations are great powers. Each great power has one oil province, the same city ladder (one
+Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF
+and 1 cavalry in the field. The smaller tiers keep the same share of income on starting upkeep. Starting buildings
+and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
+the rows place them, or onto border provinces first. Geography stays asymmetric, and each great power has one
+modest speciality (§6.4).
 
 ## 4. Time model
 
