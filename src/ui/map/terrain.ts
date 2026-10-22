@@ -43,6 +43,19 @@ const DETAIL: Record<Terrain, string> = {
   marsh: '#0f0',
 };
 
+/**
+ * Relief strength. Kept gentle so the shading reads as texture and never hides
+ * borders, counters or labels: the height of the bumps, and how much shadow and
+ * highlight one unit of slope adds. Light on flat ground is sin(40°) ≈ FLAT,
+ * which gets neither.
+ */
+const RELIEF_HEIGHT = 6;
+const SHADE = 0.75;
+const LIT = 0.45;
+const FLAT = 0.643;
+
+const n = (v: number) => Math.round(v * 1000) / 1000;
+
 /** Texture resolution in pixels per map unit. */
 const PX_PER_UNIT = 3;
 
@@ -142,23 +155,23 @@ function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: num
   <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="6" seed="11" result="noise"/>
   <feComponentTransfer in="noise" result="ridges"><feFuncA type="table" tableValues="1 0.35 0"/></feComponentTransfer>
   <feComposite in="ridges" in2="amp" operator="in" result="height"/>
-  <feDiffuseLighting in="height" surfaceScale="12" diffuseConstant="1" lighting-color="#fff" result="light">
+  <feDiffuseLighting in="height" surfaceScale="${RELIEF_HEIGHT}" diffuseConstant="1" lighting-color="#fff" result="light">
     <feDistantLight azimuth="225" elevation="40"/>
   </feDiffuseLighting>
-  <feColorMatrix in="light" type="matrix" values="0 0 0 0 0.06  0 0 0 0 0.08  0 0 0 0 0.12  -1.9 0 0 0 1.222" result="shade"/>
-  <feColorMatrix in="light" type="matrix" values="0 0 0 0 1  0 0 0 0 0.99  0 0 0 0 0.95  1.3 0 0 0 -0.836" result="lit"/>
+  <feColorMatrix in="light" type="matrix" values="0 0 0 0 0.2  0 0 0 0 0.2  0 0 0 0 0.22  ${-SHADE} 0 0 0 ${n(SHADE * FLAT)}" result="shade"/>
+  <feColorMatrix in="light" type="matrix" values="0 0 0 0 1  0 0 0 0 0.99  0 0 0 0 0.95  ${LIT} 0 0 0 ${n(-LIT * FLAT)}" result="lit"/>
   <feMerge><feMergeNode in="shade"/><feMergeNode in="lit"/></feMerge>
 </filter>
 <filter id="detail" ${region}>
   <feTurbulence type="fractalNoise" baseFrequency="0.24" numOctaves="3" seed="5" result="fine"/>
-  <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.2  0 0 0 0 0.3  0 0 0 0 0.14  2.6 0 0 0 -1.2" result="canopy"/>
+  <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.24  0 0 0 0 0.33  0 0 0 0 0.17  1.9 0 0 0 -0.92" result="canopy"/>
   <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="forestW"/>
   <feComposite in="canopy" in2="forestW" operator="in" result="forest"/>
   <feTurbulence type="fractalNoise" baseFrequency="0.05 0.22" numOctaves="2" seed="9" result="streak"/>
-  <feColorMatrix in="streak" type="matrix" values="0 0 0 0 0.3  0 0 0 0 0.44  0 0 0 0 0.46  2.4 0 0 0 -1.15" result="reeds"/>
+  <feColorMatrix in="streak" type="matrix" values="0 0 0 0 0.34  0 0 0 0 0.46  0 0 0 0 0.48  1.8 0 0 0 -0.88" result="reeds"/>
   <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 1 0 0 0" result="marshW"/>
   <feComposite in="reeds" in2="marshW" operator="in" result="marsh"/>
-  <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.42  0 0 0 0 0.4  0 0 0 0 0.37  0 0 9 0 -4.9" result="speck"/>
+  <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.5  0 0 0 0 0.48  0 0 0 0 0.45  0 0 2.4 0 -1.38" result="speck"/>
   <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0" result="urbanW"/>
   <feComposite in="speck" in2="urbanW" operator="in" result="urban"/>
   <feMerge><feMergeNode in="forest"/><feMergeNode in="marsh"/><feMergeNode in="urban"/></feMerge>

@@ -1,4 +1,5 @@
-// Shared type vocabulary for the unit artwork. Re-exported from UnitArt.tsx.
+// Shared type vocabulary for the artwork. Unit types are re-exported from UnitArt.tsx, building and
+// terrain types from CitySkyline.tsx and BuildingIcons.tsx.
 
 export type ArtUnitType =
   | 'infantry'
@@ -40,3 +41,31 @@ export const ART_UNIT_TYPES: readonly ArtUnitType[] = [
 export const ART_GENS: readonly ArtGen[] = ['ww1', 'interwar', 'ww2'];
 
 export const ART_NATIONS: readonly ArtNation[] = ['uk', 'fr', 'de', 'it', 'es', 'pl', 'neutral'];
+
+export type ArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
+  | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'
+  | 'fortifications' | 'supplyDepot' | 'railway' | 'coastalBattery';
+export type ArtTerrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
+
+export type BuildingCategory = 'economy' | 'military' | 'civic' | 'infrastructure';
+
+export const BUILDING_CATEGORY: Record<ArtBuilding, BuildingCategory> = {
+  industry: 'economy',
+  market: 'economy',
+  powerPlant: 'economy',
+  refinery: 'economy',
+  housing: 'economy',
+  university: 'economy',
+  barracks: 'military',
+  academy: 'military',
+  armsWorks: 'military',
+  motorPool: 'military',
+  tankWorks: 'military',
+  hospital: 'civic',
+  propaganda: 'civic',
+  garrisonHq: 'civic',
+  fortifications: 'infrastructure',
+  supplyDepot: 'infrastructure',
+  railway: 'infrastructure',
+  coastalBattery: 'infrastructure',
+};

@@ -1,4 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { geoContains } from 'd3-geo';
+import type { Feature, MultiPolygon, Polygon } from 'geojson';
+import { feature } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { NATION_OUTPUT_TARGET } from '../src/sim/scenario/europe/provinces';
 import { world } from './helpers';
@@ -11,9 +14,25 @@ describe('scenario data', () => {
   });
 
   it('every province has a shape and every shape has a province', () => {
-    const topo = JSON.parse(readFileSync('src/assets/map/theatre.topo.json', 'utf8'));
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
     const shapeIds = new Set<string>(topo.objects.provinces.geometries.map((g: { properties: { pid: string } }) => g.properties.pid));
     expect([...shapeIds].sort()).toEqual([...world.provinceIds].sort());
+  });
+
+  it('the world underlay shares the provinces\' coasts and never lies under the theatre', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    // One topology for both layers: shared coasts and borders are the very same arcs.
+    expect(Object.keys(topo.objects).sort()).toEqual(['countries', 'provinces']);
+    const countries = (feature(topo, topo.objects.countries) as unknown as { features: Feature<Polygon | MultiPolygon, { iso: string }>[] }).features;
+    const covered: string[] = [];
+    for (const id of world.provinceIds) {
+      const def = world.provinces[id];
+      for (const t of [def.city, ...def.towns]) {
+        const under = countries.find((c) => geoContains(c, t.coord));
+        if (under) covered.push(`${t.name} (${under.properties.iso})`);
+      }
+    }
+    expect(covered).toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {

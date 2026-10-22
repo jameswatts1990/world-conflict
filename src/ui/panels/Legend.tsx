@@ -1,20 +1,40 @@
 // Map key popover: explains the symbols used on the strategy map.
 import { CITY } from '../../sim/config/buildings';
-import type { NationId, OwnerId, UnitType, World } from '../../sim';
-import { CounterArt } from '../art/adapters';
+import type { BuildingCategory, NationId, OwnerId, UnitType, World } from '../../sim';
+import { CounterArt, citySprite, plinthColor } from '../art/adapters';
 import { Flag } from '../flags';
 import { Icon } from '../icons';
 import { TIER_COLORS, moraleRamp, type MapMode } from '../map/MapView';
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
-function Sample({ children, w = 34 }: { children: React.ReactNode; w?: number }) {
+function Sample({ children, w = 34, h = 20 }: { children: React.ReactNode; w?: number; h?: number }) {
   return (
-    <svg className="lg-sample" width={w} height={20} viewBox={`${-w / 2} -10 ${w} 20`} aria-hidden>
+    <svg className="lg-sample" width={w} height={h} viewBox={`${-w / 2} ${-h / 2} ${w} ${h}`} aria-hidden>
       {children}
     </svg>
   );
 }
+
+/** A small town as the zoomed-in map draws it. */
+function CitySample({ color }: { color: string }) {
+  const sp = citySprite({
+    seed: 'fr-nord',
+    tier: 1,
+    capital: false,
+    buildings: { industry: 1, barracks: 1 },
+    construction: null,
+    freeSlots: 1,
+    terrain: 'plains',
+    coastal: false,
+    nationColor: color,
+    battle: false,
+  });
+  const k = 44 / sp.width;
+  return <image href={sp.href} x={-sp.cx * k} y={-sp.cy * k + 2} width={sp.width * k} height={sp.height * k} />;
+}
+
+const CATEGORIES: BuildingCategory[] = ['economy', 'military', 'civic', 'infrastructure'];
 
 /** A miniature army counter, as drawn on the map. */
 function ArmySample({ color, rim, owner, type, count }: { color: string; rim: string; owner: OwnerId; type: UnitType; count: number }) {
@@ -84,6 +104,20 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
           </g>
         </Sample>
         Objective worth victory points
+        <Sample w={46} h={30}>
+          <CitySample color={world.nations[human].color} />
+        </Sample>
+        Zoomed in, each city is a model of everything built there; its rim shows the owner
+        <Sample w={46}>
+          {CATEGORIES.map((c, i) => (
+            <rect key={c} x={-21 + i * 11} y={-5} width={9} height={9} rx={1.5} fill={plinthColor(c)} stroke="rgba(0,0,0,0.5)" />
+          ))}
+        </Sample>
+        Building plinths: economy, military, civic, infrastructure
+        <Sample>
+          <path d="M-13,0 L0,-6.5 L13,0 L0,6.5 Z" className="lg-plot" />
+        </Sample>
+        Empty plot: a free building slot (a crane means building work)
         <Sample w={46}>
           <ArmySample color={world.nations[human].color} rim="#fff" owner={human} type="tank" count={4} />
         </Sample>

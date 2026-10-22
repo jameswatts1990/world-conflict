@@ -1,13 +1,15 @@
 // Strategy map: baked shaded-relief terrain under translucent ownership tints,
 // glowing national borders, plated city labels, towns and army counters with
-// national unit art. Static geography is projected once and memoised; ownership,
-// labels (on zoom) and army markers (every frame) update.
+// national unit art. Zoomed in, every city is a small 3D model of what it holds.
+// Static geography is projected once and memoised; ownership, labels (on zoom)
+// and army markers (every frame) update.
 import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import {
   armyMorale,
+  buildingSlots,
   findPath,
   isArmyInTransit,
   isRouted,
@@ -19,7 +21,8 @@ import {
   type ProvinceId,
   type World,
 } from '../../sim';
-import { CounterArt } from '../art/adapters';
+import { slotsUsed } from '../../sim/config/buildings';
+import { CounterArt, citySprite, type CitySprite } from '../art/adapters';
 import { darken, lighten, ownerColor, strengthColor } from '../color';
 import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
@@ -48,7 +51,45 @@ export interface MapViewProps {
 }
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
-const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2 };
+const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2, cityModels: 1.15 };
+
+/**
+ * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
+ * ratio where cities are still drawn as symbols. Models grow more slowly than the
+ * map, so neighbouring cities keep their distance.
+ */
+export function cityModelScale(ratio: number): number {
+  if (ratio < ZOOM.cityModels) return 0;
+  return Math.min(3.6, 0.4 + 0.8 * ratio);
+}
+
+/** What a city's model shows: its buildings, free slots, owner and state. */
+function cityModelProps(state: GameState, world: World, id: ProvinceId) {
+  const def = world.provinces[id];
+  const ps = state.provinces[id];
+  const job = ps.construction?.building ?? null;
+  return {
+    seed: id,
+    tier: ps.tier,
+    capital: def.city.size === 'capital',
+    buildings: ps.buildings,
+    construction: job,
+    freeSlots: buildingSlots(state, id) - slotsUsed(ps.buildings, job),
+    terrain: def.terrain,
+    coastal: def.coastal,
+    nationColor: ps.owner === 'neutral' ? undefined : ownerColor(world, ps.owner),
+    battle: !!state.battles[id],
+  };
+}
+
+/** Where a city's model puts things, in screen pixels from its centre. */
+interface CityFootprint {
+  sprite: CitySprite;
+  /** Army counters stack upwards from this height. */
+  lift: number;
+  /** Bottom edge of the model: the name plate hangs below it. */
+  below: number;
+}
 
 /** Red → amber → green ramp for 0..1. */
 export function rampColor(t: number): string {
@@ -358,6 +399,7 @@ function LabelLayer({
   ownerOf,
   k,
   ratio,
+  cities,
 }: {
   geo: MapGeometry;
   world: World;
@@ -365,6 +407,7 @@ function LabelLayer({
   ownerOf: Record<ProvinceId, string>;
   k: number;
   ratio: number;
+  cities: Record<ProvinceId, CityFootprint> | null;
 }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const labels = useMemo(() => nationLabels(geo, world, ownerOf), [geo, world, owners]);
@@ -385,10 +428,13 @@ function LabelLayer({
       {world.provinceIds.map((id) => {
         let [x, y] = geo.labelPoints[id];
         const [ax, ay] = geo.anchors[id];
-        // Keep the name clear of the city marker, its plate and any army stack above it.
-        if (Math.abs(x - ax) * k < 80 && (y - ay) * k > -70 && (y - ay) * k < 40) {
+        // Keep the name clear of the city marker or model, its plate and any army stack above it.
+        const city = cities?.[id];
+        const half = city ? Math.max(80, city.sprite.rx * cityModelScale(ratio) + 30) : 80;
+        const below = city ? city.below + 20 : 40;
+        if (Math.abs(x - ax) * k < half && (y - ay) * k > -70 - (city?.lift ?? 0) && (y - ay) * k < below) {
           x = ax;
-          y = ay + 30 * s;
+          y = ay + (below - 10) * s;
         }
         return (
           <text key={id} x={x} y={y + 12 * s} fontSize={10.5 * s} strokeWidth={2.6 * s} className="province-label">
@@ -421,8 +467,23 @@ function Plate({ text, y, color, size = 10, className = '' }: { text: string; y:
   );
 }
 
-function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: GameState; world: World; k: number; ratio: number }) {
+function CityLayer({
+  geo,
+  state,
+  world,
+  k,
+  ratio,
+  cities,
+}: {
+  geo: MapGeometry;
+  state: GameState;
+  world: World;
+  k: number;
+  ratio: number;
+  cities: Record<ProvinceId, CityFootprint> | null;
+}) {
   const s = 1 / k;
+  const px = cityModelScale(ratio);
   return (
     <g className="city-layer" pointerEvents="none">
       {ratio >= ZOOM.townDots &&
@@ -448,6 +509,36 @@ function CityLayer({ geo, state, world, k, ratio }: { geo: MapGeometry; state: G
         // Markers grow with the city: tier 1 (town) to tier 5 (world city).
         const tierScale = 0.76 + ps.tier * 0.12;
         const showName = isCapital ? ratio >= ZOOM.capitals : size === 'major' ? ratio >= ZOOM.majorCities : ratio >= ZOOM.towns;
+        const city = cities?.[id];
+        if (city) {
+          const sp = city.sprite;
+          const rx = sp.rx * px + 3;
+          const right = (sp.width - sp.cx) * px;
+          return (
+            <g key={id} transform={`translate(${x},${y}) scale(${s})`} data-city-model={id}>
+              <image href={sp.href} x={-sp.cx * px} y={-sp.cy * px} width={sp.width * px} height={sp.height * px} />
+              {capture && (
+                <g className="capture">
+                  <ellipse rx={rx} ry={rx / 2} className="capture-track" />
+                  <ellipse rx={rx} ry={rx / 2} className="capture-ring" stroke={world.nations[capture.by]?.color} pathLength={100} strokeDasharray={`${(capture.progress / capture.required) * 100} 100`} />
+                </g>
+              )}
+              {def.objectiveVp ? (
+                <g className="vp-badge-map" transform={`translate(${Math.min(right, sp.rx * px) + 2},${-sp.rx * px * 0.18})`}>
+                  <circle r={5.6} />
+                  <text y={3.1}>{def.objectiveVp}</text>
+                </g>
+              ) : null}
+              <Plate
+                text={def.city.name}
+                y={city.below - 3}
+                color={ownerColor(world, ps.owner)}
+                size={isCapital ? 10.5 : 9.5}
+                className={isCapital ? 'capital' : ''}
+              />
+            </g>
+          );
+        }
         return (
           <g key={id} transform={`translate(${x},${y}) scale(${s})`}>
             {capture && (
@@ -601,6 +692,7 @@ function ArmyLayer({
   ctrl,
   geo,
   k,
+  cities,
   selectedArmies,
   onArmyClick,
   onArmyContext,
@@ -609,6 +701,7 @@ function ArmyLayer({
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
+  cities: Record<ProvinceId, CityFootprint> | null;
   selectedArmies: ArmyId[];
   onArmyClick: (army: Army, additive: boolean) => void;
   onArmyContext: (army: Army) => void;
@@ -630,7 +723,7 @@ function ArmyLayer({
     if (!isArmyInTransit(army)) {
       const n = stacks.get(army.province) ?? 0;
       stacks.set(army.province, n + 1);
-      y -= (19 + n * 27) / k;
+      y -= (19 + (cities?.[army.province]?.lift ?? 0) + n * 27) / k;
     }
     const own = army.owner === human;
     if (army.move && (own || selected.has(army.id))) {
@@ -816,6 +909,20 @@ export function MapView(props: MapViewProps) {
     };
   }, [geo, world]);
 
+  // Build every city's model in idle moments, so the first zoom-in does not stall.
+  useEffect(() => {
+    const ids = world.provinceIds;
+    let next = 0;
+    let timer = 0;
+    const step = () => {
+      const until = performance.now() + 6;
+      while (next < ids.length && performance.now() < until) citySprite(cityModelProps(ctrl.state, world, ids[next++]));
+      if (next < ids.length) timer = window.setTimeout(step, 40);
+    };
+    timer = window.setTimeout(step, 400);
+    return () => window.clearTimeout(timer);
+  }, [ctrl, world]);
+
   // Zoom & pan.
   useEffect(() => {
     const svg = svgRef.current!;
@@ -945,6 +1052,21 @@ export function MapView(props: MapViewProps) {
   const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
   const showDetail = ratio >= ZOOM.detail;
 
+  // Each city's model, rebuilt only when what it shows changes (sprites are cached by look).
+  const modelPx = cityModelScale(ratio);
+  const cities = useMemo(() => {
+    if (!modelPx) return null;
+    const out: Record<ProvinceId, CityFootprint> = {};
+    for (const id of world.provinceIds) {
+      const sprite = citySprite(cityModelProps(state, world, id));
+      // Counters stand on the token's back edge, clear of its buildings.
+      out[id] = { sprite, lift: (sprite.rx / 2 + 2.5) * modelPx, below: (sprite.height - sprite.cy) * modelPx + 1 };
+    }
+    return out;
+    // ctrl.version changes whenever the simulation state does.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [world, modelPx, ctrl.version]);
+
   const owners: string[] = [...world.nationIds, 'neutral'];
   return (
     <div className="map-stage">
@@ -1010,12 +1132,13 @@ export function MapView(props: MapViewProps) {
           {showDetail && (
             <>
               <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
-              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} />
-              <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} />
+              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} cities={cities} />
+              <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} cities={cities} />
               <ArmyLayer
                 ctrl={ctrl}
                 geo={geo}
                 k={k}
+                cities={cities}
                 selectedArmies={props.selectedArmies}
                 onArmyClick={onArmyClick}
                 onArmyContext={onArmyContext}

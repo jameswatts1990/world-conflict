@@ -293,8 +293,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 - **Map.** Shaded-relief terrain is baked once per session from each province's terrain type (an SVG turbulence and
   lighting filter rendered to a bitmap, `src/ui/map/terrain.ts`), so mountains, hills, forests and marshes read at a
-  glance. Ownership is a translucent nation tint over the terrain, with a glowing inner border in each nation's colour.
-  The sea has a depth gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey.
+  glance. The relief is kept low in contrast so it never competes with borders, counters and labels. Ownership is a
+  translucent nation tint over the terrain, with a glowing inner border in each nation's colour. The sea has a depth
+  gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey. Provinces and the world
+  around them come from one topology, so their coasts and borders are the same lines.
   Five map views, cycled with V: **Political** (strong tint), **Terrain** (light tint), **Supply** (your provinces
   green when connected to a supply hub, red when cut off), **Morale** (civilian morale, red to green) and **Cities**
   (city tier).
@@ -304,6 +306,18 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
   capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states are hatched
   with lines that keep the same spacing at every zoom.
+- **City models.** From one zoom step in, each city is a small isometric 3D model on a round token whose rim carries
+  the owner's colour, so its contents read at a glance. Every building has its own recognisable model (smoking factory
+  chimneys, a barracks with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank
+  works, a hospital with a red cross on the roof, a radio mast, crates at the depot, a train for the railway, walls
+  for fortifications, gun pits for coastal batteries) standing on a plinth in its category's colour (the same colours
+  as the city view's slot tiles); ports have a steamer moored offshore. Free building slots are empty plots, construction shows scaffolding
+  and a crane, battles smoke and fire. Generic housing, in the region's style (slate in Britain, zinc in France, red
+  tile in Germany, terracotta in the south), grows denser and taller with the tier, and the six capitals have their
+  landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal Castle). Every building
+  has a fixed home cell in its district, so building something never moves the rest. Models are drawn in code
+  (`src/ui/art/CityModel.ts`, `iso3d.ts`) and cached as one image per city look, so panning stays cheap; army counters
+  stand on the token's back edge. The cursor tooltip lists the same buildings and free slots.
 - **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
   and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
   war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Marching
@@ -333,8 +347,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   with their provinces captured, enemy units destroyed, units lost and armies surrendered; after closing it, a banner
   brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations plus neutrals, with
-  national uniforms, headgear, camouflage and insignia), city skylines, building, branch and HUD icons are inline
-  SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
+  national uniforms, headgear, camouflage and insignia), city skylines, 3D city models, building, branch and HUD icons
+  are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
 
 ## 14. Open questions for playtesting
 
