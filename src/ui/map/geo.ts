@@ -46,6 +46,8 @@ export interface MapGeometry {
   provinceBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
+  /** The land borders between provinces whose owners `front` says are at war. */
+  frontLines: (ownerOf: (pid: ProvinceId) => OwnerId, front: (a: OwnerId, b: OwnerId) => boolean) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Screen directions (radians) from each city towards its neighbours over land: the roads out of town. */
@@ -290,6 +292,13 @@ export function buildMapGeometry(world: World): MapGeometry {
     nationBorders: (ownerOf) =>
       path(
         mesh(topo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
+      ) ?? '',
+    frontLines: (ownerOf, front) =>
+      path(
+        mesh(topo, geoms, (a, b) => {
+          const [oa, ob] = [ownerOf(pidOf(a)), ownerOf(pidOf(b))];
+          return a !== b && oa !== ob && front(oa, ob);
+        }),
       ) ?? '',
     ownerOutline: (owner, ownerOf) =>
       path(

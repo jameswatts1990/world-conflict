@@ -163,6 +163,15 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Battle in progress
         <Sample>
+          <line x1={-15} y1={0} x2={15} y2={0} className="front-casing" />
+          <line x1={-15} y1={0} x2={15} y2={0} className="front-line mine" />
+        </Sample>
+        Front: your border with a nation at war with you
+        <Sample>
+          <line x1={-15} y1={0} x2={15} y2={0} className="front-line other" />
+        </Sample>
+        Front between two other powers at war
+        <Sample>
           <line x1={-15} y1={0} x2={15} y2={0} className="lg-line pass" />
         </Sample>
         Mountain pass

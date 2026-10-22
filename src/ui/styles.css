@@ -719,6 +719,30 @@ kbd {
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
+.front-casing {
+  fill: none;
+  stroke: rgba(40, 6, 4, 0.75);
+  stroke-width: 5.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.front-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.front-line.mine {
+  stroke: #ff5a45;
+  stroke-width: 2.6;
+  stroke-dasharray: 7 4;
+}
+.front-line.other {
+  stroke: rgba(232, 120, 90, 0.6);
+  stroke-width: 1.8;
+  stroke-dasharray: 2 4;
+}
 .coastline {
   fill: none;
   stroke: rgba(12, 32, 48, 0.9);

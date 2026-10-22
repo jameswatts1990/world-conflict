@@ -24,6 +24,7 @@ import {
   type ArmyId,
   type GameState,
   type NationId,
+  type OwnerId,
   type ProvinceId,
   type UnitType,
   type World,
@@ -357,6 +358,49 @@ const BorderLayer = memo(function BorderLayer({
       ))}
       <path d={nationBorders} className="nation-border" />
       <path d={geo.coastline} className="coastline" />
+    </g>
+  );
+});
+
+/**
+ * Front lines: the borders between powers at war. The player's own fronts are drawn boldly, other powers'
+ * faintly, so a glance shows who is fighting whom.
+ */
+const FrontLayer = memo(function FrontLayer({
+  geo,
+  human,
+  owners,
+  wars,
+  ownerOf,
+}: {
+  geo: MapGeometry;
+  human: NationId;
+  owners: string;
+  /** Pairs at war, "a>b" with a before b, comma-separated. */
+  wars: string;
+  ownerOf: Record<ProvinceId, string>;
+}) {
+  const [mine, others] = useMemo(() => {
+    if (!wars) return ['', ''];
+    const pairs = new Set(wars.split(','));
+    const atWar = (a: OwnerId, b: OwnerId) => pairs.has(a < b ? `${a}>${b}` : `${b}>${a}`);
+    const own = (pid: ProvinceId) => ownerOf[pid];
+    return [
+      geo.frontLines(own, (a, b) => (a === human || b === human) && atWar(a, b)),
+      geo.frontLines(own, (a, b) => a !== human && b !== human && atWar(a, b)),
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo, human, owners, wars]);
+  if (!mine && !others) return null;
+  return (
+    <g className="front-layer" pointerEvents="none">
+      {others && <path d={others} className="front-line other" />}
+      {mine && (
+        <>
+          <path d={mine} className="front-casing" />
+          <path d={mine} className="front-line mine" />
+        </>
+      )}
     </g>
   );
 });
@@ -1554,6 +1598,9 @@ export function MapView(props: MapViewProps) {
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
+  const warsSig = world.nationIds
+    .flatMap((a) => world.nationIds.filter((b) => a < b && state.nations[a].relations[b]?.status === 'war').map((b) => `${a}>${b}`))
+    .join(',');
   const suppliedSig = world.provinceIds.map((id) => (state.provinces[id].supplied ? '1' : '0')).join('');
   // Morale is shown in steps of 2 so the layer re-renders only on visible changes.
   const valuesSig =
@@ -1699,6 +1746,7 @@ export function MapView(props: MapViewProps) {
             onHover={onHover}
           />
           <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} />
+          <FrontLayer geo={geo} human={human} owners={ownersSig} wars={warsSig} ownerOf={ownerOf} />
           <g className="overlay-layer" pointerEvents="none">
             {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
             {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
