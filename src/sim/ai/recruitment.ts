@@ -110,7 +110,8 @@ function standDown(ctx: Ctx): void {
   const candidates: { armyId: string; unitId: string; score: number; cost: number }[] = [];
   for (const a of ctx.armies) {
     if (a.move) continue;
-    const rear = !ctx.frontier.has(a.province) && (ctx.threat.get(a.province) ?? 0) === 0;
+    // Only armies at home in quiet provinces; occupiers abroad are never "rear".
+    const rear = ctx.ownedSet.has(a.province) && !ctx.frontier.has(a.province) && (ctx.threat.get(a.province) ?? 0) === 0;
     if (!rear) continue;
     for (const u of a.units) {
       candidates.push({ armyId: a.id, unitId: u.id, score: unitPower(state, me, u), cost: UNITS[u.type].upkeepPerMinute.money ?? 0 });
