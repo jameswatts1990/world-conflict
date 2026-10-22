@@ -5,6 +5,12 @@ import { hoursText, proseDuration } from '../format';
 import { AdvisorPortrait, Icon, type IconName } from '../icons';
 import { useEscape } from './Common';
 
+/** What the map's colours mean, for the briefing. */
+const LAND =
+  'Your land glows inside a white outline, other powers show their colour along their borders, and your front with an enemy is red. Hatched beige states are neutral; dark grey land lies outside the campaign.';
+const FOG =
+  ' Hazy land is under the fog of war: you only see armies near your provinces and armies (cavalry see further; Liaison Officers add what your allies see).';
+
 /** How the player is playing: touch input and the compact (phone) layouts change some instructions. */
 export interface BriefingInput {
   touch: boolean;
@@ -29,8 +35,8 @@ export function tutorialSteps(
       title: 'The map',
       icon: 'diplomacy',
       body: touch
-        ? 'Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.'
-        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
+        ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. ${LAND}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
+        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. ${LAND}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',

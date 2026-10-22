@@ -688,42 +688,115 @@ kbd {
 .hatch-neutral-line {
   stroke: rgba(105, 90, 55, 0.38);
 }
+/* Borders, faint to bold: provinces, powers (a colour band inside each frontier), your
+   own land (a glowing white outline) and the front (red). */
+/* Solid on purpose: dashes on these long non-scaling paths are redrawn on every pan frame and cost a lot. */
 .province-border {
   fill: none;
-  stroke: rgba(25, 30, 32, 0.4);
-  stroke-width: 0.7;
+  stroke: rgba(255, 252, 240, 0.3);
+  stroke-width: 0.75;
   vector-effect: non-scaling-stroke;
 }
-.nation-glow {
+.nation-band {
   fill: none;
-  stroke-width: 3;
-  opacity: 0.95;
+  stroke-width: 4;
+  opacity: 0.9;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
-.nation-glow.wide {
-  stroke-width: 9;
-  opacity: 0.4;
+.nation-band.wide {
+  stroke-width: 13;
+  opacity: 0.42;
 }
-.mode-terrain .nation-glow {
-  opacity: 0.55;
+.mode-terrain .nation-band {
+  opacity: 0.7;
 }
-.mode-terrain .nation-glow.wide,
-.mode-supply .nation-glow.wide {
+.mode-terrain .nation-band.wide {
+  opacity: 0.22;
+}
+.mode-supply .nation-band.wide,
+.mode-morale .nation-band.wide,
+.mode-development .nation-band.wide {
   opacity: 0.12;
+}
+.nation-border-casing {
+  fill: none;
+  stroke: rgba(8, 12, 16, 0.7);
+  stroke-width: 3.4;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
 }
 .nation-border {
   fill: none;
-  stroke: rgba(10, 14, 18, 0.92);
-  stroke-width: 1.5;
+  stroke: rgba(246, 242, 228, 0.92);
+  stroke-width: 1.2;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 .coastline {
   fill: none;
-  stroke: rgba(12, 32, 48, 0.9);
+  stroke: rgba(12, 32, 48, 0.85);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+}
+/* Your own land: the outline glows white, like a lit frontier. */
+.home-glow {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 7;
+  opacity: 0.32;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.home-glow.wide {
+  stroke-width: 15;
+  opacity: 0.14;
+}
+.home-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+/* Where your land meets a power at war with you. */
+.front-glow {
+  fill: none;
+  stroke: #ff4a32;
+  stroke-width: 10;
+  opacity: 0.3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.front-core {
+  fill: none;
+  stroke: #ff6a4d;
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Fog of war: a veil and drifting cloud over the land you cannot see. */
+.fog-veil {
+  fill: rgba(16, 25, 34, 0.44);
+}
+.fog-clouds {
+  opacity: 0.5;
+}
+.fog-edge {
+  fill: none;
+  stroke: rgba(210, 228, 240, 0.32);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.city-ground .fogged image,
+.city-layer .fogged image {
+  opacity: 0.5;
+}
+.city-layer .fogged .plate {
+  opacity: 0.8;
 }
 .connection {
   stroke: rgba(25, 25, 25, 0.16);
@@ -1070,6 +1143,15 @@ kbd {
   stroke-width: 0.6;
   vector-effect: non-scaling-stroke;
 }
+.mm-fog {
+  fill: rgba(10, 18, 26, 0.5);
+}
+.mm-home {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
 .mm-view {
   fill: rgba(255, 255, 255, 0.08);
   stroke: #ffcf5a;
@@ -1373,6 +1455,34 @@ kbd {
 .hc-army .hc-row {
   margin-top: 3px;
 }
+.hc-fog {
+  color: #a9c3d6;
+  font-style: italic;
+}
+/* A province under the fog of war, in its city panel. */
+.fog-note {
+  padding: 10px 12px;
+  background: linear-gradient(160deg, rgba(120, 150, 175, 0.12), rgba(20, 30, 40, 0.2));
+  border: 1px dashed rgba(160, 195, 220, 0.35);
+  border-radius: 7px;
+}
+.fog-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font: 600 13px var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #cfe3f1;
+}
+.fog-note p {
+  margin: 4px 0 0;
+}
+.fog-text {
+  margin: 0 0 8px;
+  font-style: italic;
+}
 
 /* Legend */
 .legend-pop {
@@ -1429,6 +1539,28 @@ kbd {
 .lg-swatch.outside {
   background: #3a413d;
 }
+.lg-swatch.fog {
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(214, 224, 235, 0.55), transparent 60%),
+    radial-gradient(ellipse at 75% 70%, rgba(214, 224, 235, 0.4), transparent 55%),
+    linear-gradient(#6c6f5e, #6c6f5e);
+  box-shadow: inset 0 0 0 20px rgba(14, 22, 31, 0.35);
+}
+.lg-home {
+  stroke: #fff;
+  stroke-width: 1.8;
+}
+.lg-home-glow {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 5;
+}
+.lg-band-fill {
+  fill: #b8b38f;
+}
+.lg-border {
+  stroke: rgba(246, 242, 228, 0.95);
+  stroke-width: 1.2;
+}
 .lg-nations {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1460,6 +1592,14 @@ kbd {
 .lg-line.route {
   stroke: #fff;
   stroke-dasharray: 6 4;
+}
+.lg-line.front {
+  stroke: #ff6a4d;
+  stroke-width: 2.6;
+}
+.lg-line.front-glow {
+  stroke: rgba(255, 74, 50, 0.35);
+  stroke-width: 8;
 }
 .lg-plot {
   fill: rgba(233, 220, 180, 0.18);
@@ -2831,7 +2971,8 @@ button.chip.queued:hover {
   color: #f1d9a0;
   border-color: rgba(226, 181, 76, 0.55);
 }
-.chip.slot {
+/* Not .slot: that is the city panel's building-slot tile. */
+.chip.perk {
   color: #b9d8f2;
   border-color: rgba(86, 191, 233, 0.55);
 }
@@ -3463,6 +3604,20 @@ button.chip.queued:hover {
 .rel-pill.peace {
   color: var(--good);
   border-color: rgba(102, 204, 108, 0.5);
+}
+.rel-pill.ally {
+  color: #bfe9ff;
+  background: rgba(90, 180, 230, 0.18);
+  border-color: rgba(127, 205, 245, 0.6);
+}
+.ally-intel {
+  display: block;
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.ally-intel.on {
+  color: #9fd8f5;
 }
 .truce {
   font-size: 11.5px;

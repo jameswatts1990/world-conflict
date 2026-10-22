@@ -11,6 +11,7 @@ export * from './loop';
 export * from './events';
 export * from './names';
 export * from './text';
+export * from './visibility';
 export { findPath } from './pathfinding';
 export { legTicks } from './systems/movement';
 export { suppliedProvinces, inSupplyRange } from './systems/supply';

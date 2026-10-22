@@ -116,7 +116,9 @@ export type Effect =
   | { kind: 'healing'; mult: number }
   /** Scales the penalty for attacking straight off a sea crossing. */
   | { kind: 'amphibious'; mult: number }
-  | { kind: 'movement'; mult: number };
+  | { kind: 'movement'; mult: number }
+  /** Fog of war: see everything your allies (powers at war with a common enemy) see. */
+  | { kind: 'alliedSight' };
 
 // ---------------------------------------------------------------------------
 // Static scenario definition (never mutated during play)

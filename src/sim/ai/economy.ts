@@ -31,6 +31,8 @@ function techScore(ctx: Ctx, t: TechConfig): number {
     }
     if (e.kind === 'morale' && ctx.state.nations[ctx.me].morale < 55) score += 3;
     if (e.kind === 'fortification' && ctx.enemies.length > 0) score += 1;
+    // Computer opponents see the whole map: shared sight gives them nothing.
+    if (e.kind === 'alliedSight') score -= 6;
   }
   return score;
 }

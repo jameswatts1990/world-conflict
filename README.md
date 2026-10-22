@@ -17,7 +17,15 @@ What is in it (Milestone 2, Depth):
 - **3D armies**: zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
   lorries, tanks) in its nation's uniforms, paint and flag. Armies gather around their city, march along the roads
   facing the way they go, and cross the sea in troopships.
-- A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
+- A **60-technology research tree** across four eras with slots, a queue and a classic tree view.
+- **Fog of war**: you see your own land, wherever your armies stand, and one province around them (cavalry and
+  armoured cars see two). Beyond that the map lies under haze and drifting cloud, and its armies, battles, sieges,
+  buildings and morale are hidden. Powers fighting a common enemy are **allies**: research **Liaison Officers** and
+  you also see everything your allies see.
+- A **map that reads at a glance**: natural relief under light national colours, your own land lit up inside a
+  glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
+  power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
+  long before that, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
 
@@ -94,6 +102,12 @@ province. Peace offers (with time left to answer) and key events pop up at the t
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
 
+Land outside your sight lies under the fog of war: a darker veil with drifting cloud, a faint line where your sight
+ends, and no armies, battles, sieges or buildings in it (a city there shows only its old town). Pointing at a fogged
+province says so, and its city panel explains how to see it; the morale view shows its morale as unknown. Who holds
+it and how big its city is are always known. Diplomacy marks your allies (powers at peace with you and at war with a
+common enemy) and whether you share their sight. When the campaign ends the fog lifts.
+
 ### On a phone or tablet
 
 Narrow screens get a compact layout: resources and the clock in a two-row top bar, Research, Diplomacy, Reports and
@@ -153,7 +167,8 @@ tests/              Simulation tests
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
   every campaign ends on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up
   on a leader.
-- No fog of war: every army is visible.
+- Computer opponents ignore the fog of war: they still see every army, so they leave Liaison Officers until late.
+- Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
