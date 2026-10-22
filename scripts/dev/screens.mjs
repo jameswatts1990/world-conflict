@@ -1,8 +1,10 @@
 // Development aid: starts the Vite dev server, opens a campaign in headless
 // Chromium and saves screenshots of the main screens for visual review.
 //   node scripts/dev/screens.mjs <outDir> [nation] [step...] [--phone | --phone-landscape]
-// Steps: menu, map, province, recruit, army, research, diplomacy, play:<seconds>, zoom:<k>, select:<pid>
-// --phone and --phone-landscape use a 390 × 844 touch screen, upright or on its side.
+// Steps: menu, map, province, recruit, army, research, diplomacy, play:<seconds>, zoom:<k>, select:<pid>,
+// eval:<js>, click:<selector>, key:<key>, shot:<name>, crop:<x>,<y>,<w>,<h> (a close-up of part of the screen);
+// zoom:<steps> zooms on the middle of the screen, zoom:<steps>@<x>,<y> on a point; mouse:<x>,<y> moves the pointer.
+// --phone and --phone-landscape use a 390 × 844 touch screen, upright or on its side; --hidpi renders at 2×.
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -33,7 +35,9 @@ for (let i = 0; i < 150; i++) {
 }
 const browser = await chromium.launch();
 const context = await browser.newContext(
-  phone ? { viewport: phone, deviceScaleFactor: 2, isMobile: true, hasTouch: true } : { viewport: { width: 1600, height: 950 } },
+  phone
+    ? { viewport: phone, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
+    : { viewport: { width: 1600, height: 950 }, deviceScaleFactor: flags.includes('--hidpi') ? 2 : 1 },
 );
 const page = await context.newPage();
 const errors = [];
@@ -85,12 +89,24 @@ for (const s of steps) {
     await shot(`key-${arg}`);
   }
   if (cmd === 'zoom') {
-    await page.mouse.move(800, 450);
-    for (let i = 0; i < Number(arg); i++) await page.mouse.wheel(0, -300);
+    // zoom:<steps> zooms on the middle of the screen, zoom:<steps>@<x>,<y> on that point.
+    const [steps, at = '800,450'] = arg.split('@');
+    const [zx, zy] = at.split(',').map(Number);
+    await page.mouse.move(zx, zy);
+    for (let i = 0; i < Number(steps); i++) await page.mouse.wheel(0, -300);
     await page.waitForTimeout(400);
-    await shot(`zoom-${arg}`);
+    await shot(`zoom-${steps}`);
   }
   if (cmd === 'shot') await shot(arg ?? 'shot');
+  if (cmd === 'mouse') {
+    const [mx, my] = arg.split(',').map(Number);
+    await page.mouse.move(mx, my);
+    await page.waitForTimeout(150);
+  }
+  if (cmd === 'crop') {
+    const [x, y, width, height] = arg.split(',').map(Number);
+    await page.screenshot({ path: `${out}/${String(++n).padStart(2, '0')}-crop.png`, clip: { x, y, width, height } });
+  }
 }
 console.log(errors.length ? errors.join('\n') : 'no console errors');
 await browser.close();

@@ -7,6 +7,7 @@ import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { PLINTH_COLORS, buildCityModel } from './CityModel';
 import { CitySkyline } from './CitySkyline';
 import { ART_NATIONS, UnitArt, type ArtNation } from './UnitArt';
+import { buildUnitModel, type UnitModelKind } from './UnitModel';
 
 function artNation(owner: OwnerId): ArtNation {
   return (ART_NATIONS as readonly string[]).includes(owner) ? (owner as ArtNation) : 'neutral';
@@ -91,6 +92,31 @@ export interface CitySprite {
   rx: number;
 }
 
+/** An SVG document as an image URL: a blob in the browser, a data URL elsewhere (tests, scripts). */
+function svgHref(svg: string): string {
+  return typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
+    ? URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Least-recently-used cache of sprites by look; dropped sprites release their blob. */
+function cached<T extends { href: string }>(cache: Map<string, T>, limit: number, key: string, make: () => T): T {
+  const hit = cache.get(key);
+  if (hit) {
+    cache.delete(key);
+    cache.set(key, hit);
+    return hit;
+  }
+  const sprite = make();
+  cache.set(key, sprite);
+  if (cache.size > limit) {
+    const [oldKey, old] = cache.entries().next().value!;
+    cache.delete(oldKey);
+    if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
+  }
+  return sprite;
+}
+
 const sprites = new Map<string, CitySprite>();
 /** Enough for every city in a few states each; older looks are dropped first. */
 const SPRITE_CACHE = 240;
@@ -104,23 +130,31 @@ export function citySprite(props: Omit<CitySceneProps, 'width'> & { freeSlots: n
     .filter(([, lv]) => (lv ?? 0) > 0)
     .sort(([a], [b]) => (a < b ? -1 : 1));
   const key = JSON.stringify([props.seed, props.tier, props.capital, built, props.construction, props.freeSlots, props.terrain, props.coastal, props.nationColor, props.battle]);
-  const hit = sprites.get(key);
-  if (hit) {
-    sprites.delete(key);
-    sprites.set(key, hit);
-    return hit;
-  }
-  const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
-  const href =
-    typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
-      ? URL.createObjectURL(new Blob([model.svg], { type: 'image/svg+xml' }))
-      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(model.svg)}`;
-  const sprite = { href, width: model.width, height: model.height, cx: model.cx, cy: model.cy, rx: model.rx };
-  sprites.set(key, sprite);
-  if (sprites.size > SPRITE_CACHE) {
-    const [oldKey, old] = sprites.entries().next().value!;
-    sprites.delete(oldKey);
-    if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
-  }
-  return sprite;
+  return cached(sprites, SPRITE_CACHE, key, () => {
+    const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
+    return { href: svgHref(model.svg), width: model.width, height: model.height, cx: model.cx, cy: model.cy, rx: model.rx };
+  });
+}
+
+export interface UnitSprite {
+  /** Image URL of the army's 3D model. */
+  href: string;
+  /** Size in model units, and where the model stands within the image. */
+  width: number;
+  height: number;
+  cx: number;
+  cy: number;
+}
+
+const unitSprites = new Map<string, UnitSprite>();
+/** Every army's look in a handful of headings. */
+const UNIT_SPRITE_CACHE = 480;
+
+/** An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings. */
+export function unitSprite(type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
+  const art = artNation(nation);
+  return cached(unitSprites, UNIT_SPRITE_CACHE, `${type}|${gen}|${art}|${heading}`, () => {
+    const model = buildUnitModel({ type: type as UnitModelKind, gen, nation: art, heading });
+    return { href: svgHref(model.svg), width: model.width, height: model.height, cx: model.cx, cy: model.cy };
+  });
 }

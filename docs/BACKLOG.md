@@ -120,6 +120,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Code-split the bundle; lazy-load the world context layer
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
+- [x] 3D armies on the map: zoomed in, each army is a 3D model of its main unit for its nation and generation,
+      standing in spots around its city, marching edge to edge along its road facing its heading (troopships at sea)
 - [x] Map underlay and provinces built as one topology from the same Natural Earth data, so coasts line up; softer,
       lower-contrast relief
 
