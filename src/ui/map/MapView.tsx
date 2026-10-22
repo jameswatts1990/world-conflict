@@ -37,7 +37,7 @@ import type { GameController } from '../game/GameController';
 import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType } from '../labels';
-import { citySpots, roadEnds, type Offset } from './armyLayout';
+import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
 import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, type MapGeometry } from './geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
@@ -547,6 +547,14 @@ const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
+/** A city's name plate (shown with its model), relative to the middle of its built-up area, in screen pixels. */
+function plateBox(world: World, id: ProvinceId, city: CityFootprint): PlateBox {
+  const def = world.provinces[id].city;
+  const [w, h] = plateSize(def.name, def.size === 'capital' ? 10.5 : 9.5);
+  const top = city.below - 3 - city.mid[1];
+  return { half: w / 2, top, bottom: top + h };
+}
+
 /** Dark label plate centred under a point (in screen pixels, before 1/k scaling). */
 function Plate({ text, y, color, size = 10, className = '' }: { text: string; y: number; color?: string; size?: number; className?: string }) {
   const [w, h] = plateSize(text, size);
@@ -581,6 +589,32 @@ function CityGroundLayer({ geo, world, k, ratio, cities }: { geo: MapGeometry; w
     <g className="city-ground" pointerEvents="none">
       {world.provinceIds.filter((id) => !geo.reach[id]).map(streets)}
       <g clipPath="url(#land-clip)">{world.provinceIds.filter((id) => geo.reach[id]).map(streets)}</g>
+    </g>
+  );
+}
+
+/** The names of the cities drawn as models, over the armies standing round them (the plates take no clicks). */
+function CityNameLayer({ geo, state, world, k, cities }: { geo: MapGeometry; state: GameState; world: World; k: number; cities: Record<ProvinceId, CityFootprint> }) {
+  const s = 1 / k;
+  return (
+    <g className="city-layer city-names" pointerEvents="none">
+      {world.provinceIds.map((id) => {
+        const def = world.provinces[id];
+        const city = cities[id];
+        const [x, y] = geo.anchors[id];
+        const isCapital = def.city.size === 'capital';
+        return (
+          <g key={id} transform={`translate(${x + city.mid[0] * s},${y}) scale(${s})`}>
+            <Plate
+              text={def.city.name}
+              y={city.below - 3}
+              color={ownerColor(world, state.provinces[id].owner)}
+              size={isCapital ? 10.5 : 9.5}
+              className={isCapital ? 'capital' : ''}
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -654,15 +688,6 @@ function CityLayer({
                   <text y={3.1}>{def.objectiveVp}</text>
                 </g>
               ) : null}
-              <g transform={`translate(${cx},0)`}>
-                <Plate
-                  text={def.city.name}
-                  y={city.below - 3}
-                  color={ownerColor(world, ps.owner)}
-                  size={isCapital ? 10.5 : 9.5}
-                  className={isCapital ? 'capital' : ''}
-                />
-              </g>
             </g>
           );
         }
@@ -997,7 +1022,7 @@ function placeArmies(state: GameState, world: World, geo: MapGeometry, human: Na
     const [mx, my] = cities[pid].mid;
     const battle = !!state.battles[pid];
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
-    const spots = citySpots(cities[pid].half, room, list.length);
+    const spots = citySpots(cities[pid].half, room, list.length, plateBox(world, pid, cities[pid]));
     list.forEach((army, i) => {
       const [ox, oy] = spots[i];
       // At rest they face out of the screen, to whichever side they stand; in a battle, the fighting.
@@ -1117,6 +1142,12 @@ function ArmyModelLayer({
   // Nearer the bottom of the screen is nearer the viewer: drawn later.
   placed.sort((a, b) => a.y - b.y || byCreation(a.army, b.army));
   const room = armyRoom(px);
+  // Every city's name plate on screen (map units), so a badge that lands on one can step clear of it.
+  const plates = world.provinceIds.map((id) => {
+    const b = plateBox(world, id, cities[id]);
+    const [x, y] = [geo.anchors[id][0] + cities[id].mid[0] / k, geo.anchors[id][1] + cities[id].mid[1] / k];
+    return { x0: x - b.half / k, x1: x + b.half / k, y0: y + b.top / k, y1: y + b.bottom / k };
+  });
   const routes: ReactNode[] = [];
   const models: ReactNode[] = [];
   const behind: ReactNode[] = [];
@@ -1162,7 +1193,10 @@ function ArmyModelLayer({
         <image href={sprite.href} x={left} y={top} width={w} height={h} className={routed ? 'army-routed-img' : undefined} />
       </g>,
     );
-    badges.push([sel, <ArmyBadge key={army.id} army={army} y={top - 3} transform={transform} status={status} routed={routed} handlers={handlers} />]);
+    badges.push([
+      sel,
+      <ArmyBadge key={army.id} army={army} y={top - 3 + badgeShift(army, p.x, p.y + (top - 3) / k, k, plates)} transform={transform} status={status} routed={routed} handlers={handlers} />,
+    ]);
   }
   // The selection's badges go on top, so they can always be clicked.
   badges.sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -1176,6 +1210,29 @@ function ArmyModelLayer({
       {badges.map((b) => b[1])}
     </g>
   );
+}
+
+/** Width of an army's badge, in screen pixels. */
+const badgeWidth = (army: Army) => 21 + String(army.units.length).length * 6.6;
+const BADGE_HEIGHT = 19;
+
+/**
+ * How far (screen pixels) to move an army's badge, whose bottom edge is at (x, bottom) in map units, so
+ * it does not sit on a city's name plate: up or down, whichever is the shorter step, and only a short one.
+ */
+function badgeShift(army: Army, x: number, bottom: number, k: number, plates: { x0: number; x1: number; y0: number; y1: number }[]): number {
+  const half = badgeWidth(army) / 2 / k;
+  const top = bottom - BADGE_HEIGHT / k;
+  let shift = 0;
+  for (const pl of plates) {
+    if (x + half <= pl.x0 || x - half >= pl.x1 || bottom + shift <= pl.y0 || top + shift >= pl.y1) continue;
+    const up = (bottom + shift - pl.y0) * k + 2;
+    const down = (pl.y1 - top - shift) * k + 2;
+    const step = up <= down ? -up : down;
+    if (Math.abs(step) > 28) continue;
+    shift += step / k;
+  }
+  return shift * k;
 }
 
 /** An army's label over its model: flag, number of formations, strength and morale. */
@@ -1195,7 +1252,7 @@ function ArmyBadge({
   handlers: object;
 }) {
   const count = String(army.units.length);
-  const w = 21 + count.length * 6.6;
+  const w = badgeWidth(army);
   const strength = composition(army).strength;
   const morale = armyMorale(army);
   return (
@@ -1684,6 +1741,7 @@ export function MapView(props: MapViewProps) {
                   onHover={onHover}
                 />
               )}
+              {cities && <CityNameLayer geo={geo} state={state} world={world} k={k} cities={cities} />}
               {preview && (
                 <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
