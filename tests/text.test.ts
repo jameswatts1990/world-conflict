@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
+import { applyCommand, armyName, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
 import { DIPLOMACY } from '../src/sim/config/rules';
-import { clearArmies, place, quietGame, run, setWar, world } from './helpers';
+import { clearArmies, place, quietGame, richen, run, setWar, world } from './helpers';
 
 const texts = (state: ReturnType<typeof quietGame>, kind: string) => state.events.filter((e) => e.kind === kind).map((e) => e.text);
 
@@ -102,10 +102,36 @@ describe('event wording', () => {
     run(state, 200);
     // With nowhere to retreat, the broken garrison surrenders.
     const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
-    expect(lost.text).toBe('Encircled at Amsterdam, the Dutch garrison surrendered to France — 1 unit lost.');
+    expect(lost.text).toBe('Overwhelmed at Amsterdam, the Dutch garrison surrendered to France — 1 unit lost.');
     expect(lost.subject).toBe('neutral');
     const captured = state.events.find((e) => e.kind === 'capture')!;
     expect(captured.subject).toBe('neutral');
+  });
+
+  it('recruits are reported by the nation\'s own design name', () => {
+    const state = quietGame();
+    richen(state, 'fr');
+    applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'infantry' });
+    run(state, state.provinces['fr-paris'].recruitQueue[0].remaining);
+    expect(texts(state, 'recruitment')).toEqual(['Poilus ready in Paris.']);
+  });
+
+  it('withdrawals name the army', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    const army = place(state, 'fr', 'de-ruhr', { infantry: 1 });
+    state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
+    applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
+    applyCommand(state, world, { type: 'respondPeace', nation: 'de', from: 'fr', accept: true });
+    expect(texts(state, 'withdraw')).toEqual([`The ${armyName(world, army)} withdrew from Rhineland & Ruhr to Alsace-Lorraine & Champagne.`]);
+  });
+
+  it('war and peace record who acted and who it concerns', () => {
+    const state = quietGame();
+    applyCommand(state, world, { type: 'declareWar', nation: 'de', target: 'pl' });
+    const war = state.events.find((e) => e.kind === 'war')!;
+    expect([war.actor, war.subject]).toEqual(['de', 'pl']);
   });
 
   it('the defender is named last when invading', () => {

@@ -323,11 +323,13 @@ export function surrenderArmy(state: GameState, world: World, army: Army, pid: P
     shockNation(state, world, army.owner, MORALE.surrenderShock);
   }
   if (captor && captor !== NEUTRAL) state.nations[captor].stats.unitsDestroyed += n;
+  // A neutral garrison has no retreat to be cut off from: it is simply overwhelmed.
   const who = army.owner === NEUTRAL ? armyName(world, army, pid) : `${world.nations[army.owner].adjective} ${armyName(world, army, pid)}`;
+  const how = army.owner === NEUTRAL ? 'Overwhelmed' : 'Encircled';
   pushEvent(
     state,
     'surrender',
-    `Encircled at ${world.provinces[pid].city.name}, the ${who} surrendered${captor ? ` to ${ownerName(world, captor, pid)}` : ''} — ${n} unit${n === 1 ? '' : 's'} lost.`,
+    `${how} at ${world.provinces[pid].city.name}, the ${who} surrendered${captor ? ` to ${ownerName(world, captor, pid)}` : ''} — ${n} unit${n === 1 ? '' : 's'} lost.`,
     { nations: involvedNations([army.owner, ...captors.map((a) => a.owner)]), province: pid, subject: army.owner, severity: 'combat' },
   );
 }

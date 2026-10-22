@@ -3,6 +3,7 @@ import { CITY } from '../config/buildings';
 import { MORALE } from '../config/rules';
 import { ARMY_RULES, UNITS } from '../config/units';
 import { pushEvent } from '../events';
+import { armyName } from '../names';
 import { areHostile, armyPower, captureTicks, hostileArmiesIn, isArmyInTransit } from '../queries';
 import { nationName, provinceName, sentence } from '../text';
 import { NEUTRAL, type Army, type GameState, type NationId, type ProvinceId } from '../types';
@@ -119,7 +120,7 @@ export function withdrawArmy(state: GameState, world: World, army: Army): void {
   const nations = army.owner === NEUTRAL ? [] : [army.owner];
   if (!target) {
     delete state.armies[army.id];
-    pushEvent(state, 'withdraw', `An army in ${provinceName(world, start)} had nowhere to withdraw to and disbanded.`, {
+    pushEvent(state, 'withdraw', `The ${armyName(world, army, start)} in ${provinceName(world, start)} had nowhere to withdraw to and disbanded.`, {
       nations,
       province: start,
       severity: 'bad',
@@ -128,7 +129,7 @@ export function withdrawArmy(state: GameState, world: World, army: Army): void {
   }
   army.province = target;
   army.move = null;
-  pushEvent(state, 'withdraw', `An army withdrew from ${provinceName(world, start)} to ${provinceName(world, target)}.`, {
+  pushEvent(state, 'withdraw', `The ${armyName(world, army)} withdrew from ${provinceName(world, start)} to ${provinceName(world, target)}.`, {
     nations,
     province: target,
   });

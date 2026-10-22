@@ -112,7 +112,7 @@ export function checkRecruit(
   return OK;
 }
 
-/** Everything except affordability: can this building ever be built here right now? */
+/** Everything except affordability and the city's current job: could this building be ordered here? */
 export function checkBuildRules(
   state: GameState,
   world: World,
@@ -140,7 +140,6 @@ export function checkBuildRules(
   if (cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, province)) {
     return fail(`No free building slot (${CITY.tierNames[p.tier]}: ${buildingSlots(state, province)} slots). Grow the city or demolish something.`);
   }
-  if (p.construction) return fail('Already building here.');
   return OK;
 }
 
@@ -153,6 +152,7 @@ export function checkBuild(
 ): CommandResult {
   const rules = checkBuildRules(state, world, nation, province, building);
   if (!rules.ok) return rules;
+  if (state.provinces[province].construction) return fail('Already building here: one project at a time.');
   const level = (state.provinces[province].buildings[building] ?? 0) + 1;
   if (!canAfford(state.nations[nation].resources, constructionCost(state, nation, building, level))) return fail('Not enough resources.');
   return OK;
@@ -370,6 +370,9 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (p.construction?.building === cmd.building) return fail('Under construction.');
       const dependent = Object.keys(p.buildings).find((b) => BUILDINGS[b as BuildingType].requiresBuilding === cmd.building);
       if (dependent) return fail(`${BUILDINGS[dependent as BuildingType].name} depends on it.`);
+      if (p.construction && BUILDINGS[p.construction.building].requiresBuilding === cmd.building) {
+        return fail(`${BUILDINGS[p.construction.building].name}, under construction, depends on it.`);
+      }
       delete p.buildings[cmd.building];
       pushEvent(state, 'demolish', `${BUILDINGS[cmd.building].name} demolished in ${world.provinces[cmd.province].city.name}.`, {
         nations: [cmd.nation],

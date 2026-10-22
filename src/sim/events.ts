@@ -6,7 +6,7 @@ export function pushEvent(
   state: GameState,
   kind: string,
   text: string,
-  opts: { nations?: NationId[]; province?: ProvinceId; subject?: OwnerId; severity?: EventSeverity } = {},
+  opts: { nations?: NationId[]; province?: ProvinceId; subject?: OwnerId; actor?: NationId; severity?: EventSeverity } = {},
 ): void {
   state.events.push({
     id: state.nextEventId++,
@@ -16,6 +16,7 @@ export function pushEvent(
     nations: opts.nations ?? [],
     province: opts.province,
     subject: opts.subject,
+    actor: opts.actor,
     severity: opts.severity ?? 'info',
   });
   if (state.events.length > MAX_EVENTS) state.events.splice(0, state.events.length - MAX_EVENTS);

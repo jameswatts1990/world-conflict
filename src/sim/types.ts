@@ -384,8 +384,10 @@ export interface GameEvent {
   /** Nations the event concerns; empty means it is shown to everyone. */
   nations: NationId[];
   province?: ProvinceId;
-  /** Who it happened to: the side that lost an army or a province, or whose peace offer was turned down. */
+  /** Who it happened to: the side that lost an army or a province, whose peace offer was turned down, or that war was declared on. */
   subject?: OwnerId;
+  /** Who acted: the nation that declared war, or whose peace offer was accepted. */
+  actor?: NationId;
   severity: EventSeverity;
 }
 

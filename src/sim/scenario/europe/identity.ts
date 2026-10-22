@@ -94,12 +94,12 @@ const FR: Names = {
   },
   armouredCar: {
     interwar: n('White-Laffly AMD', '37 mm gun and MG'),
-    ww2: n('Panhard 178', '25 mm gun, eight-cylinder engine'),
+    ww2: n('Panhard 178', '25 mm gun, four-wheel drive'),
   },
   artillery: {
     ww1: n('Canon de 75 mle 1897', 'The famous "soixante-quinze"'),
     interwar: n('75 mle 1897/33', 'Modernised on pneumatic tyres'),
-    ww2: n('105 mm mle 1935 B', 'Schneider howitzer'),
+    ww2: n('105 mm mle 1935 B', 'Bourges arsenal howitzer'),
   },
   heavyArtillery: {
     ww1: n('Mortier de 220 mm', 'Schneider siege mortar'),
@@ -361,7 +361,7 @@ const PL: Names = {
     ww2: n('10TP', 'Fast tank, 37 mm (project)'),
   },
   heavyTank: {
-    interwar: n('PZInż 160', 'Amphibious heavy carrier (project)'),
+    interwar: n('20TP', '20-ton breakthrough tank (project)'),
     ww2: n('25TP', '75 mm breakthrough tank (project)'),
   },
   tankDestroyer: { ww2: n('TKD Niszczyciel', '47 mm self-propelled gun') },
@@ -510,7 +510,7 @@ export const SPECIALITIES: Record<string, NationSpeciality> = {
   },
   it: {
     name: 'Alpini',
-    description: 'The finest mountain soldiers in Europe: mountain troops +20% attack and defence and 20% cheaper.',
+    description: 'The finest mountain soldiers in Europe: mountain troops +20% attack and defence, and cost 20% less money.',
     effects: [
       { kind: 'unitStat', units: ['mountain'], stat: 'attack', mult: 1.2 },
       { kind: 'unitStat', units: ['mountain'], stat: 'defence', mult: 1.2 },
