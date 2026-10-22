@@ -1462,10 +1462,13 @@ kbd {
   stroke-dasharray: 6 4;
 }
 .lg-plot {
-  fill: #8c6f4f;
+  fill: rgba(233, 220, 180, 0.18);
   stroke: #e9dcb4;
   stroke-width: 1;
   stroke-dasharray: 3 2;
+}
+.lg-land {
+  fill: #cfcb9c;
 }
 
 /* Field reports */

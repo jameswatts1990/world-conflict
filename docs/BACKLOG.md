@@ -120,6 +120,9 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
 - [x] Map underlay and provinces built as one topology from the same Natural Earth data, so coasts line up; softer,
       lower-contrast relief
+- [x] Cities drawn as part of the map instead of on a round token: a web of streets that fades into the countryside,
+      main roads running on towards the neighbouring cities, the old town round the landmark and each building on its
+      pad around it; seaside cities keep to the land (streets stop at the coast) and get a port on the real coast
 
 ### Polish pass (done)
 

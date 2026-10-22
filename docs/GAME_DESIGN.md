@@ -310,18 +310,24 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
   capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states are hatched
   with lines that keep the same spacing at every zoom.
-- **City models.** From one zoom step in, each city is a small isometric 3D model on a round token whose rim carries
-  the owner's colour, so its contents read at a glance. Every building has its own recognisable model (smoking factory
-  chimneys, a barracks with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank
-  works, a hospital with a red cross on the roof, a radio mast, crates at the depot, a train for the railway, walls
-  for fortifications, gun pits for coastal batteries) standing on a plinth in its category's colour (the same colours
-  as the city view's slot tiles); ports have a steamer moored offshore. Free building slots are empty plots, construction shows scaffolding
-  and a crane, battles smoke and fire. Generic housing, in the region's style (slate in Britain, zinc in France, red
-  tile in Germany, terracotta in the south), grows denser and taller with the tier, and the six capitals have their
-  landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal Castle). Every building
-  has a fixed home cell in its district, so building something never moves the rest. Models are drawn in code
-  (`src/ui/art/CityModel.ts`, `iso3d.ts`) and cached as one image per city look, so panning stays cheap; army counters
-  stand on the token's back edge. The cursor tooltip lists the same buildings and free slots.
+- **City models.** From one zoom step in, each city is drawn as part of the map rather than on a token. On the
+  ground, a lace of white streets, densest in the old town and fraying into the countryside, with main roads running
+  on towards the neighbouring cities (the railway, once built, passes the old town with its station). On it, the old
+  town's houses round the landmark, in the region's style (slate in Britain, zinc in France, red tile in Germany,
+  terracotta in the south), growing denser and taller with the tier, and the owner's flag on the square; the six
+  capitals have their landmark (Big Ben, the Eiffel Tower, the Reichstag, St Peter's, the Royal Palace, the Royal
+  Castle). Around the old town, each building has its own recognisable model (smoking factory chimneys, a barracks
+  with troops drilling under the flag, a castle-like academy, a tank rolling out of the tank works, a hospital with a
+  red cross on the roof, a radio mast, crates at the depot) on a pad in its category's colour (the same colours as the
+  city view's slot tiles): industry to the right, the military to the left, civic buildings at the front. Every
+  building has a fixed home, so building something never moves the rest. Fortifications are walls round the old
+  town, towered at higher levels; free building slots are staked-out plots, construction shows scaffolding and a
+  crane, battles smoke and fire. A seaside city keeps its buildings on land and its streets stop at the coast, and
+  its port (a quay with a steamer alongside, gun pits for coastal batteries) sits on the nearest stretch of its real
+  coast. Models are drawn in code (`src/ui/art/CityModel.ts`, `cityGround.ts`, `iso3d.ts`) and cached as two images
+  per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; army counters stand
+  behind the built-up area and the name plate hangs in front of it. The cursor tooltip lists the same buildings and
+  free slots.
 - **Armies.** Counters in the owner's colour show the army's main unit in its national art, the number of formations,
   and strength and morale bars; a routed army flies a white flag. Your armies have a white rim, armies of nations at
   war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline. Armies

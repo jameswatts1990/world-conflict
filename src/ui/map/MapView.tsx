@@ -1,6 +1,7 @@
 // Strategy map: baked shaded-relief terrain under translucent ownership tints,
 // glowing national borders, plated city labels, towns and army counters with
-// national unit art. Zoomed in, every city is a small 3D model of what it holds.
+// national unit art. Zoomed in, every city is a web of streets on the map with a
+// small 3D model of what it holds, and coastal cities get their port.
 // Static geography is projected once and memoised; ownership, labels (on zoom)
 // and army markers (every frame) update.
 import { select } from 'd3-selection';
@@ -24,13 +25,13 @@ import {
   type World,
 } from '../../sim';
 import { slotsUsed } from '../../sim/config/buildings';
-import { CounterArt, citySprite, type CitySprite } from '../art/adapters';
+import { CounterArt, citySprite, portSprite, type CitySprite, type CitySpriteProps, type PortSpriteProps, type SpriteImage } from '../art/adapters';
 import { darken, lighten, ownerColor, strengthColor } from '../color';
 import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
 import { Icon } from '../icons';
 import { composition, mainUnitType } from '../labels';
-import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
+import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, type MapGeometry } from './geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
 export type MapMode = 'political' | 'terrain' | 'supply' | 'morale' | 'development';
@@ -85,8 +86,16 @@ export function cityModelScale(ratio: number): number {
   return Math.min(3.6, 0.4 + 0.8 * ratio);
 }
 
-/** What a city's model shows: its buildings, free slots, owner and state. */
-function cityModelProps(state: GameState, world: World, id: ProvinceId) {
+/**
+ * Model units per map unit where the sea comes closest to a city's buildings: where
+ * cities first turn into models, on a desktop whose whole-theatre fit is 1. Closer in
+ * the coast only moves further out, so buildings placed for this stay on land (on the
+ * smallest screens, at the first zoom steps, a seaside building may touch the water).
+ */
+const REACH_SCALE = ZOOM.cityModels / cityModelScale(ZOOM.cityModels);
+
+/** What a city's model shows: its buildings, free slots, owner and state, and the roads and coast round it. */
+function cityModelProps(state: GameState, world: World, geo: MapGeometry, id: ProvinceId): CitySpriteProps {
   const def = world.provinces[id];
   const ps = state.provinces[id];
   const job = ps.construction?.building ?? null;
@@ -98,18 +107,38 @@ function cityModelProps(state: GameState, world: World, id: ProvinceId) {
     construction: job,
     freeSlots: buildingSlots(state, id) - slotsUsed(ps.buildings, job),
     terrain: def.terrain,
-    coastal: def.coastal,
+    exits: geo.roads[id],
+    // In model units, rounded so the sprite cache sees few distinct values; past the cap the land goes on.
+    reach: geo.reach[id]?.map((r) => (r >= REACH_CAP ? 99 : Math.round(r * REACH_SCALE * 2) / 2)),
     nationColor: ps.owner === 'neutral' ? undefined : ownerColor(world, ps.owner),
     battle: !!state.battles[id],
+  };
+}
+
+/** What a coastal city's port shows, or null inland. */
+function portModelProps(state: GameState, world: World, geo: MapGeometry, id: ProvinceId): PortSpriteProps | null {
+  const port = geo.ports[id];
+  if (!port) return null;
+  const ps = state.provinces[id];
+  return {
+    seed: id,
+    facing: port.facing,
+    batteries: ps.buildings.coastalBattery ?? 0,
+    building: ps.construction?.building === 'coastalBattery',
+    nationColor: ps.owner === 'neutral' ? undefined : ownerColor(world, ps.owner),
   };
 }
 
 /** Where a city's model puts things, in screen pixels from its centre. */
 interface CityFootprint {
   sprite: CitySprite;
+  /** The city's port and its spot on the coast (map units). */
+  port: { image: SpriteImage; x: number; y: number } | null;
+  /** The middle of the built-up area across the screen: counters and the name plate line up on it. */
+  mid: number;
   /** Army counters stack upwards from this height. */
   lift: number;
-  /** Bottom edge of the model: the name plate hangs below it. */
+  /** Front edge of the built-up area: the name plate hangs below it. */
   below: number;
 }
 
@@ -478,7 +507,7 @@ function LabelLayer({
         const half = city ? Math.max(80, city.sprite.rx * cityModelScale(ratio) + 30) : 80;
         const below = city ? city.below + 20 : 40;
         if (Math.abs(x - ax) * k < half && (y - ay) * k > -70 - (city?.lift ?? 0) && (y - ay) * k < below) {
-          x = ax;
+          x = ax + (city?.mid ?? 0) * s;
           y = ay + (below - 10) * s;
         }
         return (
@@ -497,10 +526,12 @@ function LabelLayer({
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
+/** Width and height of a name plate, in screen pixels. */
+const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
+
 /** Dark label plate centred under a point (in screen pixels, before 1/k scaling). */
 function Plate({ text, y, color, size = 10, className = '' }: { text: string; y: number; color?: string; size?: number; className?: string }) {
-  const w = text.length * size * 0.56 + 12;
-  const h = size + 5;
+  const [w, h] = plateSize(text, size);
   return (
     <g className={`plate ${className}`}>
       <rect x={-w / 2} y={y} width={w} height={h} rx={2.5} className="plate-bg" />
@@ -529,8 +560,21 @@ function CityLayer({
 }) {
   const s = 1 / k;
   const px = cityModelScale(ratio);
+  /** One of a model's images, at its anchor. */
+  const placed = (key: string, im: SpriteImage, [x, y]: [number, number]) => (
+    <g key={key} transform={`translate(${x},${y}) scale(${s})`}>
+      <image href={im.href} x={-im.cx * px} y={-im.cy * px} width={im.width * px} height={im.height * px} />
+    </g>
+  );
   return (
     <g className="city-layer" pointerEvents="none">
+      {/* The cities' streets lie on the map under everything else; near the sea or the edge of the map they stop at the coast. */}
+      {cities && (
+        <>
+          {world.provinceIds.filter((id) => !geo.reach[id]).map((id) => placed(id, cities[id].sprite.ground, geo.anchors[id]))}
+          <g clipPath="url(#land-clip)">{world.provinceIds.filter((id) => geo.reach[id]).map((id) => placed(id, cities[id].sprite.ground, geo.anchors[id]))}</g>
+        </>
+      )}
       {ratio >= ZOOM.townDots &&
         world.provinceIds.map((id) =>
           geo.towns[id].map((t) => (
@@ -544,6 +588,11 @@ function CityLayer({
             </g>
           )),
         )}
+      {cities &&
+        world.provinceIds.map((id) => {
+          const port = cities[id].port;
+          return port && placed(`port-${id}`, port.image, [port.x, port.y]);
+        })}
       {world.provinceIds.map((id) => {
         const def = world.provinces[id];
         const [x, y] = geo.anchors[id];
@@ -557,30 +606,35 @@ function CityLayer({
         const city = cities?.[id];
         if (city) {
           const sp = city.sprite;
-          const rx = sp.rx * px + 3;
-          const right = (sp.width - sp.cx) * px;
+          const st = sp.structures;
+          // The capture ring circles the built-up area.
+          const rx = (sp.rx + 1.5) * px;
+          const ry = ((sp.back + sp.front) / 2 + 1) * px;
+          const [cx, cy] = [city.mid, ((sp.front - sp.back) / 2) * px];
           return (
             <g key={id} transform={`translate(${x},${y}) scale(${s})`} data-city-model={id}>
-              <image href={sp.href} x={-sp.cx * px} y={-sp.cy * px} width={sp.width * px} height={sp.height * px} />
+              <image href={st.href} x={-st.cx * px} y={-st.cy * px} width={st.width * px} height={st.height * px} />
               {capture && (
                 <g className="capture">
-                  <ellipse rx={rx} ry={rx / 2} className="capture-track" />
-                  <ellipse rx={rx} ry={rx / 2} className="capture-ring" stroke={world.nations[capture.by]?.color} pathLength={100} strokeDasharray={`${(capture.progress / capture.required) * 100} 100`} />
+                  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="capture-track" />
+                  <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="capture-ring" stroke={world.nations[capture.by]?.color} pathLength={100} strokeDasharray={`${(capture.progress / capture.required) * 100} 100`} />
                 </g>
               )}
               {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${Math.min(right, sp.rx * px) + 2},${-sp.rx * px * 0.18})`}>
+                <g className="vp-badge-map" transform={`translate(${city.mid + sp.rx * px + 4},${-sp.back * px * 0.3})`}>
                   <circle r={5.6} />
                   <text y={3.1}>{def.objectiveVp}</text>
                 </g>
               ) : null}
-              <Plate
-                text={def.city.name}
-                y={city.below - 3}
-                color={ownerColor(world, ps.owner)}
-                size={isCapital ? 10.5 : 9.5}
-                className={isCapital ? 'capital' : ''}
-              />
+              <g transform={`translate(${city.mid},0)`}>
+                <Plate
+                  text={def.city.name}
+                  y={city.below - 3}
+                  color={ownerColor(world, ps.owner)}
+                  size={isCapital ? 10.5 : 9.5}
+                  className={isCapital ? 'capital' : ''}
+                />
+              </g>
             </g>
           );
         }
@@ -781,10 +835,11 @@ function ArmyLayer({
   const offsets = new Map<ArmyId, [number, number]>();
   for (const [pid, list] of stacks) {
     const lift = cities?.[pid]?.lift ?? 0;
+    const mid = cities?.[pid]?.mid ?? 0;
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
     list.forEach((a, i) => {
       const lone = i % 2 === 0 && i === list.length - 1;
-      const dx = lone ? 0 : i % 2 === 0 ? -STACK.half : STACK.half;
+      const dx = mid + (lone ? 0 : i % 2 === 0 ? -STACK.half : STACK.half);
       offsets.set(a.id, [dx / k, -(STACK.base + lift + Math.floor(i / 2) * STACK.row) / k]);
     });
   }
@@ -1015,12 +1070,12 @@ export function MapView(props: MapViewProps) {
     let timer = 0;
     const step = () => {
       const until = performance.now() + 6;
-      while (next < ids.length && performance.now() < until) citySprite(cityModelProps(ctrl.state, world, ids[next++]));
+      while (next < ids.length && performance.now() < until) citySprite(cityModelProps(ctrl.state, world, geo, ids[next++]));
       if (next < ids.length) timer = window.setTimeout(step, 40);
     };
     timer = window.setTimeout(step, 400);
     return () => window.clearTimeout(timer);
-  }, [ctrl, world]);
+  }, [ctrl, world, geo]);
 
   // Zoom & pan.
   useEffect(() => {
@@ -1178,14 +1233,28 @@ export function MapView(props: MapViewProps) {
     if (!modelPx) return null;
     const out: Record<ProvinceId, CityFootprint> = {};
     for (const id of world.provinceIds) {
-      const sprite = citySprite(cityModelProps(state, world, id));
-      // Counters stand on the token's back edge, clear of its buildings.
-      out[id] = { sprite, lift: (sprite.rx / 2 + 2.5) * modelPx, below: (sprite.height - sprite.cy) * modelPx + 1 };
+      const sprite = citySprite(cityModelProps(state, world, geo, id));
+      const portProps = portModelProps(state, world, geo, id);
+      const port = portProps && geo.ports[id] ? { image: portSprite(portProps), x: geo.ports[id]!.x, y: geo.ports[id]!.y } : null;
+      // Counters stand just behind the built-up area; the name plate hangs just in front of it,
+      // or below the port when that lies under the town (the port keeps its place on the coast as you zoom).
+      const mid = sprite.mid * modelPx;
+      let below = (sprite.front + 1) * modelPx;
+      if (port) {
+        const [ax, ay] = geo.anchors[id];
+        const im = port.image;
+        const [left, top] = [(port.x - ax) * k - im.cx * modelPx, (port.y - ay) * k - im.cy * modelPx];
+        const city = world.provinces[id].city;
+        const [w, h] = plateSize(city.name, city.size === 'capital' ? 10.5 : 9.5);
+        const overlap = left < mid + w / 2 && left + im.width * modelPx > mid - w / 2 && top < below - 3 + h && top + im.height * modelPx > below - 3;
+        if (overlap) below = top + im.height * modelPx + 3;
+      }
+      out[id] = { sprite, port, mid, lift: (sprite.back + 1.5) * modelPx, below };
     }
     return out;
     // ctrl.version changes whenever the simulation state does.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [world, modelPx, ctrl.version]);
+  }, [world, geo, modelPx, k, ctrl.version]);
 
   const owners: string[] = [...world.nationIds, 'neutral'];
   return (
@@ -1209,6 +1278,10 @@ export function MapView(props: MapViewProps) {
           <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
             <line x1="0" y1="0" x2="0" y2={7 / k} className="hatch-neutral-line" strokeWidth={1.3 / k} />
           </pattern>
+          {/* The theatre's land: cities' streets stop at the coast. */}
+          <clipPath id="land-clip">
+            <path d={geo.land} />
+          </clipPath>
           {owners.map((o) => {
             const c = ownerColor(world, o);
             return (
