@@ -3732,6 +3732,47 @@ button.chip.queued:hover {
   stroke: #222;
   stroke-width: 1;
 }
+/* 3D armies: a model on a ground ring in the owner's colour, with a small badge above */
+.army-model {
+  cursor: pointer;
+}
+.army-hit {
+  fill: transparent;
+}
+.army-ring {
+  fill-opacity: 0.32;
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 1;
+}
+.army-model.own .army-ring {
+  stroke: rgba(255, 255, 255, 0.85);
+  stroke-width: 1.2;
+}
+.army-model.hostile .army-ring {
+  stroke: #ff5a45;
+  stroke-width: 1.6;
+}
+.army-model:hover .army-ring {
+  fill-opacity: 0.5;
+}
+.army-select-ring {
+  fill: none;
+  stroke: #ffcf5a;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  animation: dash-run 0.8s linear infinite;
+}
+.army-routed-img {
+  opacity: 0.6;
+}
+.army-badge3d .army-count {
+  font-size: 11px;
+  text-anchor: start;
+}
+.army-badge3d.selected .army-body {
+  stroke: #ffcf5a;
+  stroke-width: 1.8;
+}
 .lg-ramp {
   display: flex;
   align-items: center;

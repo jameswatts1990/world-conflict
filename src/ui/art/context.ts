@@ -1,8 +1,7 @@
 // Per-render drawing context: which nation and generation is being drawn and
 // the derived colours, headgear and camouflage every unit drawing needs.
 import { BOOT, NATION_PALETTES, camoHasLines, shade, type NationPalette } from './palettes';
-import type { CamoSpec } from './primitives';
-import type { ArtGen, ArtNation } from './types';
+import type { ArtGen, ArtNation, CamoSpec } from './types';
 
 export type Headgear =
   | 'brodie'
