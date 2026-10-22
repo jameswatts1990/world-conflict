@@ -12,8 +12,8 @@ What is in it (Milestone 2, Depth):
 - **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
-  small 3D model of what it holds (barracks, factories, a tank works, empty plots for free slots); the city view adds
-  a skyline.
+  web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
+  plots for free slots), and seaside cities have a port on the coast; the city view adds a skyline.
 - **3D armies**: zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
   lorries, tanks) in its nation's uniforms, paint and flag. Armies gather around their city, march along the roads
   facing the way they go, and cross the sea in troopships.
@@ -83,11 +83,13 @@ command rail opens Research, Diplomacy, field reports, save/load and help. The t
 map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the bottom right. With
 one of your armies selected, pointing at a province or an enemy army previews the route and arrival time (or why there
 is none, such as a nation you are at peace with). Point at a resource in the top bar for its income and upkeep.
-Zoom in one step and every city turns into a 3D model of its buildings, each on a plinth in its category's colour
-(economy, military, civic, infrastructure), with empty plots for free building slots and the rim in the owner's colour;
-pointing at a province lists the same buildings. At the same zoom the army counters become 3D models standing around
-their cities on a ring in the owner's colour (white-rimmed for yours, red for enemies at war with you), each under a
-badge with its flag, number of formations, strength and morale. Click a field report or an alert to jump to its
+Zoom in one step and every city turns into a web of streets on the map: the old town round its landmark in the middle,
+a 3D model of each building around it on a pad in its category's colour (economy, military, civic, infrastructure),
+empty plots for free building slots and flags in the owner's colour. Main roads run out towards the neighbouring
+cities, and a seaside city's streets stop at the coast, where it has its port; pointing at a province lists the same
+buildings. At the same zoom the army counters become 3D models standing around their cities on a ring in the owner's
+colour (white-rimmed for yours, red for enemies at war with you), each under a badge with its flag, number of
+formations, strength and morale. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
 provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
@@ -138,7 +140,7 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
   loop.ts           Real-time fixed-timestep driver (no DOM)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
   art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city and army models (a
-                    small isometric renderer in iso3d.ts), building and branch icons
+                    small isometric renderer in iso3d.ts, streets in cityGround.ts), building and branch icons
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and world in one topology (shapes only)
 scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
@@ -155,6 +157,6 @@ tests/              Simulation tests
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The main bundle is ~935 KB (304 KB gzipped).
+  devices. The main bundle is ~975 KB (320 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
