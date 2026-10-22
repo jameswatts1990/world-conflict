@@ -111,6 +111,9 @@ const LINE = {
   mountains: 'M2 20L9 7l4 7 2-3 7 9zM7.6 9.6L9 7l1.8 3.3',
   urban: 'M4 20V10l4-2v12M8 20V5h7v15M15 20v-8h5v8M3 20h18M10.5 8.5h2M10.5 12h2M10.5 15.5h2',
   marsh: 'M4 15c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M4 19c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M9 12V6M13 12V4M17 12V7',
+  sound: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.6a7.6 7.6 0 0 1 0 10.8',
+  muted: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9.5l5 5M20.5 9.5l-5 5',
+  skip: 'M5 6.5l8 5.5-8 5.5zM13 6.5l6 5.5-6 5.5zM20 6v12',
 } satisfies Record<string, string>;
 
 const FILLED = {

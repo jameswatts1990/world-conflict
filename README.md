@@ -78,7 +78,7 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |
 | **V** | Cycle map view: political, terrain, supply, morale, city size |
 | **K** | Show or hide the map key |
-| **N** | Mute or unmute sound and music (remembered) |
+| **N** | Mute or unmute sound and music (remembered); **Sound** on the left rail sets the volumes |
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 

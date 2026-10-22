@@ -41,6 +41,7 @@ import { Legend } from './panels/Legend';
 import { NavRail, type PanelId } from './panels/NavRail';
 import { ProvincePanel } from './panels/ProvincePanel';
 import { ResearchPanel } from './panels/ResearchPanel';
+import { SoundDialog } from './panels/SoundDialog';
 import { TopBar } from './panels/TopBar';
 import { Tutorial } from './panels/Tutorial';
 
@@ -546,6 +547,7 @@ export function GameScreen({
         />
       )}
       {panel === 'save' && <SaveDialog ctrl={ctrl} onClose={() => setPanel(null)} />}
+      {panel === 'sound' && <SoundDialog touch={touch} onClose={() => setPanel(null)} />}
       {panel === 'load' && <LoadDialog world={world} scenarioId={world.scenario.id} onLoad={onLoad} onClose={() => setPanel(null)} />}
       {panel === 'help' && (
         <HelpDialog

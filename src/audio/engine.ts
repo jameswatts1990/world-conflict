@@ -145,9 +145,17 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------- Settings
 
-  subscribe(listener: () => void): () => void {
+  /** Changes whenever the settings or the music do (for React's useSyncExternalStore). */
+  version = 0;
+
+  subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  };
+
+  private emit(): void {
+    this.version++;
+    for (const l of this.listeners) l();
   }
 
   update(patch: Partial<AudioSettings>): void {
@@ -155,7 +163,7 @@ export class AudioEngine {
     this.settings = { master: clamp01(s.master), effects: clamp01(s.effects), music: clamp01(s.music), muted: s.muted };
     saveSettings(this.settings);
     this.applyVolumes();
-    for (const l of this.listeners) l();
+    this.emit();
   }
 
   toggleMute(): void {
@@ -274,6 +282,18 @@ export class AudioEngine {
 
   // ---------------------------------------------------------------- Music
 
+  /** The piece playing now, if any. */
+  get nowPlaying(): MusicTrack | null {
+    return this.voice?.track ?? null;
+  }
+
+  /** In a campaign, fade out the current piece and start another. */
+  skipTrack(): void {
+    if (!this.ctx || this.scene.kind !== 'campaign') return;
+    this.fadeOutMusic();
+    this.queueNextTrack(1.5);
+  }
+
   setMusic(scene: MusicScene): void {
     const same =
       scene.kind === this.scene.kind && (scene.kind !== 'campaign' || (this.scene.kind === 'campaign' && this.scene.nation === scene.nation));
@@ -337,15 +357,20 @@ export class AudioEngine {
     const voice: MusicVoice = { el, source, gain, track };
     this.voice = voice;
     this.lastTrack = track;
+    this.emit();
     el.addEventListener('ended', () => {
       if (this.voice !== voice) return;
       this.releaseVoice(voice);
       this.voice = null;
+      this.emit();
       const [lo, hi] = MUSIC_GAP_S;
       this.queueNextTrack(lo + Math.random() * (hi - lo));
     });
     el.addEventListener('error', () => {
-      if (this.voice === voice) this.voice = null;
+      if (this.voice === voice) {
+        this.voice = null;
+        this.emit();
+      }
       this.releaseVoice(voice);
     });
     if (document.visibilityState === 'visible') void el.play().catch(() => {});
@@ -356,6 +381,7 @@ export class AudioEngine {
     const voice = this.voice;
     if (!voice || !this.ctx) return;
     this.voice = null;
+    this.emit();
     voice.gain.gain.setTargetAtTime(0, this.ctx.currentTime, MUSIC_FADE_S / 4);
     setTimeout(() => this.releaseVoice(voice), MUSIC_FADE_S * 1000);
   }

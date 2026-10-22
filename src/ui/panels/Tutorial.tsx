@@ -139,6 +139,7 @@ export const CONTROLS: [string, string][] = [
   ['R / D / L', 'Research tree / Diplomacy / field reports'],
   ['V', 'Cycle map view: political, terrain, supply, morale, city size'],
   ['K', 'Map key'],
+  ['N', 'Mute or unmute sound and music (volumes: Sound on the left rail)'],
   ['H / ?', 'These controls'],
   ['Esc', 'Close the open window, cancel move mode, then clear the selection'],
 ];
@@ -154,4 +155,5 @@ export const TOUCH_CONTROLS: [string, string][] = [
   ['Tap resource', 'Income, army upkeep and net change'],
   ['Tap technology', 'Its details in Research; research it, or queue the path to it, from there'],
   ['Pause / 1x / 2x', 'Pause or resume (or tap the Paused banner) and set the campaign speed'],
+  ['More › Sound', 'Mute, volumes, and the music playing now'],
 ];

@@ -6,8 +6,9 @@ import { researchSlots } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Icon, type IconName } from '../icons';
 import { useEscape } from './Common';
+import { useSound } from './SoundDialog';
 
-export type PanelId = 'research' | 'diplomacy' | 'save' | 'load' | 'help' | 'menu';
+export type PanelId = 'research' | 'diplomacy' | 'save' | 'load' | 'help' | 'sound' | 'menu';
 
 function RailButton({
   icon,
@@ -48,6 +49,7 @@ function RailButton({
 /** The windows behind "More" in the compact layouts. */
 function MoreMenu({ onOpen, onClose }: { onOpen: (p: PanelId) => void; onClose: () => void }) {
   useEscape(onClose);
+  const muted = useSound().settings.muted;
   const item = (id: PanelId, icon: IconName, label: string) => (
     <button
       role="menuitem"
@@ -67,6 +69,7 @@ function MoreMenu({ onOpen, onClose }: { onOpen: (p: PanelId) => void; onClose: 
         {item('save', 'save', 'Save game')}
         {item('load', 'load', 'Load game')}
         {item('help', 'help', 'Help & briefing')}
+        {item('sound', muted ? 'muted' : 'sound', muted ? 'Sound (off)' : 'Sound & music')}
         {item('menu', 'exit', 'Main menu')}
       </div>
     </>
@@ -92,6 +95,7 @@ export function NavRail({
   onOpen: (p: PanelId) => void;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const muted = useSound().settings.muted;
   const { state, human } = ctrl;
   const nation = state.nations[human];
   const wars = Object.values(nation.relations).filter((r) => r.status === 'war').length;
@@ -135,7 +139,7 @@ export function NavRail({
           <RailButton
             icon="more"
             label="More"
-            active={moreOpen || active === 'save' || active === 'load' || active === 'help'}
+            active={moreOpen || active === 'save' || active === 'load' || active === 'help' || active === 'sound'}
             testId="open-more"
             onClick={() => setMoreOpen((o) => !o)}
           />
@@ -147,6 +151,14 @@ export function NavRail({
           <RailButton icon="save" label="Save" active={active === 'save'} testId="open-save" onClick={() => onOpen('save')} />
           <RailButton icon="load" label="Load" active={active === 'load'} testId="open-load" onClick={() => onOpen('load')} />
           <RailButton icon="help" label="Help" hotkey="H" active={active === 'help'} onClick={() => onOpen('help')} />
+          <RailButton
+            icon={muted ? 'muted' : 'sound'}
+            label={muted ? 'Muted' : 'Sound'}
+            hotkey="N mutes"
+            active={active === 'sound'}
+            testId="open-sound"
+            onClick={() => onOpen('sound')}
+          />
           <div className="rail-fill" />
           <RailButton icon="exit" label="Menu" onClick={() => onOpen('menu')} />
         </>

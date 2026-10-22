@@ -120,7 +120,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
 - [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
-- [ ] Volume controls in the interface
+- [x] Sound window: mute, overall / music / effects volumes, the piece playing now and a skip (rail on the desktop, More on phones)
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
 - [x] 3D armies on the map: zoomed in, each army is a 3D model of its main unit for its nation and generation,

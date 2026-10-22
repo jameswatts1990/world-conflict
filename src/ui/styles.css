@@ -2662,6 +2662,82 @@ kbd {
 .modal.narrow {
   width: min(460px, 94vw);
 }
+
+/* ---------------------------------------------------------------- Sound */
+.sound-panel {
+  display: grid;
+  gap: 12px;
+}
+.sound-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sound-switch input {
+  width: 16px;
+  height: 16px;
+}
+.sound-switch .muted {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.sound-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+.sound-row input[type='range'] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  background: none;
+  border: none;
+}
+.sound-row.off {
+  opacity: 0.45;
+}
+.sound-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--accent);
+}
+.np-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13.5px;
+}
+.np-label {
+  font: 600 11px/1.4 var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.now-playing button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
 .confirm-text p {
   margin: 0 0 8px;
   font-size: 14px;
