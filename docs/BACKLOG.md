@@ -117,8 +117,12 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] AI variety: each AI draws two claims (provinces across its land borders) and an opening (strike, expand or
       build) from the seed. Openings overlap 10–11% between two Normal campaigns once timing counts (16–20% before);
       what remains alike is geography (Spain → Lisbon, Poland → Prague, Germany–Poland)
-- [ ] Balance: Britain wins the most AI-only campaigns and France usually falls first (also before claims and
-      openings); look at cross-Channel invasions and how the AI defends France
+- [x] AI balance (`scripts/dev/balance.ts`): capitals keep a garrison sized to the danger up to two provinces away,
+      and winning AIs settle once they hold two enemy home provinces. Over 80 campaigns France's capital fell in 49
+      instead of 66 and Germany's in 26 instead of 44 (at about minute 56 instead of 22); France is eliminated in 28
+      instead of 49, Germany in 15 instead of 25
+- [ ] Balance: France is still everyone's neighbour (about four wars declared on it per campaign) and never wins;
+      compensate through the map, its starting position or the rules
 - [ ] AI: don't pile into a province already falling uncontested (3–5% of orders), and don't snatch a neutral another
       power is halfway through capturing
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment

@@ -39,6 +39,12 @@ export interface Ctx {
   threat: Map<ProvinceId, number>;
   /** Owned provinces touching enemy or neutral territory. */
   frontier: Set<ProvinceId>;
+  /**
+   * Danger to my capital: hostile power in it or next door, half of what stands two connections away, and a
+   * share of the armies of neighbouring powers at peace, who could declare war. A capital in the interior is
+   * still in danger once an enemy is one province away.
+   */
+  capitalDanger: number;
   /** Share of armoured units among my enemies' armies (0..1). */
   enemyArmour: number;
   /** Resources set aside for research. */
@@ -96,10 +102,18 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   const armies: Army[] = [];
   let enemyUnits = 0;
   let enemyArmour = 0;
+  const capital = world.nations[me].capital;
+  const ring1 = new Set(world.neighbors[capital].map((n) => n.id));
+  const ring2 = new Set([...ring1].flatMap((id) => world.neighbors[id].map((n) => n.id)).filter((id) => id !== capital && !ring1.has(id)));
+  let capitalDanger = 0;
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
     const where = armyLocation(a);
     const pw = armyPower(state, a);
+    if (a.owner !== me && a.owner !== NEUTRAL && ownedSet.has(capital)) {
+      const reach = where === capital || ring1.has(where) ? 1 : ring2.has(where) ? AI.capitalDepth : 0;
+      capitalDanger += pw * reach * (areHostile(state, me, a.owner) ? 1 : AI.peacetimeVigilance);
+    }
     if (a.owner === me) {
       armies.push(a);
       presence.set(where, (presence.get(where) ?? 0) + pw);
@@ -149,6 +163,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     hostile,
     threat,
     frontier,
+    capitalDanger,
     enemyArmour: enemyUnits > 0 ? enemyArmour / enemyUnits : 0,
     savings: {},
   };

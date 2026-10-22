@@ -45,7 +45,8 @@ export function handleDiplomacy(ctx: Ctx): void {
   const morale = state.nations[me].morale;
   const leader = runawayLeader(ctx);
 
-  // Answer peace offers: accept when actually losing (ground, capital or nerve), or weary of a war going nowhere.
+  // Answer peace offers: accept when actually losing (ground, capital or nerve), weary of a war going nowhere,
+  // or holding enough of the enemy's land to call it won.
   for (const offer of state.peaceOffers.filter((o) => o.to === me)) {
     const theirPower = nationPower(state, offer.from);
     const rel = state.nations[me].relations[offer.from];
@@ -55,7 +56,10 @@ export function handleDiplomacy(ctx: Ctx): void {
     const lostCapital = state.provinces[world.nations[me].capital].owner !== me;
     const winning = occupiedCores(ctx, me, offer.from) > occupiedCores(ctx, offer.from, me) && myPower > theirPower;
     const stopTheLeader = offer.from === leader;
-    const accept = !stopTheLeader && (losing || lostCapital || morale < AI.acceptPeaceMorale || (weary && !winning));
+    // A winner with its war aims in hand takes the gains: wars of opportunity are not wars of annihilation.
+    const satisfied =
+      state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, offer.from) >= AI.warAimProvinces;
+    const accept = !stopTheLeader && (losing || lostCapital || morale < AI.acceptPeaceMorale || (weary && !winning) || satisfied);
     issue(ctx, { type: 'respondPeace', nation: me, from: offer.from, accept });
   }
 

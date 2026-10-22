@@ -258,10 +258,12 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   as often and not before 12 minutes, never join a war on a nation that is already fighting one, and accept peace
   once they are no longer stronger. The levels live in `AI_LEVELS` (`src/sim/config/ai.ts`).
 - **Diplomacy:** it leaves neutral states alone for at least the first 10 minutes, so a player can take a
-  neighbouring one first. After at least a 6-minute grace period it starts wars of opportunity against weaker or distracted
-  neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
-  VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing (ground,
-  capital or morale), closes the worse of two fronts first, and keeps fighting a war it is winning.
+  neighbouring one first. After at least a 6-minute grace period it starts wars of opportunity against weaker or
+  distracted neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power
+  within 3 VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing
+  (ground, capital or morale) and closes the worse of two fronts first. Its wars have limited aims: once it holds two
+  of the enemy's home provinces and the war is 10 minutes old, it accepts peace even while winning (against a power
+  about to win, it fights on).
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
   sagging).
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
@@ -271,9 +273,12 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units.
 - **Military:** armies about to break fall back before they rout; armies taking a province hold it until it falls
-  (unless they would starve first); starving or worn-out armies go home to recover; up to two offensives mass at a
-  staging province and strike together, frontier armies leaving a rear guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
-  provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
+  (unless they would starve first); starving or worn-out armies go home to recover; the capital keeps a garrison
+  sized to the danger around it (enemies next door, half of those two provinces away, and a third of the armies of
+  neighbouring powers still at peace), set aside before any offensive; up to two offensives mass at a staging
+  province and strike together, frontier armies leaving a rear guard sized to the threat that remains; targets
+  whose defenders would be encircled are preferred; threatened provinces are covered by the nearest free armies;
+  the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
 
 ## 12. Architecture
@@ -357,5 +362,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Do national specialities feel distinct without breaking the starting balance?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player? Normal declares war
   on an idle player at 7–13 minutes, sometimes two powers at once.
-- Britain wins the most AI-only campaigns (14 of 80 seeds; 18 before claims and openings) and France usually falls
-  first: is the island too safe, and is France too exposed?
+- France is the weakest position. It borders four powers, and Britain, Italy and Spain have little else to fight,
+  so it suffers about four declarations of war per campaign against one or two for the others. In 80 AI-only
+  campaigns it never wins and is eliminated in 28 (49 before capitals were garrisoned and wars got limited aims);
+  Germany, also central, in 15 (25 before). Should the map, the starting forces or the rules compensate?

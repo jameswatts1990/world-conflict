@@ -11,7 +11,7 @@ export interface AiLevel {
   attackRatio: number;
   /** Most offensives run at once. */
   maxCampaigns: number;
-  /** Defenders wanted per unit of threat on a frontier province. */
+  /** Defenders wanted per unit of threat on a frontier province, and per unit of danger around the capital. */
   defenceFactor: number;
   /** In battle, pull back before routing when morale is this low and the enemy is not weaker. */
   retreatMorale: number;
@@ -78,6 +78,9 @@ export const AI = {
   wearyPeaceChance: 0.05,
   /** Accept peace after this long at war regardless (war weariness). */
   warWearinessSeconds: 1500,
+  /** A winning AI settles once it holds this many of the enemy's core provinces, and the war is this old. */
+  warAimProvinces: 2,
+  warAimSeconds: 600,
   /** Any power holding this many VP short of victory becomes everyone's target. */
   leaderAlarmVp: 3,
   /** Reserve kept back when spending (fraction of income per minute). */
@@ -88,6 +91,10 @@ export const AI = {
   unitsPerIncome: 50,
   /** Share of money income that may go to upkeep (scaled up by aggression and war). */
   upkeepShare: 0.45,
+  /** Danger to the capital from hostile armies two connections away, relative to those next door. */
+  capitalDepth: 0.5,
+  /** Danger to the capital from the armies of neighbouring powers still at peace (they could declare war). */
+  peacetimeVigilance: 0.35,
   /** Largest army the AI forms by merging. */
   maxArmySize: 14,
   /** Armies below these do not attack; they rest first. */

@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { captureTicks, createInitialState, setAiOrderTrace, type AiOpening, type AiOrderTrace, type GameState } from '../src/sim';
+import { applyCommand, captureTicks, createInitialState, setAiOrderTrace, type AiOpening, type AiOrderTrace, type GameState, type NationId } from '../src/sim';
 import { AI_LEVELS, aiLevel } from '../src/sim/config/ai';
 import { aiGame, clearArmies, place, run, setWar, world } from './helpers';
+
+/** A game in which only the given nation is run by the computer. */
+function soloAi(nation: NationId, seed = 5): GameState {
+  const state = aiGame(seed, null);
+  for (const n of world.nationIds) {
+    if (n === nation) continue;
+    state.nations[n].controller = 'human';
+    state.nations[n].ai = null;
+  }
+  return state;
+}
 
 const atWarWith = (state: GameState, nation: string) => world.nationIds.filter((n) => state.nations[nation].relations[n]?.status === 'war');
 
@@ -21,6 +32,33 @@ describe('AI army control', () => {
     }
     expect(orders.filter((o) => o.armyId === army.id)).toEqual([]);
     expect(state.provinces['nt-portugal'].owner).toBe('es');
+  });
+
+  it('keeps a garrison in an interior capital while an enemy army is two provinces away', () => {
+    // Paris borders no foreign land, so before this the army there was sent off to the front.
+    const state = soloAi('fr');
+    clearArmies(state);
+    const garrison = place(state, 'fr', 'fr-paris', { infantry: 4, artillery: 1 });
+    place(state, 'de', 'de-hesse', { infantry: 8, artillery: 2 });
+    setWar(state, 'fr', 'de');
+    run(state, 60);
+    expect(state.armies[garrison.id]?.province).toBe('fr-paris');
+    expect(state.armies[garrison.id]?.move).toBeNull();
+  });
+
+  it('a winner that holds enough of the enemy\'s land accepts peace', () => {
+    // Spain has taken two French home provinces and is far stronger: it used to fight on to the end.
+    const state = soloAi('es');
+    clearArmies(state);
+    place(state, 'es', 'es-madrid', { infantry: 10, artillery: 3 });
+    place(state, 'fr', 'fr-paris', { infantry: 2 });
+    setWar(state, 'es', 'fr');
+    for (const n of ['es', 'fr'] as const) state.nations[n].relations[n === 'es' ? 'fr' : 'es'].since = -60 * 11;
+    state.provinces['fr-midi'].owner = 'es';
+    state.provinces['fr-aquitaine'].owner = 'es';
+    expect(applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'es' }).ok).toBe(true);
+    run(state, 20);
+    expect(atWarWith(state, 'es')).toEqual([]);
   });
 });
 

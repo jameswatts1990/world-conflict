@@ -40,6 +40,7 @@ Other scripts:
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `npx vite-node scripts/dev/balance.ts <seeds> <minutes> [--difficulty easy]` | How each power fares across many all-AI campaigns, run in parallel: wins, eliminations, land held, capitals lost, wars by and on it, who takes its land |
 | `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]` | AI behaviour report: wasted effort (back-and-forth marches, abandoned captures, idle armies), variety across seeds, and how long an idle human lasts |
 | `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>` | Traces every AI army order with its reason and shows the armies sent back and forth |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review |
@@ -120,8 +121,8 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs at
-  Normal, most campaigns now end on objectives within 50–100 minutes, short of the 2–3 hour target, and an idle
-  player is overrun in about 25 minutes (about 50 at Easy).
+  Normal, about half the campaigns end on objectives, mostly between 50 and 120 minutes, and an idle player is
+  overrun in about 30 minutes (about 45 at Easy). France is the hardest position: it borders four powers.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

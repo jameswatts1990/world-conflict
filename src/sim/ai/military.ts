@@ -4,11 +4,13 @@
 //   2. armies taking a province hold it until it falls (leaving resets the
 //      capture, and an army pulled out only to be sent back in wastes both trips);
 //   3. starving or worn-out armies go home to recover;
-//   4. up to two offensives mass at a staging province and strike together,
+//   4. the capital keeps a garrison sized to the danger around it, set aside
+//      before any offensive (an interior capital would otherwise be emptied);
+//   5. up to two offensives mass at a staging province and strike together,
 //      preferring targets whose defenders would be cut off;
-//   5. threatened provinces are covered, nearest armies moving in, and free
+//   6. threatened provinces are covered, nearest armies moving in, and free
 //      armies take any neighbouring target they can manage alone;
-//   6. anything left moves up to the front.
+//   7. anything left moves up to the front.
 import { AI } from '../config/ai';
 import { MORALE, SUPPLY } from '../config/rules';
 import { areHostile, armyMorale, armyPower, canEnterProvince, captureTicks, fortificationReduction, hostileArmiesIn, scaledTicks } from '../queries';
@@ -77,6 +79,13 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   const fort = state.provinces[pid].buildings.fortifications ?? 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
   return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience;
+}
+
+/** Defenders wanted in a province against a given threat, allowing for its forts and terrain. */
+function garrisonNeed(ctx: Ctx, pid: ProvinceId, threat: number): number {
+  const fort = ctx.state.provinces[pid].buildings.fortifications ?? 0;
+  const terrain = TERRAIN_DEFENCE[ctx.world.provinces[pid].terrain];
+  return (threat * ctx.level.defenceFactor * (1 - fortificationReduction(ctx.state, ctx.me, fort) * 0.5)) / terrain;
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
@@ -222,7 +231,20 @@ export function handleMilitary(ctx: Ctx): void {
     }
   }
 
-  // 4. Offence first: the best defence against the army next door is often to
+  // 4. The capital's garrison stays, whatever the offensives want.
+  const capital = world.nations[me].capital;
+  const capitalNeed = ctx.ownedSet.has(capital) ? garrisonNeed(ctx, capital, ctx.capitalDanger) : 0;
+  let capitalHeld = 0;
+  for (const a of idleArmies(ctx)) {
+    if (a.province !== capital) continue;
+    if (committed.has(a.id)) capitalHeld += power(a);
+    else if (capitalHeld < capitalNeed) {
+      committed.add(a.id);
+      capitalHeld += power(a);
+    }
+  }
+
+  // 5. Offence first: the best defence against the army next door is often to
   //    hit it. Frontier armies may attack, leaving a rear guard only for the
   //    threat that remains once the target's defenders are engaged.
   const ready = () => idleArmies(ctx).filter((a) => !committed.has(a.id) && battleReady(a));
@@ -271,14 +293,11 @@ export function handleMilitary(ctx: Ctx): void {
     }
   }
 
-  // 5. Defence: cover threatened provinces, nearest free armies first.
-  const capital = world.nations[me].capital;
+  // 6. Defence: cover threatened provinces (the capital against the wider danger), nearest free armies first.
   const needs = ctx.owned
     .map((pid) => {
       const threat = ctx.threat.get(pid) ?? 0;
-      const fort = state.provinces[pid].buildings.fortifications ?? 0;
-      const terrain = TERRAIN_DEFENCE[world.provinces[pid].terrain];
-      const need = (threat * ctx.level.defenceFactor * (1 - fortificationReduction(state, me, fort) * 0.5)) / terrain;
+      const need = garrisonNeed(ctx, pid, pid === capital ? Math.max(threat, ctx.capitalDanger) : threat);
       const importance = 1 + (world.provinces[pid].objectiveVp ?? 0) * 0.5 + (pid === capital ? 1 : 0);
       return { pid, need, importance };
     })
@@ -331,7 +350,7 @@ export function handleMilitary(ctx: Ctx): void {
     if (best && !guarding && issue(ctx, { type: 'move', nation: me, armyId: army.id, to: best.pid }, 'strike')) committed.add(army.id);
   }
 
-  // 6. Anything left in the rear moves up to the most threatened frontier province.
+  // 7. Anything left in the rear moves up to the most threatened frontier province.
   const fronts = [...ctx.frontier].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
   if (fronts.length === 0) return;
   for (const army of free()) {
