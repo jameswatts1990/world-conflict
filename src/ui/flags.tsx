@@ -119,6 +119,6 @@ export function Flag({ id, size = 20, title, className }: { id: string; size?: n
 
 /** Flag for whoever owns a province (neutral states use their own flag). */
 export function OwnerFlag({ world, owner, province, size }: { world: World; owner: OwnerId; province?: ProvinceId; size?: number }) {
-  const title = owner === 'neutral' ? (province ? world.provinces[province].neutralState : 'Neutral') : world.nations[owner]?.name;
+  const title = owner === 'neutral' ? (province ? world.provinces[province].neutral?.name : 'Neutral') : world.nations[owner]?.name;
   return <Flag id={flagKey(owner, province)} size={size} title={title} />;
 }

@@ -3,12 +3,14 @@
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
 import { BUILDING_UNLOCKED_BY, TECH_BY_ID, UNIT_UNLOCKED_BY } from '../../sim/config/research';
+import { ECONOMY, MORALE } from '../../sim/config/rules';
 import { UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
 import {
   RESOURCE_KEYS,
   armiesIn,
   armyMorale,
   armyName,
+  armyPower,
   buildingSlots,
   checkBuild,
   checkBuildRules,
@@ -19,20 +21,23 @@ import {
   constructionTicks,
   currentModel,
   isUnitUnlocked,
+  nationName,
   provinceMoraleTarget,
   provinceOutput,
   recruitCost,
   recruitTicks,
+  sentence,
   unitGen,
   unitStats,
   type Army,
   type ArmyId,
   type BuildingCategory,
   type BuildingType,
+  type ConnectionKind,
   type GameState,
+  type OwnerId,
   type ProvinceId,
   type Resources,
-  type Terrain,
   type UnitClass,
   type UnitType,
 } from '../../sim';
@@ -42,25 +47,8 @@ import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { fmtPopulation, fmtRate, formatDuration } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
+import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
 import { Cost, MoraleMeter, Progress, Section } from './Common';
-
-export const TERRAIN_LABEL: Record<Terrain, string> = {
-  plains: 'Plains',
-  forest: 'Forest',
-  hills: 'Hills',
-  mountains: 'Mountains',
-  urban: 'Urban',
-  marsh: 'Marsh',
-};
-
-const TERRAIN_NOTE: Record<Terrain, string> = {
-  plains: 'Open ground: tanks and cavalry excel.',
-  forest: 'Forest: defenders and anti-tank guns +, armour −.',
-  hills: 'Hills: infantry defends well, artillery +.',
-  mountains: 'Mountains: strong defence, slow; mountain troops shine, tanks crippled.',
-  urban: 'Urban: infantry and assault troops strong, tanks −.',
-  marsh: 'Marsh: slow going, vehicles bog down.',
-};
 
 const CATEGORY_LABEL: Record<BuildingCategory, string> = {
   economy: 'Economy',
@@ -72,18 +60,62 @@ const CATEGORY_LABEL: Record<BuildingCategory, string> = {
 const CLASS_LABEL: Record<UnitClass, string> = { infantry: 'Infantry', mobile: 'Mobile', support: 'Support', armour: 'Armour' };
 const CLASS_ICON: Record<UnitClass, IconName> = { infantry: 'shield', mobile: 'move', support: 'target', armour: 'bolt' };
 
-/** Unit counts by type (most numerous first) and average strength, for compact army summaries. */
-export function composition(army: Army): { types: [UnitType, number][]; strength: number } {
-  const counts = new Map<UnitType, number>();
-  let strength = 0;
-  for (const u of army.units) {
-    counts.set(u.type, (counts.get(u.type) ?? 0) + 1);
-    strength += u.strength;
-  }
-  return {
-    types: [...counts].sort((a, b) => b[1] - a[1]),
-    strength: army.units.length ? strength / army.units.length : 0,
-  };
+const ROUTE_KIND: Record<ConnectionKind, { label: string; icon: IconName }> = {
+  land: { label: 'Land route', icon: 'road' },
+  mountain: { label: 'Mountain pass', icon: 'mountains' },
+  strait: { label: 'Sea crossing', icon: 'anchor' },
+};
+
+const refundTitle = (what: string, started: boolean) =>
+  started ? `Cancel ${what} (${Math.round(ECONOMY.startedJobRefund * 100)}% refund)` : `Cancel ${what} (full refund)`;
+
+/** Who is fighting in a province, with each side's share of the firepower. */
+function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
+  const { state, world } = ctrl;
+  const battle = state.battles[pid];
+  const armies = armiesIn(state, pid);
+  const defender = state.provinces[pid].owner;
+  const owners = [...new Set(armies.map((a) => a.owner))].sort((a, b) => Number(a === defender) - Number(b === defender));
+  const sides = owners.map((owner: OwnerId) => {
+    const theirs = armies.filter((a) => a.owner === owner);
+    const morale = theirs.reduce((s, a) => s + armyMorale(a) * a.units.length, 0) / Math.max(1, theirs.reduce((s, a) => s + a.units.length, 0));
+    return { owner, c: composition(theirs), morale, power: theirs.reduce((s, a) => s + armyPower(state, a), 0) };
+  });
+  const total = sides.reduce((s, x) => s + x.power, 0) || 1;
+  return (
+    <div className="battle-box" data-testid="battle-box">
+      <div className="battle-head">
+        <Icon name="swords" size={15} />
+        <span>Battle of {world.provinces[pid].city.name}</span>
+        <span className="muted">{formatDuration(state.tick - battle.startedAt, state)}</span>
+      </div>
+      <div className="balance" title="Share of the firepower in this battle">
+        {sides.map((s) => (
+          <span key={s.owner} style={{ width: `${(s.power / total) * 100}%`, background: ownerColor(world, s.owner) }} />
+        ))}
+      </div>
+      {sides.map((s) => (
+        <div key={s.owner} className="battle-side">
+          <OwnerFlag world={world} owner={s.owner} province={pid} size={13} />
+          <span className="bs-name" title={ownerShortName(world, s.owner, pid)}>
+            {ownerShortName(world, s.owner, pid)}
+            <span className="bs-role muted"> · {s.owner === defender ? 'defending' : 'attacking'}</span>
+          </span>
+          <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; below ${Math.round(MORALE.routThreshold * 100)}% an army breaks`}>
+            {s.c.count} units · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
+          </span>
+          <span className="ar-bars">
+            <span className="ar-str" title={`${Math.round(s.c.strength * 100)}% average strength`}>
+              <span style={{ width: `${s.c.strength * 100}%`, background: strengthColor(s.c.strength) }} />
+            </span>
+            <span className={`ar-str mini-morale ${s.morale >= 0.6 ? 'high' : s.morale >= 0.35 ? 'mid' : 'low'}`}>
+              <span style={{ width: `${s.morale * 100}%` }} />
+            </span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 type Tab = 'city' | 'recruit' | 'armies';
@@ -107,12 +139,11 @@ export function ProvincePanel({
   const ps = state.provinces[pid];
   const owner = ps.owner;
   const mine = owner === human;
-  const ownerName = owner === 'neutral' ? `${def.neutralState} · neutral` : world.nations[owner].name;
   const color = ownerColor(world, owner);
   const armies = armiesIn(state, pid);
   const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
   const nationalCapital = def.city.size === 'capital' && def.core !== null;
-  const occupied = def.core && def.core !== owner;
+  const occupied = owner !== 'neutral' && def.core !== owner;
   const activeTab: Tab = !mine && tab === 'recruit' ? 'city' : tab;
 
   return (
@@ -121,7 +152,7 @@ export function ProvincePanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={owner} province={pid} size={16} />
           <span className="hero-owner">
-            {def.name} · {ownerName}
+            {def.name} · {ownerLabel(world, owner, pid)}
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
             <Icon name="close" size={16} />
@@ -133,7 +164,7 @@ export function ProvincePanel({
           <span className="tier-badge">{CITY.tierNames[ps.tier]}</span>
         </h3>
         <div className="chips">
-          <span className="chip" title={TERRAIN_NOTE[def.terrain]}>
+          <span className="chip">
             <Icon name={def.terrain} size={13} /> {TERRAIN_LABEL[def.terrain]}
           </span>
           <span className="chip" title="Urban population">
@@ -146,7 +177,7 @@ export function ProvincePanel({
             </span>
           )}
           {def.oil && (
-            <span className="chip" title="Oil field: refineries produce extra fuel">
+            <span className="chip" title="Oil field: refineries here produce extra fuel">
               <Icon name="oil" size={13} /> Oil field
             </span>
           )}
@@ -156,7 +187,13 @@ export function ProvincePanel({
             </span>
           )}
         </div>
-        {occupied && <div className="hero-note">Occupied {world.nations[def.core!].adjective} core territory — output follows morale, few volunteers</div>}
+        <div className="hero-note">{TERRAIN_NOTE[def.terrain]}</div>
+        {occupied && (
+          <div className="hero-note warn-note">
+            {def.core ? `Occupied ${world.nations[def.core].adjective} core territory` : `Occupied ${def.neutral?.name ?? 'territory'}`}: output follows
+            morale, few volunteers
+          </div>
+        )}
       </header>
 
       <div className="city-scene-wrap">
@@ -189,10 +226,12 @@ export function ProvincePanel({
       </nav>
 
       <div className="panel-body">
+        {state.battles[pid] && <BattleBox ctrl={ctrl} pid={pid} />}
         {ps.capture && (
           <div className="capture-box">
             <span>
-              <Icon name="target" size={14} /> {world.nations[ps.capture.by].name} capturing…
+              <Icon name="target" size={14} /> {sentence(nationName(world, ps.capture.by))} capturing
+              <span className="muted"> · {formatDuration(ps.capture.required - ps.capture.progress, state)} left</span>
             </span>
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />
           </div>
@@ -216,9 +255,6 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   if (owner === 'neutral') {
     return (
       <>
-        <p className="terrain-note">
-          <Icon name={def.terrain} size={14} /> {TERRAIN_NOTE[def.terrain]}
-        </p>
         <p className="muted small">A neutral state. Invading it means fighting its garrison; capturing it brings its city, buildings and any objective.</p>
         <BuildingSummary buildings={ps.buildings} />
       </>
@@ -239,10 +275,6 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 
   return (
     <>
-      <p className="terrain-note">
-        <Icon name={def.terrain} size={14} /> {TERRAIN_NOTE[def.terrain]}
-      </p>
-
       <Section title="Morale & growth" icon="morale">
         <div className="meter-row">
           <span className="meter-label">Morale</span>
@@ -286,6 +318,17 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
               </div>
               <Progress value={1 - ps.construction.remaining / ps.construction.total} label={formatDuration(ps.construction.remaining, state)} tone="gold" />
             </div>
+            {mine && (
+              <button
+                className="icon-btn"
+                title={refundTitle('construction', ps.construction.remaining < ps.construction.total)}
+                aria-label="Cancel construction"
+                onClick={() => ctrl.submit({ type: 'cancelBuild', nation: human, province: pid })}
+                data-testid="cancel-build"
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
           </div>
         )}
         <div className="slot-grid">
@@ -474,7 +517,8 @@ function RecruitTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
                 {i === 0 ? <Progress value={1 - j.remaining / j.total} label={formatDuration(j.remaining, state)} /> : <span className="muted">Queued</span>}
                 <button
                   className="icon-btn"
-                  title={i === 0 ? 'Cancel (50% refund)' : 'Cancel (full refund)'}
+                  title={refundTitle('training', j.remaining < j.total)}
+                  aria-label={`Cancel ${currentModel(state, world, human, j.unitType).name}`}
                   onClick={() => ctrl.submit({ type: 'cancelRecruit', nation: human, province: pid, index: i })}
                 >
                   <Icon name="close" size={13} />
@@ -524,8 +568,11 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
   const model = currentModel(state, world, human, type);
   const s = unitStats(state, human, type);
   const res = state.nations[human].resources;
+  // A missing building is a lock; a short treasury is only a wait.
+  const missing = cfg.requires.filter((b) => !state.provinces[pid].buildings[b]);
+  const time = formatDuration(recruitTicks(state, human, type), state);
   return (
-    <div className={`recruit-card${check.ok ? '' : ' disabled'}`} data-unit-card={type}>
+    <div className={`recruit-card${check.ok ? '' : ' disabled'}${missing.length ? ' locked' : ''}`} data-unit-card={type}>
       <UnitPicture type={type} gen={gen} nation={human} width={104} />
       <div className="uc-body">
         <div className="uc-name" title={model.detail}>
@@ -547,15 +594,21 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
           {s.hardness >= 0.5 && <span className="model-tag">Armoured</span>}
         </div>
         <div className="uc-foot">
-          <Cost cost={recruitCost(state, human, type)} have={res} />
+          {missing.length ? (
+            <span className="unit-req">
+              <Icon name="lock" size={12} /> Needs {missing.map((b) => BUILDINGS[b].name).join(' and ')}
+            </span>
+          ) : (
+            <Cost cost={recruitCost(state, human, type)} have={res} />
+          )}
           <button
             className="build-btn"
             disabled={!check.ok}
             onClick={() => ctrl.submit({ type: 'recruit', nation: human, province: pid, unitType: type })}
-            title={check.ok ? `${cfg.description} Trains in ${formatDuration(recruitTicks(state, human, type), state)}.` : check.reason}
+            title={check.ok ? `${cfg.description} Ready in ${time}.` : check.reason}
             data-recruit={type}
           >
-            {check.ok ? 'Recruit' : <Icon name="lock" size={13} />}
+            {missing.length ? <Icon name="lock" size={13} /> : 'Recruit'}
           </button>
         </div>
       </div>
@@ -630,16 +683,18 @@ function ArmiesTab({
 
       <Section title="Routes" icon="road">
         <ul className="conn-list">
-          {world.neighbors[pid].map((n) => (
-            <li key={n.id}>
-              <Icon name={n.kind === 'strait' ? 'anchor' : n.kind === 'mountain' ? 'mountains' : 'road'} size={13} />
-              <span className="conn-name">{world.provinces[n.id].name}</span>
-              <span className="muted">
-                {n.kind === 'strait' ? `sea crossing${n.label ? ` · ${n.label}` : ''}` : n.kind === 'mountain' ? `mountain pass${n.label ? ` · ${n.label}` : ''}` : 'land'} ·{' '}
-                {n.distanceKm} km
-              </span>
-            </li>
-          ))}
+          {world.neighbors[pid].map((n) => {
+            const kind = ROUTE_KIND[n.kind];
+            return (
+              <li key={n.id} title={`${kind.label}${n.label ? `: ${n.label}` : ''}`}>
+                <Icon name={kind.icon} size={13} />
+                <span className="conn-name">{world.provinces[n.id].name}</span>
+                <span className="muted">
+                  {n.label ?? kind.label.toLowerCase()} · {n.distanceKm} km
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </Section>
     </>

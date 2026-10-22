@@ -8,6 +8,8 @@ export const ECONOMY = {
   unpaidCombatMult: 0.8,
   /** Combat and speed multiplier for fuel-burning units while out of fuel. */
   noFuelVehicleMult: 0.5,
+  /** Share of the price refunded when a construction or recruitment that has started is cancelled (unstarted: all). */
+  startedJobRefund: 0.5,
 };
 
 // Morale works on three levels. Units have morale (0..1) that breaks before
@@ -120,6 +122,8 @@ export const DIPLOMACY = {
   /** After peace, neither side can declare war for this long. */
   truceSeconds: 300,
   peaceOfferExpirySeconds: 90,
+  /** After an offer is rejected or expires, the offering side waits this long before proposing again. */
+  peaceRetrySeconds: 240,
 };
 
 export const VICTORY = {

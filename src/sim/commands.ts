@@ -2,7 +2,7 @@
 // through applyCommand, which validates first. The same validators are used
 // by the UI to explain why an action is unavailable.
 import { BUILDINGS, CITY, slotsUsed } from './config/buildings';
-import { DIPLOMACY } from './config/rules';
+import { DIPLOMACY, ECONOMY } from './config/rules';
 import { RESEARCH_RULES, TECH_BY_ID } from './config/research';
 import { ARMY_RULES, UNITS } from './config/units';
 import { pushEvent } from './events';
@@ -24,13 +24,13 @@ import {
   refineryFuel,
   researchSlots,
   scaledTicks,
-  techEffects,
 } from './queries';
 import { createArmy } from './state';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
 import type { ArmyId, BuildingType, GameState, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import { durationText, nationName, sentence } from './text';
 import type { World } from './world';
 
 export type Command =
@@ -43,6 +43,7 @@ export type Command =
   | { type: 'cancelRecruit'; nation: NationId; province: ProvinceId; index: number }
   | { type: 'build'; nation: NationId; province: ProvinceId; building: BuildingType }
   | { type: 'demolish'; nation: NationId; province: ProvinceId; building: BuildingType }
+  | { type: 'cancelBuild'; nation: NationId; province: ProvinceId }
   | { type: 'research'; nation: NationId; tech: TechId }
   | { type: 'queueResearch'; nation: NationId; tech: TechId }
   | { type: 'unqueueResearch'; nation: NationId; tech: TechId }
@@ -84,7 +85,7 @@ export function checkMove(state: GameState, world: World, nation: NationId, army
   if (army.move?.leg && to === army.move.leg.from) return OK; // reversing
   const p = state.provinces[to];
   if (p.owner !== nation && !(p.owner === 'neutral' || atWar(state, nation, p.owner))) {
-    return fail(`You are at peace with ${world.nations[p.owner]?.name ?? p.owner}. Declare war first.`);
+    return fail(`You are at peace with ${nationName(world, p.owner)}. Declare war first.`);
   }
   if (to !== from && !findPath(state, world, army, from, to)) return fail('No route: blocked by territory you may not enter.');
   return OK;
@@ -198,19 +199,29 @@ export function checkDeclareWar(state: GameState, nation: NationId, target: Nati
   if (t.eliminated) return fail('That nation has been eliminated.');
   const rel = state.nations[nation].relations[target];
   if (rel.status === 'war') return fail('Already at war.');
-  if (state.tick < rel.truceUntil) return fail(`Truce in force for ${Math.ceil((rel.truceUntil - state.tick) / state.settings.durationScale)}s.`);
+  if (state.tick < rel.truceUntil) {
+    return fail(`A truce is in force for another ${durationText((rel.truceUntil - state.tick) / state.settings.durationScale)}.`);
+  }
   return OK;
 }
 
-export function checkOfferPeace(state: GameState, nation: NationId, target: NationId): CommandResult {
+export function checkOfferPeace(state: GameState, world: World, nation: NationId, target: NationId): CommandResult {
   const actor = checkActor(state, nation);
   if (!actor.ok) return actor;
   if (!state.nations[target] || state.nations[target].eliminated) return fail('Invalid target.');
   const rel = state.nations[nation].relations[target];
   if (rel?.status !== 'war') return fail('Not at war.');
   const minWar = scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
-  if (state.tick - rel.since < minWar) return fail(`Too soon: wars must last ${DIPLOMACY.minWarSecondsBeforePeace}s before peace talks.`);
-  if (state.peaceOffers.some((o) => o.from === nation && o.to === target)) return fail('Offer already pending.');
+  const scale = state.settings.durationScale;
+  if (state.tick - rel.since < minWar) {
+    const left = (minWar - (state.tick - rel.since)) / scale;
+    return fail(`Peace talks open ${durationText(DIPLOMACY.minWarSecondsBeforePeace)} into a war (${durationText(left)} to go).`);
+  }
+  if (state.peaceOffers.some((o) => o.from === nation && o.to === target)) return fail('Your offer is awaiting an answer.');
+  if (rel.peaceOfferAfter !== undefined && state.tick < rel.peaceOfferAfter) {
+    const left = (rel.peaceOfferAfter - state.tick) / scale;
+    return fail(`${sentence(nationName(world, target))} turned down your last offer. Try again in ${durationText(left)}.`);
+  }
   return OK;
 }
 
@@ -311,9 +322,10 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
     case 'recruit': {
       const check = checkRecruit(state, world, cmd.nation, cmd.province, cmd.unitType);
       if (!check.ok) return check;
-      spend(state, cmd.nation, recruitCost(state, cmd.nation, cmd.unitType));
+      const cost = recruitCost(state, cmd.nation, cmd.unitType);
+      spend(state, cmd.nation, cost);
       const ticks = recruitTicks(state, cmd.nation, cmd.unitType);
-      state.provinces[cmd.province].recruitQueue.push({ unitType: cmd.unitType, remaining: ticks, total: ticks });
+      state.provinces[cmd.province].recruitQueue.push({ unitType: cmd.unitType, remaining: ticks, total: ticks, cost });
       return OK;
     }
     case 'cancelRecruit': {
@@ -323,8 +335,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (!p || p.owner !== cmd.nation) return fail('You do not control this province.');
       const job = p.recruitQueue[cmd.index];
       if (!job) return fail('No such job.');
-      // Full refund if not started, half if already in training.
-      refund(state, cmd.nation, recruitCost(state, cmd.nation, job.unitType), cmd.index === 0 ? 0.5 : 1);
+      refund(state, cmd.nation, job.cost ?? recruitCost(state, cmd.nation, job.unitType), jobRefund(job));
       p.recruitQueue.splice(cmd.index, 1);
       return OK;
     }
@@ -333,9 +344,21 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (!check.ok) return check;
       const p = state.provinces[cmd.province];
       const level = (p.buildings[cmd.building] ?? 0) + 1;
-      spend(state, cmd.nation, constructionCost(state, cmd.nation, cmd.building, level));
+      const cost = constructionCost(state, cmd.nation, cmd.building, level);
+      spend(state, cmd.nation, cost);
       const ticks = constructionTicks(state, cmd.nation, cmd.building, level);
-      p.construction = { building: cmd.building, targetLevel: level, remaining: ticks, total: ticks };
+      p.construction = { building: cmd.building, targetLevel: level, remaining: ticks, total: ticks, cost };
+      return OK;
+    }
+    case 'cancelBuild': {
+      const actor = checkActor(state, cmd.nation);
+      if (!actor.ok) return actor;
+      const p = state.provinces[cmd.province];
+      if (!p || p.owner !== cmd.nation) return fail('You do not control this province.');
+      const job = p.construction;
+      if (!job) return fail('Nothing is being built here.');
+      refund(state, cmd.nation, job.cost ?? constructionCost(state, cmd.nation, job.building, job.targetLevel), jobRefund(job));
+      p.construction = null;
       return OK;
     }
     case 'demolish': {
@@ -403,14 +426,14 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       return OK;
     }
     case 'offerPeace': {
-      const check = checkOfferPeace(state, cmd.nation, cmd.target);
+      const check = checkOfferPeace(state, world, cmd.nation, cmd.target);
       if (!check.ok) return check;
       state.peaceOffers.push({
         from: cmd.nation,
         to: cmd.target,
         expiresAt: state.tick + scaledTicks(state, DIPLOMACY.peaceOfferExpirySeconds),
       });
-      pushEvent(state, 'peace-offer', `${world.nations[cmd.nation].name} offered peace to ${world.nations[cmd.target].name}.`, {
+      pushEvent(state, 'peace-offer', `${sentence(nationName(world, cmd.nation))} offered peace to ${nationName(world, cmd.target)}.`, {
         nations: [cmd.nation, cmd.target],
       });
       return OK;
@@ -423,8 +446,10 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       state.peaceOffers.splice(idx, 1);
       if (cmd.accept) makePeace(state, world, cmd.from, cmd.nation);
       else {
-        pushEvent(state, 'peace-rejected', `${world.nations[cmd.nation].name} rejected peace with ${world.nations[cmd.from].name}.`, {
+        state.nations[cmd.from].relations[cmd.nation].peaceOfferAfter = state.tick + scaledTicks(state, DIPLOMACY.peaceRetrySeconds);
+        pushEvent(state, 'peace-rejected', `${sentence(nationName(world, cmd.nation))} rejected peace with ${nationName(world, cmd.from)}.`, {
           nations: [cmd.nation, cmd.from],
+          subject: cmd.from,
           severity: 'bad',
         });
       }
@@ -433,7 +458,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
   }
 }
 
-/** True if the nation has the Synthetic Fuel effect (UI helper). */
-export function hasSyntheticFuel(state: GameState, nation: NationId): boolean {
-  return techEffects(state, nation).some((e) => e.kind === 'syntheticFuel');
+/** Share of a job's price returned on cancel: all of it until work has started. */
+function jobRefund(job: { remaining: number; total: number }): number {
+  return job.remaining < job.total ? ECONOMY.startedJobRefund : 1;
 }

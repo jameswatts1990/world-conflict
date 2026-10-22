@@ -97,23 +97,39 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
 - [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
-- [x] New tests for every system; save schema v2
+- [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
 ## M3 — Playtest polish
 
 - [x] Graphics and UX overhaul (relief map, command rail, floating cards, alerts, minimap, route preview) merged with
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
-- [x] Run the scripted browser playthrough (`npm run e2e`) end to end
-- [ ] Add the playthrough and the test suite to CI
+- [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
-- [ ] Notifications for key events (war declared on you, capital threatened, research done)
+- [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
+      done, rejected peace offers)
 - [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
-- [ ] Responsive layout and touch controls
+- [ ] Responsive layout and touch controls (the HUD now fits 1280 × 720; phones and touch are still out of scope)
 - [ ] Code-split the bundle; lazy-load the world context layer
+
+### Polish pass (done)
+
+- [x] Attack by right-clicking an enemy army (or clicking it in move mode); route preview and tooltip on army counters
+- [x] Confirm before declaring war or leaving the campaign; Escape closes the innermost window first
+- [x] Cancel construction; full refund for jobs that have not started, refunds at the price paid
+- [x] Peace offers: 4-minute retry delay after a refusal or expiry (ends AI offer spam); countdown on the offer card;
+      answer offers from the Diplomacy window
+- [x] Resource breakdown (production, upkeep, net) on the top bar; live rates from the first second
+- [x] Battle box in the province card (with each side's morale); results screen with provinces captured, units
+      destroyed, units lost and armies surrendered
+- [x] Alerts that wait while paused; Ctrl/Alt shortcuts left to the browser; working campaign-speed select
+- [x] Event wording ("the United Kingdom", "occupied the Netherlands"), config-driven rule text, distinct tech art,
+      map key for army rims, country names as a background layer placed clear of cities, constant-size neutral hatching
+- [x] Removed dead code and config (unused exports, icons, styles, AI keys, unit and building codes)
+- [x] Randomised invariant test; the browser playthrough no longer hangs after finishing
 
 ## M4 — Fog of war and diplomacy
 

@@ -1,0 +1,89 @@
+import { describe, expect, it } from 'vitest';
+import { BUILDING_ORDER } from '../src/sim/config/buildings';
+import { ARMY_RULES } from '../src/sim/config/units';
+import { TECHS } from '../src/sim/config/research';
+import { UNIT_TYPES, applyCommand, stepState, type Command, type GameState, type NationId } from '../src/sim';
+import { aiGame, world } from './helpers';
+
+/** Every rule the simulation must keep, whatever commands arrive. */
+function violations(state: GameState): string[] {
+  const out: string[] = [];
+  for (const n of Object.values(state.nations)) {
+    for (const [k, v] of Object.entries(n.resources)) if (!Number.isFinite(v) || v < 0) out.push(`${n.id} ${k} = ${v}`);
+  }
+  for (const a of Object.values(state.armies)) {
+    if (a.units.length === 0) out.push(`empty army ${a.id}`);
+    if (a.owner !== 'neutral' && state.nations[a.owner].eliminated) out.push(`army ${a.id} of eliminated ${a.owner}`);
+    for (const u of a.units) if (!(u.strength > 0 && u.strength <= 1)) out.push(`unit ${u.id} strength ${u.strength}`);
+    if (a.move) {
+      if (a.move.leg && (a.move.leg.from !== a.province || a.move.path[0] !== a.move.leg.to)) out.push(`army ${a.id} leg out of step`);
+      let at = a.province;
+      for (const next of a.move.path) {
+        if (!world.neighbors[at].some((n) => n.id === next)) out.push(`army ${a.id} path jumps ${at} -> ${next}`);
+        at = next;
+      }
+    }
+  }
+  for (const p of Object.values(state.provinces)) {
+    if (p.capture && p.capture.progress > p.capture.required) out.push(`capture overrun in ${p.id}`);
+    if (p.recruitQueue.length > ARMY_RULES.maxRecruitQueue) out.push(`queue overflow in ${p.id}`);
+  }
+  return out;
+}
+
+/** A clumsy player: random orders, many of them invalid, at random moments. */
+function randomCommand(state: GameState, me: NationId, rnd: () => number): Command | null {
+  const pick = <T,>(list: readonly T[]): T => list[Math.floor(rnd() * list.length)];
+  const armies = Object.values(state.armies).filter((a) => a.owner === me);
+  const provinces = world.provinceIds.filter((p) => state.provinces[p].owner === me);
+  const army = armies.length ? pick(armies) : null;
+  const province = provinces.length ? pick(provinces) : null;
+  switch (Math.floor(rnd() * 12)) {
+    case 0:
+      return army ? { type: 'move', nation: me, armyId: army.id, to: pick(world.provinceIds) } : null;
+    case 1:
+      return army ? { type: 'stop', nation: me, armyId: army.id } : null;
+    case 2:
+      return army && army.units.length > 1 ? { type: 'split', nation: me, armyId: army.id, unitIds: [army.units[0].id] } : null;
+    case 3:
+      return armies.length > 1 ? { type: 'merge', nation: me, armyIds: [pick(armies).id, pick(armies).id] } : null;
+    case 4:
+      return province ? { type: 'recruit', nation: me, province, unitType: pick(UNIT_TYPES) } : null;
+    case 5:
+      return province ? { type: 'cancelRecruit', nation: me, province, index: Math.floor(rnd() * 3) } : null;
+    case 6:
+      return province ? { type: 'build', nation: me, province, building: pick(BUILDING_ORDER) } : null;
+    case 7:
+      return province ? { type: 'cancelBuild', nation: me, province } : null;
+    case 8:
+      return { type: 'research', nation: me, tech: pick(TECHS).id };
+    case 9:
+      return rnd() < 0.1 ? { type: 'declareWar', nation: me, target: pick(world.nationIds) } : null;
+    case 10:
+      return { type: 'offerPeace', nation: me, target: pick(world.nationIds) };
+    default: {
+      const offer = state.peaceOffers.find((o) => o.to === me);
+      return offer ? { type: 'respondPeace', nation: me, from: offer.from, accept: rnd() < 0.5 } : null;
+    }
+  }
+}
+
+describe('simulation invariants', () => {
+  it.each([3, 21])('hold through a campaign of random player orders (seed %i)', (seed) => {
+    let x = seed;
+    const rnd = () => (x = (Math.imul(x, 1103515245) + 12345) >>> 0) / 4294967296;
+    const me = world.nationIds[seed % world.nationIds.length];
+    const state = aiGame(seed, me);
+    let accepted = 0;
+    for (let t = 0; t < 40 * 60 && !state.outcome; t++) {
+      if (rnd() < 0.1) {
+        const cmd = randomCommand(state, me, rnd);
+        if (cmd && applyCommand(state, world, cmd).ok) accepted++;
+      }
+      stepState(state, world);
+      if (t % 30 === 0) expect(violations(state)).toEqual([]);
+    }
+    expect(violations(state)).toEqual([]);
+    expect(accepted).toBeGreaterThan(20);
+  });
+});

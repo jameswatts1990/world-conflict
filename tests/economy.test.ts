@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILDINGS } from '../src/sim/config/buildings';
 import { ECONOMY, MORALE } from '../src/sim/config/rules';
 import { UNITS } from '../src/sim/config/units';
-import { applyCommand, constructionTicks, nationEconomy, provinceOutput, recruitTicks } from '../src/sim';
+import { applyCommand, constructionCost, constructionTicks, nationEconomy, provinceOutput, recruitCost, recruitTicks } from '../src/sim';
 import { clearArmies, place, quietGame, run, world } from './helpers';
 
 describe('resource accounting', () => {
@@ -73,6 +73,61 @@ describe('resource accounting', () => {
     const here = Object.values(state.armies).filter((a) => a.owner === 'fr' && a.province === 'fr-paris');
     expect(here).toHaveLength(1);
     expect(here[0].units.map((u) => u.type)).toEqual(['artillery']);
+  });
+
+  it('cancelling refunds the price paid: all of it before work starts, half after', () => {
+    const state = quietGame();
+    const fr = state.nations.fr;
+    const paid = recruitCost(state, 'fr', 'infantry');
+    const recruit = () => applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'infantry' });
+    const cancel = (index: number) => applyCommand(state, world, { type: 'cancelRecruit', nation: 'fr', province: 'fr-paris', index });
+
+    // A misclick while paused costs nothing, even for the job at the front of the queue.
+    const r0 = { ...fr.resources };
+    recruit();
+    expect(cancel(0).ok).toBe(true);
+    expect(fr.resources).toEqual(r0);
+
+    // Once training has started, half comes back; queued jobs behind it are refunded in full.
+    recruit();
+    recruit();
+    run(state, 1);
+    const r1 = { ...fr.resources };
+    cancel(1);
+    expect(fr.resources.money - r1.money).toBeCloseTo(paid.money!, 6);
+    cancel(0);
+    expect(fr.resources.money - r1.money).toBeCloseTo(paid.money! * (1 + ECONOMY.startedJobRefund), 6);
+
+    // The refund is what was paid, not today's (researched, cheaper) price.
+    recruit();
+    recruit();
+    fr.research.completed.push('assemblyLine');
+    expect(recruitCost(state, 'fr', 'infantry').materials).toBeLessThan(paid.materials!);
+    const r2 = { ...fr.resources };
+    cancel(1);
+    expect(fr.resources.materials - r2.materials).toBeCloseTo(paid.materials!, 6);
+  });
+
+  it('construction can be cancelled with the same refund rules', () => {
+    const state = quietGame();
+    const cost = constructionCost(state, 'fr', 'fortifications', 1);
+    const r0 = { ...state.nations.fr.resources };
+    const build = () => applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-east', building: 'fortifications' });
+    const cancel = () => applyCommand(state, world, { type: 'cancelBuild', nation: 'fr', province: 'fr-east' });
+    expect(cancel().ok).toBe(false);
+    build();
+    expect(cancel().ok).toBe(true);
+    expect(state.provinces['fr-east'].construction).toBeNull();
+    expect(state.nations.fr.resources).toEqual(r0);
+    build();
+    run(state, 5);
+    const before = state.nations.fr.resources.money;
+    cancel();
+    expect(state.nations.fr.resources.money - before).toBeCloseTo(cost.money! * ECONOMY.startedJobRefund, 6);
+    expect(state.provinces['fr-east'].buildings.fortifications).toBeUndefined();
+    // Only the owner can cancel.
+    build();
+    expect(applyCommand(state, world, { type: 'cancelBuild', nation: 'de', province: 'fr-east' }).ok).toBe(false);
   });
 
   it('output follows province morale; occupied land also yields few recruits', () => {

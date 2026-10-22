@@ -51,8 +51,8 @@ export function formationName(world: World, owner: OwnerId, unit: Unit): string 
 
 export function armyName(world: World, army: Army, province?: ProvinceId): string {
   if (army.owner === NEUTRAL) {
-    const state = world.provinces[province ?? army.province]?.neutralState;
-    return state ? `${state} garrison` : 'Neutral garrison';
+    const neutral = world.provinces[province ?? army.province]?.neutral;
+    return neutral ? `${neutral.adjective} garrison` : 'Neutral garrison';
   }
   return fillTemplate(world.nations[army.owner].identity.army, army.serial);
 }

@@ -64,14 +64,15 @@ export function handleDiplomacy(ctx: Ctx): void {
     const rel = state.nations[me].relations[enemy];
     if (state.tick - rel.since < scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace)) continue;
     if (state.peaceOffers.some((o) => o.from === me && o.to === enemy)) continue;
+    if (rel.peaceOfferAfter !== undefined && state.tick < rel.peaceOfferAfter) continue;
     if (enemy === leader && myPower > nationPower(state, enemy) * 0.5) continue;
     const theirPower = nationPower(state, enemy);
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
-    const beaten = myPower < theirPower * 0.6 && occupiedCores(ctx, enemy, me) > 0;
+    const beaten = myPower < theirPower * AI.offerPeaceRatio && occupiedCores(ctx, enemy, me) > 0;
     const winning = occupiedCores(ctx, me, enemy) > occupiedCores(ctx, enemy, me);
     // On two fronts, close the one that is going worse.
     const worstFront = ctx.enemies.length >= 2 && theirPower >= Math.max(...ctx.enemies.map((e) => nationPower(state, e))) && !winning;
-    if (beaten || morale < AI.offerPeaceMorale || (weary && !winning && random(state) < 0.05) || (worstFront && weary && random(state) < 0.1)) {
+    if (beaten || morale < AI.offerPeaceMorale || (weary && !winning && random(state) < AI.wearyPeaceChance) || (worstFront && weary && random(state) < 0.1)) {
       issue(ctx, { type: 'offerPeace', nation: me, target: enemy });
     }
   }

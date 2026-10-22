@@ -183,7 +183,7 @@ export function ResearchPanel({ ctrl, onClose }: { ctrl: GameController; onClose
       icon="research"
       subtitle={`${nationEra(state, human)} era · ${research.completed.length} of ${TECHS.length} technologies researched`}
       onClose={onClose}
-      full
+      size="full"
     >
       <div className="research-head">
         <div className="research-status">

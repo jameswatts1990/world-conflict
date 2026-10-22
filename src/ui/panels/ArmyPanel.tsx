@@ -11,6 +11,7 @@ import {
   formationName,
   hostileArmiesIn,
   isRouted,
+  provinceName,
   rankName,
   scaledTicks,
   unitGen,
@@ -24,8 +25,8 @@ import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
+import { composition, ownerShortName } from '../labels';
 import { MoraleMeter, Progress, Section, moraleClass } from './Common';
-import { composition } from './ProvincePanel';
 
 /** Rank chevrons: none for Green, one to three for Regular to Elite. */
 export function RankChevrons({ xp }: { xp: number }) {
@@ -70,20 +71,21 @@ export function ArmyPanel({
 
   let status: string;
   let statusIcon: IconName;
+  const here = provinceName(world, army.province);
   if (routed) {
-    status = `Routed — falling back to ${world.provinces[leg?.to ?? army.province].name}`;
+    status = `Routed — falling back to ${provinceName(world, leg?.to ?? army.province)}`;
     statusIcon = 'warning';
   } else if (leg) {
-    status = `Marching to ${world.provinces[leg.to].name}`;
+    status = `Marching to ${provinceName(world, leg.to)}`;
     statusIcon = 'move';
   } else if (hostiles.length > 0) {
-    status = `In battle at ${world.provinces[army.province].name}`;
+    status = `In battle in ${here}`;
     statusIcon = 'swords';
   } else if (p.capture && p.capture.by === army.owner) {
-    status = `Capturing ${world.provinces[army.province].name}`;
+    status = `Capturing ${here} · ${formatDuration(p.capture.required - p.capture.progress, state)} left`;
     statusIcon = 'target';
   } else {
-    status = `Stationed in ${world.provinces[army.province].name}`;
+    status = `Stationed in ${here}`;
     statusIcon = 'shield';
   }
 
@@ -126,7 +128,7 @@ export function ArmyPanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={army.owner} province={army.province} size={16} />
           <span className="hero-owner">
-            {army.owner === 'neutral' ? 'Neutral' : world.nations[army.owner].name} · {army.units.length} formations
+            {ownerShortName(world, army.owner, army.province)} · {army.units.length} formations
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close army panel">
             <Icon name="close" size={16} />
@@ -186,7 +188,7 @@ export function ArmyPanel({
                 </span>
               )}
             </div>
-            {!leg && <div className="muted">Holding to fight or capture</div>}
+            {!leg && <div className="muted">Halted to fight or capture, then marching on</div>}
           </div>
         )}
 
@@ -200,7 +202,7 @@ export function ArmyPanel({
           <div className="warn">
             <Icon name="warning" size={15} />
             <span>
-              Out of supply: −25% combat, no recovery.
+              Out of supply: fights at {Math.round(SUPPLY.unsuppliedCombatMult * 100)}% and cannot recover.
               {army.unsuppliedTicks >= grace ? ' Suffering attrition!' : ` Attrition begins in ${formatDuration(grace - army.unsuppliedTicks, state)}.`}
             </span>
           </div>

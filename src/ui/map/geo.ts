@@ -33,6 +33,7 @@ export interface MapGeometry {
   countries: CountryShape[];
   /** Projected area of each province, in map units² (for label weighting). */
   provinceArea: Record<ProvinceId, number>;
+  provinceBounds: Record<ProvinceId, [[number, number], [number, number]]>;
   /** Bounding box of the playable theatre, in map units. */
   theatreBounds: [[number, number], [number, number]];
   coastline: string;
@@ -91,12 +92,12 @@ export function buildMapGeometry(world: World): MapGeometry {
   const provincePaths: Record<ProvinceId, string> = {};
   const labelPoints: Record<ProvinceId, [number, number]> = {};
   const provinceArea: Record<ProvinceId, number> = {};
-  const geomById = new Map<string, number>();
-  provinces.features.forEach((f, i) => {
+  const provinceBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
+  provinces.features.forEach((f) => {
     provincePaths[f.properties.pid] = path(f) ?? '';
     labelPoints[f.properties.pid] = path.centroid(largestPolygon(f));
     provinceArea[f.properties.pid] = path.area(f);
-    geomById.set(f.properties.pid, i);
+    provinceBounds[f.properties.pid] = path.bounds(largestPolygon(f)) as [[number, number], [number, number]];
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
@@ -144,6 +145,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     towns,
     countries: countryShapes,
     provinceArea,
+    provinceBounds,
     theatreBounds,
     coastline,
     graticule,

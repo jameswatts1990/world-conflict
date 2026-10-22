@@ -16,6 +16,10 @@ export const AI = {
   acceptPeaceMorale: 40,
   /** Sue for peace when national morale falls below this. */
   offerPeaceMorale: 32,
+  /** Offer peace when own strength falls below this fraction of the enemy's. */
+  offerPeaceRatio: 0.6,
+  /** Chance per think that a war-weary AI offers peace anyway. */
+  wearyPeaceChance: 0.05,
   /** Accept peace after this long at war regardless (war weariness). */
   warWearinessSeconds: 1500,
   /** Any power holding this many VP short of victory becomes everyone's target. */

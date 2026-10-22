@@ -10,6 +10,7 @@ import { pushEvent } from '../events';
 import { armyName } from '../names';
 import { hostileArmiesIn, isArmyInTransit, scaledTicks, techEffects, unitMoraleCap } from '../queries';
 import { NEUTRAL, type GameState, type NationId, type OwnerId, type ProvinceId } from '../types';
+import { provinceName } from '../text';
 import type { World } from '../world';
 
 export function suppliedProvinces(state: GameState, world: World, nation: NationId): Set<ProvinceId> {
@@ -84,7 +85,7 @@ export function supplySystem(state: GameState, world: World): void {
     }
     const supplied = inSupplyRange(state, world, army.owner, networks.get(army.owner)!, army.province);
     if (!supplied && army.supplied) {
-      pushEvent(state, 'supply', `The ${armyName(world, army)} in ${world.provinces[army.province].name} is cut off from supply.`, {
+      pushEvent(state, 'supply', `The ${armyName(world, army)} in ${provinceName(world, army.province)} is cut off from supply.`, {
         nations: [army.owner],
         province: army.province,
         severity: 'bad',
@@ -124,10 +125,12 @@ export function armyConditionSystem(state: GameState, world: World): void {
         u.strength -= SUPPLY.attritionPerStep;
         u.morale = Math.max(0, u.morale - MORALE.starvingDrain);
       }
+      const before = army.units.length;
       army.units = army.units.filter((u) => u.strength > 0.001);
+      if (army.owner !== NEUTRAL) state.nations[army.owner].stats.unitsLost += before - army.units.length;
       if (army.units.length === 0) {
         delete state.armies[aid];
-        pushEvent(state, 'attrition', `A starving army in ${world.provinces[army.province].name} disintegrated.`, {
+        pushEvent(state, 'attrition', `A starving army in ${provinceName(world, army.province)} disintegrated.`, {
           nations: army.owner === NEUTRAL ? [] : [army.owner],
           province: army.province,
           severity: 'bad',

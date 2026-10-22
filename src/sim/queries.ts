@@ -41,12 +41,6 @@ export function canAfford(have: Resources, cost: PartialResources): boolean {
   return RESOURCE_KEYS.every((k) => have[k] + 1e-9 >= (cost[k] ?? 0));
 }
 
-export function formatCost(cost: PartialResources): string {
-  return RESOURCE_KEYS.filter((k) => (cost[k] ?? 0) > 0)
-    .map((k) => `${Math.round(cost[k]!)} ${k}`)
-    .join(', ');
-}
-
 function selects(sel: UnitSelector | undefined, type: UnitType): boolean {
   return sel === undefined || sel === 'all' || sel.includes(type);
 }

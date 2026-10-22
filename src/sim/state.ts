@@ -22,7 +22,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface NewGameOptions {
   seed: number;
@@ -136,7 +136,6 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       id: n.id,
       controller: isHuman ? 'human' : 'ai',
       resources: { ...scenario.startingResources },
-      lastRates: { money: 0, materials: 0, fuel: 0, manpower: 0 },
       research: { completed: [...scenario.startingTechs], active: [], queue: [] },
       relations,
       eliminated: false,

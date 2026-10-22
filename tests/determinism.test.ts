@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   GameLoop,
+  SCHEMA_VERSION,
   Simulation,
   applyCommand,
   deserializeGame,
@@ -81,7 +82,8 @@ describe('determinism', () => {
         loop.advance(dt);
         elapsed += dt;
       }
-      expect(state.tick).toBeGreaterThan(targetTicks - 100);
+      // Real time drove the clock to within a few ticks of the target (or the campaign ended first).
+      expect(state.outcome !== null || state.tick > targetTicks - 100).toBe(true);
       // Drain to an exact tick count so every profile is compared at the same game time.
       while (state.tick < targetTicks && !state.outcome) {
         applyScript(state);
@@ -122,6 +124,17 @@ describe('save / load', () => {
     expect(copy.rng).toBe(original.rng);
   });
 
+  it('upgrades saves from the previous schema version', () => {
+    const state = aiGame(5);
+    run(state, 120);
+    const old = JSON.parse(serializeGame(state, 'v2'));
+    old.schemaVersion = old.state.schemaVersion = 2;
+    for (const n of Object.values(old.state.nations) as Record<string, unknown>[]) n.lastRates = { money: 1, materials: 2, fuel: 3, manpower: 4 };
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId);
+    expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
+    expect(hashState(loaded.state)).toBe(hashState(state));
+  });
+
   it('rejects foreign or incompatible saves', () => {
     expect(() => deserializeGame('not json')).toThrow();
     expect(() => deserializeGame(JSON.stringify({ format: 'other' }))).toThrow(/Not a World Conflict save/);
@@ -130,5 +143,12 @@ describe('save / load', () => {
     bad.schemaVersion = 999;
     expect(() => deserializeGame(JSON.stringify(bad))).toThrow(/version/);
     expect(() => deserializeGame(serializeGame(state, 'x'), 'another-scenario')).toThrow(/different scenario/);
+    // Saves from before cities, morale and the research tree hold a different state.
+    const early = JSON.parse(serializeGame(state, 'x'));
+    early.schemaVersion = early.state.schemaVersion = 2;
+    for (const n of Object.values(early.state.nations) as { research: { active: unknown } }[]) n.research.active = null;
+    expect(() => deserializeGame(JSON.stringify(early))).toThrow(/earlier version/);
+    early.schemaVersion = 1;
+    expect(() => deserializeGame(JSON.stringify(early))).toThrow(/earlier version/);
   });
 });

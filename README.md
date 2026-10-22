@@ -35,7 +35,7 @@ Other scripts:
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Simulation test suite (Vitest, ~20 s) |
+| `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
@@ -43,6 +43,9 @@ Other scripts:
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for cities) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
+
+The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and the browser playthrough on
+every push and pull request.
 
 ## Deploy to GitHub Pages
 
@@ -56,10 +59,10 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 
 | Input | Action |
 | --- | --- |
-| Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, armies present |
+| Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, forces present, routes |
 | Left-click army counter | Select army (Shift-click adds more of your armies) |
-| Right-click province | Move the selected army there (or press **M** / the **Move** button, then left-click) |
-| **S** | Stop the selected army after its current leg |
+| Right-click province or enemy army | March the selected armies there (or press **M** / the **Move** button, then left-click) |
+| **S** | Stop the selected armies after their current leg |
 | Drag / mouse wheel | Pan / zoom |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
@@ -67,13 +70,15 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | **V** | Cycle map view: political, terrain, supply, morale, city size |
 | **K** | Show or hide the map key |
 | **H** or **?** | Controls and briefing |
-| **Esc** | Cancel move mode, close a dialog, clear selection |
+| **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
 The left command rail opens Research, Diplomacy, field reports, save/load and help. The top-left switch (or **V**)
 changes the map view (Political, Terrain, Supply, Morale, Cities); the overview map and zoom buttons sit at the
-bottom right. With one of your armies selected, pointing at a province previews the route and arrival time. Click a
-field report or an alert to jump to its province. Peace offers and key events (wars, research, objectives) pop up at
-the top left.
+bottom right. With one of your armies selected, pointing at a province or an enemy army previews the route and arrival
+time. Point at a resource in the top bar for its income and upkeep. Click a field report or an alert to jump to its
+province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
+provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
+Declaring war and leaving the campaign ask for confirmation.
 
 ## How to win
 
@@ -83,10 +88,11 @@ You lose if your nation is eliminated or another power wins.
 
 ## Saving
 
-Save and load from the top bar (three slots plus an autosave every 2 minutes and whenever the tab is hidden).
+Save and load from the left command rail (three slots plus an autosave every 2 minutes, when the tab is hidden and
+when you return to the main menu).
 Saves live in the browser's `localStorage` and can be exported or imported as JSON files.
-**The local prototype is paused while closed**: hiding the tab pauses the game and loading resumes exactly where the
-save was made. Offline progression belongs to the later server-backed version.
+**The campaign is paused while closed**: hiding the tab pauses the game and loading resumes exactly where the save
+was made. Offline progression belongs to the later server-backed version.
 
 ## Project layout
 
@@ -108,13 +114,14 @@ tests/              Simulation tests
 
 ## Known limitations
 
-- The scripted browser playthrough (`npm run e2e`) runs to completion against the production build in headless
-  Chromium, but is not yet part of CI. It checks the gameplay loop through the real UI, not visual appearance;
-  screenshots in `e2e-output/` are checked by eye.
-- Balance is tuned with headless AI-vs-AI campaigns and needs human playtesting. In those runs every campaign ends
-  on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up on a leader.
+- The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
+  appearance; screenshots in `e2e-output/` are checked by eye.
+- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
+  every campaign ends on the time limit: nobody reaches the 15 VP objective threshold, partly because the AI gangs up
+  on a leader.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - Single desktop layout; not tuned for touch or small screens. The main bundle is ~850 KB (274 KB gzipped).
-- Saves from the first prototype (schema 1) are not loadable.
+- Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
+  loaded.
