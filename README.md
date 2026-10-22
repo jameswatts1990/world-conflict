@@ -166,7 +166,7 @@ tests/              Simulation tests
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The main bundle is ~945 KB (308 KB gzipped).
+  devices. The main bundle is ~975 KB (319 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
 - Hungary's other modern neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia) are not in the theatre yet, so its
