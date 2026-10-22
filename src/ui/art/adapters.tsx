@@ -5,8 +5,10 @@ import type { BuildingCategory, BuildingType, CityTier, NationId, OwnerId, TechB
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
 import { PLINTH_COLORS, buildCityModel } from './CityModel';
+import { flagStripes } from '../flags';
 import { CitySkyline } from './CitySkyline';
 import { NATIONAL_STYLES, UnitArt, type ArtNation } from './UnitArt';
+import { buildUnitModel, type UnitModelKind } from './UnitModel';
 
 /**
  * How an owner's units are drawn: in its own look if it has one, otherwise in
@@ -97,6 +99,31 @@ export interface CitySprite {
   rx: number;
 }
 
+/** An SVG document as an image URL: a blob in the browser, a data URL elsewhere (tests, scripts). */
+function svgHref(svg: string): string {
+  return typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
+    ? URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+/** Least-recently-used cache of sprites by look; dropped sprites release their blob. */
+function cached<T extends { href: string }>(cache: Map<string, T>, limit: number, key: string, make: () => T): T {
+  const hit = cache.get(key);
+  if (hit) {
+    cache.delete(key);
+    cache.set(key, hit);
+    return hit;
+  }
+  const sprite = make();
+  cache.set(key, sprite);
+  if (cache.size > limit) {
+    const [oldKey, old] = cache.entries().next().value!;
+    cache.delete(oldKey);
+    if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
+  }
+  return sprite;
+}
+
 const sprites = new Map<string, CitySprite>();
 /** Enough for every city in a few states each; older looks are dropped first. */
 const SPRITE_CACHE = 240;
@@ -110,23 +137,36 @@ export function citySprite(props: Omit<CitySceneProps, 'width'> & { freeSlots: n
     .filter(([, lv]) => (lv ?? 0) > 0)
     .sort(([a], [b]) => (a < b ? -1 : 1));
   const key = JSON.stringify([props.seed, props.tier, props.capital, built, props.construction, props.freeSlots, props.terrain, props.coastal, props.nationColor, props.battle]);
-  const hit = sprites.get(key);
-  if (hit) {
-    sprites.delete(key);
-    sprites.set(key, hit);
-    return hit;
-  }
-  const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
-  const href =
-    typeof Blob !== 'undefined' && typeof URL.createObjectURL === 'function'
-      ? URL.createObjectURL(new Blob([model.svg], { type: 'image/svg+xml' }))
-      : `data:image/svg+xml;charset=utf-8,${encodeURIComponent(model.svg)}`;
-  const sprite = { href, width: model.width, height: model.height, cx: model.cx, cy: model.cy, rx: model.rx };
-  sprites.set(key, sprite);
-  if (sprites.size > SPRITE_CACHE) {
-    const [oldKey, old] = sprites.entries().next().value!;
-    sprites.delete(oldKey);
-    if (old.href.startsWith('blob:')) URL.revokeObjectURL(old.href);
-  }
-  return sprite;
+  return cached(sprites, SPRITE_CACHE, key, () => {
+    const model = buildCityModel({ ...props, freeSlots: Math.max(0, props.freeSlots) });
+    return { href: svgHref(model.svg), width: model.width, height: model.height, cx: model.cx, cy: model.cy, rx: model.rx };
+  });
+}
+
+export interface UnitSprite {
+  /** Image URL of the army's 3D model. */
+  href: string;
+  /** Size in model units, and where the model stands within the image. */
+  width: number;
+  height: number;
+  cx: number;
+  cy: number;
+}
+
+const unitSprites = new Map<string, UnitSprite>();
+/** Every army's look in a handful of headings. */
+const UNIT_SPRITE_CACHE = 480;
+
+/**
+ * An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings.
+ * A nation drawn in its bloc's look flies its own flag (or one in its colour) and is cached as itself.
+ */
+export function unitSprite(world: World, type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
+  const art = artOf(world, nation);
+  const look = art.accent ? nation : art.nation;
+  return cached(unitSprites, UNIT_SPRITE_CACHE, `${type}|${gen}|${look}|${heading}`, () => {
+    const flag = art.accent ? (flagStripes(nation) ?? undefined) : undefined;
+    const model = buildUnitModel({ type: type as UnitModelKind, gen, ...art, flag, heading });
+    return { href: svgHref(model.svg), width: model.width, height: model.height, cx: model.cx, cy: model.cy };
+  });
 }

@@ -1,28 +1,48 @@
 // Simplified national flags (3:2) for the powers and the neutral states.
 // Drawn inline so the UI needs no image assets. A nation without one here
-// shows the plain neutral flag.
+// shows the plain neutral flag (and flies one in its own colour on the map).
 import { useId, type ReactElement } from 'react';
 import type { OwnerId, ProvinceId, World } from '../sim';
 
 const W = 30;
 const H = 20;
 
-const h3 = (a: string, b: string, c: string) => (
-  <>
-    <rect width={W} height={H / 3} fill={a} />
-    <rect y={H / 3} width={W} height={H / 3} fill={b} />
-    <rect y={(2 * H) / 3} width={W} height={H / 3} fill={c} />
-  </>
-);
-const v3 = (a: string, b: string, c: string) => (
-  <>
-    <rect width={W / 3} height={H} fill={a} />
-    <rect x={W / 3} width={W / 3} height={H} fill={b} />
-    <rect x={(2 * W) / 3} width={W / 3} height={H} fill={c} />
-  </>
-);
+/** A flag of equal stripes, kept as data so the map's 3D army models can fly it too. */
+export interface FlagStripes {
+  dir: 'h' | 'v';
+  colors: string[];
+}
+
+/** Striped flags: most countries need only a line here. */
+const STRIPED: Record<string, FlagStripes> = {
+  fr: { dir: 'v', colors: ['#1f4fa0', '#f4f4f4', '#e0383e'] },
+  de: { dir: 'h', colors: ['#121212', '#d40000', '#ffcc00'] },
+  it: { dir: 'v', colors: ['#0c8a46', '#f4f4f4', '#cd2b37'] },
+  pl: { dir: 'h', colors: ['#f4f4f4', '#dc143c'] },
+  hu: { dir: 'h', colors: ['#cd2a3e', '#f4f4f4', '#436f4d'] },
+  'nt-benelux': { dir: 'v', colors: ['#151515', '#fdda24', '#ef3340'] },
+  'nt-netherlands': { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
+  'nt-austria': { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
+};
+
+function stripes({ dir, colors }: FlagStripes): ReactElement {
+  const n = colors.length;
+  return (
+    <>
+      {colors.map((c, i) =>
+        dir === 'h' ? <rect key={i} y={(i * H) / n} width={W} height={H / n} fill={c} /> : <rect key={i} x={(i * W) / n} width={W / n} height={H} fill={c} />,
+      )}
+    </>
+  );
+}
+
+/** The flag's stripes, if it is a striped flag. */
+export function flagStripes(id: string): FlagStripes | null {
+  return STRIPED[id] ?? null;
+}
 
 const FLAGS: Record<string, ReactElement> = {
+  ...Object.fromEntries(Object.entries(STRIPED).map(([id, s]) => [id, stripes(s)])),
   uk: (
     <>
       <rect width={W} height={H} fill="#1f3a8a" />
@@ -34,25 +54,12 @@ const FLAGS: Record<string, ReactElement> = {
       <rect y={8.4} width={W} height={3.2} fill="#c8102e" />
     </>
   ),
-  fr: v3('#1f4fa0', '#f4f4f4', '#e0383e'),
-  de: h3('#121212', '#d40000', '#ffcc00'),
-  it: v3('#0c8a46', '#f4f4f4', '#cd2b37'),
   es: (
     <>
       <rect width={W} height={H} fill="#b3171d" />
       <rect y={5} width={W} height={10} fill="#f6c100" />
     </>
   ),
-  pl: (
-    <>
-      <rect width={W} height={H / 2} fill="#f4f4f4" />
-      <rect y={H / 2} width={W} height={H / 2} fill="#dc143c" />
-    </>
-  ),
-  hu: h3('#cd2a3e', '#f4f4f4', '#436f4d'),
-  'nt-benelux': v3('#151515', '#fdda24', '#ef3340'),
-  'nt-netherlands': h3('#ae1c28', '#f4f4f4', '#21468b'),
-  'nt-austria': h3('#c8102e', '#f4f4f4', '#c8102e'),
   'nt-denmark': (
     <>
       <rect width={W} height={H} fill="#c8102e" />
@@ -115,6 +122,16 @@ export function Flag({ id, size = 20, title, className }: { id: string; size?: n
         <rect width={W} height={H / 2} fill="#fff" opacity={0.1} />
       </g>
       <rect x={0.5} y={0.5} width={W - 1} height={H - 1} rx={2} fill="none" stroke="rgba(0,0,0,0.45)" />
+    </svg>
+  );
+}
+
+/** A flag drawn inside another SVG drawing (the map's army badges): `height` tall, top left at (x, y). */
+export function FlagMark({ id, x = 0, y = 0, height }: { id: string; x?: number; y?: number; height: number }) {
+  return (
+    <svg x={x} y={y} width={height * 1.5} height={height} viewBox={`0 0 ${W} ${H}`}>
+      {FLAGS[id] ?? FLAGS.neutral}
+      <rect x={0.75} y={0.75} width={W - 1.5} height={H - 1.5} fill="none" stroke="rgba(0,0,0,0.55)" strokeWidth={1.5} />
     </svg>
   );
 }

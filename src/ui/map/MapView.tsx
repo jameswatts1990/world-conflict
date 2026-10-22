@@ -1,16 +1,20 @@
 // Strategy map: baked shaded-relief terrain under translucent ownership tints,
 // glowing national borders, plated city labels, towns and army counters with
-// national unit art. Zoomed in, every city is a small 3D model of what it holds.
+// national unit art. Zoomed in, every city is a small 3D model of what it holds
+// and every army a 3D model of its main unit, standing around its city or
+// marching along its road.
 // Static geography is projected once and memoised; ownership, labels (on zoom)
 // and army markers (every frame) update.
 import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, zoomTransform, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   armyMorale,
   atWar,
   buildingSlots,
+  connectionBetween,
   findPath,
   isArmyInTransit,
   isRouted,
@@ -21,15 +25,19 @@ import {
   type GameState,
   type NationId,
   type ProvinceId,
+  type UnitType,
   type World,
 } from '../../sim';
 import { slotsUsed } from '../../sim/config/buildings';
-import { CounterArt, citySprite, type CitySprite } from '../art/adapters';
+import { CounterArt, citySprite, unitSprite, type CitySprite } from '../art/adapters';
+import { headingFor } from '../art/UnitModel';
 import { darken, lighten, ownerColor, strengthColor } from '../color';
 import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
+import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType } from '../labels';
+import { citySpots, roadEnds } from './armyLayout';
 import { MAP_HEIGHT, MAP_WIDTH, THEATRE_ISO, type MapGeometry } from './geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './terrain';
 
@@ -49,6 +57,8 @@ export interface MapViewProps {
   insetBottom: number;
   /** Pan the selected province into view when it falls under a panel (compact layouts). */
   followSelection: boolean;
+  /** Phone layouts: the map opens close in on the capital, detail waits for a closer zoom, and there is no overview map. */
+  compact: boolean;
   /**
    * Touch input: there is no pointer to hover with, so in move mode the first tap on a
    * destination previews the route (`moveTarget`) and a second tap on it gives the order.
@@ -74,6 +84,13 @@ const MAX_ZOOM = 7;
  * zoomed in to their scale.
  */
 const MIN_ZOOM_BASE = 0.8;
+/**
+ * On a phone, names and 3D cities wait for a closer zoom than on the desktop: it opens
+ * closer in (COMPACT_OPENING, against the desktop base) with the cities no bigger, so
+ * they stand apart.
+ */
+const COMPACT_DETAIL = 1.3;
+const COMPACT_OPENING = 2.1;
 
 /**
  * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
@@ -107,10 +124,12 @@ function cityModelProps(state: GameState, world: World, id: ProvinceId) {
 /** Where a city's model puts things, in screen pixels from its centre. */
 interface CityFootprint {
   sprite: CitySprite;
-  /** Army counters stack upwards from this height. */
-  lift: number;
+  /** Top edge of the model. */
+  above: number;
   /** Bottom edge of the model: the name plate hangs below it. */
   below: number;
+  /** Half-width of the token's ground ellipse: armies stand around it. */
+  half: number;
 }
 
 /** Red → amber → green ramp for 0..1. */
@@ -473,11 +492,12 @@ function LabelLayer({
       {world.provinceIds.map((id) => {
         let [x, y] = geo.labelPoints[id];
         const [ax, ay] = geo.anchors[id];
-        // Keep the name clear of the city marker or model, its plate and any army stack above it.
+        // Keep the name clear of the city marker and the counters stacked over it, or of the model and its plate.
         const city = cities?.[id];
         const half = city ? Math.max(80, city.sprite.rx * cityModelScale(ratio) + 30) : 80;
+        const above = city ? city.above + 24 : 70;
         const below = city ? city.below + 20 : 40;
-        if (Math.abs(x - ax) * k < half && (y - ay) * k > -70 - (city?.lift ?? 0) && (y - ay) * k < below) {
+        if (Math.abs(x - ax) * k < half && (y - ay) * k > -above && (y - ay) * k < below) {
           x = ax;
           y = ay + (below - 10) * s;
         }
@@ -673,6 +693,42 @@ function byCreation(a: Army, b: Army): number {
   return Number(a.id.slice(1)) - Number(b.id.slice(1)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
+/** A marching army's remaining road, from where it is now, with an arrowhead at the destination. */
+function Route({ geo, army, x, y, k, own, selected }: { geo: MapGeometry; army: Army; x: number; y: number; k: number; own: boolean; selected: boolean }) {
+  const pts: [number, number][] = [[x, y]];
+  for (const pid of army.move?.path ?? []) pts.push(geo.anchors[pid]);
+  if (pts.length < 2) return null;
+  const [ex, ey] = pts[pts.length - 1];
+  const [px, py] = pts[pts.length - 2];
+  const angle = (Math.atan2(ey - py, ex - px) * 180) / Math.PI;
+  const line = pts.map((p) => p.join(',')).join(' ');
+  return (
+    <g className={`route${selected ? ' selected' : ''}${own ? '' : ' foreign'}`}>
+      <polyline points={line} className="route-casing" />
+      <polyline points={line} className="route-line" />
+      <path d="M-8,-5 L1,0 L-8,5 Z" transform={`translate(${ex},${ey}) rotate(${angle}) scale(${1 / k})`} className="route-head" />
+    </g>
+  );
+}
+
+/** A pulsing explosion over every province with a battle in it. */
+function Battles({ geo, state, k }: { geo: MapGeometry; state: GameState; k: number }) {
+  return (
+    <>
+      {Object.keys(state.battles).map((pid) => {
+        const [x, y] = geo.anchors[pid];
+        return (
+          <g key={`b-${pid}`} transform={`translate(${x + 17 / k},${y - 4 / k}) scale(${1 / k})`} className="battle-fx" pointerEvents="none">
+            <circle r={12} className="battle-pulse" />
+            <path d={BURST_OUTER} className="battle-burst" />
+            <path d={BURST_INNER} className="battle-core" />
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
 function ArmyMarker({
   army,
   world,
@@ -747,7 +803,6 @@ function ArmyLayer({
   ctrl,
   geo,
   k,
-  cities,
   selectedArmies,
   onArmyClick,
   onArmyContext,
@@ -756,7 +811,6 @@ function ArmyLayer({
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
-  cities: Record<ProvinceId, CityFootprint> | null;
   selectedArmies: ArmyId[];
   onArmyClick: (army: Army, additive: boolean) => void;
   onArmyContext: (army: Army) => void;
@@ -770,9 +824,8 @@ function ArmyLayer({
   const relations = state.nations[human].relations;
   const armies = Object.values(state.armies).sort(byCreation);
 
-  // Armies standing in a province fill rows of two above its city (or its 3D model),
-  // yours first, so a crowded province grows a short pyramid rather than a tower over
-  // its neighbours.
+  // Armies standing in a province fill rows of two above its city, yours first, so a
+  // crowded province grows a short pyramid rather than a tower over its neighbours.
   const stacks = new Map<ProvinceId, Army[]>();
   for (const a of armies) {
     if (isArmyInTransit(a)) continue;
@@ -781,13 +834,12 @@ function ArmyLayer({
     stacks.set(a.province, list);
   }
   const offsets = new Map<ArmyId, [number, number]>();
-  for (const [pid, list] of stacks) {
-    const lift = cities?.[pid]?.lift ?? 0;
+  for (const [, list] of stacks) {
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
     list.forEach((a, i) => {
       const lone = i % 2 === 0 && i === list.length - 1;
       const dx = lone ? 0 : i % 2 === 0 ? -STACK.half : STACK.half;
-      offsets.set(a.id, [dx / k, -(STACK.base + lift + Math.floor(i / 2) * STACK.row) / k]);
+      offsets.set(a.id, [dx / k, -(STACK.base + Math.floor(i / 2) * STACK.row) / k]);
     });
   }
   // Drawn bottom to top: other nations' armies, then yours (marching ones above those
@@ -805,23 +857,7 @@ function ArmyLayer({
       y += offset[1];
     }
     const own = army.owner === human;
-    if (army.move && (own || selected.has(army.id))) {
-      const pts: [number, number][] = [[x, y]];
-      for (const pid of army.move.path) pts.push(geo.anchors[pid]);
-      if (pts.length > 1) {
-        const [ex, ey] = pts[pts.length - 1];
-        const [px, py] = pts[pts.length - 2];
-        const angle = (Math.atan2(ey - py, ex - px) * 180) / Math.PI;
-        const line = pts.map((p) => p.join(',')).join(' ');
-        routes.push(
-          <g key={`r-${army.id}`} className={`route${selected.has(army.id) ? ' selected' : ''}${own ? '' : ' foreign'}`}>
-            <polyline points={line} className="route-casing" />
-            <polyline points={line} className="route-line" />
-            <path d="M-8,-5 L1,0 L-8,5 Z" transform={`translate(${ex},${ey}) rotate(${angle}) scale(${1 / k})`} className="route-head" />
-          </g>,
-        );
-      }
-    }
+    if (army.move && (own || selected.has(army.id))) routes.push(<Route key={`r-${army.id}`} geo={geo} army={army} x={x} y={y} k={k} own={own} selected={selected.has(army.id)} />);
     const hostile = army.owner !== 'neutral' && !own && relations[army.owner]?.status === 'war';
     markers.push(
       <ArmyMarker
@@ -842,22 +878,281 @@ function ArmyLayer({
     );
   }
 
-  const battles = Object.keys(state.battles).map((pid) => {
-    const [x, y] = geo.anchors[pid];
-    return (
-      <g key={`b-${pid}`} transform={`translate(${x + 17 / k},${y - 4 / k}) scale(${1 / k})`} className="battle-fx" pointerEvents="none">
-        <circle r={12} className="battle-pulse" />
-        <path d={BURST_OUTER} className="battle-burst" />
-        <path d={BURST_INNER} className="battle-core" />
-      </g>
-    );
-  });
-
   return (
     <g className="army-layer">
       <g pointerEvents="none">{routes}</g>
       {markers}
-      {battles}
+      <Battles geo={geo} state={state} k={k} />
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 3D armies (wherever the cities are 3D models)
+// ---------------------------------------------------------------------------
+
+/** Screen pixels per model unit for the 3D armies. Like the cities, they grow more slowly than the map. */
+export function unitModelScale(ratio: number): number {
+  return Math.min(20, 2.5 + 5 * ratio);
+}
+
+/** How long an army takes to walk to a new spot (arriving, setting off, making room). */
+const SETTLE_MS = 450;
+
+/** Room one army takes around its ground point, in screen pixels. */
+const armyRoom = (px: number) => px * 1.45;
+
+interface PlacedArmy {
+  army: Army;
+  /** Ground point, in map coordinates. */
+  x: number;
+  y: number;
+  heading: number;
+  model: UnitType | 'transport';
+  /** The spot or road the army is tied to: when it changes, the army walks over instead of jumping. */
+  key: string;
+  marching: boolean;
+  /** The city it stands by or is nearest on its road. */
+  near: ProvinceId;
+}
+
+/**
+ * Where every army stands: in spots around its city (yours first), or on the road
+ * between two cities' edges, abreast when several share it, facing the way it goes.
+ */
+function placeArmies(state: GameState, world: World, geo: MapGeometry, human: NationId, k: number, px: number, alpha: number, cities: Record<ProvinceId, CityFootprint>): PlacedArmy[] {
+  const room = armyRoom(px);
+  const stands = new Map<ProvinceId, Army[]>();
+  const roads = new Map<string, Army[]>();
+  for (const a of Object.values(state.armies).sort(byCreation)) {
+    const leg = a.move?.leg;
+    const [map, key] = leg ? [roads, `${leg.from}>${leg.to}`] : [stands, a.province];
+    const list = map.get(key) ?? [];
+    list.push(a);
+    map.set(key, list);
+  }
+  const out: PlacedArmy[] = [];
+  const mainModel = (a: Army) => mainUnitType(composition(a));
+  for (const [pid, list] of stands) {
+    const [ax, ay] = geo.anchors[pid];
+    const battle = !!state.battles[pid];
+    list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
+    const spots = citySpots(cities[pid].half, room, list.length);
+    list.forEach((army, i) => {
+      const [ox, oy] = spots[i];
+      // At rest they face out of the screen, to whichever side they stand; in a battle, the fighting.
+      const heading = battle ? headingFor(-ox, -oy) : ox < 0 ? 4 : 0;
+      out.push({ army, x: ax + ox / k, y: ay + oy / k, heading, model: mainModel(army), key: `${pid}#${i}`, marching: false, near: pid });
+    });
+  }
+  for (const [road, list] of roads) {
+    list.forEach((army, i) => {
+      const leg = army.move!.leg!;
+      const t = Math.min(1, (leg.elapsed + alpha) / leg.duration);
+      const [x1, y1] = geo.anchors[leg.from];
+      const [x2, y2] = geo.anchors[leg.to];
+      const [dx, dy] = [x2 - x1, y2 - y1];
+      const len = Math.hypot(dx, dy) * k || 1;
+      const [[sx, sy], [ex, ey]] = roadEnds(dx, dy, cities[leg.from].half, cities[leg.to].half, room, len);
+      // Several armies on one road march abreast.
+      const side = (i - (list.length - 1) / 2) * room * 1.4;
+      const ox = sx + (ex - sx) * t - (dy * k * side) / len;
+      const oy = sy + (ey - sy) * t + (dx * k * side) / len;
+      const sea = connectionBetween(world, leg.from, leg.to)?.kind === 'strait';
+      out.push({
+        army,
+        x: x1 + dx * t + ox / k,
+        y: y1 + dy * t + oy / k,
+        heading: headingFor(dx, dy),
+        model: sea ? 'transport' : mainModel(army),
+        key: `${road}#${i}/${list.length}`,
+        marching: true,
+        near: t < 0.5 ? leg.from : leg.to,
+      });
+    });
+  }
+  return out;
+}
+
+interface Motion {
+  key: string;
+  from: [number, number];
+  start: number;
+  shown: [number, number];
+}
+
+/** Foot soldiers and horses bob as they march; vehicles roll. */
+const BOBS = new Set<string>(['infantry', 'stormtroopers', 'mountain', 'cavalry']);
+
+function ArmyModelLayer({
+  ctrl,
+  geo,
+  k,
+  px,
+  cities,
+  back,
+  selectedArmies,
+  onArmyClick,
+  onArmyContext,
+  onHover,
+}: {
+  ctrl: GameController;
+  geo: MapGeometry;
+  k: number;
+  /** Screen pixels per model unit. */
+  px: number;
+  cities: Record<ProvinceId, CityFootprint>;
+  /** Layer under the cities, for models standing behind one (their badges stay on top). */
+  back: SVGGElement | null;
+  selectedArmies: ArmyId[];
+  onArmyClick: (army: Army, additive: boolean) => void;
+  onArmyContext: (army: Army) => void;
+  onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
+}) {
+  // Re-render every animation frame while the game runs, for smooth marching.
+  useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
+  // While paused, armies still finish walking to new spots.
+  const [, bump] = useState(0);
+  const motion = useRef(new Map<ArmyId, Motion>());
+  const { state, world, human } = ctrl;
+  const paused = ctrl.loop.paused;
+  const selected = new Set(selectedArmies);
+  const relations = state.nations[human].relations;
+  const placed = placeArmies(state, world, geo, human, k, px, paused ? 0 : ctrl.loop.alpha, cities);
+
+  const now = performance.now();
+  let settling = false;
+  const live = new Set<ArmyId>();
+  for (const p of placed) {
+    live.add(p.army.id);
+    const m = motion.current.get(p.army.id);
+    if (!m) {
+      motion.current.set(p.army.id, { key: p.key, from: [p.x, p.y], start: -Infinity, shown: [p.x, p.y] });
+      continue;
+    }
+    if (m.key !== p.key) {
+      m.from = m.shown;
+      m.start = now;
+      m.key = p.key;
+    }
+    const t = Math.min(1, (now - m.start) / SETTLE_MS);
+    if (t < 1) {
+      settling = true;
+      const e = 1 - (1 - t) ** 3;
+      p.x = m.from[0] + (p.x - m.from[0]) * e;
+      p.y = m.from[1] + (p.y - m.from[1]) * e;
+    }
+    m.shown = [p.x, p.y];
+  }
+  for (const id of motion.current.keys()) if (!live.has(id)) motion.current.delete(id);
+  useEffect(() => {
+    if (!settling || !paused) return;
+    const f = requestAnimationFrame(() => bump((n) => n + 1));
+    return () => cancelAnimationFrame(f);
+  });
+
+  // Nearer the bottom of the screen is nearer the viewer: drawn later.
+  placed.sort((a, b) => a.y - b.y || byCreation(a.army, b.army));
+  const room = armyRoom(px);
+  const routes: ReactNode[] = [];
+  const models: ReactNode[] = [];
+  const behind: ReactNode[] = [];
+  const badges: [boolean, ReactNode][] = [];
+  for (const p of placed) {
+    const { army } = p;
+    const own = army.owner === human;
+    const sel = selected.has(army.id);
+    const hostile = army.owner !== 'neutral' && !own && relations[army.owner]?.status === 'war';
+    const routed = isRouted(state, army);
+    if (army.move && (own || sel)) routes.push(<Route key={`r-${army.id}`} geo={geo} army={army} x={p.x} y={p.y} k={k} own={own} selected={sel} />);
+    const gen = unitGen(state, army.owner, p.model === 'transport' ? mainUnitType(composition(army)) : p.model);
+    const sprite = unitSprite(world, p.model, gen, army.owner, p.heading);
+    const bob = p.marching && !paused && BOBS.has(p.model) ? -Math.abs(Math.sin(now / 140 + Number(army.id.slice(1)))) * 1.3 : 0;
+    const [left, top, w, h] = [-sprite.cx * px, -sprite.cy * px + bob, sprite.width * px, sprite.height * px];
+    const handlers = {
+      'data-army': army.id,
+      onClick: (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onArmyClick(army, e.shiftKey);
+      },
+      onContextMenu: (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onArmyContext(army);
+      },
+      onMouseEnter: () => onHover(armyTarget(army), army.id),
+      onMouseLeave: () => onHover(null),
+    };
+    const status = `${sel ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`;
+    const transform = `translate(${p.x},${p.y}) scale(${1 / k})`;
+    // The hit area comes first: it is what scripts and touch aim for.
+    const hw = Math.max(13, w / 2, room * 0.9);
+    // Standing behind a city, a model goes under it (the city's buildings hide its feet).
+    const [cx, cy] = geo.anchors[p.near];
+    const hidden = back && (p.y - cy) * k < -2 && Math.abs(p.x - cx) * k < cities[p.near].half + room;
+    (hidden ? behind : models).push(
+      <g key={army.id} transform={transform} className={`army-model${status}`} {...handlers}>
+        <rect x={-hw} y={Math.min(top, -26)} width={hw * 2} height={Math.max(top + h, room * 0.5) - Math.min(top, -26)} className="army-hit" />
+        {p.model !== 'transport' && <ellipse rx={room} ry={room / 2} className="army-ring" fill={ownerColor(world, army.owner)} />}
+        {sel && <ellipse rx={room * 1.22} ry={room * 0.61} className="army-select-ring" />}
+        <image href={sprite.href} x={left} y={top} width={w} height={h} className={routed ? 'army-routed-img' : undefined} />
+      </g>,
+    );
+    badges.push([sel, <ArmyBadge key={army.id} army={army} y={top - 3} transform={transform} status={status} routed={routed} handlers={handlers} />]);
+  }
+  // The selection's badges go on top, so they can always be clicked.
+  badges.sort((a, b) => Number(a[0]) - Number(b[0]));
+
+  return (
+    <g className="army-layer army-models">
+      {back && createPortal(behind, back)}
+      <g pointerEvents="none">{routes}</g>
+      {models}
+      <Battles geo={geo} state={state} k={k} />
+      {badges.map((b) => b[1])}
+    </g>
+  );
+}
+
+/** An army's label over its model: flag, number of formations, strength and morale. */
+function ArmyBadge({
+  army,
+  y,
+  transform,
+  status,
+  routed,
+  handlers,
+}: {
+  army: Army;
+  y: number;
+  transform: string;
+  status: string;
+  routed: boolean;
+  handlers: object;
+}) {
+  const count = String(army.units.length);
+  const w = 21 + count.length * 6.6;
+  const strength = composition(army).strength;
+  const morale = armyMorale(army);
+  return (
+    <g transform={transform} className={`army-marker army-badge3d${status}`} {...handlers}>
+      <g transform={`translate(0,${y})`}>
+        <rect x={-w / 2} y={-19} width={w} height={13} rx={3} fill={`url(#ag-${army.owner})`} className="army-body" />
+        <FlagMark id={flagKey(army.owner, army.province)} x={-w / 2 + 2.5} y={-16.5} height={8} />
+        <text x={-w / 2 + 16} y={-8.6} className="army-count">
+          {count}
+        </text>
+        <rect x={-w / 2} y={-5.4} width={w} height={5.2} rx={1.4} className="army-hp-bg" />
+        <rect x={-w / 2} y={-5.4} width={w * strength} height={2.5} rx={1.2} fill={strengthColor(strength)} />
+        <rect x={-w / 2} y={-2.6} width={w * morale} height={2.3} rx={1.1} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
+        {routed && <path d={`M${w / 2 - 2},-18 L${w / 2 - 2},-29 L${w / 2 + 6},-26 L${w / 2 - 2},-23`} className="routed-flag" />}
+        {!army.supplied && (
+          <g transform={`translate(${w / 2 + 1},-19)`} className="army-badge warn">
+            <circle r={5} />
+            <text y={2.9}>!</text>
+          </g>
+        )}
+      </g>
     </g>
   );
 }
@@ -970,9 +1265,24 @@ function fitFor(width: number, height: number, inset: number, insetBottom: numbe
 /**
  * Opening view: the player's own territory, somewhat closer than the whole theatre and
  * framed above the field reports (bottom left), which would otherwise hide Iberia.
+ * A phone opens closer still, on the capital.
  */
-function homeView(geo: MapGeometry, pids: ProvinceId[], width: number, height: number, inset: number, insetBottom: number): ZoomTransform {
+function homeView(
+  geo: MapGeometry,
+  pids: ProvinceId[],
+  capital: ProvinceId,
+  compact: boolean,
+  width: number,
+  height: number,
+  inset: number,
+  insetBottom: number,
+): ZoomTransform {
   const fit = fitFor(width, height, inset, insetBottom);
+  if (compact) {
+    const k = Math.max(fit.k, MIN_ZOOM_BASE * COMPACT_OPENING);
+    const [x, y] = geo.anchors[capital];
+    return zoomIdentity.translate(Math.max(240, width - inset) / 2 - x * k, Math.max(240, height - insetBottom) / 2 - y * k).scale(k);
+  }
   if (pids.length === 0) return fit.transform;
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const pid of pids) {
@@ -995,12 +1305,15 @@ export function MapView(props: MapViewProps) {
   insetRef.current = props.insetRight;
   const insetBottomRef = useRef(props.insetBottom);
   insetBottomRef.current = props.insetBottom;
+  const compactRef = useRef(props.compact);
+  compactRef.current = props.compact;
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
   const [hovered, setHovered] = useState<ProvinceId | null>(null);
   const [texture, setTexture] = useState<TerrainTexture | null>(null);
   const [glow, setGlow] = useState<TerrainTexture | null>(null);
+  const [armyBack, setArmyBack] = useState<SVGGElement | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -1011,15 +1324,19 @@ export function MapView(props: MapViewProps) {
     };
   }, [geo, world]);
 
-  // Build every city's model in idle moments, so the first zoom-in does not stall.
+  // Build every city's model, and every army's at rest, in idle moments, so the first zoom-in does not stall.
   useEffect(() => {
-    const ids = world.provinceIds;
+    const jobs: (() => void)[] = world.provinceIds.map((id) => () => void citySprite(cityModelProps(ctrl.state, world, id)));
+    for (const a of Object.values(ctrl.state.armies)) {
+      const type = mainUnitType(composition(a));
+      for (const heading of [0, 4]) jobs.push(() => void unitSprite(ctrl.world, type, unitGen(ctrl.state, a.owner, type), a.owner, heading));
+    }
     let next = 0;
     let timer = 0;
     const step = () => {
       const until = performance.now() + 6;
-      while (next < ids.length && performance.now() < until) citySprite(cityModelProps(ctrl.state, world, ids[next++]));
-      if (next < ids.length) timer = window.setTimeout(step, 40);
+      while (next < jobs.length && performance.now() < until) jobs[next++]();
+      if (next < jobs.length) timer = window.setTimeout(step, 40);
     };
     timer = window.setTimeout(step, 400);
     return () => window.clearTimeout(timer);
@@ -1046,7 +1363,8 @@ export function MapView(props: MapViewProps) {
     const sel = select(svg);
     sel.call(behavior).on('dblclick.zoom', null);
     const home = world.provinceIds.filter((id) => ctrl.state.provinces[id].owner === ctrl.human);
-    sel.call(behavior.transform, homeView(geo, home, width, height, insetRef.current, insetBottomRef.current));
+    const capital = world.nations[ctrl.human].capital;
+    sel.call(behavior.transform, homeView(geo, home, capital, compactRef.current, width, height, insetRef.current, insetBottomRef.current));
     const ro = new ResizeObserver(() => {
       const r = svg.getBoundingClientRect();
       setSize([r.width, r.height]);
@@ -1171,7 +1489,7 @@ export function MapView(props: MapViewProps) {
   });
 
   const k = transform.k;
-  const ratio = k / Math.max(fitK, MIN_ZOOM_BASE);
+  const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
   const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
   const showDetail = ratio >= ZOOM.detail;
 
@@ -1183,7 +1501,7 @@ export function MapView(props: MapViewProps) {
     for (const id of world.provinceIds) {
       const sprite = citySprite(cityModelProps(state, world, id));
       // Counters stand on the token's back edge, clear of its buildings.
-      out[id] = { sprite, lift: (sprite.rx / 2 + 2.5) * modelPx, below: (sprite.height - sprite.cy) * modelPx + 1 };
+      out[id] = { sprite, above: sprite.cy * modelPx, below: (sprite.height - sprite.cy) * modelPx + 1, half: sprite.rx * modelPx };
     }
     return out;
     // ctrl.version changes whenever the simulation state does.
@@ -1256,17 +1574,32 @@ export function MapView(props: MapViewProps) {
             <>
               <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
               <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} cities={cities} />
+              <g ref={setArmyBack} className="army-layer army-models army-back" />
               <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} cities={cities} />
-              <ArmyLayer
-                ctrl={ctrl}
-                geo={geo}
-                k={k}
-                cities={cities}
-                selectedArmies={props.selectedArmies}
-                onArmyClick={onArmyClick}
-                onArmyContext={onArmyContext}
-                onHover={onHover}
-              />
+              {cities ? (
+                <ArmyModelLayer
+                  ctrl={ctrl}
+                  geo={geo}
+                  k={k}
+                  px={unitModelScale(ratio)}
+                  cities={cities}
+                  back={armyBack}
+                  selectedArmies={props.selectedArmies}
+                  onArmyClick={onArmyClick}
+                  onArmyContext={onArmyContext}
+                  onHover={onHover}
+                />
+              ) : (
+                <ArmyLayer
+                  ctrl={ctrl}
+                  geo={geo}
+                  k={k}
+                  selectedArmies={props.selectedArmies}
+                  onArmyClick={onArmyClick}
+                  onArmyContext={onArmyContext}
+                  onHover={onHover}
+                />
+              )}
               {preview && (
                 <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
@@ -1297,14 +1630,17 @@ export function MapView(props: MapViewProps) {
             <Icon name="fit" />
           </button>
         </div>
-        <MiniMap
-          geo={geo}
-          world={world}
-          owners={ownersSig}
-          ownerOf={ownerOf}
-          view={view}
-          onNavigate={(x, y, animate) => centreOn(x, y, null, animate ? 250 : 0)}
-        />
+        {/* Phones and touch screens pan with a finger: the overview would only take room. */}
+        {!props.compact && !props.touch && (
+          <MiniMap
+            geo={geo}
+            world={world}
+            owners={ownersSig}
+            ownerOf={ownerOf}
+            view={view}
+            onNavigate={(x, y, animate) => centreOn(x, y, null, animate ? 250 : 0)}
+          />
+        )}
       </div>
     </div>
   );
