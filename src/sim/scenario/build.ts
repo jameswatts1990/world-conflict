@@ -1,9 +1,10 @@
 // Turns a theatre's province rows into scenario data. A row describes a city and
-// the land round it (owner, terrain, city, role) and becomes two provinces: the
-// city, keyed by the row's id, and its land, keyed `<id>-land`. The owner's power
-// tier (see config/powers.ts) decides the rest: output, objective value, the
-// capital's city size, and the starting buildings and army. Shapes live
-// separately in src/assets/map/map.topo.json, keyed by the same ids.
+// the region round it (owner, terrain, city, role) and becomes the city, keyed by
+// the row's id, and the provinces of land the map divides the region into, keyed
+// `<id>-<compass point>` (the theatre's land.ts, generated from the shapes, lists
+// them). The owner's power tier (see config/powers.ts) decides the rest: output,
+// objective value, the capital's city size, and the starting buildings and army.
+// Shapes live separately in src/assets/map/map.topo.json, keyed by the same ids.
 import { POWERS } from '../config/powers';
 import {
   NEUTRAL,
@@ -17,6 +18,7 @@ import {
   type NationId,
   type NeutralStateDef,
   type ProvinceDef,
+  type ProvinceId,
   type Resources,
   type ScenarioDef,
   type Terrain,
@@ -24,20 +26,26 @@ import {
   type UnitType,
 } from '../types';
 
-/** Suffix of the id of the province round a row's city (the city keeps the row's id). */
-export const LAND_SUFFIX = '-land';
-
 /** A province's economic role. Exactly one capital per nation; great and major powers also need one heartland. */
 export type ProvinceRole = 'capital' | 'industrial' | 'city' | 'town';
 
-export interface ProvinceRow {
-  /** The city province's id; its land is `<id>-land`. */
-  id: string;
-  /** The land's name ("Bavaria"); the city province takes the city's. */
+/** A land's name, and its terrain where it differs from the rest of the region's land. */
+export interface LandName {
   name: string;
   article?: Article;
-  /** Where the land round the city needs another name or terrain than the row's ("Brandenburg" round Berlin). */
-  land?: { name?: string; article?: Article; terrain?: Terrain };
+  terrain?: Terrain;
+}
+
+export interface ProvinceRow {
+  /** The city province's id; its lands are `<id>-<key>`. */
+  id: string;
+  /** The region's name ("Bavaria"), shown with its city; the city province takes the city's. */
+  name: string;
+  article?: Article;
+  /** The lands round the city, by the keys the map gives them (land.ts): each needs a name. */
+  lands: Record<string, LandName>;
+  /** The land's terrain where it is not the row's (land is never urban: round a capital it is plains by default). */
+  landTerrain?: Terrain;
   core: NationId | null;
   neutral?: NeutralStateDef;
   terrain: Terrain;
@@ -47,7 +55,6 @@ export interface ProvinceRow {
   city: CityDef;
   /** Principal city population, thousands. */
   pop: number;
-  coast?: boolean;
   towns: [string, number, number][];
   oil?: boolean;
   /** Objective value of the city; set by the owner's tier for capitals and heartlands, by hand for neutral capitals. */
@@ -91,15 +98,27 @@ function powerOf(nations: Nations, id: NationId) {
   return POWERS[n.power];
 }
 
-/** What the map says about each row (generated from the shapes into the theatre's land.ts). */
-export type LandData = Record<string, { anchor: [number, number]; coast: boolean }>;
+/** One province of land round a city, as the map divides the region (generated into the theatre's land.ts). */
+export interface LandDef {
+  /** Compass point from the city: the land's id is `<row id>-<key>`. */
+  key: string;
+  /** [longitude, latitude] where its armies stand and its name sits. */
+  anchor: [number, number];
+  /** Whether it reaches the sea. */
+  coastal: boolean;
+  /** Names of the row's towns that lie in it. */
+  towns: string[];
+}
 
-/** The id of the land round a row's city. */
-export const landId = (row: string): string => row + LAND_SUFFIX;
+/** What the map says about each row: whether its city reaches the sea, and the lands round it. */
+export type LandData = Record<string, { coast: boolean; lands: LandDef[] }>;
+
+/** The id of one of the lands round a row's city. */
+export const landId = (row: string, key: string): string => `${row}-${key}`;
 
 /** Land is never urban: round a capital it is the countryside the city stands in. */
 function landTerrain(r: ProvinceRow): Terrain {
-  return r.land?.terrain ?? (r.terrain === 'urban' ? 'plains' : r.terrain);
+  return r.landTerrain ?? (r.terrain === 'urban' ? 'plains' : r.terrain);
 }
 
 export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: LandData): ProvinceDef[] {
@@ -124,6 +143,12 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
     const roleCity = r.tier === 'capital' ? (power?.capitalCity ?? UNOWNED_CAPITAL_CITY) : ROLE_CITY[r.tier];
     const map = land[r.id];
     if (!map) throw new Error(`No map data for ${r.id}: run scripts/map/city-provinces.ts`);
+    const lands = map.lands.map((l) => {
+      const named = r.lands[l.key];
+      if (!named) throw new Error(`The land ${landId(r.id, l.key)} has no name: add it to the row's lands`);
+      return { ...l, ...named };
+    });
+    for (const key of Object.keys(r.lands)) if (!map.lands.some((l) => l.key === key)) throw new Error(`${r.id} names a land the map has not got: ${key}`);
     return [
       {
         id: r.id,
@@ -133,7 +158,9 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
         terrain: r.terrain,
         city: r.city,
         anchor: r.city.coord,
-        within: landId(r.id),
+        lands: lands.map((l) => landId(r.id, l.key)),
+        region: r.name,
+        regionArticle: r.article,
         tier: r.cityTier ?? roleCity,
         population: r.pop,
         towns: [],
@@ -147,34 +174,57 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
         oil: r.oil,
         objectiveVp: r.vp ?? roleVp,
       },
-      {
-        id: landId(r.id),
-        name: r.land?.name ?? r.name,
-        article: r.land?.name ? r.land.article : r.article,
-        core: r.core,
-        neutral: r.neutral,
-        terrain: landTerrain(r),
-        anchor: map.anchor,
-        contains: r.id,
-        tier: 1,
-        population: 0,
-        towns,
-        coastal: r.coast === true,
-        production: { money: 0, materials: 0, manpower: 0, fuel: 0 },
-      },
+      ...lands.map(
+        (l): ProvinceDef => ({
+          id: landId(r.id, l.key),
+          name: l.name,
+          article: l.article,
+          core: r.core,
+          neutral: r.neutral,
+          terrain: l.terrain ?? landTerrain(r),
+          anchor: l.anchor,
+          around: r.id,
+          region: r.name,
+          regionArticle: r.article,
+          tier: 1,
+          population: 0,
+          towns: towns.filter((t) => l.towns.includes(t.name)),
+          coastal: l.coastal,
+          production: { money: 0, materials: 0, manpower: 0, fuel: 0 },
+        }),
+      ),
     ];
   });
 }
 
 /**
- * The movement graph from connections written between rows: each one joins the two rows' lands (same kind,
- * same label), and every city is joined to its own land, its only way in or out.
+ * The movement graph for a theatre without shapes, whose rows have one land each (tests): every connection
+ * written between rows joins the two rows' lands (same kind, same label), and every city is joined to its
+ * land. With a map, scripts/map/city-provinces.ts writes the links from the shapes instead (land.ts).
  */
-export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef[]): ConnectionDef[] {
+export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef[], land: LandData): ConnectionDef[] {
+  const only = (row: string) => {
+    const lands = land[row]?.lands ?? [];
+    if (lands.length !== 1) throw new Error(`${row} has ${lands.length} lands: its links need the map's shapes`);
+    return landId(row, lands[0].key);
+  };
   return [
-    ...rows.map((r): ConnectionDef => ({ a: r.id, b: landId(r.id), kind: 'land' })),
-    ...connections.map((c) => ({ ...c, a: landId(c.a), b: landId(c.b) })),
+    ...rows.map((r): ConnectionDef => ({ a: r.id, b: only(r.id), kind: 'land' })),
+    ...connections.map((c) => ({ ...c, a: only(c.a), b: only(c.b) })),
   ];
+}
+
+/**
+ * The land a row's field units take at the start: the one facing the most foreign land (by its links), or
+ * the first of its lands.
+ */
+function fieldLand(row: ProvinceRow, coreOf: Map<string, NationId | null>, land: LandData, links: ConnectionDef[]): ProvinceId {
+  const ids = (land[row.id]?.lands ?? []).map((l) => landId(row.id, l.key));
+  if (!ids.length) throw new Error(`No map data for ${row.id}: run scripts/map/city-provinces.ts`);
+  const rowOf = (pid: string) => pid.slice(0, pid.lastIndexOf('-'));
+  const facing = (pid: ProvinceId) =>
+    links.filter((c) => (c.a === pid || c.b === pid) && c.kind !== 'strait').filter((c) => coreOf.get(rowOf(c.a === pid ? c.b : c.a)) !== row.core).length;
+  return ids.reduce((best, id) => (facing(id) > facing(best) ? id : best));
 }
 
 type Units = Partial<Record<UnitType, number>>;
@@ -190,14 +240,17 @@ function addUnits(into: Map<string, Units>, province: string, units: Units | und
  * Starting buildings and armies for every nation from its tier, plus the neutral
  * garrisons and fortifications the rows set by hand. Buildings stand in the cities,
  * and so do the capital's and the heartland's garrisons. A nation's field units take
- * the field, on the land round the cities: where its rows place them, or else dealt
- * out one at a time over its border rows first, then its other rows, then its capital.
- * `connections` are the rows' own (before buildConnections).
+ * the field, on the land round the cities (the land of each row that faces the most
+ * foreign land): where its rows place them, or else dealt out one at a time over its
+ * border rows first, then its other rows, then its capital. `connections` are the
+ * rows' own; `links` those between provinces.
  */
 export function buildStartingSetup(
   rows: ProvinceRow[],
   nations: Nations,
   connections: ConnectionDef[],
+  land: LandData,
+  links: ConnectionDef[],
 ): Pick<ScenarioDef, 'startingBuildings' | 'startingArmies'> {
   const coreOf = new Map(rows.map((r) => [r.id, r.core]));
   const borders = new Set<string>();
@@ -221,20 +274,21 @@ export function buildStartingSetup(
     const units = new Map<string, Units>();
     addUnits(units, capital.id, power.armies.capital);
     if (industrial) addUnits(units, industrial.id, power.armies.industrial);
+    const field = (r: ProvinceRow) => fieldLand(r, coreOf, land, links);
     const placed = own.filter((r) => r.garrison);
     if (placed.length) {
-      for (const r of placed) addUnits(units, landId(r.id), r.garrison);
+      for (const r of placed) addUnits(units, field(r), r.garrison);
     } else {
       const others = own.filter((r) => r !== capital && r !== industrial);
       const order = [...others.filter((r) => borders.has(r.id)), ...others.filter((r) => !borders.has(r.id))];
       const slots = order.length ? order : [capital];
       let i = 0;
       for (const type of UNIT_TYPES) {
-        for (let k = 0; k < (power.armies.field[type] ?? 0); k++) addUnits(units, landId(slots[i++ % slots.length].id), { [type]: 1 });
+        for (let k = 0; k < (power.armies.field[type] ?? 0); k++) addUnits(units, field(slots[i++ % slots.length]), { [type]: 1 });
       }
     }
     for (const r of [capital, ...own.filter((x) => x !== capital)]) {
-      for (const pid of [r.id, landId(r.id)]) {
+      for (const pid of [r.id, ...(land[r.id]?.lands ?? []).map((l) => landId(r.id, l.key))]) {
         const u = units.get(pid);
         if (u) startingArmies.push({ owner: nation.id, province: pid, units: u });
       }

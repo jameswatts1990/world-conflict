@@ -31,6 +31,7 @@ import {
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
+import { isCityGate } from '../world';
 import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
 
@@ -159,9 +160,9 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   const owner = state.provinces[pid].owner;
   const tv = AI.targetValue;
   let v = placeValue(ctx, pid);
-  // Land is worth part of the city it surrounds: taking it is the way in, and cuts the city off.
-  const city = world.provinces[pid].contains;
-  if (city && state.provinces[city].owner !== ctx.me) v += placeValue(ctx, city) * tv.cityBehind;
+  // Land next to a city is worth part of it: taking it is the way in, and all of them cut the city off.
+  const city = world.provinces[pid].around;
+  if (city && state.provinces[city].owner !== ctx.me && isCityGate(world, pid, city)) v += placeValue(ctx, city) * tv.cityBehind;
   // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {

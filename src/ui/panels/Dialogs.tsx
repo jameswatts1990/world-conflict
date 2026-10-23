@@ -230,7 +230,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
                   <td className="num">{stats.unitsDestroyed}</td>
                   <td className="num">{stats.unitsLost}</td>
                   <td className="num">{stats.retreats}</td>
-                  <td className="num score">{s.score}</td>
+                  <td className="num score">{Math.round(s.score)}</td>
                 </tr>
               );
             })}

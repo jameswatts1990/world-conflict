@@ -14,7 +14,7 @@ import {
 } from '../src/sim';
 import { buildContext, observeForces } from '../src/sim/ai/context';
 import { attackNeed } from '../src/sim/ai/military';
-import { aiGame, clearArmies, place, run, setWar, world } from './helpers';
+import { aiGame, clearArmies, landsOf, place, run, setWar, world } from './helpers';
 
 /** A game in which only the given nation is run by the computer. */
 function soloAi(nation: NationId, seed = 5): GameState {
@@ -158,10 +158,10 @@ describe('AI personalities', () => {
         drawn.add(`${n}:${claims.join(',')}`);
         expect(new Set(claims).size).toBe(claims.length);
         for (const pid of claims) {
-          // A city whose land borders the AI's own.
+          // A city one of whose lands borders the AI's own.
           expect(world.provinces[pid].city).toBeDefined();
           expect(state.provinces[pid].owner).not.toBe(n);
-          expect(world.neighbors[world.provinces[pid].within!].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n)).toBe(true);
+          expect(landsOf(pid).some((land) => world.neighbors[land].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n))).toBe(true);
         }
       }
       // An island power has no land border to claim across.
@@ -256,14 +256,14 @@ describe('AI under the fog of war', () => {
     const state = aiGame(5);
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    // Baden's land borders France and is in sight; Bavaria's, behind it, and Berlin are not.
-    const army = place(state, 'de', 'de-bavaria-land', { infantry: 10 });
-    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-land');
+    // Baden, by the Rhine, borders France and is in sight; Swabia, behind it, and Berlin are not.
+    const army = place(state, 'de', 'de-bavaria-w', { infantry: 10 });
+    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-sw');
     const hidden = need();
     army.province = 'de-berlin';
     expect(need()).toBeCloseTo(hidden);
     // In plain sight next door, the same army raises the bar.
-    army.province = 'de-hesse-land';
+    army.province = 'de-hesse-w';
     expect(need()).toBeGreaterThan(hidden);
   });
 

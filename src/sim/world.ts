@@ -1,16 +1,14 @@
 // Static, derived lookup tables for a scenario (adjacency, distances, objectives).
-import { MOVEMENT } from './config/rules';
 import type { ConnectionKind, Effect, NationDef, NationId, ProvinceDef, ProvinceId, ScenarioDef } from './types';
 
 export interface Neighbor {
   id: ProvinceId;
   kind: ConnectionKind;
-  /**
-   * Road distance in whole kilometres: great-circle between the two provinces' hubs (see `hub`), or the
-   * short march between a city and the land round it.
-   */
+  /** Road distance in whole kilometres: great-circle between the two provinces' anchors, where their armies stand. */
   distanceKm: number;
   label?: string;
+  /** For a sea crossing: how wide the sea is, coast to coast, in km. */
+  seaKm?: number;
 }
 
 export interface World {
@@ -24,15 +22,17 @@ export interface World {
   /** Provinces that are cities, in scenario order. */
   cityIds: ProvinceId[];
   /**
-   * For each province, the cities next door: those whose land borders (or is a crossing from) the land this
-   * province lies in. Cities are never neighbours themselves; this is how near they are.
+   * For each province, the cities next door: those whose lands border (or are a crossing from) the lands of
+   * the region this province lies in. Cities are never neighbours themselves; this is how near they are.
    */
   nearbyCities: Record<ProvinceId, ProvinceId[]>;
   /**
-   * For each province, everywhere next door as civilians reckon it: its own land and city, the lands that land
-   * borders (or is a crossing from) and the cities in them.
+   * For each province, everywhere next door as civilians reckon it: its own region (its city and the lands
+   * round it) and the regions next to it.
    */
   vicinity: Record<ProvinceId, ProvinceId[]>;
+  /** For each province, the region it lies in, named by its city (or, for land without one, itself). */
+  regionOf: Record<ProvinceId, ProvinceId>;
   totalVp: number;
   /** Provinces where a sea crossing lands (coastal batteries allowed). */
   seaLandings: Set<ProvinceId>;
@@ -48,10 +48,9 @@ export function specialityEffects(scenarioId: string, nation: NationId): Effect[
 
 const EARTH_RADIUS_KM = 6371;
 
-/** Where a province's roads meet: its city, or the city in its middle; land without a city, its anchor. */
-function hub(provinces: Record<ProvinceId, ProvinceDef>, pid: ProvinceId): [number, number] {
-  const p = provinces[pid];
-  return p.city?.coord ?? (p.contains ? provinces[p.contains].anchor : p.anchor);
+/** Is this the short way between a city and one of the lands round it? */
+function isGate(provinces: Record<ProvinceId, ProvinceDef>, a: ProvinceId, b: ProvinceId): boolean {
+  return provinces[a].around === b || provinces[b].around === a;
 }
 
 export function greatCircleKm(a: [number, number], b: [number, number]): number {
@@ -79,11 +78,11 @@ export function buildWorld(scenario: ScenarioDef): World {
     if (seen.has(key)) throw new Error(`Duplicate connection ${key}`);
     seen.add(key);
     // Rounded to whole km so movement timing never depends on float trig details. Roads run between the
-    // lands' cities, as they did before cities were split out; a city and its own land are a short march apart.
-    const gate = provinces[c.a].within === c.b || provinces[c.b].within === c.a;
-    const distanceKm = gate ? MOVEMENT.cityGateKm : Math.round(greatCircleKm(hub(provinces, c.a), hub(provinces, c.b)));
-    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label });
-    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label });
+    // provinces' anchors, where their armies stand, so going round a city is never slower than through it.
+    const distanceKm = Math.round(greatCircleKm(provinces[c.a].anchor, provinces[c.b].anchor));
+    const sea = c.seaKm !== undefined ? { seaKm: c.seaKm } : {};
+    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label, ...sea });
+    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label, ...sea });
   }
   for (const id of Object.keys(neighbors)) neighbors[id].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 
@@ -100,16 +99,27 @@ export function buildWorld(scenario: ScenarioDef): World {
   }
   specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality?.effects ?? []])));
   const cityIds = scenario.provinces.filter((p) => p.city).map((p) => p.id);
+  // Regions: a city and the lands round it. Two regions are next door where any of their provinces are.
+  const regionOf: Record<ProvinceId, ProvinceId> = {};
+  const members = new Map<ProvinceId, ProvinceId[]>();
+  for (const p of scenario.provinces) {
+    const region = p.around ?? p.id;
+    regionOf[p.id] = region;
+    members.set(region, [...(members.get(region) ?? []), p.id]);
+  }
+  const nextRegions = new Map<ProvinceId, ProvinceId[]>();
+  for (const [region, list] of members) {
+    const next = new Set<ProvinceId>();
+    for (const pid of list) for (const n of neighbors[pid]) if (regionOf[n.id] !== region) next.add(regionOf[n.id]);
+    nextRegions.set(region, [...next].sort((a, b) => scenario.provinces.indexOf(provinces[a]) - scenario.provinces.indexOf(provinces[b])));
+  }
   const nearbyCities: Record<ProvinceId, ProvinceId[]> = {};
   const vicinity: Record<ProvinceId, ProvinceId[]> = {};
   for (const p of scenario.provinces) {
-    const land = p.within ?? p.id;
-    const own = provinces[land].contains;
-    const lands = neighbors[land].map((n) => n.id).filter((id) => !provinces[id].city);
-    nearbyCities[p.id] = lands.map((id) => provinces[id].contains).filter((c): c is ProvinceId => !!c);
-    vicinity[p.id] = [land, ...(own ? [own] : []), ...lands.flatMap((id) => [id, ...(provinces[id].contains ? [provinces[id].contains!] : [])])].filter(
-      (id) => id !== p.id,
-    );
+    const region = regionOf[p.id];
+    const next = nextRegions.get(region)!;
+    nearbyCities[p.id] = next.filter((r) => provinces[r].city);
+    vicinity[p.id] = [region, ...next].flatMap((r) => members.get(r)!).filter((id) => id !== p.id);
   }
 
   return {
@@ -123,6 +133,7 @@ export function buildWorld(scenario: ScenarioDef): World {
     cityIds,
     nearbyCities,
     vicinity,
+    regionOf,
     totalVp,
     seaLandings,
   };
@@ -138,14 +149,19 @@ export function isCity(world: World, pid: ProvinceId): boolean {
   return world.provinces[pid].city !== undefined;
 }
 
-/** The land a province lies in: the land round a city, or the land itself. */
-export function landOf(world: World, pid: ProvinceId): ProvinceId {
-  return world.provinces[pid].within ?? pid;
+/** The land of a province: a city's lands round it, or the land itself. */
+export function landsOf(world: World, pid: ProvinceId): ProvinceId[] {
+  return world.provinces[pid].lands ?? [pid];
 }
 
-/** The city of a province: a city itself, or the city inside a land (none for land without one). */
+/** The city of a province: a city itself, or the city a land lies round (none for land without one). */
 export function cityOf(world: World, pid: ProvinceId): ProvinceId | undefined {
-  return world.provinces[pid].city ? pid : world.provinces[pid].contains;
+  return world.provinces[pid].city ? pid : world.provinces[pid].around;
+}
+
+/** Is the way between these two provinces the short one between a city and a land round it? */
+export function isCityGate(world: World, a: ProvinceId, b: ProvinceId): boolean {
+  return isGate(world.provinces, a, b);
 }
 
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {

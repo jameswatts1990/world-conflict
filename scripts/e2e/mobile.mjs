@@ -206,8 +206,8 @@ try {
 
   // 3. A province without a city opens in the bottom sheet, halfway up. Its handle drags up to full,
   //    then down past peek to close.
-  await tapAt(await provincePoint('es-madrid-land'));
-  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-land"]');
+  await tapAt(await provincePoint('es-madrid-s'));
+  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-s"]');
   await settle();
   if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'half') throw new Error('the sheet did not open at half');
   if ((await mapView()) !== before) throw new Error('tapping a province moved the map');
@@ -240,7 +240,7 @@ try {
   await page.tap('[data-testid="move-mode"]');
   await settle();
   if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'peek') throw new Error('move mode did not lower the sheet');
-  await tapAt(await provincePoint('es-castile-land'));
+  await tapAt(await provincePoint('es-castile-s'));
   await settle();
   const banner = await page.textContent('[data-testid="move-confirm"]');
   if (!banner.includes('Move to')) throw new Error(`no route preview: "${banner}"`);
@@ -248,13 +248,13 @@ try {
   await shot('05-move-preview');
   await page.tap('[data-testid="confirm-move"]');
   const path = await state(`(s) => s.armies['${army}'].move?.path`);
-  if (!path || path.at(-1) !== 'es-castile-land') throw new Error('move order not given');
+  if (!path || path.at(-1) !== 'es-castile-s') throw new Error('move order not given');
   step('tapped an army (and a formation, for its details), Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
   // An attack on a nation at peace asks to declare war first; cancelling leaves the peace and the march alone.
   await page.tap('[data-testid="move-mode"]');
   await settle();
-  await tapAt(await provincePoint('pt-lisbon-land'));
+  await tapAt(await provincePoint('pt-lisbon-nne'));
   await settle();
   const warBanner = await page.textContent('[data-testid="move-confirm"]');
   if (!warBanner.includes('At peace with Portugal')) throw new Error(`no peace warning: "${warBanner}"`);
@@ -263,7 +263,7 @@ try {
   await shot('05b-declare-war');
   await page.tap('.modal >> text=Cancel');
   if ((await state((s) => s.nations.es.relations.pt.status)) !== 'peace') throw new Error('cancelling still declared war');
-  if ((await state(`(s) => s.armies['${army}'].move?.path?.at(-1)`)) !== 'es-castile-land') throw new Error('cancelling changed the march');
+  if ((await state(`(s) => s.armies['${army}'].move?.path?.at(-1)`)) !== 'es-castile-s') throw new Error('cancelling changed the march');
   step('an attack on Portugal asked to declare war; cancelled', { preview: warBanner.replace(/(Declare war…|Cancel)/g, '').trim() });
 
   // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
@@ -302,7 +302,7 @@ try {
   //    pause from the top bar, resume from the Paused banner.
   await page.evaluate(() => window.__game.setSpeed(20));
   await page.tap('[data-testid="pause"]');
-  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile-land' && !s.armies['${army}'].move`, 30000, 'army arrival');
+  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile-s' && !s.armies['${army}'].move`, 30000, 'army arrival');
   await page.tap('[data-testid="pause"]');
   await page.tap('[data-testid="paused-banner"]');
   if (await page.evaluate(() => window.__game.loop.paused)) throw new Error('tapping the Paused banner did not resume');
@@ -379,8 +379,8 @@ try {
   await checkFits('landscape');
   await shot('08-landscape');
   await page.tap('[data-testid="close-page"]');
-  await tapAt(await provincePoint('es-madrid-land'));
-  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-land"]');
+  await tapAt(await provincePoint('es-madrid-s'));
+  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-s"]');
   await settle();
   await checkFits('landscape sheet');
   step('turned the phone: landscape layout with the tab bar along the bottom, the city as a page and La Mancha in a side sheet; HUD fits the screen');

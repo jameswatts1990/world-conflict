@@ -92,14 +92,15 @@ describe('cities', () => {
     richen(state, 'fr');
     state.nations.fr.research.completed.push('fieldRailways', 'fortificationEngineering', 'coastalDefences', 'propagandaMinistry', 'radioBroadcasting', 'occupationPolicy');
     // Coastal batteries only where a sea crossing lands.
-    expect(checkBuild(state, world, 'fr', 'fr-nord-land', 'coastalBattery').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-nord-sw', 'coastalBattery').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-nord-se', 'coastalBattery').ok).toBe(false);
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'coastalBattery').ok).toBe(false);
     // The land between cities takes infrastructure but nothing that needs a city's slots.
-    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'fortifications').ok).toBe(true);
-    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'railway').ok).toBe(true);
-    const barracks = checkBuild(state, world, 'fr', 'fr-east-land', 'barracks');
+    expect(checkBuild(state, world, 'fr', 'fr-east-w', 'fortifications').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-east-w', 'railway').ok).toBe(true);
+    const barracks = checkBuild(state, world, 'fr', 'fr-east-w', 'barracks');
     expect(barracks.ok ? '' : barracks.reason).toMatch(/Needs a city/);
-    expect(buildingSlots(state, world, 'fr-east-land')).toBe(0);
+    expect(buildingSlots(state, world, 'fr-east-w')).toBe(0);
     // Occupation HQs only in occupied land.
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'garrisonHq').ok).toBe(false);
     state.provinces['de-baden'].owner = 'fr';
@@ -138,10 +139,10 @@ describe('map towns', () => {
     const outside: string[] = [];
     for (const id of world.provinceIds) {
       const def = world.provinces[id];
-      // A city lies in its own small province; the towns lie in the land round it (or in its city's edge).
+      // A city lies in its own small province; each town in one of the lands round it (or in its city's edge).
       if (def.city && !geoContains(shapes.get(id)!, def.city.coord)) outside.push(`${def.city.name} (${id})`);
       for (const t of def.towns) {
-        if (!geoContains(shapes.get(id)!, t.coord) && !(def.contains && geoContains(shapes.get(def.contains)!, t.coord))) outside.push(`${t.name} (${id})`);
+        if (!geoContains(shapes.get(id)!, t.coord) && !(def.around && geoContains(shapes.get(def.around)!, t.coord))) outside.push(`${t.name} (${id})`);
       }
     }
     expect(outside).toEqual([]);

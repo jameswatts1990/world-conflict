@@ -3,7 +3,8 @@
 // where the server owns the clock). Older saves are upgraded on load; a save
 // from a newer version is refused rather than misread.
 import { pushEvent } from './events';
-import { LAND_SUFFIX, landId } from './scenario/build';
+import { landId } from './scenario/build';
+import { LAND } from './scenario/europe/land';
 import { SCHEMA_VERSION, createInitialState, newId, nextSerial } from './state';
 import { nationName, sentence } from './text';
 import type { GameState, NationId, UnitType } from './types';
@@ -24,7 +25,9 @@ export function serializeGame(state: GameState, label: string, now = new Date())
   return JSON.stringify(file);
 }
 
-const isLandId = (id: string) => id.endsWith(LAND_SUFFIX);
+/** Saves from schema 6 kept the land round each city as one province, keyed `<city>-land`. */
+const OLD_LAND = '-land';
+const isLandId = (id: string) => id.endsWith(OLD_LAND);
 
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
@@ -55,9 +58,9 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
   // round it. The land goes to whoever held the old province, in the same mood. Armies stay in the
   // city; marches stop where they are, since the roads they planned now pass through the land.
   5: (state) => {
-    if (Object.keys(state.provinces).some(isLandId)) return;
+    if (Object.keys(state.provinces).some((id) => isLandId(id) || !LAND[id])) return;
     for (const [id, p] of Object.entries(state.provinces)) {
-      const land = landId(id);
+      const land = id + OLD_LAND;
       state.provinces[land] = {
         id: land,
         owner: p.owner,
@@ -76,6 +79,40 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
       a.move = null;
       a.arrivedVia = null;
     }
+  },
+  // 7: the land round each city became two or more provinces of land all round it. Each of them takes over
+  // the old land as it stood (owner, mood, supply); its infrastructure, its armies and its battle go to the
+  // largest. Marches stop where they are, since the roads they planned now pass through other provinces.
+  6: (state) => {
+    const moved = new Map<string, string>();
+    for (const [row, map] of Object.entries(LAND)) {
+      const oldId = row + OLD_LAND;
+      const old = state.provinces[oldId];
+      if (!old) continue;
+      delete state.provinces[oldId];
+      map.lands.forEach((land, i) => {
+        const id = landId(row, land.key);
+        const first = i === 0;
+        state.provinces[id] = {
+          ...structuredClone(old),
+          id,
+          buildings: first ? old.buildings : {},
+          construction: first ? old.construction : null,
+          capture: null,
+        };
+      });
+      moved.set(oldId, landId(row, map.lands[0].key));
+    }
+    if (!moved.size) return;
+    const to = (pid: string) => moved.get(pid) ?? pid;
+    for (const a of Object.values(state.armies)) {
+      a.province = to(a.province);
+      a.move = null;
+      a.arrivedVia = null;
+    }
+    state.battles = Object.fromEntries(Object.values(state.battles).map((b) => [to(b.province), { ...b, province: to(b.province) }]));
+    for (const e of state.events) if (e.province) e.province = to(e.province);
+    for (const n of Object.values(state.nations)) if (n.ai) n.ai.campaigns = n.ai.campaigns.map(to);
   },
 };
 

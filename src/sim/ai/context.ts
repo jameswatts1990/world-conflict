@@ -20,7 +20,7 @@ import {
 } from '../queries';
 import { NEUTRAL, RESOURCE_KEYS, type AiMemory, type Army, type GameState, type NationId, type PartialResources, type ProvinceId } from '../types';
 import { isArmyVisible, visibleProvinces } from '../visibility';
-import { landOf, type World } from '../world';
+import type { World } from '../world';
 
 export interface Ctx {
   state: GameState;
@@ -54,9 +54,9 @@ export interface Ctx {
   /** Owned provinces touching enemy or neutral territory. */
   frontier: Set<ProvinceId>;
   /**
-   * Danger to my capital, as far as I can see or estimate: hostile power in it, in its land or the lands next door,
-   * half of what stands in the lands beyond, and a share of the armies of great and major powers at peace, who
-   * could declare war. A capital in the interior is still in danger once an enemy is one land away.
+   * Danger to my capital, as far as I can see or estimate: hostile power in it, in its region or the regions next
+   * door, half of what stands in the regions beyond, and a share of the armies of great and major powers at peace,
+   * who could declare war. A capital in the interior is still in danger once an enemy is one region away.
    */
   capitalDanger: number;
   /** Share of armoured units among my enemies' armies, as far as I have seen them (0..1). */
@@ -120,19 +120,10 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   const total = new Map<NationId, number>();
   const inSight = new Map<NationId, number>();
   const capital = world.nations[me].capital;
-  // Danger is reckoned over the land: the capital's own land and the lands next to it, then the lands beyond, each
-  // with the city in its middle.
-  const withCity = (land: ProvinceId) => [land, ...(world.provinces[land].contains ? [world.provinces[land].contains!] : [])];
-  const home = landOf(world, capital);
-  const ring1 = new Set([home, ...world.neighbors[home].map((n) => n.id)].filter((id) => !world.provinces[id].city).flatMap(withCity));
-  ring1.delete(capital);
-  const ring2 = new Set(
-    [...ring1]
-      .filter((id) => !world.provinces[id].city)
-      .flatMap((id) => world.neighbors[id].map((n) => n.id))
-      .filter((id) => !world.provinces[id].city && !ring1.has(id))
-      .flatMap(withCity),
-  );
+  // Danger is reckoned by region (a city with the lands round it): the capital's own region and the regions next
+  // to it, then the regions beyond.
+  const ring1 = new Set(world.vicinity[capital]);
+  const ring2 = new Set([...ring1].flatMap((id) => world.vicinity[id]).filter((id) => id !== capital && !ring1.has(id)));
   const reach = (pid: ProvinceId) => (pid === capital || ring1.has(pid) ? 1 : ring2.has(pid) ? AI.capitalDepth : 0);
   // Enemies count in full; powers at peace could declare war, except minor powers, which never start one.
   const menace = (owner: NationId) => (areHostile(state, me, owner) ? 1 : isContender(world, owner) ? AI.peacetimeVigilance : 0);

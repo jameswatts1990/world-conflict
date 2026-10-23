@@ -58,12 +58,18 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
 - Everything a player or AI does goes through the validated commands in `src/sim/commands.ts`.
 - New state fields are optional with a sensible default when absent, so older saves still load; otherwise add a
   migration in `src/sim/save.ts`.
-- Every city is a province of its own (the row's id, e.g. `fr-paris`) inside a province of land round it
-  (`fr-paris-land`, named for the region): one row in `scenario/europe/provinces.ts` makes both. Connections are
-  written between rows and join their lands; a city's only neighbour is its land. `def.city` is absent on land, so
-  use `world.cityIds`, `landOf`/`cityOf`, `world.nearbyCities` and `world.vicinity` rather than assuming a city.
-  Cities hold output, slots, recruitment and objectives; land takes only infrastructure. City shapes and land
-  anchors come from `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`).
+- Every city is a province of its own (the row's id, e.g. `fr-paris`) among two to seven provinces of land round it
+  (`<row>-<compass point>`, e.g. `be-brussels-w`, named in the row's `lands`): one row in
+  `scenario/europe/provinces.ts` makes them all, a region. Connections are written between rows; the generator turns
+  them into links between provinces (`land.ts`), and a city's only neighbours are the lands that touch it (two or
+  more). `def.city` is absent on land, so use `world.cityIds`, `landsOf`/`cityOf`, `world.regionOf`,
+  `world.nearbyCities` and `world.vicinity` rather than assuming a city (`def.lands` lists a city's lands,
+  `def.around` a land's city). Cities hold output, slots, recruitment and objectives; land takes only
+  infrastructure, and where the land round a city counts as one (score, war aims, capture shock) it is shared
+  between its lands (`landShare`). The division, shapes, anchors and links come from
+  `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`; `--hints` lists what each land
+  holds). A changed division changes land keys: rename the lands in `provinces.ts` to match, and look at the result
+  (`scripts/map/check-borders.ts` reports borders between regions).
 
 ## How the computer opponents should behave
 

@@ -7,7 +7,7 @@ import { UNITS } from '../config/units';
 import { checkRecruit } from '../commands';
 import { isUnitUnlocked, recruitCost, unitPower } from '../queries';
 import { UNIT_TYPES, type ProvinceId, type UnitType } from '../types';
-import { landOf } from '../world';
+import { landsOf } from '../world';
 import { affordableWithReserve, issue, type Ctx } from './context';
 import { mountainFront } from './economy';
 
@@ -21,7 +21,7 @@ function desiredMix(ctx: Ctx): Map<UnitType, number> {
   let forts = 0;
   for (const pid of ctx.frontier) {
     for (const n of ctx.world.neighbors[pid]) {
-      for (const site of [n.id, ctx.world.provinces[n.id].contains]) {
+      for (const site of [n.id, ctx.world.provinces[n.id].around]) {
         if (site && (ctx.state.provinces[site].buildings.fortifications ?? 0) >= 2 && !ctx.ownedSet.has(site)) forts++;
       }
     }
@@ -45,8 +45,9 @@ function desiredMix(ctx: Ctx): Map<UnitType, number> {
 /** Cities ordered by usefulness: threatened ones and those whose land meets the enemy first. */
 function recruitSites(ctx: Ctx): ProvinceId[] {
   const urgency = (pid: ProvinceId) => {
-    const land = landOf(ctx.world, pid);
-    return (ctx.threat.get(pid) ?? 0) + (ctx.threat.get(land) ?? 0) + (ctx.frontier.has(pid) || ctx.frontier.has(land) ? 50 : 0);
+    const lands = landsOf(ctx.world, pid);
+    const threat = Math.max(0, ...lands.map((land) => ctx.threat.get(land) ?? 0));
+    return (ctx.threat.get(pid) ?? 0) + threat + (ctx.frontier.has(pid) || lands.some((land) => ctx.frontier.has(land)) ? 50 : 0);
   };
   return ctx.owned
     .filter((pid) => ctx.world.provinces[pid].city)

@@ -388,10 +388,11 @@ const ProvinceLayer = memo(function ProvinceLayer(p: ProvinceLayerProps) {
 });
 
 /**
- * Borders, from faint to bold: thin lines between provinces; a band of each power's colour
- * along the inside of its frontier, under a light line with a dark casing between powers;
- * a glowing white outline round your own land; and the front, where your land meets a
- * power at war with you, in red.
+ * Borders, from faint to bold: thin light lines between provinces (the lands round a city,
+ * the city's own edge, and the regions); a band of each power's colour along the inside of
+ * its frontier, under a light line with a dark casing between powers; a glowing white
+ * outline round your own land; and the front, where your land meets a power at war with
+ * you, in red.
  */
 const BorderLayer = memo(function BorderLayer({
   geo,
@@ -440,8 +441,9 @@ const BorderLayer = memo(function BorderLayer({
           </clipPath>
         ))}
       </defs>
+      <path d={geo.landBorders} className="province-border land" />
+      <path d={geo.cityBorders} className="province-border city" />
       <path d={geo.provinceBorders} className="province-border" />
-      <path d={geo.cityBorders} className="city-border" />
       {outlines.map((o) => (
         <g key={o.id} clipPath={`url(#clip-own-${o.id})`}>
           <path d={o.d} className="nation-band wide" stroke={o.color} />
@@ -526,8 +528,9 @@ const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: 
         const [x1, y1] = geo.anchors[c.a];
         const [x2, y2] = geo.anchors[c.b];
         const active = focus.has(c.a) || focus.has(c.b);
+        const sibling = world.provinces[c.a].around !== undefined && world.provinces[c.a].around === world.provinces[c.b].around;
         return (
-          <line key={`${c.a}|${c.b}`} x1={x1} y1={y1} x2={x2} y2={y2} className={`connection ${c.kind}${active ? ' active' : ''}`} />
+          <line key={`${c.a}|${c.b}`} x1={x1} y1={y1} x2={x2} y2={y2} className={`connection ${c.kind}${sibling ? ' sibling' : ''}${active ? ' active' : ''}`} />
         );
       })}
     </g>

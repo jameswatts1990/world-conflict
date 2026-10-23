@@ -22,7 +22,7 @@ export function findPath(
   const dist = new Map<ProvinceId, number>([[from, 0]]);
   const prev = new Map<ProvinceId, ProvinceId>();
   const done = new Set<ProvinceId>();
-  // Graph is ~50 nodes: a linear-scan priority queue is plenty and fully deterministic.
+  // Graph is a few hundred nodes: a linear-scan priority queue is plenty and fully deterministic.
   const open: ProvinceId[] = [from];
   while (open.length > 0) {
     let bestIdx = 0;
@@ -37,6 +37,9 @@ export function findPath(
     done.add(cur);
     for (const n of world.neighbors[cur]) {
       if (done.has(n.id) || !canEnterProvince(state, army.owner, n.id)) continue;
+      // A city is the way between the lands round it only for whoever holds it: anyone else goes round, or
+      // makes it the destination.
+      if (n.id !== to && world.provinces[n.id].city && state.provinces[n.id].owner !== army.owner) continue;
       // Hostile provinces on the way must be captured before the army moves on.
       const hold = state.provinces[n.id].owner !== army.owner ? captureTicks(state, world, n.id) : 0;
       const nd = dist.get(cur)! + legTicks(state, world, army, cur, n.id) + hold;

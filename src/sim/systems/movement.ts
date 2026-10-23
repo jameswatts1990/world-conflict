@@ -8,7 +8,7 @@ import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import type { Army, GameState, ProvinceId, UnitType } from '../types';
 import { provinceName } from '../text';
-import { connectionBetween, type World } from '../world';
+import { connectionBetween, isCityGate, type World } from '../world';
 
 /**
  * Ticks needed for this army to travel one connection. Every unit type has
@@ -38,8 +38,7 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
     if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
   }
   const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
-  const gate = world.provinces[from].within === to || world.provinces[to].within === from;
-  return Math.max(scaledTicks(state, gate ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
+  return Math.max(scaledTicks(state, isCityGate(world, from, to) ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**

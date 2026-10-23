@@ -492,9 +492,11 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     const vp = heldVp(state, world, nation);
     const held = world.provinceIds.filter((id) => state.provinces[id].owner === nation);
     const cities = held.filter((id) => world.provinces[id].city).length;
+    // The land round a city scores as one province, shared out between its lands.
+    const land = held.reduce((t, id) => (world.provinces[id].city ? t : t + landShare(world, id)), 0);
     const techs = state.nations[nation].research.completed.length;
     const s = VICTORY.score;
-    const score = vp * s.perVp + cities * s.perCity + (held.length - cities) * s.perLand + techs * s.perTech;
+    const score = vp * s.perVp + cities * s.perCity + land * s.perLand + techs * s.perTech;
     return { nation, vp, provinces: held.length, techs, score };
   });
   // Stable ranking: score, then VP, then provinces, then scenario order.
@@ -502,6 +504,12 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     .map((l, i) => ({ l, i }))
     .sort((x, y) => y.l.score - x.l.score || y.l.vp - x.l.vp || y.l.provinces - x.l.provinces || x.i - y.i)
     .map((x) => x.l);
+}
+
+/** How much of the land round its city a land is (1 for land without a city). */
+export function landShare(world: World, pid: ProvinceId): number {
+  const city = world.provinces[pid].around;
+  return city ? 1 / (world.provinces[city].lands?.length ?? 1) : 1;
 }
 
 /** Great and major powers contend for victory; minor powers can be conquered but never win. */

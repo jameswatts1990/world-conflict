@@ -9,7 +9,7 @@ import { SIGHT } from './config/rules';
 import { UNITS } from './config/units';
 import { atWar, techEffects } from './queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId } from './types';
-import { landOf, type World } from './world';
+import type { World } from './world';
 
 /**
  * Two powers at peace with each other and at war with a common enemy are co-belligerents
@@ -47,9 +47,10 @@ export function armySight(army: Army): number {
 }
 
 /**
- * Adds every province within `range` connections of `from` to `seen`. Sight carries on
- * over land; across a mountain border or a narrow sea it reaches the far side and stops,
- * and it never crosses a sea wider than `SIGHT.seaKm`.
+ * Adds every province within `range` connections of `from` to `seen`, counting a region (a city
+ * and the lands round it) as one step: sight carries on round a city for free. It carries on over
+ * land; across a mountain border or a narrow sea it reaches the far side and stops, and it never
+ * crosses a sea wider than `SIGHT.seaKm`.
  */
 function watch(world: World, from: ProvinceId, range: number, seen: Set<ProvinceId>): void {
   // How much further sight carries from each province reached. Each watcher keeps its own
@@ -61,8 +62,8 @@ function watch(world: World, from: ProvinceId, range: number, seen: Set<Province
     const r = left.get(pid)!;
     if (r <= 0) continue;
     for (const n of world.neighbors[pid]) {
-      if (n.kind === 'strait' && n.distanceKm > SIGHT.seaKm) continue;
-      const next = n.kind === 'land' ? r - 1 : 0;
+      if (n.kind === 'strait' && (n.seaKm ?? n.distanceKm) > SIGHT.seaKm) continue;
+      const next = n.kind !== 'land' ? 0 : world.regionOf[n.id] === world.regionOf[pid] ? r : r - 1;
       if ((left.get(n.id) ?? -1) >= next) continue;
       left.set(n.id, next);
       queue.push(n.id);
@@ -73,25 +74,25 @@ function watch(world: World, from: ProvinceId, range: number, seen: Set<Province
 
 /**
  * What a nation sees with its own eyes: around everything it holds and wherever its armies are. Sight is
- * reckoned over the land: a city looks out from the land round it, and whoever sees a stretch of land sees
- * into the city in its middle too.
+ * reckoned over the land: a city looks out from the lands round it, and whoever sees a land next to a city
+ * sees into the city too.
  */
 export function ownSight(state: GameState, world: World, nation: NationId): Set<ProvinceId> {
   const seen = new Set<ProvinceId>();
   for (const id of world.provinceIds) {
     if (state.provinces[id].owner !== nation) continue;
     seen.add(id);
-    watch(world, landOf(world, id), SIGHT.province, seen);
+    watch(world, id, SIGHT.province, seen);
   }
   // A marching army watches from the province it set out from (its range covers where it is heading).
   for (const army of Object.values(state.armies)) {
     if (army.owner !== nation) continue;
     seen.add(army.province);
-    watch(world, landOf(world, army.province), armySight(army), seen);
+    watch(world, army.province, armySight(army), seen);
   }
   for (const pid of [...seen]) {
-    const city = world.provinces[pid].contains;
-    if (city) seen.add(city);
+    const city = world.provinces[pid].around;
+    if (city && world.neighbors[pid].some((n) => n.id === city)) seen.add(city);
   }
   return seen;
 }

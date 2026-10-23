@@ -147,9 +147,10 @@ export interface NeutralStateDef {
 }
 
 /**
- * A province is either a city, drawn tight round it, or the land round a city (or, in time, land with no
- * city at all). Cities hold the population, buildings, output and objectives; the land between them is
- * where armies march and fronts run, and can take infrastructure (forts, depots, railways, batteries).
+ * A province is either a city, drawn tight round it, or one of the provinces of land all round a city
+ * (or, in time, land with no city at all). Cities hold the population, buildings, output and objectives;
+ * the land between them is where armies march and fronts run, and can take infrastructure (forts,
+ * depots, railways, batteries).
  */
 export interface ProvinceDef {
   id: ProvinceId;
@@ -165,10 +166,13 @@ export interface ProvinceDef {
   city?: CityDef;
   /** [longitude, latitude]: where armies stand and roads meet (the city, or a point inside the land). */
   anchor: [number, number];
-  /** For a city: the province round it, its only neighbour. */
-  within?: ProvinceId;
-  /** For land: the city province inside it. */
-  contains?: ProvinceId;
+  /** For a city: the provinces of land round it, its only neighbours. */
+  lands?: ProvinceId[];
+  /** For land: the city it lies round. */
+  around?: ProvinceId;
+  /** The region a city and its lands make up ("Bavaria"), for display. */
+  region?: string;
+  regionArticle?: Article;
   /** Starting city tier (1 for land, which has no city to grow). */
   tier: CityTier;
   /** Urban population of the city in thousands (display, growth and national morale); 0 for land. */
@@ -191,6 +195,8 @@ export interface ConnectionDef {
   kind: ConnectionKind;
   /** Optional label shown on the map (e.g. "Strait of Dover"). */
   label?: string;
+  /** For a sea crossing: how wide the sea is, coast to coast, in km (how far one shore sees the other). */
+  seaKm?: number;
 }
 
 export interface NationSpeciality {

@@ -45,9 +45,11 @@ export interface MapGeometry {
   /** All the theatre's land as one shape, without the borders inside it (cheap to clip with). */
   land: string;
   graticule: string;
-  /** Borders between provinces, except round the cities. */
+  /** Borders between the lands round one city, running out from it. */
+  landBorders: string;
+  /** Borders between the regions (a city with the lands round it), within a country or across one. */
   provinceBorders: string;
-  /** Each city's own border, where it meets the land round it. */
+  /** Each city's own border, where it meets the lands round it. */
   cityBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
@@ -140,13 +142,16 @@ function cityGeometry(
     roads[id] = [];
     reach[id] = null;
     ports[id] = null;
-    // Only cities have models: their roads lead to the cities in the lands next to their own, over land.
+    // Only cities have models: their roads lead to the cities whose lands border their own, over land.
     const def = world.provinces[id];
-    if (!def.city || !def.within) continue;
-    roads[id] = world.neighbors[def.within]
-      .filter((n) => n.kind !== 'strait' && world.provinces[n.id].contains)
-      .map((n) => anchors[world.provinces[n.id].contains!])
-      .map(([x, y]) => Math.round(Math.atan2(y - ay, x - ax) * 1000) / 1000);
+    if (!def.city || !def.lands) continue;
+    const next = new Set<ProvinceId>();
+    for (const land of def.lands)
+      for (const n of world.neighbors[land]) {
+        const city = world.provinces[n.id].around;
+        if (n.kind !== 'strait' && city && city !== id) next.add(city);
+      }
+    roads[id] = world.cityIds.filter((c) => next.has(c)).map((c) => anchors[c]).map(([x, y]) => Math.round(Math.atan2(y - ay, x - ax) * 1000) / 1000);
 
     // Where the land ends along each ray: the first crossing of the theatre's outline (the second if the
     // simplified coast leaves the city just offshore).
@@ -264,9 +269,11 @@ export function buildMapGeometry(world: World): MapGeometry {
   const outline = mesh(topo, geoms, (a, b) => a === b);
   const coastline = path(outline) ?? '';
   const land = path(merge(topo, geoms.geometries as (TopoPolygon | TopoMultiPolygon)[])) ?? '';
+  const region = (g: { properties?: unknown }) => world.regionOf[pidOf(g)] ?? pidOf(g);
   const isCityEdge = (a: { properties?: unknown }, b: { properties?: unknown }) =>
-    world.provinces[pidOf(a)]?.within === pidOf(b) || world.provinces[pidOf(b)]?.within === pidOf(a);
-  const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b && !isCityEdge(a, b))) ?? '';
+    world.provinces[pidOf(a)]?.around === pidOf(b) || world.provinces[pidOf(b)]?.around === pidOf(a);
+  const landBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) === region(b) && !isCityEdge(a, b))) ?? '';
+  const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) !== region(b))) ?? '';
   const cityBorders = path(mesh(topo, geoms, (a, b) => a !== b && isCityEdge(a, b))) ?? '';
   const graticule =
     path(
@@ -312,6 +319,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     coastline,
     land,
     graticule,
+    landBorders,
     provinceBorders,
     cityBorders,
     worldBounds,

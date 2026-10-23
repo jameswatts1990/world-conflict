@@ -67,9 +67,14 @@ describe('scenario data', () => {
     }
     expect(seen.size).toBe(world.provinceIds.length);
     // Straits exist for islands (e.g. Britain) — they are explicit, not derived from shapes. They land on the
-    // land round the cities, and every city is reached only through its own land.
-    expect(world.neighbors['uk-london-land'].some((n) => n.id === 'fr-nord-land' && n.kind === 'strait')).toBe(true);
-    for (const id of world.cityIds) expect(world.neighbors[id].map((n) => n.id)).toEqual([world.provinces[id].within]);
+    // land round the cities, and every city is reached only through its own lands, at least two of them: no
+    // land wraps round a city.
+    expect(world.neighbors['uk-london-sw'].some((n) => n.id === 'fr-nord-sw' && n.kind === 'strait')).toBe(true);
+    for (const id of world.cityIds) {
+      const around = world.neighbors[id].map((n) => n.id);
+      expect(around.filter((n) => !world.provinces[id].lands!.includes(n)), id).toEqual([]);
+      expect(around.length, id).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it('every nation matches its power tier: output, starting army, objectives and size', () => {
@@ -79,8 +84,10 @@ describe('scenario data', () => {
       const cities = provs.filter((p) => p.city);
       expect(cities.length, `${id} cities`).toBeGreaterThanOrEqual(power.provinces[0]);
       expect(cities.length, `${id} cities`).toBeLessThanOrEqual(power.provinces[1]);
-      // Every city stands in land of its own, which produces nothing yet.
-      expect(provs.length).toBe(cities.length * 2);
+      // Every city stands among two or more lands of its own, which produce nothing yet.
+      for (const c of cities) expect(c.lands!.length, c.id).toBeGreaterThanOrEqual(2);
+      expect(provs.filter((p) => !p.city).map((p) => p.id).sort()).toEqual(cities.flatMap((c) => c.lands!).sort());
+      for (const p of provs) if (!p.city) expect(Object.values(p.production).some((v) => v), p.id).toBe(false);
       for (const k of ['money', 'materials', 'manpower'] as const) {
         expect(provs.reduce((s, p) => s + p.production[k], 0), `${id} ${k}`).toBeCloseTo(power.output[k], -1);
       }

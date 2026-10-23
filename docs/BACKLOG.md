@@ -192,6 +192,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       region's name (138 provinces in all). Cities hold the output, buildings, recruitment and objectives; the land
       is where armies march and fronts run, takes infrastructure, and cuts its city off when lost. Map labels show
       city names and the names of provinces without a city; secondary towns are unnamed dots
+- [x] The land round each city divided into two to seven provinces all round it, as in Conflict of Nations (181 lands,
+      250 provinces): no land wraps round a city, every city stands where two or more lands meet, the borders between
+      lands follow the departments, counties and provinces inside each region, and every province border is a light
+      line over the land
 - [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
       entrenchments; and provinces with no city at all where the map needs them
 - [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal

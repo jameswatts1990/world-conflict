@@ -6,10 +6,10 @@
 // other fronts held, and peace offered on the main front once it is won.
 import { AI } from '../config/ai';
 import { DIPLOMACY } from '../config/rules';
-import { atWar, heldVp, isContender, scaledTicks, vpToWin } from '../queries';
+import { atWar, heldVp, isContender, landShare as shareOfLand, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
-import { landOf } from '../world';
+import { landsOf } from '../world';
 import { graceOver, issue, mainEnemy, nationPower, type Ctx } from './context';
 
 function neighbourNations(ctx: Ctx): NationId[] {
@@ -38,14 +38,15 @@ export function runawayLeader(ctx: Ctx): NationId | null {
 }
 
 /**
- * Enemy's home cities I hold, with its land counting `landShare` of a city: a rough measure of who is winning a
- * war. War aims count cities alone (AI.warAimLandShare), so land taken on the way does not end a war early.
+ * Enemy's home cities I hold, with the land round a city counting `landShare` of it (shared between its lands): a
+ * rough measure of who is winning a war. War aims count cities alone (AI.warAimLandShare), so land taken on the way
+ * does not end a war early.
  */
 function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId, landShare = AI.landShare): number {
   let held = 0;
   for (const id of ctx.world.provinceIds) {
     const def = ctx.world.provinces[id];
-    if (def.core === victim && ctx.state.provinces[id].owner === holder) held += def.city ? 1 : landShare;
+    if (def.core === victim && ctx.state.provinces[id].owner === holder) held += def.city ? 1 : landShare * shareOfLand(ctx.world, id);
   }
   return held;
 }
@@ -164,8 +165,8 @@ export function handleDiplomacy(ctx: Ctx): void {
     let prize = 0;
     for (const pid of world.objectiveIds) {
       if (state.provinces[pid].owner !== target) continue;
-      const land = landOf(world, pid);
-      if (ctx.ownedSet.has(land) || world.neighbors[land].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
+      const near = landsOf(world, pid).some((land) => ctx.ownedSet.has(land) || world.neighbors[land].some((n) => ctx.ownedSet.has(n.id)));
+      if (near) prize += world.provinces[pid].objectiveVp ?? 0;
     }
     const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
     const expansion = minor && opening === 'expand' ? AI.expandMinorBonus : 0;

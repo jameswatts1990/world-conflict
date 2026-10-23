@@ -8,7 +8,7 @@ import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
 import { random } from '../rng';
 import type { BuildingType, ProvinceId } from '../types';
-import { landOf } from '../world';
+import { landsOf } from '../world';
 import { alliesOf } from '../visibility';
 import { affordableWithReserve, issue, type Ctx } from './context';
 
@@ -85,7 +85,7 @@ export function handleConstruction(ctx: Ctx): void {
     const freeSlots = buildingSlots(state, world, pid) - slotsUsed(p.buildings, null);
     const frontier = ctx.frontier.has(pid);
     // A city whose land meets the enemy is on the front too.
-    const front = frontier || ctx.frontier.has(landOf(world, pid));
+    const front = frontier || landsOf(world, pid).some((land) => ctx.frontier.has(land));
     const threat = ctx.threat.get(pid) ?? 0;
     const presence = ctx.presence.get(pid) ?? 0;
     const lvl = (b: BuildingType) => p.buildings[b] ?? 0;

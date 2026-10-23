@@ -859,9 +859,9 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
             <span>
               <Icon name="city" size={13} /> {CITY.tierNames[ps.tier]}
             </span>
-          ) : def.contains ? (
+          ) : def.around ? (
             <span className="muted">
-              <Icon name="city" size={13} /> Around {world.provinces[def.contains].name}
+              <Icon name="city" size={13} /> Around {world.provinces[def.around].name}
             </span>
           ) : null}
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}

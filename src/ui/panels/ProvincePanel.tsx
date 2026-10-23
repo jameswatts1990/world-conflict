@@ -175,8 +175,8 @@ export function ProvincePanel({
   const nationalCapital = city?.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
   const activeTab: Tab = (!mine || !city) && tab === 'recruit' ? 'city' : tab;
-  // The other half of this place: the land round a city, or the city in a land.
-  const partner = def.within ?? def.contains;
+  // The rest of this place: the lands round a city, or the city a land lies round.
+  const partners = def.lands ?? (def.around ? [def.around] : []);
 
   return (
     <section className={`panel province-panel${page ? ' page' : ''}${city ? '' : ' land'}`} data-testid="province-panel" data-province={pid}>
@@ -225,17 +225,20 @@ export function ProvincePanel({
               <Icon name="anchor" size={13} /> Landing
             </span>
           )}
-          {partner && (
+          {partners.map((partner) => (
             <button
+              key={partner}
               className="chip chip-link"
               onClick={() => onSelectProvince(partner)}
-              title={city ? `The province round ${def.name}` : `The city in ${def.name}`}
+              title={city ? `Land round ${def.name}` : `${def.name} lies round this city`}
               data-testid="partner-province"
+              data-partner={partner}
             >
-              <Icon name={city ? 'flag' : 'city'} size={13} /> {city ? 'In' : 'City:'} {world.provinces[partner].name}
+              <Icon name={city ? 'flag' : 'city'} size={13} /> {city ? '' : 'City: '}
+              {world.provinces[partner].name}
               <span className="chip-owner" style={{ background: ownerColor(world, state.provinces[partner].owner) }} />
             </button>
-          )}
+          ))}
         </div>
         <div className="hero-note">{TERRAIN_NOTE[def.terrain]}</div>
         {occupied && (
@@ -312,8 +315,8 @@ function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   return (
     <>
       <p className="muted small land-note">
-        {def.contains
-          ? `The land round ${world.provinces[def.contains].name}: armies march and fight across it, and whoever holds it can cut the city off. `
+        {def.around
+          ? `Land round ${world.provinces[def.around].name}: armies march and fight across it, and whoever holds all the land round the city can cut it off. `
           : 'Open country: armies march and fight across it. '}
         No city stands here, so nothing is raised or produced; only infrastructure can be built.
       </p>
