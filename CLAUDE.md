@@ -44,6 +44,8 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
 - `npx vite-node scripts/dev/batch.ts <seeds> <minutes>`: headless campaign summaries (captures, wars, outcomes).
 - `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>`: every AI move order with its reason; armies sent back
   and forth.
+- `node scripts/dev/pan-perf.mjs [dist-e2e] [cpu slowdown] [paused]` (after `npm run build:e2e`): main-thread time
+  while dragging the map on an emulated phone; compare with a build of main before and after map changes.
 
 ## Simulation rules
 
