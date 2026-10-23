@@ -8,7 +8,8 @@ Guidance for Claude Code working in this repository.
 - Keep docs in step with behaviour changes: `docs/GAME_DESIGN.md` is the living design document (rules, numbers,
   AI behaviour), `docs/BACKLOG.md` the roadmap, and this file the working notes for Claude.
 - Before pushing, run `npm run typecheck` and `npm test` (about 20 s). CI also runs the build and the browser
-  playthroughs (`npm run e2e`, `npm run e2e:mobile`).
+  playthroughs (`npm run e2e`, `npm run e2e:mobile`) against `npm run build:e2e`: the playthroughs read the game
+  through `window.__game`, which only the dev server and that test build expose, never the published build.
 
 ## Layout
 

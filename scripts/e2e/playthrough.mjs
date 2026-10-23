@@ -1,4 +1,4 @@
-// Browser playthrough of the milestone loop against the production build:
+// Browser playthrough of the milestone loop against the test build:
 // start → improve production → recruit → research → move → capture →
 // save → reload → load → play on (DEV speed) to a win or loss.
 //
@@ -7,20 +7,22 @@
 // Portugal is a minor power with a fortified capital: Spain gathers most of its
 // army and raises more before it attacks.
 //
-//   npm run build && npm run e2e
+//   npm run build:e2e && npm run e2e
 //
 // Uses Playwright's Chromium. Screenshots and a JSON summary go to e2e-output/.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const PORT = 4175;
 const URL = `http://localhost:${PORT}/`;
 const OUT = 'e2e-output';
 mkdirSync(OUT, { recursive: true });
+// The production build with the window.__game handle these checks read the game through.
+if (!existsSync('dist-e2e/index.html')) throw new Error('no test build: run `npm run build:e2e` first');
 
 // Run Vite's CLI directly: killing an `npx` wrapper would leave the server running and the script hanging.
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const stopServer = () => server.exitCode === null && server.kill('SIGTERM');
 process.on('exit', stopServer);
 

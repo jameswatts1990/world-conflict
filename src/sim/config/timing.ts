@@ -28,6 +28,8 @@ export const INTERVALS = {
   armyUpkeepStep: 10,
   /** Province morale, national morale and city growth. */
   civicUpdate: 10,
+  /** Each nation's score, VP and provinces, kept for the results screen. */
+  historySample: 120,
 };
 
 /**

@@ -1,6 +1,7 @@
 // Elimination, objective victory and the campaign time limit.
 import { VICTORY } from '../config/rules';
 import { pushEvent } from '../events';
+import { historySystem } from './history';
 import { computeScores, heldVp, isContender, provincesOwnedBy, scaledTicks, vpToWin } from '../queries';
 import { durationText, nationName, sentence } from '../text';
 import type { GameState, NationId, OutcomeReason } from '../types';
@@ -9,6 +10,7 @@ import type { World } from '../world';
 function finish(state: GameState, world: World, winner: NationId | null, reason: OutcomeReason): void {
   const scores = computeScores(state, world);
   state.outcome = { winner, reason, tick: state.tick, scores };
+  historySystem(state, world);
   const name = winner ? sentence(nationName(world, winner)) : 'Nobody';
   const human = state.settings.humanNation;
   const why: Record<OutcomeReason, string> = {

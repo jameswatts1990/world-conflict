@@ -497,3 +497,12 @@ export function isContender(world: World, nation: NationId): boolean {
 export function provincesOwnedBy(state: GameState, world: World, owner: OwnerId): ProvinceId[] {
   return world.provinceIds.filter((id) => state.provinces[id].owner === owner);
 }
+
+/** Whether two owners hold neighbouring provinces (over land or a crossing). */
+export function ownersBorder(state: GameState, world: World, a: OwnerId, b: OwnerId): boolean {
+  for (const id of world.provinceIds) {
+    if (state.provinces[id].owner !== a) continue;
+    if (world.neighbors[id].some((n) => state.provinces[n.id].owner === b)) return true;
+  }
+  return false;
+}

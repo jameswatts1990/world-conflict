@@ -138,16 +138,21 @@ export function Tutorial({
 export const CONTROLS: [string, string][] = [
   ['Left-click province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
   ['Left-click army counter', 'Select an army (Shift-click adds more of your armies)'],
+  ['Shift-drag', 'Select every army of yours inside the box'],
+  [', / .', 'Previous / next of your armies'],
   ['Right-click', 'Send the selected armies to the province or enemy army under the cursor (Attack into foreign land, Move within your own)'],
   ['M / A / P', 'Move, Attack or Patrol: the next left-click sets the destination'],
   ['G', 'Hold position: halt and stay, never withdrawing on its own, until given a new order (again to release)'],
   ['S', 'Stop the selected armies after their current leg'],
   ['Drag / Mouse wheel', 'Pan / zoom the map (or use the overview map)'],
+  ['Arrow keys', 'Pan the map (with Shift, further)'],
+  ['C / Home', 'Jump to your capital'],
   ['Space', 'Pause / resume'],
   ['1 – 6', 'Speed 1x, 2x, then DEV 5x / 20x / 60x / 200x (testing only)'],
   ['R / D / L', 'Research tree / Diplomacy / field reports'],
   ['V', 'Cycle map view: political, terrain, supply, morale, city size'],
   ['K', 'Map key'],
+  ['N', 'Mute or unmute sound and music (volumes: Sound on the left rail)'],
   ['H / ?', 'These controls'],
   ['Esc', 'Close the open window, cancel move mode, then clear the selection'],
 ];
@@ -163,4 +168,5 @@ export const TOUCH_CONTROLS: [string, string][] = [
   ['Tap resource', 'Income, army upkeep and net change'],
   ['Tap technology', 'Its details in Research; research it, or queue the path to it, from there'],
   ['Pause / 1x / 2x', 'Pause or resume (or tap the Paused banner) and set the campaign speed'],
+  ['More › Sound', 'Mute, volumes, and the music playing now'],
 ];

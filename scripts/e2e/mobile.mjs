@@ -1,23 +1,25 @@
-// Browser check of the phone layouts against the production build: a touch screen
+// Browser check of the phone layouts against the test build: a touch screen
 // held upright (bottom tab bar, bottom sheet), then turned on its side (slim tab bar,
 // side sheet). It plays a short stretch as Spain through the touch controls only:
 // build, recruit, the sheet's handle, a move previewed and confirmed, research,
 // field reports, pause and save; and checks that nothing spills off the screen.
 //
-//   npm run build && npm run e2e:mobile
+//   npm run build:e2e && npm run e2e:mobile
 //
 // Uses Playwright's Chromium with touch emulation. Screenshots and a JSON summary go to e2e-output/mobile/.
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const PORT = 4176;
 const URL = `http://localhost:${PORT}/`;
 const OUT = 'e2e-output/mobile';
 mkdirSync(OUT, { recursive: true });
+// The production build with the window.__game handle these checks read the game through.
+if (!existsSync('dist-e2e/index.html')) throw new Error('no test build: run `npm run build:e2e` first');
 
 // Run Vite's CLI directly: killing an `npx` wrapper would leave the server running and the script hanging.
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--outDir', 'dist-e2e', '--port', String(PORT), '--strictPort'], { stdio: 'ignore' });
 const stopServer = () => server.exitCode === null && server.kill('SIGTERM');
 process.on('exit', stopServer);
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
+import { concernsPlayer } from '../audio/cues';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
   armiesIn,
@@ -42,6 +43,7 @@ import { Legend } from './panels/Legend';
 import { NavRail, type PanelId } from './panels/NavRail';
 import { ProvincePanel } from './panels/ProvincePanel';
 import { ResearchPanel } from './panels/ResearchPanel';
+import { SoundDialog } from './panels/SoundDialog';
 import { TopBar } from './panels/TopBar';
 import { Tutorial } from './panels/Tutorial';
 
@@ -81,10 +83,10 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
   const { state, world, human } = ctrl;
   switch (e.kind) {
     case 'war':
-      // War on us is bad news; our own declaration and other powers' wars are worth knowing.
-      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : 'info';
+      // War on us is bad news; our own declaration, and other powers' wars that concern us, are worth knowing.
+      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'peace':
-      return e.subject === human || e.actor === human ? 'good' : 'info';
+      return e.subject === human || e.actor === human ? 'good' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'research':
     case 'shortage':
     case 'eliminated':
@@ -131,7 +133,9 @@ export function GameScreen({
   const compact = layout !== 'desktop';
 
   // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
+  // The desktop opens on your capital's city, once the opening briefing (if any) is out of the way.
+  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact || showTutorial ? null : world.nations[human].capital);
+  const capitalShown = useRef(!showTutorial);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
   // The march order being given, while a destination is picked.
   const [moveMode, setMoveMode] = useState<MoveMode | null>(null);
@@ -221,6 +225,21 @@ export function GameScreen({
     [ctrl],
   );
 
+  /** The next (or previous) of your armies, in the order they were raised: selected, and brought into view. */
+  const cycleArmy = useCallback(
+    (dir: 1 | -1) => {
+      const own = Object.values(ctrl.state.armies)
+        .filter((a) => a.owner === ctrl.human)
+        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      if (!own.length) return;
+      const i = own.findIndex((a) => a.id === selectedArmies[0]);
+      const next = own[i < 0 ? (dir > 0 ? 0 : own.length - 1) : (i + dir + own.length) % own.length];
+      selectArmy(next.id, false);
+      setFocus((f) => ({ province: next.move?.leg ? next.move.leg.from : next.province, seq: (f?.seq ?? 0) + 1 }));
+    },
+    [ctrl, selectedArmies, selectArmy],
+  );
+
   const orderMove = useCallback(
     (pid: ProvinceId) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
@@ -288,13 +307,15 @@ export function GameScreen({
       }
       else if (key === 's' && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
-      } else if (key === 'l') setFeedOpen((o) => !o);
+      } else if (key === 'c' || e.key === 'Home') focusOn(world.nations[human].capital);
+      else if (e.key === '.' || e.key === ',') cycleArmy(e.key === '.' ? 1 : -1);
+      else if (key === 'l') setFeedOpen((o) => !o);
       else if (key === 'k') setLegendOpen((o) => !o);
       else if (key === 'v') setMapMode((m) => MAP_MODES[(MAP_MODES.findIndex(([id]) => id === m) + 1) % MAP_MODES.length][0]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, moveMode, legendOpen, selectedArmies]);
+  }, [ctrl, moveMode, legendOpen, selectedArmies, focusOn, cycleArmy, world, human]);
 
   useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
   const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
@@ -368,6 +389,12 @@ export function GameScreen({
             onPickTarget={setMoveTarget}
             onSelectProvince={selectProvince}
             onSelectArmy={selectArmy}
+            onBoxSelect={(ids) => {
+              const first = ctrl.state.armies[ids[0]];
+              setSelectedArmies(ids);
+              setSelectedProvince(first.move?.leg ? first.move.leg.from : first.province);
+              setMoveMode(null);
+            }}
             onOrderMove={orderMove}
             onHover={(pid, army) => setHover(pid ? { pid, army } : null)}
           />
@@ -443,52 +470,55 @@ export function GameScreen({
               )}
             </div>
 
-            <div className="alert-stack">
-              {offers.map((o) => (
-                <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
-                  <Flag id={o.from} size={22} />
-                  <div className="alert-body">
-                    <div className="alert-title">Peace proposal</div>
-                    <div>
-                      <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
-                    </div>
-                    <div className="offer-timer" title="Time left to answer">
-                      <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
-                    </div>
-                    <div className="btn-row">
-                      <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
-                        Accept
-                      </button>
-                      <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
-                      <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+            {/* The results dialog is the last word: alerts wait behind it until it closes. */}
+            {!(outcome && !outcomeSeen) && (
+              <div className="alert-stack">
+                {offers.map((o) => (
+                  <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
+                    <Flag id={o.from} size={22} />
+                    <div className="alert-body">
+                      <div className="alert-title">Peace proposal</div>
+                      <div>
+                        <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
+                      </div>
+                      <div className="offer-timer" title="Time left to answer">
+                        <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
+                      </div>
+                      <div className="btn-row">
+                        <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
+                          Accept
+                        </button>
+                        <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
+                        <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {alerts.map(({ event: e, tone }) => (
-                <div
-                  key={e.id}
-                  className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
-                  onClick={() => e.province && focusOn(e.province)}
-                  title={e.province ? 'Show on the map' : undefined}
-                >
-                  <span className="alert-icon">
-                    <Icon name={eventIcon(e)} size={18} />
-                  </span>
-                  <div className="alert-body">{e.text}</div>
-                  <button
-                    className="icon-btn"
-                    aria-label="Dismiss"
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
-                    }}
+                ))}
+                {alerts.map(({ event: e, tone }) => (
+                  <div
+                    key={e.id}
+                    className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
+                    onClick={() => e.province && focusOn(e.province)}
+                    title={e.province ? 'Show on the map' : undefined}
                   >
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <span className="alert-icon">
+                      <Icon name={eventIcon(e)} size={18} />
+                    </span>
+                    <div className="alert-body">{e.text}</div>
+                    <button
+                      className="icon-btn"
+                      aria-label="Dismiss"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
+                      }}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <EventLog
@@ -556,6 +586,7 @@ export function GameScreen({
         />
       )}
       {panel === 'save' && <SaveDialog ctrl={ctrl} onClose={() => setPanel(null)} />}
+      {panel === 'sound' && <SoundDialog touch={touch} onClose={() => setPanel(null)} />}
       {panel === 'load' && <LoadDialog world={world} scenarioId={world.scenario.id} onLoad={onLoad} onClose={() => setPanel(null)} />}
       {panel === 'help' && (
         <HelpDialog
@@ -575,7 +606,11 @@ export function GameScreen({
           nationName={nationName(world, human)}
           limitMinutes={state.settings.timeLimitTicks / TICKS_PER_MINUTE / state.settings.durationScale}
           input={{ touch, compact }}
-          onClose={() => setTutorial(false)}
+          onClose={() => {
+            setTutorial(false);
+            if (!capitalShown.current && !compact) setSelectedProvince((p) => p ?? world.nations[human].capital);
+            capitalShown.current = true;
+          }}
         />
       )}
       {outcome && !outcomeSeen && <OutcomeDialog ctrl={ctrl} onMenu={onExit} onClose={() => setOutcomeSeen(true)} />}

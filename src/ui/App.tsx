@@ -4,6 +4,8 @@ import { GameController } from './game/GameController';
 import { GameScreen } from './GameScreen';
 import { MainMenu } from './MainMenu';
 
+const DEBUG_HANDLE = import.meta.env.DEV || import.meta.env.MODE === 'e2e';
+
 export function App() {
   const world = useMemo(() => buildWorld(EUROPE_SCENARIO), []);
   const [session, setSession] = useState<{ ctrl: GameController; tutorial: boolean; key: number } | null>(null);
@@ -14,8 +16,10 @@ export function App() {
     return () => session.ctrl.dispose();
   }, [session]);
 
-  // Expose a debug handle for automated browser checks (scripts/e2e) and tinkering.
+  // Expose a debug handle for automated browser checks (scripts/e2e) and tinkering: in the dev
+  // server and the test build (`npm run build:e2e`) only, so the published game carries none.
   useEffect(() => {
+    if (!DEBUG_HANDLE) return;
     const w = window as unknown as { __game?: unknown; __hash?: () => string | null };
     w.__game = session?.ctrl ?? null;
     w.__hash = () => (session ? hashState(session.ctrl.state) : null);

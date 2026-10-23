@@ -376,7 +376,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   washes its territory lightly in its colour (the relief reads through) and runs a band of it along the inside of its
   border; borders between powers are a light line on a dark casing, those between provinces a faint light line. The
   player's own land is lit up: a brighter, richer wash of its colour inside a glowing white outline. The **front**,
-  where the player's land meets a power at war with them, is red, as are the rims of enemy armies. Unseen land lies
+  where the player's land meets a power at war with them, is red, as are the rims of enemy armies; other powers' fronts
+  with each other are a faint dotted line. A province changing hands flashes in its new owner's colour. Unseen land lies
   under the fog of war (§6.7). Five map views, cycled with V: **Political** (the scheme above), **Terrain** (the same
   borders over almost bare land), **Supply** (your provinces green when connected to a supply hub, red when cut off),
   **Morale** (civilian morale, red to green; unknown under the fog) and **Cities** (city tier).
@@ -384,7 +385,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
   cities and counters where possible. Province names take over when zoomed in. Cities have dark name plates with an
   owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
-  capture-progress rings. City markers grow with tier; secondary towns appear at close zoom. Neutral states (none in
+  capture-progress rings. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
+  army's badge that would cover another city's plate steps up or down off it. City markers grow with tier; secondary towns appear at close zoom. Neutral states (none in
   the current scenario) are hatched with lines that keep the same spacing at every zoom.
 - **City models.** From one zoom step in, each city is drawn as part of the map rather than on a token. On the
   ground, a lace of white streets, densest in the old town and fraying into the countryside, with main roads running
@@ -438,12 +440,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
-  left command rail opens Research, Diplomacy, field reports, save/load and help, with badges for an idle research
-  slot, wars and peace offers. The selected army and province open as floating cards on the right; the overview map
-  and zoom buttons sit below them. Field reports (the event log) sit bottom left; alerts pop up top left for wars,
-  peace, research, eliminations, shortages, objective captures, provinces you win or lose, enemy attacks on your
-  territory, armies you lose, enemy withdrawals, and rejected peace offers. A war declared on you is red, your own
-  declaration orange, and other powers' wars and treaties neutral. Alerts only count down while the game runs. A cursor
+  left command rail opens Research, Diplomacy, field reports, save/load, help and sound, with badges for an idle
+  research slot, wars and peace offers. The selected army and province open as floating cards in a full-height dock on
+  the right; the overview map and zoom buttons sit beside it (in the corner when nothing is selected). Field reports
+  (the event log) sit bottom left; alerts pop up top left (below any banner) for wars, peace, research, eliminations,
+  shortages, objective captures, provinces you win or lose, enemy attacks on your territory, armies you lose, enemy
+  withdrawals, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
+  wars and treaties neutral; those alert (and sound) only when one side borders you or both are great powers, the rest
+  staying in the field reports. Alerts only count down while the game runs. Keyboard and mouse extras: Shift-drag
+  selects your armies in a box, , and . cycle through them, the arrow keys pan and C jumps to the capital. A cursor
   tooltip summarises the province (city size, morale, units present by nation) and the army under the mouse.
 - **City view** (click a province): a procedural skyline that grows with the city and shows every building,
   construction and battle; any battle there (sides, units, morale and share of firepower) and capture progress; morale
@@ -454,14 +459,27 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
   and orders (move, stop, split, merge, disband). Merging keeps the senior (lowest-numbered) army's name.
 - **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and
-  queue. Diplomacy shows flags, relation pills, national specialities and morale, military power bars, objective chips
-  and answers to incoming peace offers. Declaring war and leaving the campaign ask for confirmation, and Escape closes
-  the innermost window first. The opening tutorial is a Chief of Staff briefing. The results screen ranks the powers
-  with their provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner
-  brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
+  queue; buttons jump to each era, era titles and branch names stay pinned while it scrolls, dragging pans it, and
+  prerequisites from another branch are drawn faintly until researched or traced. Diplomacy shows flags, relation
+  pills, national specialities and morale, military power bars, objective chips and answers to incoming peace offers.
+  Sound holds mute, overall / music / effects volumes and the piece playing now. Declaring war and leaving the campaign
+  ask for confirmation, and Escape closes the innermost window first. The opening tutorial is a Chief of Staff
+  briefing. The results screen charts the race over the campaign (score, objective VP or provinces, sampled every
+  2 minutes: your line and the winner's in colour, the other powers in grey) and ranks the powers with their
+  provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner brings it
+  back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
   neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
-  are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
+  are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched from other
+  sites at run time; the sound files load from the game's own files when first needed.
+- **Sound.** Recorded effects and period music, all CC0 or public domain (sources in `docs/ATTRIBUTION.md`). Bugle
+  calls mark a campaign's start, a war, a capture, victory and defeat; field reports come in as Morse, finished
+  research as a typewriter and bell, buildings as an anvil, recruits as marching boots, a battle as a cannon shot and a
+  rout as a whistle. Distant bombardment plays under the map while your armies fight, louder with more battles and
+  silent when paused. Buttons click like mechanical switches, tabs turn a page and windows unfold a map. An update plays
+  at most two sounds and one musical call, with the music dipping under it. Music: Holst conducting *Mars* in the
+  menu, then a campaign playlist of 1917–1923 recordings that favours your nation's piece, with silences between.
+  N mutes; the Sound window sets the overall, music and effects volumes.
 
 ## 14. Open questions for playtesting
 

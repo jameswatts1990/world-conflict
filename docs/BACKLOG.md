@@ -121,13 +121,18 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
       done, rejected peace offers)
-- [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
+- [x] Multi-select by box-drag (Shift-drag); hotkeys to cycle armies (, and .)
+- [ ] Army groups: saved selections on the number keys
 - [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim tab bar,
       side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
 - [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
       top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
 - [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
-- [ ] Code-split the bundle; lazy-load the world context layer
+- [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
+- [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
+- [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
+- [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
+- [x] Sound window: mute, overall / music / effects volumes, the piece playing now and a skip (rail on the desktop, More on phones)
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
 - [x] 3D armies on the map: zoomed in, each army is a 3D model of its main unit for its nation and generation,
@@ -217,6 +222,7 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
 - [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
+- [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
 - [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
 - [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
 - [ ] Eastern-bloc nations east of Poland and Romania

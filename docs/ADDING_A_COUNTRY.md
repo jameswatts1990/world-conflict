@@ -143,7 +143,7 @@ That is the whole of the required work: the starting setup is generated (`setup.
 
 ```bash
 npm run typecheck && npm test   # scenario tests check shapes, towns, connectivity, the tier template and names
-npm run build && npm run e2e && npm run e2e:mobile
+npm run build:e2e && npm run e2e && npm run e2e:mobile
 node scripts/dev/screens.mjs e2e-output/screens hu map zoom:1   # look at the new country
 npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the bloc's art, if you added a bloc
 ```

@@ -24,6 +24,7 @@ import {
   type ArmyId,
   type GameState,
   type NationId,
+  type OwnerId,
   type ProvinceId,
   type UnitType,
   type World,
@@ -37,7 +38,7 @@ import type { GameController } from '../game/GameController';
 import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType } from '../labels';
-import { citySpots, roadEnds, type Offset } from './armyLayout';
+import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
 import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, type MapGeometry } from './geo';
 import {
   DETAIL_LEVELS,
@@ -80,6 +81,8 @@ export interface MapViewProps {
   onPickTarget: (pid: ProvinceId) => void;
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
+  /** Shift-drag (desktop): your armies inside the box. */
+  onBoxSelect?: (ids: ArmyId[]) => void;
   onOrderMove: (pid: ProvinceId) => void;
   /** Province under the cursor, and the army counter if pointing at one. */
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
@@ -480,6 +483,34 @@ const FogLayer = memo(function FogLayer({ shape, edge, clouds }: { shape: string
   );
 });
 
+/**
+ * Other powers' fronts: their borders with one another while at war, drawn faintly, so a glance shows who is
+ * fighting whom. (Your own front is drawn by BorderLayer.)
+ */
+const OtherFrontsLayer = memo(function OtherFrontsLayer({
+  geo,
+  human,
+  owners,
+  wars,
+  ownerOf,
+}: {
+  geo: MapGeometry;
+  human: NationId;
+  owners: string;
+  /** Pairs at war, "a>b" with a before b, comma-separated. */
+  wars: string;
+  ownerOf: Record<ProvinceId, string>;
+}) {
+  const d = useMemo(() => {
+    if (!wars) return '';
+    const pairs = new Set(wars.split(','));
+    const atWar = (a: OwnerId, b: OwnerId) => a !== human && b !== human && pairs.has(a < b ? `${a}>${b}` : `${b}>${a}`);
+    return geo.arcs((a, b) => b !== null && ownerOf[a] !== ownerOf[b] && atWar(ownerOf[a], ownerOf[b]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [geo, human, owners, wars]);
+  return d ? <path d={d} className="front-line other" pointerEvents="none" /> : null;
+});
+
 const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: { geo: MapGeometry; world: World; focusIds: string }) {
   const focus = new Set(focusIds ? focusIds.split(',') : []);
   return (
@@ -666,6 +697,14 @@ const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
+/** A city's name plate (shown with its model), relative to the middle of its built-up area, in screen pixels. */
+function plateBox(world: World, id: ProvinceId, city: CityFootprint): PlateBox {
+  const def = world.provinces[id].city;
+  const [w, h] = plateSize(def.name, def.size === 'capital' ? 10.5 : 9.5);
+  const top = city.below - 3 - city.mid[1];
+  return { half: w / 2, top, bottom: top + h };
+}
+
 /** Dark label plate centred under a point (in screen pixels, before 1/k scaling). */
 function Plate({ text, y, color, size = 10, className = '' }: { text: string; y: number; color?: string; size?: number; className?: string }) {
   const [w, h] = plateSize(text, size);
@@ -714,6 +753,32 @@ function CityGroundLayer({
     <g className="city-ground" pointerEvents="none">
       {world.provinceIds.filter((id) => !geo.reach[id]).map(streets)}
       <g clipPath="url(#land-clip)">{world.provinceIds.filter((id) => geo.reach[id]).map(streets)}</g>
+    </g>
+  );
+}
+
+/** The names of the cities drawn as models, over the armies standing round them (the plates take no clicks). */
+function CityNameLayer({ geo, state, world, k, cities }: { geo: MapGeometry; state: GameState; world: World; k: number; cities: Record<ProvinceId, CityFootprint> }) {
+  const s = 1 / k;
+  return (
+    <g className="city-layer city-names" pointerEvents="none">
+      {world.provinceIds.map((id) => {
+        const def = world.provinces[id];
+        const city = cities[id];
+        const [x, y] = geo.anchors[id];
+        const isCapital = def.city.size === 'capital';
+        return (
+          <g key={id} transform={`translate(${x + city.mid[0] * s},${y}) scale(${s})`}>
+            <Plate
+              text={def.city.name}
+              y={city.below - 3}
+              color={ownerColor(world, state.provinces[id].owner)}
+              size={isCapital ? 10.5 : 9.5}
+              className={isCapital ? 'capital' : ''}
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -791,15 +856,6 @@ function CityLayer({
                   <text y={3.1}>{def.objectiveVp}</text>
                 </g>
               ) : null}
-              <g transform={`translate(${cx},0)`}>
-                <Plate
-                  text={def.city.name}
-                  y={city.below - 3}
-                  color={ownerColor(world, ps.owner)}
-                  size={isCapital ? 10.5 : 9.5}
-                  className={isCapital ? 'capital' : ''}
-                />
-              </g>
             </g>
           );
         }
@@ -1149,7 +1205,7 @@ function placeArmies(
     const [mx, my] = cities[pid].mid;
     const battle = !!state.battles[pid];
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
-    const spots = citySpots(cities[pid].half, room, list.length);
+    const spots = citySpots(cities[pid].half, room, list.length, plateBox(world, pid, cities[pid]));
     list.forEach((army, i) => {
       const [ox, oy] = spots[i];
       // At rest they face out of the screen, to whichever side they stand; in a battle, the fighting.
@@ -1270,6 +1326,12 @@ function ArmyModelLayer({
   // Nearer the bottom of the screen is nearer the viewer: drawn later.
   placed.sort((a, b) => a.y - b.y || byCreation(a.army, b.army));
   const room = armyRoom(px);
+  // Every city's name plate on screen (map units), so a badge that lands on one can step clear of it.
+  const plates = world.provinceIds.map((id) => {
+    const b = plateBox(world, id, cities[id]);
+    const [x, y] = [geo.anchors[id][0] + cities[id].mid[0] / k, geo.anchors[id][1] + cities[id].mid[1] / k];
+    return { x0: x - b.half / k, x1: x + b.half / k, y0: y + b.top / k, y1: y + b.bottom / k };
+  });
   const routes: ReactNode[] = [];
   const models: ReactNode[] = [];
   const behind: ReactNode[] = [];
@@ -1314,7 +1376,10 @@ function ArmyModelLayer({
         <image href={sprite.href} x={left} y={top} width={w} height={h} />
       </g>,
     );
-    badges.push([sel, <ArmyBadge key={army.id} army={army} y={top - 3} transform={transform} status={status} handlers={handlers} />]);
+    badges.push([
+      sel,
+      <ArmyBadge key={army.id} army={army} y={top - 3 + badgeShift(army, p.x, p.y + (top - 3) / k, k, plates)} transform={transform} status={status} handlers={handlers} />,
+    ]);
   }
   // The selection's badges go on top, so they can always be clicked.
   badges.sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -1328,6 +1393,29 @@ function ArmyModelLayer({
       {badges.map((b) => b[1])}
     </g>
   );
+}
+
+/** Width of an army's badge, in screen pixels. */
+const badgeWidth = (army: Army) => 21 + String(army.units.length).length * 6.6;
+const BADGE_HEIGHT = 19;
+
+/**
+ * How far (screen pixels) to move an army's badge, whose bottom edge is at (x, bottom) in map units, so
+ * it does not sit on a city's name plate: up or down, whichever is the shorter step, and only a short one.
+ */
+function badgeShift(army: Army, x: number, bottom: number, k: number, plates: { x0: number; x1: number; y0: number; y1: number }[]): number {
+  const half = badgeWidth(army) / 2 / k;
+  const top = bottom - BADGE_HEIGHT / k;
+  let shift = 0;
+  for (const pl of plates) {
+    if (x + half <= pl.x0 || x - half >= pl.x1 || bottom + shift <= pl.y0 || top + shift >= pl.y1) continue;
+    const up = (bottom + shift - pl.y0) * k + 2;
+    const down = (pl.y1 - top - shift) * k + 2;
+    const step = up <= down ? -up : down;
+    if (Math.abs(step) > 28) continue;
+    shift += step / k;
+  }
+  return shift * k;
 }
 
 /** An army's label over its model: flag, number of formations, strength and morale. */
@@ -1345,7 +1433,7 @@ function ArmyBadge({
   handlers: object;
 }) {
   const count = String(army.units.length);
-  const w = 21 + count.length * 6.6;
+  const w = badgeWidth(army);
   const strength = composition(army).strength;
   const morale = armyMorale(army);
   return (
@@ -1585,6 +1673,8 @@ export function MapView(props: MapViewProps) {
         [x1, y1],
       ])
       .clickDistance(5)
+      // Shift-drag draws a selection box instead of panning.
+      .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
       .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => setTransform(e.transform));
     zoomRef.current = behavior;
     setFitK(fit.k);
@@ -1651,6 +1741,64 @@ export function MapView(props: MapViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.focus?.seq]);
 
+  // Arrow keys pan the map (Shift for bigger steps), unless a window is open.
+  useEffect(() => {
+    const PAN: Record<string, [number, number]> = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    const onKey = (e: KeyboardEvent) => {
+      const dir = PAN[e.key];
+      if (!dir || e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || document.querySelector('.modal-backdrop, .tutorial-backdrop')) return;
+      const svg = svgRef.current;
+      const behavior = zoomRef.current;
+      if (!svg || !behavior) return;
+      e.preventDefault();
+      const step = (e.shiftKey ? 260 : 90) / zoomTransform(svg).k;
+      select(svg).call(behavior.translateBy, dir[0] * step, dir[1] * step);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Shift-drag: a box that selects your armies inside it. A short drag is a Shift-click (adds one army).
+  const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const boxEnded = useRef(false);
+  const startBox = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!e.shiftKey || e.button !== 0 || props.touch || !props.onBoxSelect) return;
+    const svg = svgRef.current!;
+    const r = svg.getBoundingClientRect();
+    const [x0, y0] = [e.clientX - r.left, e.clientY - r.top];
+    let end: [number, number] | null = null;
+    const move = (ev: MouseEvent) => {
+      const [x1, y1] = [ev.clientX - r.left, ev.clientY - r.top];
+      if (!end && Math.hypot(x1 - x0, y1 - y0) < 6) return;
+      end = [x1, y1];
+      setBox({ x0, y0, x1, y1 });
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setBox(null);
+      if (!end) return;
+      // The click that ends the drag must not clear the selection.
+      boxEnded.current = true;
+      const [left, right] = [r.left + Math.min(x0, end[0]), r.left + Math.max(x0, end[0])];
+      const [top, bottom] = [r.top + Math.min(y0, end[1]), r.top + Math.max(y0, end[1])];
+      const ids = new Set<ArmyId>();
+      for (const g of svg.querySelectorAll('g[data-army]')) {
+        const id = g.getAttribute('data-army')!;
+        if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
+        const b = g.getBoundingClientRect();
+        const [cx, cy] = [b.left + b.width / 2, b.top + b.height / 2];
+        if (cx >= left && cx <= right && cy >= top && cy <= bottom) ids.add(id);
+      }
+      if (ids.size) props.onBoxSelect!([...ids]);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    e.preventDefault();
+  };
+
   const zoomBy = (factor: number) => {
     if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(220).call(zoomRef.current.scaleBy, factor);
   };
@@ -1662,6 +1810,23 @@ export function MapView(props: MapViewProps) {
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
+  // A province that changes hands flashes in its new owner's colour (not when a save loads).
+  const lastOwners = useRef<string | null>(null);
+  const [flashes, setFlashes] = useState<{ pid: ProvinceId; id: number; color: string }[]>([]);
+  useEffect(() => {
+    const before = lastOwners.current?.split(',');
+    lastOwners.current = ownersSig;
+    if (!before) return;
+    const now = ownersSig.split(',');
+    const changed = world.provinceIds.filter((_, i) => before[i] !== now[i]);
+    if (!changed.length) return;
+    const id = performance.now();
+    setFlashes((f) => [...f.slice(-20), ...changed.map((pid) => ({ pid, id, color: ownerColor(world, state.provinces[pid].owner) }))]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownersSig]);
+  const warsSig = world.nationIds
+    .flatMap((a) => world.nationIds.filter((b) => a < b && state.nations[a].relations[b]?.status === 'war').map((b) => `${a}>${b}`))
+    .join(',');
   const suppliedSig = world.provinceIds.map((id) => (state.provinces[id].supplied ? '1' : '0')).join('');
   // The fog of war: '1' for each province in sight, '0' for one under the fog.
   const seen = ctrl.sight();
@@ -1771,6 +1936,12 @@ export function MapView(props: MapViewProps) {
         ref={svgRef}
         className={`map mode-${props.mapMode}${props.moveMode ? ' move-mode' : ''}`}
         onContextMenu={(e) => e.preventDefault()}
+        onMouseDown={startBox}
+        onClickCapture={(e) => {
+          if (!boxEnded.current) return;
+          boxEnded.current = false;
+          e.stopPropagation();
+        }}
         onClick={(e) => {
           if (!(e.target as Element).closest('[data-province],[data-army]')) props.onSelectProvince(null);
         }}
@@ -1820,8 +1991,18 @@ export function MapView(props: MapViewProps) {
             onHover={onHover}
           />
           <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} human={human} enemies={enemiesSig} />
+          <OtherFrontsLayer geo={geo} human={human} owners={ownersSig} wars={warsSig} ownerOf={ownerOf} />
           <FogLayer shape={fog.shape} edge={fog.edge} clouds={clouds} />
           <g className="overlay-layer" pointerEvents="none">
+            {flashes.map((f) => (
+              <path
+                key={`${f.pid}-${f.id}`}
+                d={geo.provincePaths[f.pid]}
+                className="capture-flash"
+                style={{ '--flash': f.color } as React.CSSProperties}
+                onAnimationEnd={() => setFlashes((all) => all.filter((x) => x !== f))}
+              />
+            ))}
             {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
             {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
             {props.selectedProvince && (
@@ -1863,6 +2044,7 @@ export function MapView(props: MapViewProps) {
                   onHover={onHover}
                 />
               )}
+              {cities && <CityNameLayer geo={geo} state={state} world={world} k={k} cities={cities} />}
               {preview && (
                 <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
@@ -1880,6 +2062,12 @@ export function MapView(props: MapViewProps) {
           )}
         </g>
       </svg>
+      {box && (
+        <div
+          className="select-box"
+          style={{ left: Math.min(box.x0, box.x1), top: Math.min(box.y0, box.y1), width: Math.abs(box.x1 - box.x0), height: Math.abs(box.y1 - box.y0) }}
+        />
+      )}
       <div className="map-vignette" />
       <div className="map-nav">
         <div className="zoom-controls">
