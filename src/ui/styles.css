@@ -4073,6 +4073,10 @@ button.chip.queued:hover {
 .army-hit {
   fill: transparent;
 }
+/* Clicking an army behind a city focuses this layer; its focus ring would frame every army in it. */
+.army-back:focus {
+  outline: none;
+}
 .army-ring {
   fill-opacity: 0.32;
   stroke: rgba(0, 0, 0, 0.45);
