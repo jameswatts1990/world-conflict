@@ -5709,6 +5709,10 @@ body {
   border: none;
   background: none;
 }
+/* The card carries the own-nation tint; the desktop per-cell tint would stack patches on top of it. */
+.compact .dip-relations tr.me td {
+  background: none;
+}
 .compact .dip-relations .dc-nation {
   grid-area: nation;
 }
