@@ -40,15 +40,22 @@ espionage, naval and air warfare, later eras, multiplayer.
   to fourteen units with artillery take it in three to five minutes while losing 40–60% of their strength
   (Switzerland needs about sixteen). The engine still supports neutral states (garrisoned, never attack, open to
   invasion without war); this scenario has none.
-- **69 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
-  anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
-  type, base output, a coastline flag and optionally an oil field or objective value.
-- **159 explicit movement connections**: 127 land, 21 mountain passes and 11 sea crossings. Connections are
-  authored data, separate from the map shapes; a test checks that every shared border has a land or mountain
-  link and every such link a shared border (`scripts/map/check-borders.ts` prints the same report). The North Sea
-  (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western Mediterranean (Barcelona–Palermo) crossings
-  give every great power except Poland at least two great or major powers as neighbours, so France is not the only
-  target for Britain, Italy and Spain.
+- **69 cities, each a province of its own, in 69 provinces of land round them** (138 provinces). The land is
+  merged from Natural Earth admin-1 regions and keeps the region's name (Bavaria, the Midlands; round a capital
+  it is named for the countryside: Brandenburg, the South East, La Mancha, Pest, Muntenia, Vojvodina). Each city
+  is drawn tight round itself, an irregular ring of 17 to 30 km by size that keeps clear of every land border
+  and follows the coast where it reaches the sea (`scripts/map/city-provinces.ts`). A city has a population,
+  starting tier, terrain, base output, a coastline flag and optionally an oil field or objective value; its land
+  has a terrain (never urban: round a capital it is the plain or hills it stands in), two to five secondary towns
+  (dots at close zoom) and an anchor in its interior where its armies stand. The engine allows land with no city
+  at all; this map has none yet.
+- **Movement connections** are written between rows (a city with its land): 127 land, 21 mountain passes and 11
+  sea crossings, each joining the two lands, plus every city's link to its own land, its only way in or out
+  (228 in all). Connections are authored data, separate from the map shapes; a test checks that every shared
+  border has a land or mountain link and every such link a shared border (`scripts/map/check-borders.ts` prints
+  the same report). The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
+  powers as neighbours, so France is not the only target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -56,15 +63,15 @@ espionage, naval and air warfare, later eras, multiplayer.
 Every nation has a **power tier** (`src/sim/config/powers.ts`) that sets its start, so nations of one tier start
 broadly balanced:
 
-| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Provinces |
+| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
 | --- | --- | --- | --- | --- | --- |
 | Great | Yes | 260 / 140 / 70 | 13 units | Capital 3, heartland 2 | 6–9 |
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
 | Minor | No (computer-controlled; never wins) | 70 / 35 / 20 | 6 units behind level-2 forts | Capital 1 | 1–2 |
 
 Europe has seven great powers, two major powers and ten minor powers. Each great power has one oil province, the same city ladder (one
-Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF
-and 1 cavalry in the field. Major powers keep the same share of income on starting upkeep; minor powers spend more
+Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
+in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities). Major powers keep the same share of income on starting upkeep; minor powers spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
 and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
 the rows place them, or onto border provinces first. Geography stays asymmetric, and each playable nation has one
@@ -83,7 +90,10 @@ modest speciality (§6.4).
 
 Four resources, each with a per-minute rate shown in the top bar: money, industrial materials, fuel, manpower.
 
-- Province output = base × buildings × city tier bonus × **morale factor** × research. The morale factor is
+- All output comes from the cities. The land round them produces nothing yet: it is where armies march and fight,
+  and whoever holds it can cut its city off from supply. (Upgrades for land without a city, such as field
+  hospitals, barracks or farms, are on the roadmap.)
+- City output = base × buildings × city tier bonus × **morale factor** × research. The morale factor is
   `0.35 + 0.65 × morale / 70`, capped at 1.2: a contented home province (70) produces at 100%.
 - Occupied (non-core) provinces have no flat penalty any more: they start with low morale (§7) and integrate
   over time. Occupied populations still provide only 40% of their manpower.
@@ -108,8 +118,9 @@ skyline. Capture costs 10 growth points. Each tier above Town also makes capture
 
 ### 5.2 Buildings
 
-Economy, military and civic buildings use a **slot**; infrastructure does not. Some levels need a bigger city. A city
-builds one project at a time. Demolishing frees a slot (no refund); a building cannot be demolished while another one
+Economy, military and civic buildings use a **slot** and stand only in cities; infrastructure needs no slot and
+can also be built on the land between them (forts, a supply depot, a railway junction, coastal batteries where a
+sea crossing lands). Some levels need a bigger city. A city or a province of land builds one project at a time. Demolishing frees a slot (no refund); a building cannot be demolished while another one
 that needs it stands or is being built. Construction and recruitment can be cancelled: the full price comes back until
 work has started, half of it after. The refund is what was paid, even if research has since made the job cheaper.
 
@@ -117,7 +128,7 @@ work has started, half of it after. The refund is what was paid, even if researc
 | --- | --- | --- | --- |
 | Industrial Works | Economy | 3 (L2 City, L3 Large City) | +30% money, +60% materials per level |
 | Commercial Exchange | Economy | 2 (City, Large City) | +35% money per level |
-| Power Station | Economy | 1 (City; needs Industrial Works; research) | +20% money and materials here, +10% materials in adjacent owned provinces |
+| Power Station | Economy | 1 (City; needs Industrial Works; research) | +20% money and materials here, +10% materials in your cities next door (those in the lands bordering its own) |
 | Fuel Refinery | Economy | 2 | +12 fuel/min per level on oil fields; +6 elsewhere with Synthetic Fuel |
 | Housing Estates | Economy | 3 | +12% manpower, +3 morale and +0.4 growth/min per level |
 | University | Economy | 1 (Large City) | Research +10% nationally each, up to three |
@@ -215,7 +226,9 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 - An army is a stack of units. Leg time is set by the **slowest unit for that leg**: each type has its own speed and
   its own factors for passes, straits and terrain (mountain troops climb, lorries bog down). Owned railway
-  junctions speed legs up. The minimum leg is 15 s.
+  junctions speed legs up. A leg between two lands is as long as the road between their cities; the minimum leg
+  is 15 s. Stepping out of a city into its land, or back, is a short 12 km march of at least 5 s, so a march from
+  city to city takes about as long as it did before cities were provinces of their own.
 - Orders use Dijkstra over legal provinces: own territory, nations at war, and any neutral states.
 - March orders come in three kinds. **Move** marches straight to the destination, holding only to fight where an
   enemy army bars the way, and takes the destination itself (provinces passed through stay the enemy's, so the
@@ -235,8 +248,10 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.6 Capture and supply
 
-- An enemy army alone in a province captures it in 20 s, + 10 s per fort level, + 8% per city tier above Town,
-  × 1.5 for capitals, × 1.5 with an Occupation HQ; reconnaissance units make it 30% faster.
+- An enemy army alone in a province captures it in 20 s (10 s for open land, which has no city to fight through),
+  + 10 s per fort level, + 8% per city tier above Town, × 1.5 for capitals, × 1.5 with an Occupation HQ;
+  reconnaissance units make it 30% faster. An attack on a city takes the land round it first; a city whose land is
+  lost is cut off (unless it is a capital or has a depot).
 - A province is **in supply** if connected through its owner's territory to a hub (capital or Supply Depot).
   An army is supplied there or within one connection of it (Supply Corps research +1; railway junctions +1).
 - Unsupplied armies fight at 75% and do not recover; after 120 s they lose strength and morale.
@@ -247,7 +262,8 @@ Specialities are optional: a nation without one shows its bloc instead.
   one connection away from them. An army with a reconnaissance unit (cavalry, armoured cars) sees two connections away
   over open land. Mountains and narrow seas (crossings up to 350 km, such as the Channel) are seen across but not
   beyond, so scouts in Piedmont see Provence and the Rhône valley, not Bordeaux; wider seas (Sardinia to Barcelona,
-  Rome to Split) hide the far shore altogether. A marching army is seen at the nearer end of its road.
+  Rome to Split) hide the far shore altogether. Sight is reckoned over the land: a city looks out from the land round
+  it, and whoever sees a land sees into the city in its middle. A marching army is seen at the nearer end of its road.
 - **Allies** are powers at peace with each other and at war with a common enemy (there are no treaties yet). With
   **Liaison Officers** (Society & Morale, the Twenties, after Staff College) a nation also sees everything its allies see
   with their own eyes. The research only helps the nation that has it.
@@ -273,14 +289,15 @@ withdraw to. Neutral garrisons never withdraw, and are 40% more resilient. Out o
 recovers 5% per 10 s (×1.5 in supplied home territory, ×2 at a hospital, ×0.5 while marching), up to a **cap**
 set by national morale.
 
-**Province morale (0–100)** drifts towards a target by 1 point every 10 s. Core provinces start from 70;
+**Province morale (0–100)** drifts towards a target by 1 point every 10 s. "Next door" for civilians means the
+province's own land and city, the lands bordering it and the cities in them. Core provinces start from 70;
 occupied ones from 25 (+12 with a garrison, + up to 15 for integration over 30 minutes, +20 with an Occupation
 HQ). Modifiers: housing, hospital and propaganda; research; −4 per war and up to −15 war weariness; −10 with an
 enemy army next door; −20 during a battle; −10 cut off from supply; −8 while the treasury is empty; −20 when the
 capital is occupied. Shocks: declaring war −3 (the victim's people rally +2); a captured province starts at 25
 (45 if liberated); its neighbours lose 8; losing the capital costs every core province 15.
 
-**National morale** is the population-weighted average of core province morale. It caps unit morale
+**National morale** is the population-weighted average of core city morale (land has no population of its own). It caps unit morale
 (`0.45 + 0.0085 × national morale`, between 0.5 and 1), sets how much harder armies fight on home soil (from
 nothing at 30 to +20% at 90), and the AI sues for peace when it falls low.
 
@@ -315,7 +332,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 - **Objectives:** 51 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
   heartlands 1, minor-power capitals 1). Holding **40% (21 VP)** continuously for **90 s** wins.
-- **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 3 × provinces + 2 × technologies.
+- **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 2 × cities + 1 × other provinces + 2 ×
+  technologies (a city and its land together score what one province did before cities were split out).
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
 - **Minor powers never win.** Only great and major powers count for an objective victory, the top score and the
   last power standing; a minor power can survive the campaign, but someone else wins it.
@@ -324,8 +342,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
 personality drawn from the seed: aggression (0.35–0.95), economy bias (0.3–0.8), a **doctrine** (armour, infantry or
-artillery), two **claims** and an **opening**, so that each campaign plays differently. Claims are provinces across its land borders
-that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
+artillery), two **claims** and an **opening**, so that each campaign plays differently. Claims are cities whose land borders
+its own that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
 holding one is a likelier war target. The opening sets how it begins: *strike* starts wars of opportunity as soon as
 the grace period allows, *expand* keeps the peace 1.5 times as long and takes neutral states first, *build* keeps the
 peace twice as long and leaves neutrals alone 1.5 times as long. The bullets describe Normal difficulty.
@@ -341,14 +359,16 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   period they start wars of opportunity against weaker or distracted neighbours, preferring ones whose objectives
   border their land, and avoid a second front. **Any power within 3 VP of an objective victory becomes everyone's
   target.** An AI accepts peace when it is actually losing (ground, capital or morale) and closes the worse of two
-  fronts first. Its wars have limited aims: once it holds two of the enemy's home provinces and the war is 10 minutes
-  old, it accepts peace even while winning (against a power about to win, it fights on).
+  fronts first. Its wars have limited aims: once it holds two of the enemy's home cities (land taken on the way does
+  not count) and the war is 10 minutes old, it accepts peace even while winning (against a power about to win, it
+  fights on). Who is winning a war is weighed on the home cities each side holds, the land round them counting half.
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
   sagging).
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
   recruitment buildings, refineries, propaganda when morale is low, occupation HQs in restive conquests,
   forts where threatened, railways and hospitals on active fronts. It keeps the last free slot for valuable builds.
-- **Recruitment:** an upkeep budget and an army cap that grow with territory and income. The mix follows
+- **Recruitment:** an upkeep budget and an army cap that grow with the cities it holds and its income; it recruits
+  in the cities whose land meets the enemy first. The mix follows
   doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units (only at home, never
   occupiers abroad).
@@ -356,9 +376,11 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   enemy's power there) and the army's morale is spent (below 30%); armies taking a province hold it until it falls
   (unless they would starve first); starving or worn-out armies go home to recover; the capital keeps a garrison
   sized to the danger around it (enemies next door, half of those two provinces away, and a third of the armies of
-  great and major powers still at peace, as far as it can see or estimate), set aside before any offensive; up to
-  two offensives mass at a staging province and strike together, frontier armies leaving a rear guard sized to the
-  threat that remains; targets whose defenders would be encircled are preferred; threatened provinces are covered by
+  great and major powers still at peace, as far as it can see or estimate; reckoned over the land: the capital's own
+  land and those next to it count in full, the lands beyond by half, each with its city), set aside before any
+  offensive; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear guard sized to the
+  threat that remains; targets whose defenders would be encircled are preferred, and land is worth half of what
+  the city in its middle is worth on top of its own value, since taking it is the way in; threatened provinces are covered by
   the nearest free armies; the rest moves up to the front. An enemy stack only counts fully against one province, so
   a single army cannot tie down a whole frontier.
 - **Interior lines:** at war on several fronts, it picks a main enemy (a power about to win; otherwise the weakest
@@ -392,11 +414,14 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
 - **Seeded RNG** (mulberry32) state is stored inside the game state.
 - **Effects** (`Effect` in `types.ts`) are declarative and shared by technologies and national specialities.
 - **Geography is separate from rules.** Shapes are in `src/assets/map`, used only for rendering. Adjacency and
-  travel are in `scenario/europe/connections.ts`. Distances are rounded to whole kilometres, so timing never
-  depends on floating-point trigonometry.
-- **Saves** are versioned (`schemaVersion`, now 5) and tied to a scenario id. Older saves are upgraded step by step on
-  load (`save.ts`); saves from before cities, morale and the research tree, from a newer version, another scenario or
-  another program are refused with a message.
+  travel are in `scenario/europe/connections.ts`; where each land is anchored and which cities reach the sea are
+  generated once from the shapes into `scenario/europe/land.ts` by `scripts/map/city-provinces.ts`, which also cuts
+  the cities out of the uncut provinces in `scripts/map/base.topo.json` (written by `npm run map:build`). Distances
+  are rounded to whole kilometres, so timing never depends on floating-point trigonometry.
+- **Saves** are versioned (`schemaVersion`, now 6) and tied to a scenario id. Schema 6 split the cities out: an older
+  save gains the land round each city, held by whoever held the old province, and its marches stop where they are.
+  Older saves are upgraded step by step on load (`save.ts`); saves from before cities, morale and the research tree,
+  from a newer version, another scenario or another program are refused with a message.
 - **Messages** are written by the simulation (`text.ts`): names that read with "the" in running text (the United
   Kingdom, the Netherlands, the Midlands) carry the article in scenario data. Rule numbers quoted in descriptions and
   messages come from config, so the text cannot drift from the balance.
@@ -426,9 +451,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   **Morale** (civilian morale, red to green; unknown under the fog) and **Cities** (city tier).
 - **Labels.** Nation names are painted across their territory when zoomed out, as a translucent, widely spaced
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
-  cities and counters where possible. Province names take over when zoomed in. Cities have dark name plates with an
-  owner-colour stripe (capitals always, cities and towns as you zoom), gold badges for objective VP and
-  capture-progress rings. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
+  cities and counters where possible. Closer in, the provinces without a city carry their names under their anchor.
+  Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
+  badges for objective VP and capture-progress rings; each city's own border is a dashed light ring. Secondary towns
+  are unnamed dots. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
   army's badge that would cover another city's plate steps up or down off it. City markers grow with tier; secondary towns appear at close zoom. Neutral states (none in
   the current scenario) are hatched with lines that keep the same spacing at every zoom.
 - **City models.** From one zoom step in, each city is drawn as part of the map rather than on a token. On the
@@ -477,7 +503,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings
   and cached as one image per look.
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
-  the whole theatre. Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
+  the whole theatre. Selecting something never moves the map (only "show on the map" from an alert or a report
+  does). Panning only moves the picture: the map is redrawn for the new view when the drag ends, and for a new
+  scale at most every 120 ms while a pinch or wheel zoom lasts; marching armies wait while the map is being moved
+  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone). Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
   so zooming further spreads a crowded front out instead of magnifying it. Past the zoom where the session's relief
   texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
   match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
@@ -497,12 +526,18 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   staying in the field reports. Alerts only count down while the game runs. Keyboard and mouse extras: Shift-drag
   selects your armies in a box, , and . cycle through them, the arrow keys pan and C jumps to the capital. A cursor
   tooltip summarises the province (city size, morale, units present by nation) and the army under the mouse.
-- **City view** (click a province): a procedural skyline that grows with the city and shows every building,
-  construction and battle; any battle there (sides, units, morale and share of firepower) and capture progress; morale
-  and growth meters with factor breakdowns; a building-slot grid with a cancellable construction job; a build picker
-  by category, where a building that cannot go here says why (no free slot, needs a bigger city, another building or
-  an oil field); unit cards with each nation's art and named designs (locked cards name the building they need);
-  armies present and routes.
+- **City view** (click a city's shape, marker or model; on a phone, a tap opens it as a page of its own between the
+  top bar and the tab bar, without the skyline so its choices come first): a procedural skyline that grows with the
+  city and shows every building, construction and battle (larger screens); a link to the land round it; any battle
+  there (sides, units, morale and share of firepower) and capture progress; morale and growth meters with factor
+  breakdowns; a building-slot grid with a cancellable construction job; a build picker by category, where a building
+  that cannot go here says why (no free slot, needs a bigger city, another building or an oil field); armies present
+  and routes. **Recruit** offers only what has been researched: unit cards with each nation's art and named designs
+  (cards name a building they still need), and above them a training strip of fixed height (each job, its progress
+  and a cancel button), so recruiting again and again never moves the buttons. Tapping a unit's picture or name opens
+  its details: role and description, numbers, strengths and weaknesses read from its rules (terrain, armour, punch
+  against armour, forts, reconnaissance, second line, nerve, shock, speed, passes, off-road, fuel) and its nation's
+  bonus. A province without a city shows its morale, its infrastructure picker and a link to its city.
 - **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
   and orders (move, stop, split, merge, disband). Merging keeps the senior (lowest-numbered) army's name.
 - **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and

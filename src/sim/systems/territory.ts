@@ -68,8 +68,8 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   p.morale = def.core === newOwner ? MORALE.capturedLiberated : MORALE.capturedOccupied;
   p.growth = Math.max(0, p.growth - CITY.captureGrowthLoss);
   if (oldOwner !== NEUTRAL) {
-    for (const n of world.neighbors[pid]) {
-      const np = state.provinces[n.id];
+    for (const id of world.vicinity[pid]) {
+      const np = state.provinces[id];
       if (np.owner === oldOwner) np.morale = Math.max(0, np.morale + MORALE.captureNeighbourShock);
     }
     if (world.nations[oldOwner].capital === pid) shockNation(state, world, oldOwner, MORALE.capitalLostShock, true);

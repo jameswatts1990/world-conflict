@@ -730,6 +730,19 @@ kbd {
   stroke-width: 0.75;
   vector-effect: non-scaling-stroke;
 }
+/* A city's own border, tight round it: a little brighter than the borders between lands, and dashed. */
+.city-border {
+  fill: none;
+  stroke: rgba(255, 248, 225, 0.55);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+.city-hit {
+  fill: transparent;
+  pointer-events: all;
+  cursor: pointer;
+}
 .nation-band {
   fill: none;
   stroke-width: 4;
@@ -2695,9 +2708,215 @@ kbd {
 .uc-foot button {
   margin-left: auto;
 }
-.locked-units li {
-  padding: 2px 0;
+/* Recruiting: the training queue keeps one height whatever is in it, so the cards never move. */
+.training-strip {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  margin: 8px -12px 0;
+  padding: 0 12px;
+  background: rgba(13, 19, 26, 0.96);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.ts-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font: 600 11.5px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+}
+.ts-empty {
+  font-size: 12px;
+}
+.ts-list {
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ts-list li {
+  position: relative;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 30px;
+  background: #1d2833;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.ts-list li.active {
+  border-color: var(--accent);
+}
+.ts-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+}
+.ts-cancel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  color: var(--text-2);
+  background: rgba(0, 0, 0, 0.55);
+  border: none;
+  border-radius: 0 0 0 4px;
+}
+.recruit-card {
+  position: relative;
+}
+.uc-info {
+  position: relative;
+  display: block;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.uc-info-tag {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  font-size: 10.5px;
+  color: var(--text-2);
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+}
+.uc-queued {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  min-width: 22px;
+  padding: 1px 5px;
+  font: 700 12px var(--font-display);
+  text-align: center;
+  color: #10161d;
+  background: var(--accent);
+  border-radius: 999px;
+  pointer-events: none;
+}
+button.uc-name {
+  padding: 0;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+/* A unit's details: what it is for, its numbers, and its strengths and weaknesses. */
+.unit-info .ui-hero {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.ui-role {
+  font: 700 15px var(--font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.ui-desc {
+  margin: 4px 0;
+  font-size: 13px;
+}
+.ui-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 4px 12px;
+  margin: 10px 0;
+  font: 500 12.5px var(--font-display);
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+.ui-stats b {
+  color: var(--text);
+}
+.ui-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ui-list h5 {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 3px;
+  font: 700 12.5px var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.ui-list.good h5 {
+  color: var(--good);
+}
+.ui-list.bad h5 {
+  color: #ff9b8a;
+}
+.ui-list.bonus h5 {
+  color: #ffd77a;
+}
+.ui-list ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.ui-list li {
+  margin: 2px 0;
+}
+.ui-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 10px 0;
   font-size: 12.5px;
+}
+.ui-foot .cost {
+  display: inline-flex;
+  margin-left: 4px;
+}
+@media (max-width: 520px) {
+  .unit-info .ui-hero {
+    grid-template-columns: 1fr;
+  }
+}
+/* The other half of a place: the land round a city, or the city in a land. */
+.chip-link {
+  color: var(--text);
+  cursor: pointer;
+}
+.chip-link:hover {
+  border-color: var(--accent);
+}
+.chip-owner {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.land-note {
+  margin: 10px 0 0;
 }
 .queue .q-name {
   overflow: hidden;
@@ -2770,6 +2989,16 @@ kbd {
   color: #ffb4a6;
   background: linear-gradient(180deg, #2c1f20, #1d1516);
   border-color: rgba(232, 85, 63, 0.45);
+}
+/* A formation's picture and name open its unit's details. */
+.unit-info-btn {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 .formation-list li {
   grid-template-columns: 16px 36px 1fr auto;
@@ -4651,14 +4880,7 @@ button.chip.queued:hover {
   fill: #2a2f35;
   stroke: #f4efe2;
   stroke-width: 0.7;
-}
-.town-label {
-  font: 600 8.5px var(--font-ui);
-  text-anchor: middle;
-  fill: #f3efe4;
-  paint-order: stroke;
-  stroke: rgba(10, 15, 21, 0.8);
-  stroke-width: 2.4px;
+  vector-effect: non-scaling-stroke;
 }
 .counter-art-bg {
   fill: #ece4cf;
@@ -5259,6 +5481,44 @@ body {
 .compact .ev {
   padding: 6px 12px;
   font-size: 13px;
+}
+
+/* ---- A city tapped on a phone: a page of its own over the map, between the top bar and the tab bar. */
+.city-page {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: rgba(10, 15, 21, 0.985);
+}
+.city-page .province-panel {
+  min-height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.city-page .panel-hero {
+  padding-top: 8px;
+}
+.city-page .tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(13, 19, 26, 0.98);
+}
+.city-page .training-strip {
+  top: 38px;
+}
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: -2px 4px -2px -6px;
+  padding: 6px 10px 6px 4px;
+  font: 600 13px var(--font-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* ---- Selection: bottom sheet (portrait) or side sheet (landscape) */

@@ -30,7 +30,7 @@ export interface PowerTemplate {
    * province rows place them (`garrison`), or are spread over the border provinces.
    */
   armies: { capital: Units; industrial?: Units; field: Units };
-  /** How many provinces a nation of this tier should have, so provinces stay a similar size. */
+  /** How many cities (each with the land round it) a nation of this tier should have, so provinces stay a similar size. */
   provinces: [number, number];
 }
 

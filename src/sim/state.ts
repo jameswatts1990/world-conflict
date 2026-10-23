@@ -24,7 +24,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface NewGameOptions {
   seed: number;
@@ -90,10 +90,15 @@ function drawOpening(state: GameState): AiOpening {
   return 'strike';
 }
 
-/** Provinces across a land border that a nation's AI covets, drawn from the seed (an island power has none). */
+/**
+ * Cities across a land border that a nation's AI covets (their land borders its own), drawn from the seed
+ * (an island power has none).
+ */
 function drawClaims(state: GameState, world: World, nation: NationId): ProvinceId[] {
-  const options = world.provinceIds.filter(
-    (pid) => state.provinces[pid].owner !== nation && world.neighbors[pid].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation),
+  const options = world.cityIds.filter(
+    (pid) =>
+      state.provinces[pid].owner !== nation &&
+      world.neighbors[world.provinces[pid].within ?? pid].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation),
   );
   const claims: ProvinceId[] = [];
   while (claims.length < AI.claims && options.length > 0) claims.push(options.splice(Math.floor(random(state) * options.length), 1)[0]);

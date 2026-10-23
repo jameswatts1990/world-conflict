@@ -30,7 +30,7 @@ const difficulty = (flag('difficulty') ?? 'normal') as AiDifficulty;
 const seeds = Number(args[0] ?? 10);
 const minutes = Number(args[1] ?? 90);
 const world = buildWorld(EUROPE_SCENARIO);
-const city = (pid: string) => world.provinces[pid].city.name;
+const city = (pid: string) => world.provinces[pid].name;
 const REVERSAL_WINDOW = 240;
 /** The opening: captures made and wars started in this many minutes. */
 const OPENING_MINUTES = 25;
