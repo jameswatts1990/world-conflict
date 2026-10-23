@@ -107,7 +107,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                       <Icon name="swords" size={12} /> War
                     </span>
                   ) : areAllies(state, human, s.nation) ? (
-                    <span>
+                    <>
                       <span
                         className="rel-pill ally"
                         title={`Fighting ${listText(commonEnemies(state, human, s.nation).map((e) => nationName(world, e)))} alongside you`}
@@ -118,7 +118,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                       <span className={`ally-intel${liaison ? ' on' : ''}`}>
                         <Icon name="eye" size={11} /> {liaison ? 'You share its sight' : 'Liaison Officers share its sight'}
                       </span>
-                    </span>
+                    </>
                   ) : (
                     <span className="rel-pill peace">
                       <Icon name="flag" size={12} /> Peace

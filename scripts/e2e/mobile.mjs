@@ -317,7 +317,53 @@ try {
   await page.tap('.modal [aria-label="Close"]');
   step('saved from the More menu');
 
-  // 9. Turn the phone on its side: slim tab bar along the bottom, side sheet, one-row top bar.
+  // 9. Diplomacy as cards: a co-belligerent's shared-sight line and a truce take a line of their own, so no
+  //    figure runs into the next. Set from the console (the game is paused) and put back afterwards.
+  // Each entry is [a, b, a's relation to b, b's to a (the same if left out)]; returns the entries that undo it.
+  const setRelations = (pairs) =>
+    page.evaluate(
+      (pairs) =>
+        pairs.map(([a, b, rel, back = rel]) => {
+          const n = window.__game.state.nations;
+          const old = [a, b, n[a].relations[b], n[b].relations[a]];
+          n[a].relations[b] = { ...rel };
+          n[b].relations[a] = { ...back };
+          return old;
+        }),
+      pairs,
+    );
+  const tick = await state((s) => s.tick);
+  const war = { status: 'war', since: tick, truceUntil: 0 };
+  const saved = await setRelations([['es', 'fr', war], ['it', 'fr', war], ['es', 'pt', { status: 'peace', since: tick, truceUntil: tick + 3000 }]]);
+  await page.tap('[data-testid="open-diplomacy"]');
+  await page.waitForSelector('.dip-relations [data-ally="it"]');
+  await settle();
+  const crowded = await page.evaluate(() => {
+    const out = [];
+    for (const tr of document.querySelectorAll('.dip-relations tbody tr')) {
+      const card = tr.getBoundingClientRect();
+      // A cell shown as `display: contents` has no box: its children are the card's pieces.
+      const pieces = [...tr.children].flatMap((td) => (getComputedStyle(td).display === 'contents' ? [...td.children] : [td]));
+      const boxes = pieces.map((el) => [el, [el, ...el.querySelectorAll('*')].map((d) => d.getBoundingClientRect()).filter((r) => r.width && r.height)]);
+      for (const [el, rs] of boxes) {
+        if (rs.some((r) => r.left < card.left - 0.5 || r.right > card.right + 0.5)) out.push(`${tr.dataset.nation}: ${el.className} runs out of its card`);
+        for (const [other] of boxes) {
+          if (other === el || !other.textContent.trim()) continue;
+          const o = other.getBoundingClientRect();
+          if (rs.some((r) => Math.min(r.right, o.right) - Math.max(r.left, o.left) > 0.5 && Math.min(r.bottom, o.bottom) - Math.max(r.top, o.top) > 0.5))
+            out.push(`${tr.dataset.nation}: ${el.className} runs into ${other.className}`);
+        }
+      }
+    }
+    return [...new Set(out)];
+  });
+  if (crowded.length) throw new Error(`diplomacy cards: ${crowded.join('; ')}`);
+  await shot('09-diplomacy');
+  await page.tap('.modal-header [aria-label="Close"]');
+  await setRelations(saved);
+  step('diplomacy cards: a co-belligerent and a truce keep their figures apart');
+
+  // 10. Turn the phone on its side: slim tab bar along the bottom, side sheet, one-row top bar.
   await page.setViewportSize({ width: 844, height: 390 });
   await settle();
   const turned = await page.getAttribute('.game-screen', 'class');
