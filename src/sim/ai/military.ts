@@ -8,7 +8,7 @@
 //   5. anything left moves up to the front.
 import { AI } from '../config/ai';
 import { MORALE } from '../config/rules';
-import { armyMorale, armyPower, canEnterProvince, fortificationReduction, hostileArmiesIn } from '../queries';
+import { areHostile, armyMorale, armyPower, canEnterProvince, fortificationReduction, hostileArmiesIn } from '../queries';
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
@@ -99,7 +99,7 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
   if (def.core === ctx.me) v += 14; // reclaim lost core territory
-  // Defenders with nowhere to run surrender: a bigger prize.
+  // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostileArmiesIn(state, pid, ctx.me).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
     const escape = world.neighbors[pid].filter((n) => state.provinces[n.id].owner === owner && (ctx.presence.get(n.id) ?? 0) === 0).length;
@@ -204,6 +204,14 @@ export function handleMilitary(ctx: Ctx): void {
       // Resting at home still counts as a garrison where it stands.
       committed.add(army.id);
     }
+  }
+
+  // Armies occupying hostile land stay until the capture completes; otherwise
+  // the steps below pull them away long before the province falls.
+  for (const army of idleArmies(ctx)) {
+    if (committed.has(army.id)) continue;
+    const owner = state.provinces[army.province].owner;
+    if (owner !== me && areHostile(state, me, owner)) committed.add(army.id);
   }
 
   // 3. Offence first: the best defence against the army next door is often to

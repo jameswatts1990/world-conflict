@@ -162,25 +162,42 @@ try {
   await waitUntil((s) => s.provinces['es-madrid'].recruitQueue.length === 0, 30000, 'recruitment');
   step('infantry recruited');
 
-  // 7. Merge in Castile & León and invade neutral Portugal.
+  // The recruits joined up in Madrid after the army left: march them to Castile & León as well.
+  const recruits = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
+  await setPaused(true);
+  let r = await armyPoint(recruits);
+  await page.mouse.click(r.x, r.y);
+  await page.waitForSelector(`[data-testid="army-panel"][data-army="${recruits}"]`);
+  r = await provincePoint('es-castile');
+  await page.mouse.click(r.x, r.y, { button: 'right' });
+  await setPaused(false);
+  await waitUntil(`(s) => s.armies['${recruits}'].province === 'es-castile' && !s.armies['${recruits}'].move`, 30000, 'recruits arrival');
+  step('recruits marched to Castile & León');
+
+  // 7. Merge in Castile & León, declare war on Portugal (a minor power) and invade it.
   await setPaused(true);
   p = await armyPoint(madridArmy);
   await page.mouse.click(p.x, p.y);
   await page.click('text=Merge here');
-  const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'es-castile').length);
-  if (merged !== 1) throw new Error('merge failed');
-  const portugal = await provincePoint('nt-portugal');
+  const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'es-castile'));
+  if (merged.length !== 1) throw new Error('merge failed');
+  await page.click('[data-testid="open-diplomacy"]');
+  await page.click('[data-declare-war="pt"]');
+  await page.click('[data-testid="confirm"]');
+  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'war') throw new Error('war on Portugal not declared');
+  await page.keyboard.press('Escape');
+  const portugal = await provincePoint('pt-lisbon');
   await page.click('[data-testid="move-mode"]');
   await page.mouse.click(portugal.x, portugal.y);
   const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), madridArmy);
-  if (target !== 'nt-portugal') throw new Error('attack order not accepted');
-  step('merged armies and ordered the invasion of Portugal', { castileArmyMerged: castileArmy });
+  if (target !== 'pt-lisbon') throw new Error('attack order not accepted');
+  step('merged armies, declared war on Portugal and ordered the invasion', { castileArmyMerged: castileArmy, units: merged[0].units.length });
   await setPaused(false);
-  await waitUntil((s) => Object.keys(s.battles).includes('nt-portugal'), 30000, 'battle start');
+  await waitUntil((s) => Object.keys(s.battles).includes('pt-lisbon'), 30000, 'battle start');
   await page.waitForTimeout(400);
   await shot('05-battle');
   step('battle started in Portugal');
-  await waitUntil((s) => s.provinces['nt-portugal'].owner === 'es', 90000, 'capture of Portugal');
+  await waitUntil((s) => s.provinces['pt-lisbon'].owner === 'es', 90000, 'capture of Portugal');
   await setPaused(true);
   await shot('06-captured');
   step('captured Portugal', { tick: await state((s) => s.tick) });

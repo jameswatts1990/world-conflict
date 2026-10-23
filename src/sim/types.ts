@@ -197,6 +197,36 @@ export interface NationIdentity {
   army: string;
 }
 
+/**
+ * Equipment family (see blocs.ts). A nation inherits its bloc's named designs,
+ * formation names and unit look, and overrides only what it makes its own.
+ */
+export type BlocId = 'western' | 'central' | 'eastern';
+export const BLOC_IDS: readonly BlocId[] = ['western', 'central', 'eastern'];
+
+export interface BlocDef {
+  id: BlocId;
+  name: string;
+  description: string;
+  /** Complete: every unit type and generation is named. */
+  identity: NationIdentity;
+}
+
+/**
+ * How much of a power a nation is (see config/powers.ts): it sets the nation's output, starting
+ * army and buildings, objective values and size. Great and major powers are playable; minor
+ * powers are always computer-controlled.
+ */
+export type PowerTier = 'great' | 'major' | 'minor';
+export const POWER_TIERS: readonly PowerTier[] = ['great', 'major', 'minor'];
+
+/** A nation's departures from its bloc's identity; anything left out comes from the bloc. */
+export interface NationIdentityOverrides {
+  units?: NationIdentity['units'];
+  formations?: Partial<Record<UnitType, string>>;
+  army?: string;
+}
+
 export interface NationDef {
   id: NationId;
   name: string;
@@ -204,8 +234,16 @@ export interface NationDef {
   adjective: string;
   color: string;
   capital: ProvinceId;
-  speciality: NationSpeciality;
+  power: PowerTier;
+  bloc: BlocId;
+  /** One small national edge; optional, so a new country can start without one. */
+  speciality?: NationSpeciality;
+  /** Resolved identity: the bloc's, with the nation's overrides laid over it. */
   identity: NationIdentity;
+  /** Strategic character in two or three words, for the nation picker. */
+  trait?: string;
+  /** One-sentence strategic briefing, for the nation picker. */
+  blurb?: string;
 }
 
 export interface StartingArmyDef {
@@ -222,7 +260,6 @@ export interface ScenarioDef {
   connections: ConnectionDef[];
   startingBuildings: { province: ProvinceId; buildings: Partial<Record<BuildingType, number>> }[];
   startingArmies: StartingArmyDef[];
-  startingResources: Resources;
   /** Technologies every nation knows at the start. */
   startingTechs: TechId[];
 }

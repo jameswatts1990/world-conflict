@@ -1,7 +1,9 @@
 // National insignia: roundels, the Balkenkreuz, the Polish checkerboard and a
-// plain shield for neutrals. `InsigniaMark` draws in place inside another
-// SVG; `NationInsignia` wraps it as a standalone icon.
-import { OUTLINE } from './palettes';
+// plain shield for neutrals. The blocs mark their vehicles with a roundel
+// (Western), a straight cross (Central) or a star (Eastern) in each nation's
+// own colour. `InsigniaMark` draws in place inside another SVG;
+// `NationInsignia` wraps it as a standalone icon.
+import { OUTLINE, STYLE_ACCENT, shade } from './palettes';
 import type { ArtNation } from './types';
 
 export type { ArtNation } from './types';
@@ -15,6 +17,8 @@ const ROUNDELS: Partial<Record<ArtNation, [string, string, string]>> = {
 
 export interface InsigniaMarkProps {
   nation: ArtNation;
+  /** Main colour for the bloc styles; defaults to the bloc's own. */
+  accent?: string;
   cx: number;
   cy: number;
   /** Half the emblem's size: roundel radius, half the cross or square width. */
@@ -23,9 +27,21 @@ export interface InsigniaMarkProps {
   ow?: number;
 }
 
-export function InsigniaMark({ nation, cx, cy, r, ow }: InsigniaMarkProps) {
+/** Five-pointed star, point up. */
+function starPath(cx: number, cy: number, r: number): string {
+  const pts: string[] = [];
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 === 0 ? r : r * 0.42;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    pts.push(`${(cx + rad * Math.cos(a)).toFixed(2)} ${(cy + rad * Math.sin(a)).toFixed(2)}`);
+  }
+  return `M${pts.join('L')}Z`;
+}
+
+export function InsigniaMark({ nation, accent, cx, cy, r, ow }: InsigniaMarkProps) {
   const sw = ow ?? Math.max(0.35, r * 0.12);
-  const roundel = ROUNDELS[nation];
+  const a = accent ?? STYLE_ACCENT[nation];
+  const roundel = nation === 'western' ? ([a, '#ffffff', shade(a, -0.35)] as const) : ROUNDELS[nation];
   if (roundel) {
     return (
       <g>
@@ -35,16 +51,19 @@ export function InsigniaMark({ nation, cx, cy, r, ow }: InsigniaMarkProps) {
       </g>
     );
   }
-  if (nation === 'de') {
-    // Straight-armed cross: black arms inside a white border, hair-lined.
-    const a = r;
+  if (nation === 'eastern') {
+    return <path d={starPath(cx, cy + r * 0.08, r * 1.08)} fill={a} stroke={OUTLINE} strokeWidth={sw} strokeLinejoin="round" />;
+  }
+  if (nation === 'de' || nation === 'central') {
+    // Straight-armed cross inside a white border, hair-lined: black for Germany, the nation's colour for the Central bloc.
+    const len = r;
     const t = r * 0.21;
     const cross = (arm: number, half: number) =>
       `M${cx - half} ${cy - arm}H${cx + half}V${cy - half}H${cx + arm}V${cy + half}H${cx + half}V${cy + arm}H${cx - half}V${cy + half}H${cx - arm}V${cy - half}H${cx - half}Z`;
     return (
       <g>
-        <path d={cross(a, t + r * 0.17)} fill="#ffffff" stroke={OUTLINE} strokeWidth={sw} strokeLinejoin="miter" />
-        <path d={cross(a - r * 0.17, t)} fill="#15161a" />
+        <path d={cross(len, t + r * 0.17)} fill="#ffffff" stroke={OUTLINE} strokeWidth={sw} strokeLinejoin="miter" />
+        <path d={cross(len - r * 0.17, t)} fill={nation === 'de' ? '#15161a' : a} />
       </g>
     );
   }
@@ -80,12 +99,13 @@ export function InsigniaMark({ nation, cx, cy, r, ow }: InsigniaMarkProps) {
 
 export interface NationInsigniaProps {
   nation: ArtNation;
+  accent?: string;
   size?: number;
   className?: string;
   title?: string;
 }
 
-export function NationInsignia({ nation, size = 16, className, title }: NationInsigniaProps) {
+export function NationInsignia({ nation, accent, size = 16, className, title }: NationInsigniaProps) {
   return (
     <svg
       width={size}
@@ -96,7 +116,7 @@ export function NationInsignia({ nation, size = 16, className, title }: NationIn
       aria-label={title ?? `${nation} insignia`}
     >
       {title && <title>{title}</title>}
-      <InsigniaMark nation={nation} cx={8} cy={8} r={7} ow={0.8} />
+      <InsigniaMark nation={nation} accent={accent} cx={8} cy={8} r={7} ow={0.8} />
     </svg>
   );
 }
