@@ -1,18 +1,38 @@
 // Army control for computer opponents. Each think:
 //   1. armies fight to the death, pulling out only of a hopeless battle (a
 //      withdrawal under fire costs every unit strength);
-//   2. starving or worn-out armies go home to recover;
-//   3. threatened provinces are covered first, nearest armies moving in;
-//   4. up to two offensives mass at a staging province and strike together,
+//   2. armies taking a province hold it until it falls (leaving resets the
+//      capture, and an army pulled out only to be sent back in wastes both trips);
+//   3. starving or worn-out armies go home to recover;
+//   4. the capital keeps a garrison sized to the danger around it, set aside
+//      before any offensive (an interior capital would otherwise be emptied);
+//   5. up to two offensives mass at a staging province and strike together,
 //      preferring targets whose defenders would be cut off;
-//   5. anything left moves up to the front.
+//   6. threatened provinces are covered, nearest armies moving in, and free
+//      armies take any neighbouring target they can manage alone;
+//   7. anything left moves up to the front.
+// On several fronts (interior lines) it attacks only its main enemy, holds the
+// other fronts with the armies already there, and sends its reserves to the
+// main front, counting its railways when it reckons distances.
 import { AI } from '../config/ai';
-import { MORALE } from '../config/rules';
-import { areHostile, armyMorale, armyPower, canEnterProvince, fortificationReduction, hostileArmiesIn } from '../queries';
+import { BUILDING_EFFECTS } from '../config/buildings';
+import { MORALE, SUPPLY } from '../config/rules';
+import {
+  areHostile,
+  armyMorale,
+  armyPower,
+  canEnterProvince,
+  captureTicks,
+  fortificationReduction,
+  homeSoilMult,
+  hostileArmiesIn,
+  scaledTicks,
+} from '../queries';
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
-import { battleReady, graceOver, idleArmies, issue, type Ctx } from './context';
+import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
+
 
 function mergeIdle(ctx: Ctx): void {
   const byProvince = new Map<ProvinceId, Army[]>();
@@ -35,7 +55,15 @@ function mergeIdle(ctx: Ctx): void {
   }
 }
 
-/** Shortest road distance (km) from `from` to every province, through territory the AI may cross. */
+/** How much faster my railways make a leg between two provinces (as movement reckons it). */
+function railFactor(ctx: Ctx, a: ProvinceId, b: ProvinceId): number {
+  if (!ctx.level.interiorLines) return 1;
+  let rail = 0;
+  for (const end of [a, b]) if (ctx.ownedSet.has(end) && (ctx.state.provinces[end].buildings.railway ?? 0) > 0) rail++;
+  return rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
+}
+
+/** Shortest road distance (km, shortened by my railways) from `from` to every province the AI may cross. */
 function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<ProvinceId, number> {
   const dist = new Map<ProvinceId, number>([[from, 0]]);
   const open: ProvinceId[] = [from];
@@ -46,7 +74,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
     for (const n of ctx.world.neighbors[cur]) {
       const passable = ownOnly ? ctx.ownedSet.has(n.id) : canEnterProvince(ctx.state, ctx.me, n.id);
       if (!passable) continue;
-      const nd = dist.get(cur)! + n.distanceKm * (n.kind === 'strait' ? 2.2 : n.kind === 'mountain' ? 1.6 : 1);
+      const nd = dist.get(cur)! + n.distanceKm * (n.kind === 'strait' ? 2.2 : n.kind === 'mountain' ? 1.6 : 1) * railFactor(ctx, cur, n.id);
       if (nd < (dist.get(n.id) ?? Infinity)) {
         if (!dist.has(n.id)) open.push(n.id);
         dist.set(n.id, nd);
@@ -82,15 +110,25 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   // Forts are buildings: hidden under the fog of war too.
   const fort = ctx.seen.has(pid) ? (state.provinces[pid].buildings.fortifications ?? 0) : 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
-  return p * AI.terrainDefence[world.provinces[pid].terrain] * MORALE.defenderResilience;
+  // Home soil helps both their firepower and their nerve.
+  return p * AI.terrainDefence[world.provinces[pid].terrain] * MORALE.defenderResilience * homeSoilMult(state, world, owner, pid) ** 2;
+}
+
+/** Defenders wanted in a province against a given threat, allowing for its forts and terrain. */
+function garrisonNeed(ctx: Ctx, pid: ProvinceId, threat: number): number {
+  const fort = ctx.state.provinces[pid].buildings.fortifications ?? 0;
+  const terrain = AI.terrainDefence[ctx.world.provinces[pid].terrain];
+  return (threat * ctx.level.defenceFactor * (1 - fortificationReduction(ctx.state, ctx.me, fort) * 0.5)) / terrain;
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
-  return defenderPower(ctx, pid) * AI.attackRatio * (AI.attackCaution - ctx.mem.aggression * AI.attackAggression) + AI.attackMargin;
+  // Liberating my own home soil, my armies fight harder too.
+  const liberation = homeSoilMult(ctx.state, ctx.world, ctx.me, pid) ** 2;
+  return (defenderPower(ctx, pid) * ctx.level.attackRatio * (AI.attackCaution - ctx.mem.aggression * AI.attackAggression)) / liberation + AI.attackMargin;
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {
-  if (!graceOver(ctx, AI.neutralGraceSeconds)) return false;
+  if (!graceOver(ctx, AI.neutralGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].neutrals)) return false;
   return ctx.enemies.length === 0 || ctx.mem.aggression > AI.secondWarAggression;
 }
 
@@ -98,7 +136,9 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const owner = ctx.state.provinces[pid].owner;
   if (owner === ctx.me) return false;
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);
-  return ctx.enemies.includes(owner);
+  // On several fronts, only the main enemy is attacked; the other fronts are held.
+  const main = mainEnemy(ctx);
+  return ctx.enemies.includes(owner) && (main === null || owner === main);
 }
 
 function targetValue(ctx: Ctx, pid: ProvinceId): number {
@@ -109,6 +149,7 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   let v = tv.base + (def.objectiveVp ?? 0) * tv.perVp + def.production.money / tv.outputPer + def.production.materials / tv.outputPer + state.provinces[pid].tier;
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += tv.capital;
   if (def.core === ctx.me) v += tv.reclaimCore; // reclaim lost core territory
+  if (ctx.mem.claims?.includes(pid)) v += AI.claimValue; // a province this AI covets
   // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
@@ -139,7 +180,7 @@ export function chooseCampaigns(ctx: Ctx, available: number): Campaign[] {
       const kind = n.kind;
       let score = targetValue(ctx, n.id) / (need + 25) - (kind === 'strait' ? 0.05 : 0);
       if (ctx.mem.campaigns.includes(n.id)) score *= AI.campaignStickiness;
-      score += random(state) * 0.01;
+      score += random(state) * ctx.level.targetNoise;
       // Stage from the bordering owned province where we are already strongest (land routes preferred).
       let staging: ProvinceId | null = null;
       let best = -Infinity;
@@ -158,7 +199,7 @@ export function chooseCampaigns(ctx: Ctx, available: number): Campaign[] {
   const chosen: Campaign[] = [];
   let budget = available;
   for (const c of options) {
-    if (chosen.length >= AI.maxCampaigns) break;
+    if (chosen.length >= ctx.level.maxCampaigns) break;
     if (c.need > budget) continue;
     chosen.push(c);
     budget -= c.need * 1.1;
@@ -192,39 +233,55 @@ export function handleMilitary(ctx: Ctx): void {
     const mine = Object.values(state.armies)
       .filter((a) => a.owner === me && a.province === army.province && !a.move)
       .reduce((s, a) => s + power(a), 0);
-    if (mine < enemy * AI.retreatOdds && armyMorale(army) < AI.retreatMorale) {
+    if (mine < enemy * AI.retreatOdds && armyMorale(army) < ctx.level.retreatMorale) {
       const refuge = retreatTarget(state, world, army, army.province);
-      if (refuge) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: refuge });
+      if (refuge) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: refuge }, 'retreat');
     }
   }
 
-  // 2. Starving or worn-out armies go home to recover.
+  // 2. Armies capturing a province stay until it falls, unless they would
+  //    starve first: walking out resets the capture.
+  for (const army of idleArmies(ctx)) {
+    if (committed.has(army.id)) continue;
+    const owner = state.provinces[army.province].owner;
+    if (owner === me || !areHostile(state, me, owner)) continue;
+    const capture = state.provinces[army.province].capture;
+    const remaining = capture?.by === me ? capture.required - capture.progress : captureTicks(state, world, army.province);
+    if (army.supplied || remaining <= scaledTicks(state, SUPPLY.attritionGraceSeconds) - army.unsuppliedTicks) committed.add(army.id);
+  }
+
+  // 3. Starving or worn-out armies go home to recover.
   for (const army of idleArmies(ctx)) {
     if (committed.has(army.id)) continue;
     const home = state.provinces[army.province].owner === me;
     if (!army.supplied) {
       const dest = nearestOwned(ctx, army, (pid) => state.provinces[pid].supplied);
-      if (dest) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest });
+      if (dest) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'resupply');
       committed.add(army.id);
     } else if (!battleReady(army)) {
       if (!home) {
         const dest = nearestOwned(ctx, army, (pid) => state.provinces[pid].supplied && (ctx.threat.get(pid) ?? 0) === 0);
-        if (dest) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest });
+        if (dest) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'recover');
       }
       // Resting at home still counts as a garrison where it stands.
       committed.add(army.id);
     }
   }
 
-  // Armies occupying hostile land stay until the capture completes; otherwise
-  // the steps below pull them away long before the province falls.
-  for (const army of idleArmies(ctx)) {
-    if (committed.has(army.id)) continue;
-    const owner = state.provinces[army.province].owner;
-    if (owner !== me && areHostile(state, me, owner)) committed.add(army.id);
+  // 4. The capital's garrison stays, whatever the offensives want.
+  const capital = world.nations[me].capital;
+  const capitalNeed = ctx.ownedSet.has(capital) ? garrisonNeed(ctx, capital, ctx.capitalDanger) : 0;
+  let capitalHeld = 0;
+  for (const a of idleArmies(ctx)) {
+    if (a.province !== capital) continue;
+    if (committed.has(a.id)) capitalHeld += power(a);
+    else if (capitalHeld < capitalNeed) {
+      committed.add(a.id);
+      capitalHeld += power(a);
+    }
   }
 
-  // 3. Offence first: the best defence against the army next door is often to
+  // 5. Offence first: the best defence against the army next door is often to
   //    hit it. Frontier armies may attack, leaving a rear guard only for the
   //    threat that remains once the target's defenders are engaged.
   const ready = () => idleArmies(ctx).filter((a) => !committed.has(a.id) && battleReady(a));
@@ -239,7 +296,7 @@ export function handleMilitary(ctx: Ctx): void {
       const here = ready().filter((a) => a.province === src).sort((a, b) => power(b) - power(a) || (a.id < b.id ? -1 : 1));
       if (here.length === 0) continue;
       // What would still threaten this province with the target's defenders tied down.
-      const residual = Math.max(0, (ctx.threat.get(src) ?? 0) - (ctx.hostile.get(c.target) ?? 0)) * AI.defenceFactor;
+      const residual = Math.max(0, (ctx.threat.get(src) ?? 0) - (ctx.hostile.get(c.target) ?? 0)) * ctx.level.defenceFactor;
       let guard = 0;
       // Keep the weakest stacks as the rear guard; the strongest go forward.
       for (const a of [...here].reverse()) {
@@ -254,7 +311,7 @@ export function handleMilitary(ctx: Ctx): void {
       }
     }
     if (attackPower >= c.need) {
-      for (const a of attackers) if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.target })) committed.add(a.id);
+      for (const a of attackers) if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.target }, 'attack')) committed.add(a.id);
       continue;
     }
     // Not enough yet: hold the attackers where they are and bring up reinforcements.
@@ -266,21 +323,18 @@ export function handleMilitary(ctx: Ctx): void {
       .sort((a, b) => dist.get(a.province)! - dist.get(b.province)! || (a.id < b.id ? -1 : 1));
     for (const a of donors) {
       if (gathered >= c.need * AI.massingMargin) break;
-      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging })) {
+      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging }, 'stage')) {
         committed.add(a.id);
         gathered += power(a);
       }
     }
   }
 
-  // 4. Defence: cover threatened provinces, nearest free armies first.
-  const capital = world.nations[me].capital;
+  // 6. Defence: cover threatened provinces (the capital against the wider danger), nearest free armies first.
   const needs = ctx.owned
     .map((pid) => {
       const threat = ctx.threat.get(pid) ?? 0;
-      const fort = state.provinces[pid].buildings.fortifications ?? 0;
-      const terrain = AI.terrainDefence[world.provinces[pid].terrain];
-      const need = (threat * AI.defenceFactor * (1 - fortificationReduction(state, me, fort) * 0.5)) / terrain;
+      const need = garrisonNeed(ctx, pid, pid === capital ? Math.max(threat, ctx.capitalDanger) : threat);
       const importance = 1 + (world.provinces[pid].objectiveVp ?? 0) * 0.5 + (pid === capital ? 1 : 0);
       return { pid, need, importance };
     })
@@ -311,7 +365,7 @@ export function handleMilitary(ctx: Ctx): void {
       .sort((a, b) => dist.get(a.province)! - dist.get(b.province)! || (a.id < b.id ? -1 : 1));
     for (const a of donors) {
       if (have >= n.need) break;
-      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: n.pid })) {
+      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: n.pid }, 'defend')) {
         committed.add(a.id);
         have += power(a);
       }
@@ -330,17 +384,21 @@ export function handleMilitary(ctx: Ctx): void {
       if (!best || score > best.score) best = { pid: n.id, score };
     }
     const guarding = (ctx.threat.get(army.province) ?? 0) > power(army) * 0.5;
-    if (best && !guarding && issue(ctx, { type: 'move', nation: me, armyId: army.id, to: best.pid })) committed.add(army.id);
+    if (best && !guarding && issue(ctx, { type: 'move', nation: me, armyId: army.id, to: best.pid }, 'strike')) committed.add(army.id);
   }
 
-  // 5. Anything left in the rear moves up to the most threatened frontier province.
-  const fronts = [...ctx.frontier].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
+  // 7. Anything left in the rear moves up to the most threatened frontier province; on several fronts, to the main
+  //    front. Armies already on another front stay as its garrison.
+  const main = mainEnemy(ctx);
+  const mainFront = new Set(main ? ctx.owned.filter((pid) => world.neighbors[pid].some((n) => state.provinces[n.id].owner === main)) : []);
+  const front = mainFront.size > 0 ? mainFront : ctx.frontier;
+  const fronts = [...front].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
   if (fronts.length === 0) return;
   for (const army of free()) {
-    if (ctx.frontier.has(army.province)) continue;
+    if (front.has(army.province) || ctx.frontier.has(army.province)) continue;
     const dist = distancesFrom(ctx, army.province, true);
     const dest = fronts.slice(0, 4).sort((a, b) => (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity))[0];
-    if (dest && dist.has(dest)) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest });
+    if (dest && dist.has(dest)) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'advance');
   }
 }
 

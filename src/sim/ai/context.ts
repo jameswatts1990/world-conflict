@@ -4,7 +4,7 @@
 // military power figures every Diplomacy window shows, and the armies it (and,
 // with Liaison Officers, its allies) can see. Other nations' armies are read
 // only through this context, never straight from the state.
-import { AI } from '../config/ai';
+import { AI, aiLevel, type AiLevel } from '../config/ai';
 import { UNITS } from '../config/units';
 import { applyCommand, type Command } from '../commands';
 import {
@@ -13,6 +13,7 @@ import {
   armyPower,
   atWar,
   isArmyInTransit,
+  isContender,
   nationEconomy,
   scaledTicks,
   type NationEconomy,
@@ -26,6 +27,8 @@ export interface Ctx {
   world: World;
   me: NationId;
   mem: AiMemory;
+  /** How well this game's computer opponents play. */
+  level: AiLevel;
   eco: NationEconomy;
   minutes: number;
   owned: ProvinceId[];
@@ -48,14 +51,46 @@ export interface Ctx {
   threat: Map<ProvinceId, number>;
   /** Owned provinces touching enemy or neutral territory. */
   frontier: Set<ProvinceId>;
+  /**
+   * Danger to my capital, as far as I can see or estimate: hostile power in it or next door, half of what stands
+   * two connections away, and a share of the armies of great and major powers at peace, who could declare war.
+   * A capital in the interior is still in danger once an enemy is one province away.
+   */
+  capitalDanger: number;
   /** Share of armoured units among my enemies' armies, as far as I have seen them (0..1). */
   enemyArmour: number;
   /** Resources set aside for research. */
   savings: PartialResources;
 }
 
-export function issue(ctx: Ctx, cmd: Command): boolean {
-  return applyCommand(ctx.state, ctx.world, cmd).ok;
+/** Which step of the AI's army handling gave an order (for tracing). */
+export type AiOrderReason = 'retreat' | 'resupply' | 'recover' | 'attack' | 'stage' | 'defend' | 'strike' | 'advance';
+
+export interface AiOrderTrace {
+  tick: number;
+  nation: NationId;
+  armyId: string;
+  from: ProvinceId;
+  to: ProvinceId;
+  reason: AiOrderReason;
+}
+
+// Development aid: a sink that sees every AI move order with its reason. It
+// only observes, so turning it on never changes what the simulation computes.
+let traceSink: ((t: AiOrderTrace) => void) | null = null;
+
+export function setAiOrderTrace(sink: ((t: AiOrderTrace) => void) | null): void {
+  traceSink = sink;
+}
+
+export function issue(ctx: Ctx, cmd: Command, reason?: AiOrderReason): boolean {
+  const army = traceSink && cmd.type === 'move' ? ctx.state.armies[cmd.armyId] : undefined;
+  const from = army ? armyLocation(army) : null;
+  const ok = applyCommand(ctx.state, ctx.world, cmd).ok;
+  if (ok && traceSink && cmd.type === 'move' && from && reason) {
+    traceSink({ tick: ctx.state.tick, nation: ctx.me, armyId: cmd.armyId, from, to: cmd.to, reason });
+  }
+  return ok;
 }
 
 export function nationPower(state: GameState, nation: NationId): number {
@@ -82,6 +117,14 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   // Every nation's total military power is public; what is out of sight is estimated from it.
   const total = new Map<NationId, number>();
   const inSight = new Map<NationId, number>();
+  const capital = world.nations[me].capital;
+  const ring1 = new Set(world.neighbors[capital].map((n) => n.id));
+  const ring2 = new Set([...ring1].flatMap((id) => world.neighbors[id].map((n) => n.id)).filter((id) => id !== capital && !ring1.has(id)));
+  const reach = (pid: ProvinceId) => (pid === capital || ring1.has(pid) ? 1 : ring2.has(pid) ? AI.capitalDepth : 0);
+  // Enemies count in full; powers at peace could declare war, except minor powers, which never start one.
+  const menace = (owner: NationId) => (areHostile(state, me, owner) ? 1 : isContender(world, owner) ? AI.peacetimeVigilance : 0);
+  const guardCapital = ownedSet.has(capital);
+  let capitalDanger = 0;
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
     const where = armyLocation(a);
@@ -94,6 +137,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     if (a.owner !== NEUTRAL) total.set(a.owner, (total.get(a.owner) ?? 0) + pw);
     if (!isArmyVisible(a, me, seen)) continue;
     if (a.owner !== NEUTRAL) inSight.set(a.owner, (inSight.get(a.owner) ?? 0) + pw);
+    if (guardCapital && a.owner !== NEUTRAL) capitalDanger += pw * reach(where) * menace(a.owner);
     if (areHostile(state, me, a.owner)) {
       hostile.set(where, (hostile.get(where) ?? 0) + pw);
       if (a.owner !== NEUTRAL) striking.set(where, (striking.get(where) ?? 0) + pw);
@@ -104,6 +148,14 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     if (n === me) continue;
     const dark = world.provinceIds.filter((pid) => state.provinces[pid].owner === n && !seen.has(pid)).length;
     if (dark > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / dark);
+  }
+  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in.
+  if (guardCapital) {
+    for (const pid of [...ring1, ...ring2]) {
+      const o = state.provinces[pid].owner;
+      if (seen.has(pid) || o === me || o === NEUTRAL) continue;
+      capitalDanger += (unseen.get(o) ?? 0) * reach(pid) * menace(o);
+    }
   }
   // What the enemy fields: each enemy's armour share as last seen, weighted by its strength.
   let weight = 0;
@@ -137,6 +189,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     world,
     me,
     mem,
+    level: aiLevel(state),
     eco: nationEconomy(state, world, me),
     minutes: state.tick / 60 / state.settings.durationScale,
     owned,
@@ -149,6 +202,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     hostile,
     threat,
     frontier,
+    capitalDanger,
     enemyArmour: weight > 0 ? armour / weight : 0,
     savings: {},
   };
@@ -206,6 +260,13 @@ export function avgStrength(army: Army): number {
 /** Is the army fit to attack (rested and in good spirits)? */
 export function battleReady(army: Army): boolean {
   return armyMorale(army) >= AI.attackMorale && avgStrength(army) >= AI.attackStrength;
+}
+
+/** On several fronts, the enemy this AI concentrates on (null on one front, or if its level does not plan so). */
+export function mainEnemy(ctx: Ctx): NationId | null {
+  const focus = ctx.mem.focus;
+  if (!ctx.level.interiorLines || ctx.enemies.length < 2 || !focus || !ctx.enemies.includes(focus)) return null;
+  return focus;
 }
 
 export function graceOver(ctx: Ctx, seconds: number): boolean {

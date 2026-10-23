@@ -1,7 +1,7 @@
 // Config overrides for balance runs, written PATH=VALUE. PATH starts with the name of an
 // export of src/sim/config (AI, UNITS, POWERS, VICTORY …) and VALUE is JSON, or a bare word
 // for a string:
-//   AI.attackRatio=1.3   UNITS.tank.cost.money=280   AI.personality.doctrines=["infantry","armour"]
+//   AI.warStrengthRatio=1.3   AI_LEVELS.easy.attackRatio=1.5   UNITS.tank.cost.money=280   AI.personality.doctrines=["infantry","armour"]
 // Paths must already exist and values keep their type, so a typo fails the run instead of
 // quietly changing nothing.
 
@@ -12,7 +12,7 @@ export interface Override {
 
 export function parseOverride(text: string): Override {
   const eq = text.indexOf('=');
-  if (eq <= 0) throw new Error(`Override "${text}" should look like PATH=VALUE, e.g. AI.attackRatio=1.3`);
+  if (eq <= 0) throw new Error(`Override "${text}" should look like PATH=VALUE, e.g. AI.warStrengthRatio=1.3`);
   const path = text.slice(0, eq).trim();
   const raw = text.slice(eq + 1).trim();
   let value: unknown;

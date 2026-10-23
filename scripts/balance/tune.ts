@@ -9,7 +9,7 @@
 //   npm run balance:tune                          the default space (war and peace), ~1.5 h on 4 cores
 //   npm run balance:tune -- --quick               a few minutes, to see it work
 //   npm run balance:tune -- --space military --generations 8 --games 48
-//   npm run balance:tune -- --knob AI.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
+//   npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
 //   npm run balance:tune -- --set UNITS.tank.cost.money=260     tune the AI around a rules change
 //
 // Options: --population 8, --generations 6, --games 32 (campaigns per setting per generation),

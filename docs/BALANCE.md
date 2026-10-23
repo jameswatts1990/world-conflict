@@ -36,7 +36,7 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
 
 ```bash
 npm run balance                                           # 200 campaigns of the working tree
-npm run balance -- --games 400 --set AI.attackRatio=1.3   # with an override
+npm run balance -- --games 400 --set AI.warStrengthRatio=1.3   # with an override
 npm run balance -- --vs main                              # against another commit, on the same seeds
 npm run balance -- --set AI.unitsFlat.minor=4 --vs defaults   # the same code with and without the override
 npm run balance -- report balance-runs/<run>              # re-read a saved run (with today's goals)
@@ -73,7 +73,8 @@ The report, top to bottom:
 
 ### Overrides: `--set PATH=VALUE`
 
-Any export of `src/sim/config` can be overridden for a run: `AI.warChance=0.03`, `UNITS.tank.cost.money=280`,
+Any export of `src/sim/config` can be overridden for a run: `AI.warChance=0.03`, `AI_LEVELS.normal.attackRatio=1.3`
+(settings that differ by difficulty are in `AI_LEVELS`; balance runs play Normal), `UNITS.tank.cost.money=280`,
 `POWERS.minor.output.money=80`, `VICTORY.holdSeconds=120`, `AI.personality.doctrines=["infantry","armour"]`. VALUE is
 JSON (or a bare word for a string). Overrides are set before the rest of the simulation loads, so values used to build
 the starting setup apply too. A path that does not exist, or a value of the wrong type, stops the run, so a typo cannot
@@ -127,7 +128,7 @@ price with a low value here.
 npm run balance:tune                       # the "ai" space: war and peace appetite, attack caution
 npm run balance:tune -- --quick            # a few minutes, to see it work
 npm run balance:tune -- --space military --generations 8 --games 48
-npm run balance:tune -- --knob AI.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
+npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
 npm run balance:tune -- --set UNITS.tank.cost.money=260   # tune the AI around a rules change
 ```
 

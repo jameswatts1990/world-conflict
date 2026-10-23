@@ -25,8 +25,8 @@ What is in it (Milestone 2, Depth):
   six to eight divisions: an eight-unit probe fails, and taking one takes twelve to fourteen units with artillery
   and costs them 40–60% of their strength.
 - **Morale** for units (low morale blunts firepower; armies fight to the death unless ordered out, and a
-  withdrawal under fire costs strength), provinces (drives output; conquests
-  integrate over time) and nations.
+  withdrawal under fire costs strength), provinces (drives output; conquests integrate over time) and nations (a
+  confident nation fights harder on its home soil).
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
   plots for free slots), and seaside cities have a port on the coast; the city view adds a skyline.
@@ -42,8 +42,9 @@ What is in it (Milestone 2, Depth):
   glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
   power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
   long before that, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
-- **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
-  power close to victory.
+- **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
+  manage morale, fight wars on several fronts one enemy at a time and gang up on a power close to victory, each with
+  its own claims and opening so that every campaign plays differently.
 - **Sound and period music**: bugle calls, field reports and distant artillery as the war unfolds, and public-domain
   recordings from 1917–1923 (Holst conducting *Mars*, a march or dance for each nation).
 
@@ -74,6 +75,10 @@ Other scripts:
 | `npm run balance` | Hundreds of all-AI campaigns in parallel, reported: who wins and who is knocked out, pace, AI personalities, how the AI uses every unit and building, red flags. `--vs main` compares with another commit on the same seeds, `--set PATH=VALUE` tries a config change ([docs/BALANCE.md](docs/BALANCE.md)) |
 | `npm run balance:units` | The unit lab: staged battles between armies of equal cost, showing what each unit type is worth for its price by technology level, ground and role |
 | `npm run balance:tune` | Trains the AI: searches its settings (`src/sim/config/ai.ts`) for those that best meet the design goals, then checks the proposal on fresh campaigns |
+| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
+| `npx vite-node scripts/dev/balance.ts <seeds> <minutes> [--difficulty easy]` | How each power fares across many all-AI campaigns, run in parallel: wins, eliminations, land held, capitals lost, wars by and on it, who takes its land |
+| `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]` | AI behaviour report: wasted effort (back-and-forth marches, abandoned captures, idle armies), variety across seeds, and how long an idle human lasts |
+| `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>` | Traces every AI army order with its reason and shows the armies sent back and forth |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
@@ -202,10 +207,12 @@ tests/              Simulation tests
 
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
-- Balance has only been tuned with headless AI-vs-AI campaigns (the balance lab, [docs/BALANCE.md](docs/BALANCE.md));
-  human playtesting is still needed. Over 200 such campaigns, 72% end on objectives, after 117 minutes (median), and
-  the AI conquers nearly every minor power along the way, most of them by minute 30. France lasts only a quarter of
-  them and Serbia under a fifth, and infantry-heavy AIs win more than twice as often as armoured ones.
+- Balance has only been tuned with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human playtesting
+  is still needed. Over 80 such
+  campaigns, about a third end on objectives (after 73–150 minutes) and the rest on score at the time limit; the AI
+  conquers nearly every minor power along the way, most between minutes 25 and 50. Poland, with a single great-power
+  neighbour, wins a quarter of them and is never conquered; Serbia and Romania rarely win and are conquered in about
+  half, France in about two in five.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

@@ -1,5 +1,5 @@
 // Creates the initial GameState for a scenario.
-import { AI } from './config/ai';
+import { AI, aiLevel } from './config/ai';
 import { POWERS } from './config/powers';
 import { MORALE } from './config/rules';
 import { SPEED_PRESETS, TICKS_PER_MINUTE } from './config/timing';
@@ -10,6 +10,8 @@ import { random, seedToState } from './rng';
 import {
   NEUTRAL,
   UNIT_TYPES,
+  type AiDifficulty,
+  type AiOpening,
   type Army,
   type GameState,
   type NationId,
@@ -28,6 +30,7 @@ export interface NewGameOptions {
   seed: number;
   humanNation: NationId | null;
   speed?: 'standard' | 'slow';
+  difficulty?: AiDifficulty;
 }
 
 export function newId(state: GameState, prefix: string): string {
@@ -77,6 +80,26 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
   return army;
 }
 
+
+function drawOpening(state: GameState): AiOpening {
+  let r = random(state);
+  for (const [opening, o] of Object.entries(AI.openings) as [AiOpening, { weight: number }][]) {
+    if (r < o.weight) return opening;
+    r -= o.weight;
+  }
+  return 'strike';
+}
+
+/** Provinces across a land border that a nation's AI covets, drawn from the seed (an island power has none). */
+function drawClaims(state: GameState, world: World, nation: NationId): ProvinceId[] {
+  const options = world.provinceIds.filter(
+    (pid) => state.provinces[pid].owner !== nation && world.neighbors[pid].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation),
+  );
+  const claims: ProvinceId[] = [];
+  while (claims.length < AI.claims && options.length > 0) claims.push(options.splice(Math.floor(random(state) * options.length), 1)[0]);
+  return claims;
+}
+
 export function createInitialState(world: World, opts: NewGameOptions): GameState {
   if (opts.humanNation !== null) {
     const human = world.nations[opts.humanNation];
@@ -96,6 +119,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       durationScale: preset.durationScale,
       timeLimitTicks: preset.timeLimitMinutes * TICKS_PER_MINUTE * preset.durationScale,
       humanNation: opts.humanNation,
+      difficulty: opts.difficulty ?? 'normal',
     },
     nations: {},
     provinces: {},
@@ -152,8 +176,10 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             aggression: AI.personality.aggression.min + random(state) * AI.personality.aggression.span,
             economyBias: AI.personality.economyBias.min + random(state) * AI.personality.economyBias.span,
             doctrine: AI.personality.doctrines[Math.floor(random(state) * AI.personality.doctrines.length)],
-            nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
+            nextThinkTick: Math.floor(random(state) * aiLevel(state).thinkIntervalSeconds),
             campaigns: [],
+            claims: drawClaims(state, world, n.id),
+            opening: drawOpening(state),
           },
       stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, retreats: 0 },
     };

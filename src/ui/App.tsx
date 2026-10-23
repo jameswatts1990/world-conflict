@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, joinNewcomers, type GameSettings, type GameState, type NationId } from '../sim';
+import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, joinNewcomers, type AiDifficulty, type GameSettings, type GameState, type NationId } from '../sim';
 import { GameController } from './game/GameController';
 import { GameScreen } from './GameScreen';
 import { MainMenu } from './MainMenu';
@@ -25,8 +25,8 @@ export function App() {
     w.__hash = () => (session ? hashState(session.ctrl.state) : null);
   }, [session]);
 
-  const startNew = (nation: NationId, seed: number, speed: GameSettings['speed']) => {
-    const state = createInitialState(world, { seed, humanNation: nation, speed });
+  const startNew = (nation: NationId, seed: number, speed: GameSettings['speed'], difficulty: AiDifficulty) => {
+    const state = createInitialState(world, { seed, humanNation: nation, speed, difficulty });
     setSession({ ctrl: new GameController(world, state), tutorial: true, key: Date.now() });
   };
 

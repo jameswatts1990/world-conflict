@@ -19,4 +19,5 @@ export { suppliedProvinces, inSupplyRange } from './systems/supply';
 export { provinceMoraleTarget, cityGrowthPerMinute, type MoraleFactor } from './systems/civic';
 export { amphibiousPenalty, armyCombatMultiplier, fortIgnore, retreatTarget } from './systems/combat';
 export { nationPower } from './ai/controller';
+export { setAiOrderTrace, type AiOrderReason, type AiOrderTrace } from './ai/context';
 export { EUROPE_SCENARIO } from './scenario/europe';

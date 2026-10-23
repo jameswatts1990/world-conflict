@@ -1,4 +1,5 @@
-// What the tuner (tune.ts) may change, and within what range. Each space is a set of config
+// What the tuner (tune.ts) may change, and within what range. Settings that differ by difficulty
+// live in AI_LEVELS; the spaces tune Normal, the reference AI. Each space is a set of config
 // values ("knobs"), searched between their bounds; log-scaled knobs are searched by ratio
 // (as useful at 0.01 as at 0.05). Add a space here, or pass --knob PATH=MIN..MAX for a one-off.
 import type { Override } from './overrides';
@@ -21,12 +22,12 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
       { path: 'AI.warStrengthRatio', min: 0.8, max: 1.8 },
       { path: 'AI.secondWarRatio', min: 0.2, max: 1.2 },
       { path: 'AI.minorTargetWeight', min: 0.2, max: 1.5 },
-      { path: 'AI.pileOnWars', min: 1, max: 3, integer: true },
-      { path: 'AI.peaceGraceSeconds', min: 180, max: 900, log: true },
-      { path: 'AI.acceptPeaceRatio', min: 0.6, max: 1.1 },
+      { path: 'AI_LEVELS.normal.maxWarsOnTarget', min: 1, max: 3, integer: true },
+      { path: 'AI_LEVELS.normal.peaceGraceSeconds', min: 180, max: 900, log: true },
+      { path: 'AI_LEVELS.normal.acceptPeaceRatio', min: 0.6, max: 1.1 },
       { path: 'AI.acceptPeaceMorale', min: 25, max: 55 },
       { path: 'AI.warWearinessSeconds', min: 600, max: 3000, log: true },
-      { path: 'AI.attackRatio', min: 0.9, max: 1.6 },
+      { path: 'AI_LEVELS.normal.attackRatio', min: 0.9, max: 1.6 },
     ],
   },
   diplomacy: {
@@ -37,7 +38,7 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
       { path: 'AI.warStrengthRatio', min: 0.8, max: 1.8 },
       { path: 'AI.minorTargetWeight', min: 0.2, max: 1.5 },
       { path: 'AI.leaderAlarmVp', min: 1, max: 6, integer: true },
-      { path: 'AI.acceptPeaceRatio', min: 0.6, max: 1.1 },
+      { path: 'AI_LEVELS.normal.acceptPeaceRatio', min: 0.6, max: 1.1 },
       { path: 'AI.offerPeaceRatio', min: 0.4, max: 0.8 },
       { path: 'AI.warWearinessSeconds', min: 600, max: 3000, log: true },
     ],
@@ -45,21 +46,21 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
   military: {
     description: 'How the AI sizes attacks, garrisons and its army',
     knobs: [
-      { path: 'AI.attackRatio', min: 0.9, max: 1.6 },
+      { path: 'AI_LEVELS.normal.attackRatio', min: 0.9, max: 1.6 },
       { path: 'AI.attackMargin', min: 0, max: 15 },
-      { path: 'AI.defenceFactor', min: 0.6, max: 1.3 },
+      { path: 'AI_LEVELS.normal.defenceFactor', min: 0.6, max: 1.3 },
       { path: 'AI.upkeepShare', min: 0.3, max: 0.65 },
       { path: 'AI.unitsPerProvince', min: 2, max: 4.5 },
-      { path: 'AI.maxCampaigns', min: 1, max: 3, integer: true },
+      { path: 'AI_LEVELS.normal.maxCampaigns', min: 1, max: 3, integer: true },
       { path: 'AI.massingMargin', min: 1, max: 1.5 },
     ],
   },
 };
 
-/** "AI.attackRatio=0.9..1.6": a knob for one tuning run. Whole-number bounds on a whole-number value make an integer knob; a wide range of positive values is searched by ratio. */
+/** "AI_LEVELS.normal.attackRatio=0.9..1.6": a knob for one tuning run. Whole-number bounds on a whole-number value make an integer knob; a wide range of positive values is searched by ratio. */
 export function parseKnob(text: string, current: (path: string) => unknown): Knob {
   const m = /^\s*([\w.]+)\s*=\s*(-?[\d.]+)\s*\.\.\s*(-?[\d.]+)\s*$/.exec(text);
-  if (!m) throw new Error(`--knob "${text}" should look like AI.attackRatio=0.9..1.6`);
+  if (!m) throw new Error(`--knob "${text}" should look like AI_LEVELS.normal.attackRatio=0.9..1.6`);
   const [path, min, max] = [m[1], Number(m[2]), Number(m[3])];
   if (!(min < max)) throw new Error(`--knob ${path}: the minimum should be below the maximum`);
   const now = current(path);

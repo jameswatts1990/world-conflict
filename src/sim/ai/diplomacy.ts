@@ -1,13 +1,15 @@
 // War and peace for computer opponents. They answer and offer peace from
 // relative strength, home-front morale and war weariness; they pick wars of
 // opportunity against weaker or distracted neighbours, avoid opening a second
-// front, and gang up on any power that is close to an objective victory.
+// front, and gang up on any power that is close to an objective victory. On
+// several fronts they fight by interior lines: one main enemy at a time, the
+// other fronts held, and peace offered on the main front once it is won.
 import { AI } from '../config/ai';
 import { DIPLOMACY } from '../config/rules';
 import { atWar, heldVp, isContender, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
-import { graceOver, issue, nationPower, type Ctx } from './context';
+import { graceOver, issue, mainEnemy, nationPower, type Ctx } from './context';
 
 function neighbourNations(ctx: Ctx): NationId[] {
   const set = new Set<NationId>();
@@ -39,27 +41,57 @@ function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId): number {
   return ctx.world.provinceIds.filter((id) => ctx.world.provinces[id].core === victim && ctx.state.provinces[id].owner === holder).length;
 }
 
+/**
+ * The enemy to concentrate on when fighting on several fronts: a power about to win, otherwise the one that is
+ * weakest against me, holds my home provinces or holds my claims. The current choice stands unless another enemy
+ * looks clearly better.
+ */
+function chooseFocus(ctx: Ctx, leader: NationId | null): NationId | null {
+  const { state, me } = ctx;
+  if (ctx.enemies.length < 2) return null;
+  if (leader && ctx.enemies.includes(leader)) return leader;
+  const reachable = new Set(neighbourNations(ctx));
+  const myPower = nationPower(state, me);
+  let best: { id: NationId; score: number } | null = null;
+  for (const e of ctx.enemies) {
+    if (!reachable.has(e)) continue;
+    const claims = (ctx.mem.claims ?? []).filter((pid) => state.provinces[pid].owner === e).length;
+    let score = myPower / (nationPower(state, e) + 1) + occupiedCores(ctx, e, me) * AI.focusLiberate + claims * AI.focusClaim;
+    if (e === ctx.mem.focus) score *= AI.focusStickiness;
+    if (!best || score > best.score) best = { id: e, score };
+  }
+  return best?.id ?? null;
+}
+
 export function handleDiplomacy(ctx: Ctx): void {
   const { state, world, me } = ctx;
   const myPower = nationPower(state, me);
   const morale = state.nations[me].morale;
   const leader = runawayLeader(ctx);
+  if (ctx.level.interiorLines) ctx.mem.focus = chooseFocus(ctx, leader);
+  const main = mainEnemy(ctx);
 
-  // Answer peace offers: accept when actually losing (ground, capital or nerve), or weary of a war going nowhere.
+  // Answer peace offers: accept when actually losing (ground, capital or nerve), weary of a war going nowhere,
+  // or holding enough of the enemy's land to call it won.
   for (const offer of state.peaceOffers.filter((o) => o.to === me)) {
     const theirPower = nationPower(state, offer.from);
     const rel = state.nations[me].relations[offer.from];
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
     const lostGround = occupiedCores(ctx, offer.from, me) > occupiedCores(ctx, me, offer.from);
-    const losing = myPower < theirPower * AI.acceptPeaceRatio && (lostGround || morale < AI.losingMorale);
+    const losing = myPower < theirPower * ctx.level.acceptPeaceRatio && (lostGround || morale < AI.losingMorale);
     const lostCapital = state.provinces[world.nations[me].capital].owner !== me;
     const winning = occupiedCores(ctx, me, offer.from) > occupiedCores(ctx, offer.from, me) && myPower > theirPower;
     const stopTheLeader = offer.from === leader;
-    const accept = !stopTheLeader && (losing || lostCapital || morale < AI.acceptPeaceMorale || (weary && !winning));
+    // A winner with its war aims in hand takes the gains: wars of opportunity are not wars of annihilation.
+    const satisfied =
+      state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, offer.from) >= AI.warAimProvinces;
+    const accept = !stopTheLeader && (losing || lostCapital || morale < AI.acceptPeaceMorale || (weary && !winning) || satisfied);
     issue(ctx, { type: 'respondPeace', nation: me, from: offer.from, accept });
   }
 
-  // Sue for peace when beaten or demoralised, or when a long war has stalled.
+  // Sue for peace when beaten or demoralised, or when a long war has stalled. On several fronts, offer it on the
+  // main front once the gains are in hand, to free the army for the next. (Settling the other fronts as well only
+  // invited fresh wars once each truce ran out.)
   for (const enemy of ctx.enemies) {
     const rel = state.nations[me].relations[enemy];
     if (state.tick - rel.since < scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace)) continue;
@@ -72,14 +104,22 @@ export function handleDiplomacy(ctx: Ctx): void {
     const winning = occupiedCores(ctx, me, enemy) > occupiedCores(ctx, enemy, me);
     // On two fronts, close the one that is going worse.
     const worstFront = ctx.enemies.length >= 2 && theirPower >= Math.max(...ctx.enemies.map((e) => nationPower(state, e))) && !winning;
-    if (beaten || morale < AI.offerPeaceMorale || (weary && !winning && random(state) < AI.wearyPeaceChance) || (worstFront && weary && random(state) < AI.worstFrontPeaceChance)) {
+    const aimsMet =
+      main === enemy && state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, enemy) >= AI.warAimProvinces;
+    if (
+      beaten ||
+      morale < AI.offerPeaceMorale ||
+      (weary && !winning && random(state) < AI.wearyPeaceChance) ||
+      (worstFront && weary && random(state) < AI.worstFrontPeaceChance) ||
+      aimsMet
+    ) {
       issue(ctx, { type: 'offerPeace', nation: me, target: enemy });
     }
   }
 
   // Minor powers defend themselves and make peace, but never start a war.
   if (!isContender(world, me)) return;
-  if (!graceOver(ctx, AI.peaceGraceSeconds)) return;
+  if (!graceOver(ctx, ctx.level.peaceGraceSeconds)) return;
 
   // A power about to win becomes everyone's target.
   if (leader && !atWar(state, me, leader) && state.tick >= state.nations[me].relations[leader].truceUntil) {
@@ -90,18 +130,25 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
   }
 
-  // Consider a new war of opportunity against a neighbour.
+  // Consider a new war of opportunity against a neighbour, once this AI's opening allows.
+  if (!graceOver(ctx, ctx.level.peaceGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].peace)) return;
   const maxWars = ctx.mem.aggression > AI.secondWarAggression ? AI.maxConcurrentWars : 1;
   if (ctx.enemies.length >= maxWars) return;
   if (morale < AI.warMorale) return;
-  if (random(state) > AI.warChance + ctx.mem.aggression * AI.warChancePerAggression) return;
+  if (random(state) > (AI.warChance + ctx.mem.aggression * AI.warChancePerAggression) * ctx.level.warAppetite) return;
   let best: { target: NationId; score: number; ratio: number } | null = null;
+  // Minor powers (the former neutral states) are left alone longer, so a player can take a neighbouring one first;
+  // an AI that opens by expanding goes for them before the great powers.
+  const opening = ctx.mem.opening ?? 'strike';
+  const minorsOpen = graceOver(ctx, AI.neutralGraceSeconds * AI.openings[opening].neutrals);
   for (const target of neighbourNations(ctx)) {
     if (atWar(state, me, target)) continue;
     if (state.tick < state.nations[me].relations[target].truceUntil) continue;
-    // A nation already fighting is distracted; one fighting two wars is fair game but not a pile-on.
+    const minor = !isContender(world, target);
+    if (minor && !minorsOpen) continue;
+    // A nation already fighting is distracted, but one fighting enough wars is not piled on.
     const wars = world.nationIds.filter((x) => atWar(state, target, x)).length;
-    if (wars >= AI.pileOnWars) continue;
+    if (wars >= ctx.level.maxWarsOnTarget) continue;
     const theirPower = nationPower(state, target) * (1 - AI.distractedDiscount * wars) + 1;
     const ratio = myPower / theirPower;
     // Prize: their objectives that border my land.
@@ -110,8 +157,10 @@ export function handleDiplomacy(ctx: Ctx): void {
       if (state.provinces[pid].owner !== target) continue;
       if (world.neighbors[pid].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
     }
-    const appeal = world.nations[target].power === 'minor' ? ratio * AI.minorTargetWeight : ratio;
-    const score = appeal + prize * AI.prizePerVp + (target === leader ? AI.leaderBonus : 0);
+    const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
+    const expansion = minor && opening === 'expand' ? AI.expandMinorBonus : 0;
+    const appeal = minor ? ratio * AI.minorTargetWeight : ratio;
+    const score = appeal + prize * AI.prizePerVp + claim + expansion + (target === leader ? AI.leaderBonus : 0);
     if (!best || score > best.score) best = { target, score, ratio };
   }
   const needed = AI.warStrengthRatio + (0.5 - ctx.mem.aggression) * AI.warRatioPerAggression + (ctx.enemies.length > 0 ? AI.secondWarRatio : 0);
