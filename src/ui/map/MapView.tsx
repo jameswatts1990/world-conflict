@@ -694,6 +694,19 @@ function LabelLayer({
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
+/** An objective's victory points: a gold star and its value, so it never reads as an army's size. */
+export function VpMarker({ vp }: { vp: number }) {
+  return (
+    <>
+      <rect x={-8.6} y={-5.6} width={17.2} height={11.2} rx={5.6} />
+      <path d={STAR} transform="translate(-3.4,0) scale(0.62)" />
+      <text x={3.6} y={3.1}>
+        {vp}
+      </text>
+    </>
+  );
+}
+
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
@@ -851,9 +864,8 @@ function CityLayer({
                 </g>
               )}
               {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 4},${-sp.back * px * 0.3})`}>
-                  <circle r={5.6} />
-                  <text y={3.1}>{def.objectiveVp}</text>
+                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 7},${-sp.back * px * 0.3})`}>
+                  <VpMarker vp={def.objectiveVp} />
                 </g>
               ) : null}
             </g>
@@ -889,9 +901,8 @@ function CityLayer({
               )}
             </g>
             {def.objectiveVp ? (
-              <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
-                <circle r={5.6} />
-                <text y={3.1}>{def.objectiveVp}</text>
+              <g className="vp-badge-map" transform={`translate(${isCapital ? 14 : 12},1)`}>
+                <VpMarker vp={def.objectiveVp} />
               </g>
             ) : null}
             {showName && (

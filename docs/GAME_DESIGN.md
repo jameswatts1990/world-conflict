@@ -242,8 +242,10 @@ Specialities are optional: a nation without one shows its bloc instead.
 ### 6.7 Sight and the fog of war
 
 - A nation sees every province it holds and every province where its armies stand (or march from), and the provinces
-  one connection away from them, sea crossings included. An army with a reconnaissance unit (cavalry, armoured cars)
-  sees two connections away. A marching army is seen at the nearer end of its road.
+  one connection away from them. An army with a reconnaissance unit (cavalry, armoured cars) sees two connections away
+  over open land. Mountains and narrow seas (crossings up to 350 km, such as the Channel) are seen across but not
+  beyond, so scouts in Piedmont see Provence and the Rhône valley, not Bordeaux; wider seas (Sardinia to Barcelona,
+  Rome to Split) hide the far shore altogether. A marching army is seen at the nearer end of its road.
 - **Allies** are powers at peace with each other and at war with a common enemy (there are no treaties yet). With
   **Liaison Officers** (Society & Morale, the Twenties, after Staff College) a nation also sees everything its allies see
   with their own eyes. The research only helps the nation that has it.
@@ -528,8 +530,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
-- Is one province of sight around your land and armies the right amount of fog? Should sight be blocked by mountains or
-  reach further across the sea?
+- Is one province of sight around your land and armies the right amount of fog? Mountains and seas over 350 km now
+  stop it: is that tight enough, or should provinces see only across land borders and leave scouting to armies?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
 - Positions differ in AI-only campaigns (see the balance report): Poland, with one great-power neighbour and two
   minor powers to absorb, wins a quarter of them and is never conquered, while Serbia and Romania rarely win. Which
