@@ -318,8 +318,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 ## 11. Computer opponents
 
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
-personality drawn from the seed: aggression, economy bias, a **doctrine** (armour, infantry or artillery), two
-**claims** and an **opening**, so that each campaign plays differently. Claims are provinces across its land borders
+personality drawn from the seed: aggression (0.35–0.95), economy bias (0.3–0.8), a **doctrine** (armour, infantry or
+artillery), two **claims** and an **opening**, so that each campaign plays differently. Claims are provinces across its land borders
 that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
 holding one is a likelier war target. The opening sets how it begins: *strike* starts wars of opportunity as soon as
 the grace period allows, *expand* keeps the peace 1.5 times as long and takes neutral states first, *build* keeps the
@@ -371,6 +371,10 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
   are noticed once they cross the middle of their road. It values Liaison Officers once it has allies.
   All of this lives in the context the AI builds each think (`src/sim/ai/context.ts`).
+- **Tuning:** every number the AI weighs lives in `src/sim/config/ai.ts`: war appetite and peace thresholds, what a
+  target is worth, how much strength an attack needs, each doctrine's army mix and research priorities, and the
+  personality ranges. The balance lab ([BALANCE.md](BALANCE.md)) measures how campaigns play with them, and its tuner
+  searches them against the design goals.
 
 ## 12. Architecture
 
@@ -385,7 +389,7 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
 - **Geography is separate from rules.** Shapes are in `src/assets/map`, used only for rendering. Adjacency and
   travel are in `scenario/europe/connections.ts`. Distances are rounded to whole kilometres, so timing never
   depends on floating-point trigonometry.
-- **Saves** are versioned (`schemaVersion`, now 3) and tied to a scenario id. Older saves are upgraded step by step on
+- **Saves** are versioned (`schemaVersion`, now 5) and tied to a scenario id. Older saves are upgraded step by step on
   load (`save.ts`); saves from before cities, morale and the research tree, from a newer version, another scenario or
   another program are refused with a message.
 - **Messages** are written by the simulation (`text.ts`): names that read with "the" in running text (the United
@@ -393,6 +397,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   messages come from config, so the text cannot drift from the balance.
 - **Tests** cover the rules system by system, determinism and replay, save/load, event wording, and an invariant check
   that plays campaigns with random (often invalid) player orders.
+- **Balance lab** (`scripts/balance/`, [BALANCE.md](BALANCE.md)): all-AI campaigns in parallel worker processes, staged
+  unit battles and an AI tuner. The tools load the simulation themselves, setting config overrides first, so a run can
+  try any config value (`--set`) or play another commit from a git worktree (`--vs`).
 
 ## 13. Presentation
 

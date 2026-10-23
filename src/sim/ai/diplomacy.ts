@@ -78,7 +78,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     const rel = state.nations[me].relations[offer.from];
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
     const lostGround = occupiedCores(ctx, offer.from, me) > occupiedCores(ctx, me, offer.from);
-    const losing = myPower < theirPower * ctx.level.acceptPeaceRatio && (lostGround || morale < 55);
+    const losing = myPower < theirPower * ctx.level.acceptPeaceRatio && (lostGround || morale < AI.losingMorale);
     const lostCapital = state.provinces[world.nations[me].capital].owner !== me;
     const winning = occupiedCores(ctx, me, offer.from) > occupiedCores(ctx, offer.from, me) && myPower > theirPower;
     const stopTheLeader = offer.from === leader;
@@ -97,7 +97,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     if (state.tick - rel.since < scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace)) continue;
     if (state.peaceOffers.some((o) => o.from === me && o.to === enemy)) continue;
     if (rel.peaceOfferAfter !== undefined && state.tick < rel.peaceOfferAfter) continue;
-    if (enemy === leader && myPower > nationPower(state, enemy) * 0.5) continue;
+    if (enemy === leader && myPower > nationPower(state, enemy) * AI.leaderHoldRatio) continue;
     const theirPower = nationPower(state, enemy);
     const weary = state.tick - rel.since >= scaledTicks(state, AI.warWearinessSeconds);
     const beaten = myPower < theirPower * AI.offerPeaceRatio && occupiedCores(ctx, enemy, me) > 0;
@@ -110,7 +110,7 @@ export function handleDiplomacy(ctx: Ctx): void {
       beaten ||
       morale < AI.offerPeaceMorale ||
       (weary && !winning && random(state) < AI.wearyPeaceChance) ||
-      (worstFront && weary && random(state) < 0.1) ||
+      (worstFront && weary && random(state) < AI.worstFrontPeaceChance) ||
       aimsMet
     ) {
       issue(ctx, { type: 'offerPeace', nation: me, target: enemy });
@@ -124,7 +124,7 @@ export function handleDiplomacy(ctx: Ctx): void {
   // A power about to win becomes everyone's target.
   if (leader && !atWar(state, me, leader) && state.tick >= state.nations[me].relations[leader].truceUntil) {
     const borders = neighbourNations(ctx).includes(leader);
-    if (borders && ctx.enemies.length < AI.maxConcurrentWars && myPower > nationPower(state, leader) * 0.35) {
+    if (borders && ctx.enemies.length < AI.maxConcurrentWars && myPower > nationPower(state, leader) * AI.leaderWarRatio) {
       issue(ctx, { type: 'declareWar', nation: me, target: leader });
       return;
     }
@@ -132,10 +132,10 @@ export function handleDiplomacy(ctx: Ctx): void {
 
   // Consider a new war of opportunity against a neighbour, once this AI's opening allows.
   if (!graceOver(ctx, ctx.level.peaceGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].peace)) return;
-  const maxWars = ctx.mem.aggression > 0.7 ? AI.maxConcurrentWars : 1;
+  const maxWars = ctx.mem.aggression > AI.secondWarAggression ? AI.maxConcurrentWars : 1;
   if (ctx.enemies.length >= maxWars) return;
-  if (morale < 50) return;
-  if (random(state) > (0.02 + ctx.mem.aggression * 0.05) * ctx.level.warAppetite) return;
+  if (morale < AI.warMorale) return;
+  if (random(state) > (AI.warChance + ctx.mem.aggression * AI.warChancePerAggression) * ctx.level.warAppetite) return;
   let best: { target: NationId; score: number; ratio: number } | null = null;
   // Minor powers (the former neutral states) are left alone longer, so a player can take a neighbouring one first;
   // an AI that opens by expanding goes for them before the great powers.
@@ -149,7 +149,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     // A nation already fighting is distracted, but one fighting enough wars is not piled on.
     const wars = world.nationIds.filter((x) => atWar(state, target, x)).length;
     if (wars >= ctx.level.maxWarsOnTarget) continue;
-    const theirPower = nationPower(state, target) * (1 - 0.2 * wars) + 1;
+    const theirPower = nationPower(state, target) * (1 - AI.distractedDiscount * wars) + 1;
     const ratio = myPower / theirPower;
     // Prize: their objectives that border my land.
     let prize = 0;
@@ -159,9 +159,10 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
     const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
     const expansion = minor && opening === 'expand' ? AI.expandMinorBonus : 0;
-    const score = ratio + prize * 0.08 + claim + expansion + (target === leader ? 0.5 : 0);
+    const appeal = minor ? ratio * AI.minorTargetWeight : ratio;
+    const score = appeal + prize * AI.prizePerVp + claim + expansion + (target === leader ? AI.leaderBonus : 0);
     if (!best || score > best.score) best = { target, score, ratio };
   }
-  const needed = AI.warStrengthRatio + (0.5 - ctx.mem.aggression) * 0.5 + (ctx.enemies.length > 0 ? 0.6 : 0);
+  const needed = AI.warStrengthRatio + (0.5 - ctx.mem.aggression) * AI.warRatioPerAggression + (ctx.enemies.length > 0 ? AI.secondWarRatio : 0);
   if (best && best.ratio >= needed) issue(ctx, { type: 'declareWar', nation: me, target: best.target });
 }

@@ -33,7 +33,6 @@ import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
 import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
-const TERRAIN_DEFENCE: Record<string, number> = { plains: 1, forest: 1.15, hills: 1.15, marsh: 1.1, mountains: 1.35, urban: 1.3 };
 
 function mergeIdle(ctx: Ctx): void {
   const byProvince = new Map<ProvinceId, Army[]>();
@@ -104,33 +103,33 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      if (!ctx.seen.has(n.id)) p += guess * 0.35;
-      for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * 0.35;
+      if (!ctx.seen.has(n.id)) p += guess * AI.reinforcementShare;
+      for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * AI.reinforcementShare;
     }
   }
   // Forts are buildings: hidden under the fog of war too.
   const fort = ctx.seen.has(pid) ? (state.provinces[pid].buildings.fortifications ?? 0) : 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
   // Home soil helps both their firepower and their nerve.
-  return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience * homeSoilMult(state, world, owner, pid) ** 2;
+  return p * AI.terrainDefence[world.provinces[pid].terrain] * MORALE.defenderResilience * homeSoilMult(state, world, owner, pid) ** 2;
 }
 
 /** Defenders wanted in a province against a given threat, allowing for its forts and terrain. */
 function garrisonNeed(ctx: Ctx, pid: ProvinceId, threat: number): number {
   const fort = ctx.state.provinces[pid].buildings.fortifications ?? 0;
-  const terrain = TERRAIN_DEFENCE[ctx.world.provinces[pid].terrain];
+  const terrain = AI.terrainDefence[ctx.world.provinces[pid].terrain];
   return (threat * ctx.level.defenceFactor * (1 - fortificationReduction(ctx.state, ctx.me, fort) * 0.5)) / terrain;
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
   // Liberating my own home soil, my armies fight harder too.
   const liberation = homeSoilMult(ctx.state, ctx.world, ctx.me, pid) ** 2;
-  return (defenderPower(ctx, pid) * ctx.level.attackRatio * (1.2 - ctx.mem.aggression * 0.4)) / liberation + 6;
+  return (defenderPower(ctx, pid) * ctx.level.attackRatio * (AI.attackCaution - ctx.mem.aggression * AI.attackAggression)) / liberation + AI.attackMargin;
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {
   if (!graceOver(ctx, AI.neutralGraceSeconds * AI.openings[ctx.mem.opening ?? 'strike'].neutrals)) return false;
-  return ctx.enemies.length === 0 || ctx.mem.aggression > 0.7;
+  return ctx.enemies.length === 0 || ctx.mem.aggression > AI.secondWarAggression;
 }
 
 function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
@@ -146,16 +145,17 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
   const def = world.provinces[pid];
   const owner = state.provinces[pid].owner;
-  let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
-  if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
-  if (def.core === ctx.me) v += 14; // reclaim lost core territory
+  const tv = AI.targetValue;
+  let v = tv.base + (def.objectiveVp ?? 0) * tv.perVp + def.production.money / tv.outputPer + def.production.materials / tv.outputPer + state.provinces[pid].tier;
+  if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += tv.capital;
+  if (def.core === ctx.me) v += tv.reclaimCore; // reclaim lost core territory
   if (ctx.mem.claims?.includes(pid)) v += AI.claimValue; // a province this AI covets
   // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
     const escape = world.neighbors[pid].filter((n) => state.provinces[n.id].owner === owner && (ctx.presence.get(n.id) ?? 0) === 0).length;
-    if (escape === 0) v += 10;
-    else if (escape === 1) v += 3;
+    if (escape === 0) v += tv.trapped;
+    else if (escape === 1) v += tv.oneEscape;
   }
   return v;
 }
@@ -322,7 +322,7 @@ export function handleMilitary(ctx: Ctx): void {
       .filter((a) => dist.has(a.province) && (ctx.threat.get(a.province) ?? 0) === 0)
       .sort((a, b) => dist.get(a.province)! - dist.get(b.province)! || (a.id < b.id ? -1 : 1));
     for (const a of donors) {
-      if (gathered >= c.need * 1.15) break;
+      if (gathered >= c.need * AI.massingMargin) break;
       if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging }, 'stage')) {
         committed.add(a.id);
         gathered += power(a);

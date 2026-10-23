@@ -146,7 +146,12 @@ npm run typecheck && npm test   # scenario tests check shapes, towns, connectivi
 npm run build:e2e && npm run e2e && npm run e2e:mobile
 node scripts/dev/screens.mjs e2e-output/screens hu map zoom:1   # look at the new country
 npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the bloc's art, if you added a bloc
+npm run balance -- --vs main   # 200 campaigns each, before and after: how the newcomer and its neighbours fare
 ```
+
+The balance run ([BALANCE.md](BALANCE.md)) is the check the tests cannot make: whether the newcomer survives and wins
+about as often as the other nations of its tier, and what it does to its neighbours. It needs no changes for a new
+country: nations, tiers and content all come from the scenario.
 
 The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
 inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the

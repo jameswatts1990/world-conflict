@@ -51,6 +51,7 @@ What is in it (Milestone 2, Depth):
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
 - Adding a country: [docs/ADDING_A_COUNTRY.md](docs/ADDING_A_COUNTRY.md) (blocs, the checklist, what to streamline next)
+- Balance lab: [docs/BALANCE.md](docs/BALANCE.md) (headless campaigns, the unit lab, training the AI; what to run when content is added)
 - Map data and licence: [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md)
 
 ## Run it
@@ -71,6 +72,9 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
+| `npm run balance` | Hundreds of all-AI campaigns in parallel, reported: who wins and who is knocked out, pace, AI personalities, how the AI uses every unit and building, red flags. `--vs main` compares with another commit on the same seeds, `--set PATH=VALUE` tries a config change ([docs/BALANCE.md](docs/BALANCE.md)) |
+| `npm run balance:units` | The unit lab: staged battles between armies of equal cost, showing what each unit type is worth for its price by technology level, ground and role |
+| `npm run balance:tune` | Trains the AI: searches its settings (`src/sim/config/ai.ts`) for those that best meet the design goals, then checks the proposal on fresh campaigns |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
 | `npx vite-node scripts/dev/balance.ts <seeds> <minutes> [--difficulty easy]` | How each power fares across many all-AI campaigns, run in parallel: wins, eliminations, land held, capitals lost, wars by and on it, who takes its land |
 | `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]` | AI behaviour report: wasted effort (back-and-forth marches, abandoned captures, idle armies), variety across seeds, and how long an idle human lasts |
@@ -83,8 +87,10 @@ Other scripts:
 | `npm run e2e` | Scripted browser playthrough against the test build (`npm run build:e2e` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 | `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build:e2e` first; about 20 seconds): upright, then turned on its side |
 
-The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and both browser playthroughs on
-every push and pull request.
+The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, a short check of the balance tools, the
+build and both browser playthroughs on every push and pull request. The Balance workflow (`.github/workflows/balance.yml`)
+plays 400 campaigns and the unit lab every night, on demand, and on pull requests labelled `balance` (against their base
+branch), and posts the reports on the run's summary page.
 
 ## Deploy to GitHub Pages
 
@@ -201,7 +207,8 @@ tests/              Simulation tests
 
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
-- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. Over 80 such
+- Balance has only been tuned with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human playtesting
+  is still needed. Over 80 such
   campaigns, about a third end on objectives (after 73–150 minutes) and the rest on score at the time limit; the AI
   conquers nearly every minor power along the way, most between minutes 25 and 50. Poland, with a single great-power
   neighbour, wins a quarter of them and is never conquered; Serbia and Romania rarely win and are conquered in about

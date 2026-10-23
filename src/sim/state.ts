@@ -11,7 +11,6 @@ import {
   NEUTRAL,
   UNIT_TYPES,
   type AiDifficulty,
-  type AiMemory,
   type AiOpening,
   type Army,
   type GameState,
@@ -81,7 +80,6 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
   return army;
 }
 
-const DOCTRINES: AiMemory['doctrine'][] = ['armour', 'infantry', 'artillery'];
 
 function drawOpening(state: GameState): AiOpening {
   let r = random(state);
@@ -175,9 +173,9 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       ai: isHuman
         ? null
         : {
-            aggression: 0.35 + random(state) * 0.6,
-            economyBias: 0.3 + random(state) * 0.5,
-            doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
+            aggression: AI.personality.aggression.min + random(state) * AI.personality.aggression.span,
+            economyBias: AI.personality.economyBias.min + random(state) * AI.personality.economyBias.span,
+            doctrine: AI.personality.doctrines[Math.floor(random(state) * AI.personality.doctrines.length)],
             nextThinkTick: Math.floor(random(state) * aiLevel(state).thinkIntervalSeconds),
             campaigns: [],
             claims: drawClaims(state, world, n.id),

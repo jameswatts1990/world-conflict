@@ -1,24 +1,19 @@
 // Research and construction for computer opponents. Research follows the
 // AI's doctrine and answers what the enemy fields; construction plans each
 // city's limited slots around growth, industry, recruitment and morale.
+import { AI } from '../config/ai';
 import { BUILDINGS, CITY, slotsUsed } from '../config/buildings';
 import { TECHS, type TechConfig } from '../config/research';
 import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
 import { random } from '../rng';
-import type { BuildingType, ProvinceId, TechBranch } from '../types';
+import type { BuildingType, ProvinceId } from '../types';
 import { alliesOf } from '../visibility';
 import { affordableWithReserve, issue, type Ctx } from './context';
 
-const DOCTRINE_BRANCHES: Record<'armour' | 'infantry' | 'artillery', Partial<Record<TechBranch, number>>> = {
-  armour: { armour: 4, logistics: 1.5, industry: 1 },
-  infantry: { infantry: 4, society: 1.5, logistics: 1 },
-  artillery: { artillery: 4, logistics: 1.5, infantry: 1 },
-};
-
 function techScore(ctx: Ctx, t: TechConfig): number {
   let score = 10 - t.col * 1.1 + random(ctx.state) * 2;
-  score += DOCTRINE_BRANCHES[ctx.mem.doctrine][t.branch] ?? 0;
+  score += AI.doctrineResearch[ctx.mem.doctrine][t.branch] ?? 0;
   if (t.branch === 'industry') score += ctx.mem.economyBias * 4;
   for (const e of t.effects) {
     if (e.kind === 'unitModel') score += 3;
