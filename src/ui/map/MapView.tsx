@@ -1810,6 +1810,20 @@ export function MapView(props: MapViewProps) {
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
+  // A province that changes hands flashes in its new owner's colour (not when a save loads).
+  const lastOwners = useRef<string | null>(null);
+  const [flashes, setFlashes] = useState<{ pid: ProvinceId; id: number; color: string }[]>([]);
+  useEffect(() => {
+    const before = lastOwners.current?.split(',');
+    lastOwners.current = ownersSig;
+    if (!before) return;
+    const now = ownersSig.split(',');
+    const changed = world.provinceIds.filter((_, i) => before[i] !== now[i]);
+    if (!changed.length) return;
+    const id = performance.now();
+    setFlashes((f) => [...f.slice(-20), ...changed.map((pid) => ({ pid, id, color: ownerColor(world, state.provinces[pid].owner) }))]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ownersSig]);
   const warsSig = world.nationIds
     .flatMap((a) => world.nationIds.filter((b) => a < b && state.nations[a].relations[b]?.status === 'war').map((b) => `${a}>${b}`))
     .join(',');
@@ -1980,6 +1994,15 @@ export function MapView(props: MapViewProps) {
           <OtherFrontsLayer geo={geo} human={human} owners={ownersSig} wars={warsSig} ownerOf={ownerOf} />
           <FogLayer shape={fog.shape} edge={fog.edge} clouds={clouds} />
           <g className="overlay-layer" pointerEvents="none">
+            {flashes.map((f) => (
+              <path
+                key={`${f.pid}-${f.id}`}
+                d={geo.provincePaths[f.pid]}
+                className="capture-flash"
+                style={{ '--flash': f.color } as React.CSSProperties}
+                onAnimationEnd={() => setFlashes((all) => all.filter((x) => x !== f))}
+              />
+            ))}
             {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
             {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
             {props.selectedProvince && (
