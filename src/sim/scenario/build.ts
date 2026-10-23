@@ -215,16 +215,18 @@ export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef
 }
 
 /**
- * The land a row's field units take at the start: the one facing the most foreign land (by its links), or
- * the first of its lands.
+ * The land a row's field units take at the start: the one facing the most foreign land (by its links), and
+ * among those one at the city's gate, or else the first of its lands.
  */
 function fieldLand(row: ProvinceRow, coreOf: Map<string, NationId | null>, land: LandData, links: ConnectionDef[]): ProvinceId {
   const ids = (land[row.id]?.lands ?? []).map((l) => landId(row.id, l.key));
   if (!ids.length) throw new Error(`No map data for ${row.id}: run scripts/map/city-provinces.ts`);
-  const rowOf = (pid: string) => pid.slice(0, pid.lastIndexOf('-'));
-  const facing = (pid: ProvinceId) =>
-    links.filter((c) => (c.a === pid || c.b === pid) && c.kind !== 'strait').filter((c) => coreOf.get(rowOf(c.a === pid ? c.b : c.a)) !== row.core).length;
-  return ids.reduce((best, id) => (facing(id) > facing(best) ? id : best));
+  const rowOf = (pid: string) => (coreOf.has(pid) ? pid : pid.slice(0, pid.lastIndexOf('-')));
+  const score = (pid: ProvinceId) => {
+    const next = links.filter((c) => (c.a === pid || c.b === pid) && c.kind !== 'strait').map((c) => (c.a === pid ? c.b : c.a));
+    return next.filter((o) => coreOf.get(rowOf(o)) !== row.core).length * 2 + (next.includes(row.id) ? 1 : 0);
+  };
+  return ids.reduce((best, id) => (score(id) > score(best) ? id : best));
 }
 
 type Units = Partial<Record<UnitType, number>>;

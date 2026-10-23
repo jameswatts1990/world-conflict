@@ -240,7 +240,7 @@ try {
   await page.tap('[data-testid="move-mode"]');
   await settle();
   if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'peek') throw new Error('move mode did not lower the sheet');
-  await tapAt(await provincePoint('es-castile-s'));
+  await tapAt(await provincePoint('es-castile-e'));
   await settle();
   const banner = await page.textContent('[data-testid="move-confirm"]');
   if (!banner.includes('Move to')) throw new Error(`no route preview: "${banner}"`);
@@ -248,7 +248,7 @@ try {
   await shot('05-move-preview');
   await page.tap('[data-testid="confirm-move"]');
   const path = await state(`(s) => s.armies['${army}'].move?.path`);
-  if (!path || path.at(-1) !== 'es-castile-s') throw new Error('move order not given');
+  if (!path || path.at(-1) !== 'es-castile-e') throw new Error('move order not given');
   step('tapped an army (and a formation, for its details), Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
   // An attack on a nation at peace asks to declare war first; cancelling leaves the peace and the march alone.
@@ -263,7 +263,7 @@ try {
   await shot('05b-declare-war');
   await page.tap('.modal >> text=Cancel');
   if ((await state((s) => s.nations.es.relations.pt.status)) !== 'peace') throw new Error('cancelling still declared war');
-  if ((await state(`(s) => s.armies['${army}'].move?.path?.at(-1)`)) !== 'es-castile-s') throw new Error('cancelling changed the march');
+  if ((await state(`(s) => s.armies['${army}'].move?.path?.at(-1)`)) !== 'es-castile-e') throw new Error('cancelling changed the march');
   step('an attack on Portugal asked to declare war; cancelled', { preview: warBanner.replace(/(Declare war…|Cancel)/g, '').trim() });
 
   // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
@@ -302,7 +302,7 @@ try {
   //    pause from the top bar, resume from the Paused banner.
   await page.evaluate(() => window.__game.setSpeed(20));
   await page.tap('[data-testid="pause"]');
-  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile-s' && !s.armies['${army}'].move`, 30000, 'army arrival');
+  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile-e' && !s.armies['${army}'].move`, 30000, 'army arrival');
   await page.tap('[data-testid="pause"]');
   await page.tap('[data-testid="paused-banner"]');
   if (await page.evaluate(() => window.__game.loop.paused)) throw new Error('tapping the Paused banner did not resume');
