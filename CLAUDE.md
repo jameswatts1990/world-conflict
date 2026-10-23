@@ -25,7 +25,8 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
 
 - `npm run balance` plays all-AI campaigns in parallel and reports on balance, pace and content use; `--vs main`
   compares with another commit on the same seeds and `--set PATH=VALUE` tries a config value. `npm run balance:units`
-  prices units in staged battles; `npm run balance:tune` searches AI settings for the design goals in
+  prices units in staged battles; `npm run balance:techs` measures what each technology is worth (same campaigns with
+  and without it; slow, so on request); `npm run balance:tune` searches AI settings for the design goals in
   `scripts/balance/goals.ts`. Runs land in `balance-runs/` (ignored by git).
 - After changing rules, AI or content, run `npm run balance -- --vs main` (and `npm run balance:units -- --vs main`
   for unit changes) and put what moved in the pull request.

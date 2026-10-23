@@ -9,6 +9,7 @@ import {
   armyName,
   atWar,
   buildingSlots,
+  checkDeclareWar,
   eventsFor,
   isArmyVisible,
   nationName,
@@ -20,6 +21,7 @@ import {
   type GameEvent,
   type GameState,
   type MoveMode,
+  type NationId,
   type OwnerId,
   type ProvinceId,
   unitGen,
@@ -37,7 +39,7 @@ import { MapView, routePreview, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
 import { ConfirmDialog } from './panels/Common';
 import { HelpDialog, LoadDialog, OutcomeDialog, SaveDialog } from './panels/Dialogs';
-import { DiplomacyPanel } from './panels/DiplomacyPanel';
+import { DeclareWarDialog, DiplomacyPanel } from './panels/DiplomacyPanel';
 import { EventLog, eventIcon } from './panels/EventLog';
 import { Legend } from './panels/Legend';
 import { NavRail, type PanelId } from './panels/NavRail';
@@ -146,6 +148,8 @@ export function GameScreen({
   const [toast, setToast] = useState<string | null>(null);
   const [outcomeSeen, setOutcomeSeen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  /** An order into a nation we are at peace with, waiting on the player's answer to declaring war. */
+  const [warOrder, setWarOrder] = useState<{ target: NationId; to: ProvinceId; mode: MoveMode; armies: ArmyId[] } | null>(null);
   const [mapMode, setMapMode] = useState<MapMode>('political');
   const [legendOpen, setLegendOpen] = useState(false);
   // Small screens start with the reports closed: they open from the command bar.
@@ -242,20 +246,36 @@ export function GameScreen({
     [ctrl, selectedArmies, selectArmy],
   );
 
-  const orderMove = useCallback(
-    (pid: ProvinceId) => {
-      const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
-      // A right-click without a chosen order attacks into foreign land and moves within our own.
-      const mode = moveMode ?? (ctrl.state.provinces[pid].owner === ctrl.human ? 'move' : 'attack');
+  const issueMoves = useCallback(
+    (armies: ArmyId[], pid: ProvinceId, mode: MoveMode) => {
       let lastError: string | null = null;
-      for (const id of own) {
+      for (const id of armies) {
+        if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
         const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid, mode });
         if (!r.ok) lastError = r.reason;
       }
       if (lastError) setToast(lastError);
-      setMoveMode(null);
     },
-    [ctrl, selectedArmies, moveMode],
+    [ctrl],
+  );
+
+  const orderMove = useCallback(
+    (pid: ProvinceId) => {
+      const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
+      const owner = ctrl.state.provinces[pid].owner;
+      // A right-click without a chosen order attacks into foreign land and moves within our own.
+      const mode = moveMode ?? (owner === ctrl.human ? 'move' : 'attack');
+      setMoveMode(null);
+      // Marching on a nation we are at peace with asks to declare war first; the order follows the declaration.
+      if (own.length && owner !== ctrl.human && owner !== 'neutral' && !atWar(ctrl.state, ctrl.human, owner)) {
+        const check = checkDeclareWar(ctrl.state, ctrl.human, owner);
+        if (check.ok) setWarOrder({ target: owner, to: pid, mode, armies: own });
+        else setToast(`At peace with ${nationName(world, owner)}. ${check.reason}`);
+        return;
+      }
+      issueMoves(own, pid, mode);
+    },
+    [ctrl, world, selectedArmies, moveMode, issueMoves],
   );
 
   const selectProvince = useCallback(
@@ -476,6 +496,11 @@ export function GameScreen({
                         Confirm
                       </button>
                     )}
+                    {moveTarget && pendingRoute?.warOn && (
+                      <button className="danger" onClick={() => orderMove(moveTarget)} data-testid="confirm-move">
+                        Declare war…
+                      </button>
+                    )}
                     <button onClick={() => setMoveMode(null)}>Cancel</button>
                   </span>
                 </div>
@@ -647,6 +672,20 @@ export function GameScreen({
         />
       )}
       {outcome && !outcomeSeen && <OutcomeDialog ctrl={ctrl} onMenu={onExit} onClose={() => setOutcomeSeen(true)} />}
+      {warOrder && (
+        <DeclareWarDialog
+          ctrl={ctrl}
+          target={warOrder.target}
+          order={`${warOrder.armies.length === 1 ? 'Your army then marches' : 'Your armies then march'} on ${world.provinces[warOrder.to].name}.`}
+          onCancel={() => setWarOrder(null)}
+          onConfirm={() => {
+            const r = ctrl.submit({ type: 'declareWar', nation: human, target: warOrder.target });
+            if (r.ok) issueMoves(warOrder.armies, warOrder.to, warOrder.mode);
+            else setToast(r.reason);
+            setWarOrder(null);
+          }}
+        />
+      )}
       {confirmExit && (
         <ConfirmDialog title="Leave the campaign?" icon="exit" confirmLabel="Main menu" onCancel={() => setConfirmExit(false)} onConfirm={onExit}>
           <p>The campaign is autosaved: resume it any time with Load game on the main menu.</p>

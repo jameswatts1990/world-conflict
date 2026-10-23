@@ -74,6 +74,7 @@ Other scripts:
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
 | `npm run balance` | Hundreds of all-AI campaigns in parallel, reported: who wins and who is knocked out, pace, AI personalities, how the AI uses every unit and building, red flags. `--vs main` compares with another commit on the same seeds, `--set PATH=VALUE` tries a config change ([docs/BALANCE.md](docs/BALANCE.md)) |
 | `npm run balance:units` | The unit lab: staged battles between armies of equal cost, showing what each unit type is worth for its price by technology level, ground and role |
+| `npm run balance:techs` | The tech lab: what each technology is worth to the nation that has it, measured on the same campaigns with and without it (also on demand in CI: Actions → Tech lab) |
 | `npm run balance:tune` | Trains the AI: searches its settings (`src/sim/config/ai.ts`) for those that best meet the design goals, then checks the proposal on fresh campaigns |
 | `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
 | `npx vite-node scripts/dev/balance.ts <seeds> <minutes> [--difficulty easy]` | How each power fares across many all-AI campaigns, run in parallel: wins, eliminations, land held, capitals lost, wars by and on it, who takes its land |

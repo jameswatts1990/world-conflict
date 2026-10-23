@@ -3,8 +3,8 @@
 // side sheet). It plays a short stretch as Spain through the touch controls only:
 // a city's full-screen page (build, recruit with a steady layout, a unit's details),
 // the sheet's handle on a province without a city, a move previewed and confirmed,
-// research, field reports, pause and save; and checks that nothing spills off the
-// screen and that tapping never moves the map.
+// an attack that asks to declare war, research, field reports, pause and save; and
+// checks that nothing spills off the screen and that tapping never moves the map.
 //
 //   npm run build:e2e && npm run e2e:mobile
 //
@@ -250,6 +250,21 @@ try {
   const path = await state(`(s) => s.armies['${army}'].move?.path`);
   if (!path || path.at(-1) !== 'es-castile-land') throw new Error('move order not given');
   step('tapped an army (and a formation, for its details), Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
+
+  // An attack on a nation at peace asks to declare war first; cancelling leaves the peace and the march alone.
+  await page.tap('[data-testid="move-mode"]');
+  await settle();
+  await tapAt(await provincePoint('pt-lisbon-land'));
+  await settle();
+  const warBanner = await page.textContent('[data-testid="move-confirm"]');
+  if (!warBanner.includes('At peace with Portugal')) throw new Error(`no peace warning: "${warBanner}"`);
+  await page.tap('[data-testid="confirm-move"]');
+  await page.waitForSelector('.modal >> text=War with Portugal?');
+  await shot('05b-declare-war');
+  await page.tap('.modal >> text=Cancel');
+  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'peace') throw new Error('cancelling still declared war');
+  if ((await state(`(s) => s.armies['${army}'].move?.path?.at(-1)`)) !== 'es-castile-land') throw new Error('cancelling changed the march');
+  step('an attack on Portugal asked to declare war; cancelled', { preview: warBanner.replace(/(Declare war…|Cancel)/g, '').trim() });
 
   // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
   //    technology's details without spending anything; the order comes from there.

@@ -9,16 +9,19 @@ import { fileURLToPath } from 'node:url';
 import type { LabCell, LabResult, LabSettings } from './lab';
 import type { Override } from './overrides';
 import type { GameRecord } from './record';
+import type { TechSeedResult, TechSettings } from './techlab';
 import type { Catalogue } from './sim';
 
 export type WorkerTask =
   | { kind: 'games'; simRoot: string; overrides: Override[]; seeds: number[]; minutes: number }
-  | { kind: 'lab'; simRoot: string; overrides: Override[]; cells: LabCell[]; settings: LabSettings };
+  | { kind: 'lab'; simRoot: string; overrides: Override[]; cells: LabCell[]; settings: LabSettings }
+  | { kind: 'techs'; simRoot: string; overrides: Override[]; seeds: number[]; techs: string[]; settings: TechSettings };
 
 export type WorkerMessage =
   | { type: 'catalogue'; catalogue: Catalogue }
   | { type: 'game'; record: GameRecord }
   | { type: 'lab'; result: LabResult }
+  | { type: 'techs'; seed: number; result: TechSeedResult | null }
   | { type: 'done' }
   | { type: 'error'; message: string };
 

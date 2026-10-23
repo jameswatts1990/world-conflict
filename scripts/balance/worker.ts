@@ -6,6 +6,7 @@ import { runLabCell } from './lab';
 import type { WorkerMessage, WorkerTask } from './pool';
 import { playGame } from './record';
 import { balanceWorld, catalogue, loadSim } from './sim';
+import { runTechSeed } from './techlab';
 
 const send = (msg: WorkerMessage) => new Promise<void>((resolve, reject) => process.send!(msg, undefined, {}, (err) => (err ? reject(err) : resolve())));
 
@@ -16,8 +17,11 @@ try {
     const world = balanceWorld(sim);
     await send({ type: 'catalogue', catalogue: catalogue(sim, world) });
     for (const seed of task.seeds) await send({ type: 'game', record: playGame(sim, world, seed, task.minutes) });
-  } else {
+  } else if (task.kind === 'lab') {
     for (const cell of task.cells) await send({ type: 'lab', result: runLabCell(sim, cell, task.settings) });
+  } else {
+    const world = balanceWorld(sim);
+    for (const seed of task.seeds) await send({ type: 'techs', seed, result: runTechSeed(sim, world, seed, task.techs, task.settings) });
   }
   await send({ type: 'done' });
 } catch (err) {

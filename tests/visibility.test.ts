@@ -50,6 +50,24 @@ describe('fog of war', () => {
     expect(seen.has('pl-warsaw')).toBe(false); // one step too far
   });
 
+  it('mountains and narrow seas are seen across, not beyond; wide seas hide everything', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'it', 'fr');
+    place(state, 'it', 'it-piedmont', { infantry: 1, cavalry: 1 });
+    let seen = visibleProvinces(state, world, 'it');
+    // Scouts in Piedmont see over the Alps into the Rhône valley and Provence...
+    for (const id of ['fr-rhone', 'fr-midi', 'ch-bern']) expect(seen.has(id)).toBe(true);
+    // ...but no further, while over open land they would see two provinces out.
+    for (const id of ['fr-centre', 'fr-aquitaine', 'fr-east', 'de-baden']) expect(seen.has(id)).toBe(false);
+    // Sardinia does not watch Barcelona across 1,000 km of sea, nor Rome Split across the Adriatic.
+    for (const id of ['es-catalonia', 'hr-dalmatia']) expect(seen.has(id)).toBe(false);
+    // The Channel is narrow enough: London sees the French coast, not what lies behind it.
+    seen = visibleProvinces(state, world, 'uk');
+    expect(seen.has('fr-normandy')).toBe(true);
+    expect(seen.has('fr-paris')).toBe(false);
+  });
+
   it('a marching army comes into sight at the nearer end of its road', () => {
     const state = quietGame();
     clearArmies(state);

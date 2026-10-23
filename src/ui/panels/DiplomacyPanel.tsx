@@ -42,7 +42,6 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
   const need = vpToWin(world);
   const leader = state.victory.leader;
   const maxPower = Math.max(1, ...scores.map((s) => nationPower(state, s.nation)));
-  const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
   const liaison = sharesAlliedSight(state, human);
   return (
     <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} size="wide">
@@ -222,28 +221,45 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
       </ul>
 
       {confirmWar && (
-        <ConfirmDialog
-          title={`War with ${nationName(world, confirmWar)}?`}
-          icon="swords"
-          confirmLabel="Declare war"
-          danger
+        <DeclareWarDialog
+          ctrl={ctrl}
+          target={confirmWar}
           onCancel={() => setConfirmWar(null)}
           onConfirm={() => {
             ctrl.submit({ type: 'declareWar', nation: human, target: confirmWar });
             setConfirmWar(null);
           }}
-        >
-          <p>
-            Your armies may then enter {world.nations[confirmWar].adjective} territory, and theirs may enter yours. Peace cannot be offered for the first{' '}
-            {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)}.
-          </p>
-          {wars.length > 0 && (
-            <p className="warn-text">
-              You are already at war with {wars.map((id) => nationName(world, id)).join(' and ')}.
-            </p>
-          )}
-        </ConfirmDialog>
+        />
       )}
     </Modal>
+  );
+}
+
+/** Asks before declaring war on `target`, from the diplomacy table or from an attack order into its territory. */
+export function DeclareWarDialog({
+  ctrl,
+  target,
+  order,
+  onConfirm,
+  onCancel,
+}: {
+  ctrl: GameController;
+  target: NationId;
+  /** What happens once war is declared, when an order is waiting on it ("Your army then marches on Lisbon."). */
+  order?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { state, world, human } = ctrl;
+  const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
+  return (
+    <ConfirmDialog title={`War with ${nationName(world, target)}?`} icon="swords" confirmLabel="Declare war" danger onCancel={onCancel} onConfirm={onConfirm}>
+      <p>
+        Declaring war lets your armies enter {world.nations[target].adjective} territory, and theirs enter yours. Peace cannot be offered for the first{' '}
+        {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)}.
+      </p>
+      {order && <p>{order}</p>}
+      {wars.length > 0 && <p className="warn-text">You are already at war with {wars.map((id) => nationName(world, id)).join(' and ')}.</p>}
+    </ConfirmDialog>
   );
 }

@@ -14,6 +14,7 @@ import {
   armyMorale,
   atWar,
   buildingSlots,
+  checkDeclareWar,
   connectionBetween,
   findPath,
   isArmyInTransit,
@@ -208,6 +209,8 @@ export interface RoutePreview {
   ticks: number;
   /** Why there is no route. */
   blocked: string;
+  /** The nation at peace with us that owns the destination, when an order there would first ask to declare war on it. */
+  warOn?: NationId;
 }
 
 /** The route an army would take to a province, with its arrival time (null for where it already is). */
@@ -217,8 +220,9 @@ export function routePreview(state: GameState, world: World, human: NationId, ar
   const route = findPath(state, world, army, from, to);
   if (!route) {
     const owner = state.provinces[to].owner;
-    const peace = owner !== human && owner !== 'neutral' && !atWar(state, human, owner);
-    return { to, path: null, ticks: 0, blocked: peace ? `At peace with ${nationName(world, owner)}` : 'No route' };
+    if (owner === human || owner === 'neutral' || atWar(state, human, owner)) return { to, path: null, ticks: 0, blocked: 'No route' };
+    if (!checkDeclareWar(state, human, owner).ok) return { to, path: null, ticks: 0, blocked: `Truce with ${nationName(world, owner)}` };
+    return { to, path: null, ticks: 0, blocked: `At peace with ${nationName(world, owner)}: declare war to enter`, warOn: owner };
   }
   const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
   return { to, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };
@@ -693,6 +697,19 @@ function LabelLayer({
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
+/** An objective's victory points: a gold star and its value, so it never reads as an army's size. */
+export function VpMarker({ vp }: { vp: number }) {
+  return (
+    <>
+      <rect x={-8.6} y={-5.6} width={17.2} height={11.2} rx={5.6} />
+      <path d={STAR} transform="translate(-3.4,0) scale(0.62)" />
+      <text x={3.6} y={3.1}>
+        {vp}
+      </text>
+    </>
+  );
+}
+
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
@@ -878,9 +895,8 @@ function CityLayer({
                 </g>
               )}
               {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 4},${-sp.back * px * 0.3})`} pointerEvents="none">
-                  <circle r={5.6} />
-                  <text y={3.1}>{def.objectiveVp}</text>
+                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 7},${-sp.back * px * 0.3})`} pointerEvents="none">
+                  <VpMarker vp={def.objectiveVp} />
                 </g>
               ) : null}
             </g>
@@ -918,9 +934,8 @@ function CityLayer({
                 )}
               </g>
               {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
-                  <circle r={5.6} />
-                  <text y={3.1}>{def.objectiveVp}</text>
+                <g className="vp-badge-map" transform={`translate(${isCapital ? 14 : 12},1)`}>
+                  <VpMarker vp={def.objectiveVp} />
                 </g>
               ) : null}
               {showName && (

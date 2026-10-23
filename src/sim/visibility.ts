@@ -1,10 +1,11 @@
 // Fog of war: what each nation can see. Every province a nation holds and every
 // army it fields watch their own province and the ones next to it (an army with
-// reconnaissance units sees further), seeing a land means seeing its city, and a
-// nation that has researched Liaison Officers also sees everything its allies
-// see. Sight is worked out from the state whenever it is asked for and never
-// stored, so it cannot go stale and saves are unchanged. Computer opponents do not
-// use it yet: they see the map.
+// reconnaissance units sees further over open land; mountains and narrow seas are
+// seen across but not beyond, wide seas not at all), seeing a land means seeing
+// its city, and a nation that has researched Liaison Officers also sees
+// everything its allies see. Sight is worked out from the state whenever it is
+// asked for and never stored, so it cannot go stale and saves are unchanged.
+// Computer opponents do not use it yet: they see the map.
 import { SIGHT } from './config/rules';
 import { UNITS } from './config/units';
 import { atWar, techEffects } from './queries';
@@ -42,23 +43,29 @@ export function armySight(army: Army): number {
   return army.units.some((u) => UNITS[u.type].recon) ? SIGHT.recon : SIGHT.army;
 }
 
-/** Adds every province within `range` connections of `from` to `seen`. */
+/**
+ * Adds every province within `range` connections of `from` to `seen`. Sight carries on
+ * over land; across a mountain border or a narrow sea it reaches the far side and stops,
+ * and it never crosses a sea wider than `SIGHT.seaKm`.
+ */
 function watch(world: World, from: ProvinceId, range: number, seen: Set<ProvinceId>): void {
-  // Each watcher walks its own rings: a province another watcher already sees still leads on.
-  const reached = new Set<ProvinceId>([from]);
-  let ring = [from];
-  for (let r = 0; r < range && ring.length > 0; r++) {
-    const next: ProvinceId[] = [];
-    for (const pid of ring) {
-      for (const n of world.neighbors[pid]) {
-        if (reached.has(n.id)) continue;
-        reached.add(n.id);
-        next.push(n.id);
-      }
+  // How much further sight carries from each province reached. Each watcher keeps its own
+  // count: a province another watcher already sees still leads on.
+  const left = new Map<ProvinceId, number>([[from, range]]);
+  const queue = [from];
+  for (let i = 0; i < queue.length; i++) {
+    const pid = queue[i];
+    const r = left.get(pid)!;
+    if (r <= 0) continue;
+    for (const n of world.neighbors[pid]) {
+      if (n.kind === 'strait' && n.distanceKm > SIGHT.seaKm) continue;
+      const next = n.kind === 'land' ? r - 1 : 0;
+      if ((left.get(n.id) ?? -1) >= next) continue;
+      left.set(n.id, next);
+      queue.push(n.id);
     }
-    ring = next;
   }
-  for (const pid of reached) seen.add(pid);
+  for (const pid of left.keys()) seen.add(pid);
 }
 
 /**

@@ -41,18 +41,14 @@ describe('AI army control', () => {
     state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
     const army = place(state, 'es', 'pt-lisbon', { infantry: 3 });
     const orders: AiOrderTrace[] = [];
-    setAiOrderTrace((t) => orders.push(t));
-    let fell = Infinity;
+    // Only orders given before Lisbon falls: afterwards the army is free to go.
+    setAiOrderTrace((t) => state.provinces['pt-lisbon'].owner !== 'es' && orders.push(t));
     try {
-      for (let t = 0; t < captureTicks(state, world, 'pt-lisbon') + 5; t++) {
-        run(state, 1);
-        if (state.provinces['pt-lisbon'].owner === 'es') fell = Math.min(fell, state.tick);
-      }
+      run(state, captureTicks(state, world, 'pt-lisbon') + 5);
     } finally {
       setAiOrderTrace(null);
     }
-    // Once Lisbon has fallen, the land round it is the next target; until then the army stays.
-    expect(orders.filter((o) => o.armyId === army.id && o.tick < fell)).toEqual([]);
+    expect(orders.filter((o) => o.armyId === army.id)).toEqual([]);
     expect(state.provinces['pt-lisbon'].owner).toBe('es');
   });
 

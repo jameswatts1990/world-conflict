@@ -133,8 +133,10 @@ export const SIGHT = {
   province: 1,
   /** So does every army, from the province it stands in or marches from. */
   army: 1,
-  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far. */
+  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far over land (mountains and seas stop it). */
   recon: 2,
+  /** Sea crossings up to this long (city to city) are watched like a mountain border: the far shore, nothing beyond. Wider seas hide everything. */
+  seaKm: 350,
 };
 
 export const DIPLOMACY = {

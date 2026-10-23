@@ -972,10 +972,13 @@ kbd {
   stroke: #121920;
   stroke-width: 1.3;
 }
-.vp-badge-map circle {
+.vp-badge-map rect {
   fill: var(--gold);
   stroke: #3d2c06;
   stroke-width: 1.1;
+}
+.vp-badge-map path {
+  fill: #2a1d00;
 }
 .vp-badge-map text {
   font: 700 8.5px var(--font-display);
