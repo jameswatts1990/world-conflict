@@ -31,7 +31,7 @@ What is in it (Milestone 2, Depth):
 - **Fog of war**: you see your own land, wherever your armies stand, and one province around them (cavalry and
   armoured cars see two). Beyond that the map lies under haze and drifting cloud, and its armies, battles, sieges,
   buildings and morale are hidden. Powers fighting a common enemy are **allies**: research **Liaison Officers** and
-  you also see everything your allies see.
+  you also see everything your allies see. The computer opponents play under the same fog.
 - A **map that reads at a glance**: natural relief under light national colours, your own land lit up inside a
   glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
   power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
@@ -182,7 +182,6 @@ tests/              Simulation tests
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
   every campaign ends on the time limit: nobody reaches the 17 VP objective threshold, partly because the AI gangs up
   on a leader.
-- Computer opponents ignore the fog of war: they still see every army, so they leave Liaison Officers until late.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

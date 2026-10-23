@@ -227,9 +227,8 @@ Specialities are optional: a nation without one shows its bloc instead.
 - Under the fog the player sees who holds each province and how big its city is, nothing else: no armies, battles,
   sieges, buildings, construction, morale or supply. The map dims it under a veil and drifting cloud. When the
   campaign ends the fog lifts.
-- Sight is worked out from the state whenever it is asked for (`src/sim/visibility.ts`) and never stored, so saves
-  are unchanged. Computer opponents do not use it yet: they still see every army, so they leave Liaison Officers
-  until late.
+- Sight is worked out from the state whenever it is asked for (`src/sim/visibility.ts`) and never stored.
+- **Computer opponents play under the same fog** (§11): they know only what a human in their place could.
 
 ## 7. Morale
 
@@ -312,6 +311,14 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
   guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
+- **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
+  military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
+  (§6.7), and its allies' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot see is
+  spread evenly over that power's unseen provinces, and counts that when sizing an attack whose reinforcements could
+  come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
+  30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
+  are noticed once they cross the middle of their road. It values Liaison Officers once it has allies.
+  All of this lives in the context the AI builds each think (`src/sim/ai/context.ts`).
 
 ## 12. Architecture
 

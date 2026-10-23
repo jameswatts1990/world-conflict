@@ -7,6 +7,7 @@ import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
 import { random } from '../rng';
 import type { BuildingType, ProvinceId, TechBranch } from '../types';
+import { alliesOf } from '../visibility';
 import { affordableWithReserve, issue, type Ctx } from './context';
 
 const DOCTRINE_BRANCHES: Record<'armour' | 'infantry' | 'artillery', Partial<Record<TechBranch, number>>> = {
@@ -31,8 +32,8 @@ function techScore(ctx: Ctx, t: TechConfig): number {
     }
     if (e.kind === 'morale' && ctx.state.nations[ctx.me].morale < 55) score += 3;
     if (e.kind === 'fortification' && ctx.enemies.length > 0) score += 1;
-    // Computer opponents see the whole map: shared sight gives them nothing.
-    if (e.kind === 'alliedSight') score -= 6;
+    // Allies' sight is worth most with allies to share it.
+    if (e.kind === 'alliedSight') score += alliesOf(ctx.state, ctx.world, ctx.me).length > 0 ? 3 : -1;
   }
   return score;
 }

@@ -390,6 +390,12 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /**
+   * Fog of war: the share of armour among each nation's units, as far as this AI has seen
+   * them (a running estimate, so tanks that drop out of sight are not forgotten at once).
+   * Absent until it first sees foreign troops, and in older saves.
+   */
+  armourSeen?: Record<NationId, number>;
 }
 
 export interface NationState {

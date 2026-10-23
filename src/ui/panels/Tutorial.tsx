@@ -11,7 +11,7 @@ function landText(world: World): string {
   return `Your land glows inside a white outline, other powers show their colour along their borders, and your front with an enemy is red. ${others}; dark grey land lies outside the campaign.`;
 }
 const FOG =
-  ' Hazy land is under the fog of war: you only see armies near your provinces and armies (cavalry see further; Liaison Officers add what your allies see).';
+  ' Hazy land is under the fog of war: you only see armies near your provinces and armies (cavalry see further; Liaison Officers add what your allies see). Your opponents are under it too.';
 
 /** How the player is playing: touch input and the compact (phone) layouts change some instructions. */
 export interface BriefingInput {

@@ -23,6 +23,10 @@ Guidance for Claude Code working in this repository.
 
 - `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game; its `neutral:N` column shows how many
   neutral provinces are left.
+- The AI plays under the fog of war: it may read other nations' armies only through the context (`ctx.seen`,
+  `ctx.hostile`, `ctx.unseen`, `ctx.enemyArmour` in `ai/context.ts`) or with `isArmyVisible`, never straight from
+  `state.armies` or `hostileArmiesIn` on a province it cannot see. Military power totals (`nationPower`), ownership
+  and city tiers are public. `tests/ai.test.ts` checks that hidden armies stay hidden.
 - The AI thinks every 8 s (`AI.thinkIntervalSeconds`), but captures take 20 s or more. Any step in
   `ai/military.ts` or `ai/recruitment.ts` that picks "free" or "rear" armies must skip armies holding a province
   they are capturing. `ctx.threat` and `ctx.frontier` cover only owned provinces, so an army abroad reads as

@@ -180,7 +180,8 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Fog of war: provinces and armies see one province around them, reconnaissance units two; unseen land is veiled and
       hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
 - [x] Shared sight between allies (powers fighting a common enemy) with the Liaison Officers research
-- [ ] Computer opponents that respect the fog of war (they still see every army)
+- [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
+      (and allies, with Liaison Officers) can see, guess at the rest from public totals, and remember enemy armour
 - [ ] Alliances as treaties (today any powers fighting a common enemy count as allies), right of passage,
       non-aggression pacts, coalition victory
 - [ ] Peace terms: province transfers and reparations
