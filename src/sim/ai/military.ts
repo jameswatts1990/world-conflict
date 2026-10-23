@@ -14,8 +14,6 @@ import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
 import { battleReady, graceOver, idleArmies, issue, type Ctx } from './context';
 
-const TERRAIN_DEFENCE: Record<string, number> = { plains: 1, forest: 1.15, hills: 1.15, marsh: 1.1, mountains: 1.35, urban: 1.3 };
-
 function mergeIdle(ctx: Ctx): void {
   const byProvince = new Map<ProvinceId, Army[]>();
   for (const a of idleArmies(ctx)) byProvince.set(a.province, [...(byProvince.get(a.province) ?? []), a]);
@@ -77,23 +75,23 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      if (!ctx.seen.has(n.id)) p += guess * 0.35;
-      for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * 0.35;
+      if (!ctx.seen.has(n.id)) p += guess * AI.reinforcementShare;
+      for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * AI.reinforcementShare;
     }
   }
   // Forts are buildings: hidden under the fog of war too.
   const fort = ctx.seen.has(pid) ? (state.provinces[pid].buildings.fortifications ?? 0) : 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
-  return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience;
+  return p * AI.terrainDefence[world.provinces[pid].terrain] * MORALE.defenderResilience;
 }
 
 export function attackNeed(ctx: Ctx, pid: ProvinceId): number {
-  return defenderPower(ctx, pid) * AI.attackRatio * (1.2 - ctx.mem.aggression * 0.4) + 6;
+  return defenderPower(ctx, pid) * AI.attackRatio * (AI.attackCaution - ctx.mem.aggression * AI.attackAggression) + AI.attackMargin;
 }
 
 function neutralTargetsAllowed(ctx: Ctx): boolean {
   if (!graceOver(ctx, AI.neutralGraceSeconds)) return false;
-  return ctx.enemies.length === 0 || ctx.mem.aggression > 0.7;
+  return ctx.enemies.length === 0 || ctx.mem.aggression > AI.secondWarAggression;
 }
 
 function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
@@ -107,15 +105,16 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
   const def = world.provinces[pid];
   const owner = state.provinces[pid].owner;
-  let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
-  if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
-  if (def.core === ctx.me) v += 14; // reclaim lost core territory
+  const tv = AI.targetValue;
+  let v = tv.base + (def.objectiveVp ?? 0) * tv.perVp + def.production.money / tv.outputPer + def.production.materials / tv.outputPer + state.provinces[pid].tier;
+  if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += tv.capital;
+  if (def.core === ctx.me) v += tv.reclaimCore; // reclaim lost core territory
   // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
     const escape = world.neighbors[pid].filter((n) => state.provinces[n.id].owner === owner && (ctx.presence.get(n.id) ?? 0) === 0).length;
-    if (escape === 0) v += 10;
-    else if (escape === 1) v += 3;
+    if (escape === 0) v += tv.trapped;
+    else if (escape === 1) v += tv.oneEscape;
   }
   return v;
 }
@@ -266,7 +265,7 @@ export function handleMilitary(ctx: Ctx): void {
       .filter((a) => dist.has(a.province) && (ctx.threat.get(a.province) ?? 0) === 0)
       .sort((a, b) => dist.get(a.province)! - dist.get(b.province)! || (a.id < b.id ? -1 : 1));
     for (const a of donors) {
-      if (gathered >= c.need * 1.15) break;
+      if (gathered >= c.need * AI.massingMargin) break;
       if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging })) {
         committed.add(a.id);
         gathered += power(a);
@@ -280,7 +279,7 @@ export function handleMilitary(ctx: Ctx): void {
     .map((pid) => {
       const threat = ctx.threat.get(pid) ?? 0;
       const fort = state.provinces[pid].buildings.fortifications ?? 0;
-      const terrain = TERRAIN_DEFENCE[world.provinces[pid].terrain];
+      const terrain = AI.terrainDefence[world.provinces[pid].terrain];
       const need = (threat * AI.defenceFactor * (1 - fortificationReduction(state, me, fort) * 0.5)) / terrain;
       const importance = 1 + (world.provinces[pid].objectiveVp ?? 0) * 0.5 + (pid === capital ? 1 : 0);
       return { pid, need, importance };

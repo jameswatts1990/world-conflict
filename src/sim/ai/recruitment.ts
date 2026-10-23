@@ -10,14 +10,8 @@ import { UNIT_TYPES, type ProvinceId, type UnitType } from '../types';
 import { affordableWithReserve, issue, type Ctx } from './context';
 import { mountainFront } from './economy';
 
-const DOCTRINE_MIX: Record<'armour' | 'infantry' | 'artillery', Partial<Record<UnitType, number>>> = {
-  armour: { infantry: 0.3, motorised: 0.1, cavalry: 0.04, armouredCar: 0.05, artillery: 0.14, antiTank: 0.05, lightTank: 0.1, tank: 0.16, heavyTank: 0.03, tankDestroyer: 0.03 },
-  infantry: { infantry: 0.42, stormtroopers: 0.1, mountain: 0.03, cavalry: 0.05, artillery: 0.18, antiTank: 0.07, tank: 0.1, lightTank: 0.03, motorised: 0.02 },
-  artillery: { infantry: 0.4, stormtroopers: 0.04, cavalry: 0.04, artillery: 0.22, heavyArtillery: 0.1, antiTank: 0.08, tank: 0.08, tankDestroyer: 0.04 },
-};
-
 function desiredMix(ctx: Ctx): Map<UnitType, number> {
-  const base = { ...DOCTRINE_MIX[ctx.mem.doctrine] };
+  const base = { ...AI.doctrineMix[ctx.mem.doctrine] };
   const bump = (t: UnitType, v: number) => (base[t] = (base[t] ?? 0) + v);
   bump('antiTank', ctx.enemyArmour * 0.25);
   bump('tankDestroyer', ctx.enemyArmour * 0.1);
@@ -65,7 +59,7 @@ export function handleRecruitment(ctx: Ctx): void {
     }
   }
   // Army size is bounded by what the treasury and the territory can sustain.
-  const share = (AI.upkeepShare + 0.3 * ctx.mem.aggression) * (ctx.enemies.length > 0 ? 1.25 : 1);
+  const share = (AI.upkeepShare + AI.upkeepPerAggression * ctx.mem.aggression) * (ctx.enemies.length > 0 ? AI.warUpkeep : 1);
   const budget = ctx.eco.income.money * share;
   const cap = ctx.owned.length * AI.unitsPerProvince + AI.unitsFlat[world.nations[me].power] + ctx.eco.income.money / AI.unitsPerIncome;
   const rich = state.nations[me].resources.money > 3000;

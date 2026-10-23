@@ -10,7 +10,6 @@ import { random, seedToState } from './rng';
 import {
   NEUTRAL,
   UNIT_TYPES,
-  type AiMemory,
   type Army,
   type GameState,
   type NationId,
@@ -77,8 +76,6 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
   state.armies[army.id] = army;
   return army;
 }
-
-const DOCTRINES: AiMemory['doctrine'][] = ['armour', 'infantry', 'artillery'];
 
 export function createInitialState(world: World, opts: NewGameOptions): GameState {
   if (opts.humanNation !== null) {
@@ -152,9 +149,9 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
       ai: isHuman
         ? null
         : {
-            aggression: 0.35 + random(state) * 0.6,
-            economyBias: 0.3 + random(state) * 0.5,
-            doctrine: DOCTRINES[Math.floor(random(state) * DOCTRINES.length)],
+            aggression: AI.personality.aggression.min + random(state) * AI.personality.aggression.span,
+            economyBias: AI.personality.economyBias.min + random(state) * AI.personality.economyBias.span,
+            doctrine: AI.personality.doctrines[Math.floor(random(state) * AI.personality.doctrines.length)],
             nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
             campaigns: [],
           },
