@@ -12,10 +12,12 @@ describe('movement legality', () => {
     expect(applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-hesse' }).ok).toBe(true);
   });
 
-  it('neutral territory may be entered (it is an invasion)', () => {
+  it('a minor power is a nation like any other: entering it takes a declaration of war', () => {
     const state = quietGame();
     const army = Object.values(state.armies).find((a) => a.owner === 'fr' && a.province === 'fr-nord')!;
-    expect(applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'nt-benelux' }).ok).toBe(true);
+    expect(applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'be-brussels' }).ok).toBe(false);
+    expect(applyCommand(state, world, { type: 'declareWar', nation: 'fr', target: 'be' }).ok).toBe(true);
+    expect(applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'be-brussels' }).ok).toBe(true);
   });
 
   it('routes only through explicit connections and permitted territory', () => {

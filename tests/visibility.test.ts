@@ -15,7 +15,7 @@ describe('fog of war', () => {
     const seen = visibleProvinces(state, world, 'fr');
     for (const id of world.provinceIds) if (state.provinces[id].owner === 'fr') expect(seen.has(id)).toBe(true);
     // Across the Rhine, the Alps and the Strait of Dover...
-    for (const id of ['de-baden', 'de-hesse', 'it-piedmont', 'uk-london', 'nt-benelux']) expect(seen.has(id)).toBe(true);
+    for (const id of ['de-baden', 'de-hesse', 'it-piedmont', 'uk-london', 'be-brussels']) expect(seen.has(id)).toBe(true);
     // ...but not deeper.
     for (const id of ['de-bavaria', 'de-berlin', 'it-rome', 'pl-warsaw', 'es-madrid']) expect(seen.has(id)).toBe(false);
   });

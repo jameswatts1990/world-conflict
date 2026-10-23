@@ -1,11 +1,14 @@
 import { useState } from 'react';
+import { POWERS } from '../../sim/config/powers';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
 import {
+  BLOCS,
   areAllies,
   checkDeclareWar,
   checkOfferPeace,
   commonEnemies,
   computeScores,
+  hasNeutrals,
   heldVp,
   nationEra,
   nationName,
@@ -36,8 +39,9 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
         All powers start at peace. Declaring war opens each side&apos;s territory to the other&apos;s armies. Peace can be offered after{' '}
         {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
         wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
-        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}. Neutral states may be invaded at any time. Powers
-        fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
+        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
+        {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations: invading one means declaring war on it.'}{' '}
+        Powers fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
       </p>
       {/* A table on the desktop; one card per nation on small screens (the cells are named for that). */}
       <table className="dip-table dip-relations">
@@ -73,8 +77,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <span>
                       <strong>{def.name}</strong>
                       {me && <span className="you-tag">You</span>}
-                      <span className="dip-sub" title={def.speciality.description}>
-                        {def.speciality.name} · morale {Math.round(n.morale)}
+                      <span className="dip-sub" title={def.speciality?.description ?? `${BLOCS[def.bloc].name}: ${BLOCS[def.bloc].description}`}>
+                        {def.speciality?.name ?? POWERS[def.power].name} · morale {Math.round(n.morale)}
                       </span>
                     </span>
                   </span>

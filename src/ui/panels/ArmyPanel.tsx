@@ -142,7 +142,7 @@ export function ArmyPanel({
           {c.types.slice(0, 4).map(([t, n]) => (
             <span key={t} className="as-unit" title={currentModel(state, world, army.owner, t).name}>
               <span className="unit-plate">
-                <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={30} />
+                <UnitIconArt world={world} type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={30} />
               </span>
               <span>{n}</span>
             </span>
@@ -293,7 +293,7 @@ export function ArmyPanel({
                     <span />
                   )}
                   <span className="unit-icon unit-plate">
-                    <UnitIconArt type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={32} />
+                    <UnitIconArt world={world} type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={32} />
                   </span>
                   <span className="unit-text">
                     <span className="unit-name" title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>

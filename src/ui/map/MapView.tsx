@@ -931,6 +931,7 @@ function Battles({ geo, state, k, seen }: { geo: MapGeometry; state: GameState; 
 
 function ArmyMarker({
   army,
+  world,
   state,
   x,
   y,
@@ -943,6 +944,7 @@ function ArmyMarker({
   onHover,
 }: {
   army: Army;
+  world: World;
   state: GameState;
   x: number;
   y: number;
@@ -978,7 +980,7 @@ function ArmyMarker({
     >
       <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
       <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
-      <CounterArt type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
+      <CounterArt world={world} type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
       <text x={12.2} y={4.7} className="army-count">
         {army.units.length}
       </text>
@@ -1016,7 +1018,7 @@ function ArmyLayer({
 }) {
   // Re-render every animation frame for smooth interpolation of marching armies.
   useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
-  const { state, human } = ctrl;
+  const { state, human, world } = ctrl;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
   const relations = state.nations[human].relations;
@@ -1064,6 +1066,7 @@ function ArmyLayer({
       <ArmyMarker
         key={army.id}
         army={army}
+        world={world}
         state={state}
         x={x}
         y={y}
@@ -1282,7 +1285,7 @@ function ArmyModelLayer({
     const routed = isRouted(state, army);
     if (army.move && (own || sel)) routes.push(<Route key={`r-${army.id}`} geo={geo} army={army} x={p.x} y={p.y} k={k} own={own} selected={sel} />);
     const gen = unitGen(state, army.owner, p.model === 'transport' ? mainUnitType(composition(army)) : p.model);
-    const sprite = unitSprite(p.model, gen, army.owner, p.heading);
+    const sprite = unitSprite(world, p.model, gen, army.owner, p.heading);
     const bob = p.marching && !paused && BOBS.has(p.model) ? -Math.abs(Math.sin(now / 140 + Number(army.id.slice(1)))) * 1.3 : 0;
     const [left, top, w, h] = [-sprite.cx * px, -sprite.cy * px + bob, sprite.width * px, sprite.height * px];
     const handlers = {
@@ -1562,7 +1565,7 @@ export function MapView(props: MapViewProps) {
     const jobs: (() => void)[] = world.provinceIds.map((id) => () => void citySprite(cityModelProps(ctrl.state, world, geo, id, seen.has(id))));
     for (const a of Object.values(ctrl.state.armies)) {
       const type = mainUnitType(composition(a));
-      for (const heading of [0, 4]) jobs.push(() => void unitSprite(type, unitGen(ctrl.state, a.owner, type), a.owner, heading));
+      for (const heading of [0, 4]) jobs.push(() => void unitSprite(ctrl.world, type, unitGen(ctrl.state, a.owner, type), a.owner, heading));
     }
     let next = 0;
     let timer = 0;
