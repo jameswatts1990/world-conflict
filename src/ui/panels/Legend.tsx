@@ -5,7 +5,7 @@ import { CounterArt, citySprite, plinthColor } from '../art/adapters';
 import { vivid } from '../color';
 import { Flag } from '../flags';
 import { Icon } from '../icons';
-import { TIER_COLORS, moraleRamp, type MapMode } from '../map/MapView';
+import { TIER_COLORS, VpMarker, moraleRamp, type MapMode } from '../map/MapView';
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
@@ -135,8 +135,7 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         Capital city
         <Sample>
           <g className="vp-badge-map">
-            <circle r={6} />
-            <text y={3.2}>2</text>
+            <VpMarker vp={2} />
           </g>
         </Sample>
         Objective worth victory points

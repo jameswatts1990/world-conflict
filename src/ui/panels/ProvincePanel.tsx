@@ -270,7 +270,8 @@ function FogNote({ ctrl }: { ctrl: GameController }) {
       </div>
       <p className="muted small">
         No reports come from here: its armies, battles, buildings and morale are hidden. Your provinces watch {reach(SIGHT.province)}, armies{' '}
-        {reach(SIGHT.army)}, and armies with reconnaissance units (cavalry, armoured cars) {reach(SIGHT.recon)}.
+        {reach(SIGHT.army)}, and armies with reconnaissance units (cavalry, armoured cars) {reach(SIGHT.recon)} over open land. Mountains
+        and narrow seas are seen across but not beyond, and seas wider than {SIGHT.seaKm} km not at all.
       </p>
       <p className="muted small">
         {sharesAlliedSight(state, human)
