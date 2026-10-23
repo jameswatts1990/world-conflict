@@ -181,6 +181,21 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
       top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
 - [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
+- [x] Phones, third pass (playtest feedback): a tapped city opens as a full-screen page without the skyline;
+      selecting never moves the map; the recruit tab offers only researched units, keeps its training queue in a
+      strip of fixed height so repeated recruiting never moves the buttons, and a tapped unit shows its role,
+      numbers, strengths, weaknesses and national bonus; panning no longer redraws the map's layers on every frame
+      (on an emulated phone at a quarter of the CPU, script time while dragging fell from 8.3 s to 1.8 s)
+- [ ] Panning, next: the browser still repaints the whole map on every frame of a drag; measure on real phones
+      (`scripts/dev/pan-perf.mjs` emulates one) before moving the picture as a composited layer
+- [x] Cities are provinces of their own, drawn tight round each city inside the land round it, which keeps the
+      region's name (138 provinces in all). Cities hold the output, buildings, recruitment and objectives; the land
+      is where armies march and fronts run, takes infrastructure, and cuts its city off when lost. Map labels show
+      city names and the names of provinces without a city; secondary towns are unnamed dots
+- [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
+      entrenchments; and provinces with no city at all where the map needs them
+- [ ] Rebalance after the city split (see the pull request's balance run): how fast cities fall once their land is
+      lost, and whether the AI defends cities as well as it holds the land
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
 - [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)

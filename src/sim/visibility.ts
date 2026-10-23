@@ -1,9 +1,10 @@
 // Fog of war: what each nation can see. Every province a nation holds and every
 // army it fields watch their own province and the ones next to it (an army with
 // reconnaissance units sees further), seeing a land means seeing its city, and a
-// nation that has researched Liaison Officers also sees everything its allies see. Sight is worked out from the
-// state whenever it is asked for and never stored, so it cannot go stale and
-// saves are unchanged. Computer opponents do not use it yet: they see the map.
+// nation that has researched Liaison Officers also sees everything its allies
+// see. Sight is worked out from the state whenever it is asked for and never
+// stored, so it cannot go stale and saves are unchanged. Computer opponents do not
+// use it yet: they see the map.
 import { SIGHT } from './config/rules';
 import { UNITS } from './config/units';
 import { atWar, techEffects } from './queries';

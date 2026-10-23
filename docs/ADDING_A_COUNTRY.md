@@ -83,7 +83,10 @@ its whole country:
 ```
 
 Then `npm run map:build`. It fails if a rule matches nothing, and it tags every province with its country so the
-UI knows which countries the theatre covers. No list needs updating by hand.
+UI knows which countries the theatre covers. No list needs updating by hand. Its second step
+(`scripts/map/city-provinces.ts`, which runs on the committed `scripts/map/base.topo.json` without the raw data)
+cuts each row's city out of its province and writes `src/sim/scenario/europe/land.ts`; it needs the row (step 2)
+to exist, so run it again once the rows are in.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
@@ -92,7 +95,9 @@ opening zoom. Merging two regions fixed it. The tiers' province ranges keep smal
 ### 2. Province rows ★ — `src/sim/scenario/europe/provinces.ts`
 
 One row per province: name, terrain, role, principal city with coordinates, population, two to five towns, and
-optionally `oil`. The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
+optionally `oil`. Each row becomes two provinces: the city, drawn tight round it and keyed by the row's id, and the
+land round it, keyed `<id>-land` and named after the row (`land: { name, article, terrain }` overrides that, as for
+the countryside round a capital). The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
 `capital`, and great and major powers one `industrial` heartland. Roles only set relative weights: output is
 scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
 
@@ -103,7 +108,8 @@ directly.
 ### 3. Connections ★ — `src/sim/scenario/europe/connections.ts`
 
 Internal links, plus links to whatever the country borders in the theatre: `land`, `mountain` (with a pass
-name), or `strait` for sea crossings. Every pair of provinces that share a border needs a land or mountain link,
+name), or `strait` for sea crossings. They are written between rows and join the rows' lands; every city is linked
+to its own land automatically. Every pair of provinces that share a border needs a land or mountain link,
 and every land or mountain link a shared border; a scenario test enforces both. While you work, list what is
 missing:
 

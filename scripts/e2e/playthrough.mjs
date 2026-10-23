@@ -5,8 +5,8 @@
 // It plays Spain and invades Portugal, which borders only Spain, so no computer
 // opponent can race the player to the target however the real-time clock falls.
 // Portugal is a minor power with a fortified capital: Spain gathers most of its
-// army in the land of Castile and León and raises more before it attacks, taking
-// Portugal's land on the way to Lisbon.
+// army in the land of Castile and León and raises more before it marches on
+// Lisbon through the land round it.
 //
 //   npm run build:e2e && npm run e2e
 //
@@ -234,7 +234,7 @@ try {
   await page.waitForTimeout(400);
   await shot('05-battle');
   step('battle started in Portugal');
-  // The attack takes the land round Lisbon on its way into the city.
+  // A Move order marches through the land round Lisbon (it stays Portuguese) and takes the city.
   await waitUntil((s) => s.provinces['pt-lisbon'].owner === 'es', 90000, 'capture of Lisbon');
   await setPaused(true);
   await shot('06-captured');

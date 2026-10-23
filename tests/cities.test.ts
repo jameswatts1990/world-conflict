@@ -97,7 +97,8 @@ describe('cities', () => {
     // The land between cities takes infrastructure but nothing that needs a city's slots.
     expect(checkBuild(state, world, 'fr', 'fr-east-land', 'fortifications').ok).toBe(true);
     expect(checkBuild(state, world, 'fr', 'fr-east-land', 'railway').ok).toBe(true);
-    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'barracks').reason).toMatch(/Needs a city/);
+    const barracks = checkBuild(state, world, 'fr', 'fr-east-land', 'barracks');
+    expect(barracks.ok ? '' : barracks.reason).toMatch(/Needs a city/);
     expect(buildingSlots(state, world, 'fr-east-land')).toBe(0);
     // Occupation HQs only in occupied land.
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'garrisonHq').ok).toBe(false);

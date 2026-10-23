@@ -53,6 +53,12 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
 - Everything a player or AI does goes through the validated commands in `src/sim/commands.ts`.
 - New state fields are optional with a sensible default when absent, so older saves still load; otherwise add a
   migration in `src/sim/save.ts`.
+- Every city is a province of its own (the row's id, e.g. `fr-paris`) inside a province of land round it
+  (`fr-paris-land`, named for the region): one row in `scenario/europe/provinces.ts` makes both. Connections are
+  written between rows and join their lands; a city's only neighbour is its land. `def.city` is absent on land, so
+  use `world.cityIds`, `landOf`/`cityOf`, `world.nearbyCities` and `world.vicinity` rather than assuming a city.
+  Cities hold output, slots, recruitment and objectives; land takes only infrastructure. City shapes and land
+  anchors come from `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`).
 
 ## How the computer opponents should behave
 
@@ -61,7 +67,7 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
 - **Plays by the rules.** The same commands, resources and information as the player. Difficulty changes how well
   it plays, never what it is given.
 - **Strategic.** Every move has a reason a player could guess: mass before striking, prefer valuable or encircled
-  targets, defend what matters (the capital keeps a garrison against danger up to two provinces away), finish what
+  targets, defend what matters (the capital keeps a garrison against danger up to two lands away), finish what
   it starts (a capture in progress is held until the province falls), make peace when losing, and fight wars for
   limited aims: once it has taken enough, it settles rather than fighting on to annihilation. On several fronts it
   fights by interior lines: one main enemy at a time, the other fronts held, reserves sent by rail to the main one.
