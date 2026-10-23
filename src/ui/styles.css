@@ -3942,6 +3942,40 @@ button.chip.queued:hover {
   margin-top: 10px;
   font-size: 12px;
 }
+/* Diplomacy: the rules fold away, the column headings stay in view, and remote minor powers wait behind a row. */
+.intro-details {
+  margin: 0 0 10px;
+}
+.intro-details summary {
+  width: fit-content;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.intro-details[open] summary {
+  margin-bottom: 6px;
+}
+.dip-relations thead th {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  background: #141d26;
+}
+.dip-more td {
+  padding: 8px 4px;
+}
+.dip-more button {
+  width: 100%;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-2);
+  background: transparent;
+  border: 1px dashed var(--line-2);
+}
+.dip-more button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
 .objective-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
