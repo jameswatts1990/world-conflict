@@ -172,7 +172,6 @@ export interface ProvinceDef {
   around?: ProvinceId;
   /** The region a city and its lands make up ("Bavaria"), for display. */
   region?: string;
-  regionArticle?: Article;
   /** Starting city tier (1 for land, which has no city to grow). */
   tier: CityTier;
   /** Urban population of the city in thousands (display, growth and national morale); 0 for land. */

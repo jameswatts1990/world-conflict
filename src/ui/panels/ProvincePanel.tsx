@@ -189,6 +189,7 @@ export function ProvincePanel({
           ) : null}
           <OwnerFlag world={world} owner={owner} province={pid} size={16} />
           <span className="hero-owner">{ownerLabel(world, owner, pid)}</span>
+          {def.region && def.region !== ownerLabel(world, owner, pid) && <span className="hero-region">· {def.region}</span>}
           {!page && (
             <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
               <Icon name="close" size={16} />

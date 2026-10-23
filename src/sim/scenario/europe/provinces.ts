@@ -121,7 +121,7 @@ export const ROWS: ProvinceRow[] = [
     lands: { sw: { name: 'Murcia' }, n: { name: 'Castellón' } },
     towns: [['Alicante', -0.481, 38.345], ['Murcia', -1.13, 37.992], ['Cartagena', -0.986, 37.626], ['Castellón', -0.038, 39.986]] },
   { id: 'es-andalusia', name: 'Andalusia & Extremadura', core: 'es', terrain: 'hills', tier: 'city', city: { name: 'Seville', coord: [-5.985, 37.389], size: 'major' }, pop: 1500, garrison: { infantry: 1 },
-    lands: { 'n2': { name: 'Extremadura' }, e: { name: 'Granada' }, n: { name: 'Huelva' }, ne: { name: 'Córdoba' }, se: { name: 'Cádiz & Málaga' } },
+    lands: { 'n2': { name: 'Extremadura' }, e: { name: 'Granada' }, n: { name: 'Sierra Morena', article: 'the' }, ne: { name: 'Córdoba' }, se: { name: 'Cádiz & Málaga' } },
     towns: [['Málaga', -4.421, 36.721], ['Córdoba', -4.779, 37.888], ['Granada', -3.599, 37.177], ['Cádiz', -6.212, 36.527], ['Badajoz', -6.97, 38.879]] },
   { id: 'es-castile', name: 'Castile & León', core: 'es', terrain: 'plains', tier: 'town', city: { name: 'Valladolid', coord: [-4.725, 41.652], size: 'town' }, pop: 420, oil: true, garrison: { infantry: 1, cavalry: 1 },
     lands: { nw: { name: 'León' }, ne: { name: 'Burgos' }, e: { name: 'Soria & Segovia' }, sw: { name: 'Salamanca' }, s: { name: 'Ávila' } },
@@ -172,7 +172,7 @@ export const ROWS: ProvinceRow[] = [
 
   // Romania (major power)
   { id: 'ro-bucharest', name: 'Bucharest & Muntenia', core: 'ro', terrain: 'urban', tier: 'capital', city: { name: 'Bucharest', coord: [26.103, 44.427], size: 'capital' }, pop: 2200, oil: true,
-    lands: { nw: { name: 'Ploiești' }, e: { name: 'Bărăgan', article: 'the' } },
+    lands: { nw: { name: 'Muntenia' }, e: { name: 'Bărăgan', article: 'the' } },
     towns: [['Ploiești', 26.014, 44.946], ['Pitești', 24.869, 44.856], ['Târgoviște', 25.459, 44.925], ['Giurgiu', 25.969, 43.904]] },
   { id: 'ro-banat', name: 'Banat & Oltenia', core: 'ro', terrain: 'plains', tier: 'industrial', city: { name: 'Timișoara', coord: [21.208, 45.749], size: 'major' }, pop: 380,
     lands: { 'se2': { name: 'Oltenia' }, se: { name: 'Hunedoara' }, ne: { name: 'Arad' } },
@@ -230,7 +230,7 @@ export const ROWS: ProvinceRow[] = [
     lands: { e: { name: 'Eastern Switzerland' }, s: { name: 'Romandy' } },
     towns: [['Zürich', 8.541, 47.377], ['Geneva', 6.143, 46.204], ['Basel', 7.588, 47.56], ['Lausanne', 6.633, 46.52]] },
   { id: 'at-vienna', name: 'Austria', core: 'at', terrain: 'mountains', tier: 'capital', cityTier: 3, city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, pop: 2900, oil: true,
-    lands: { wsw: { name: 'Salzburg' }, sw: { name: 'Styria' }, w: { name: 'Upper & Lower Austria' }, 'wsw2': { name: 'Tyrol', article: 'the' } },
+    lands: { wsw: { name: 'Carinthia & Salzburg' }, sw: { name: 'Styria' }, w: { name: 'Upper & Lower Austria' }, 'wsw2': { name: 'Tyrol', article: 'the' } },
     towns: [['Graz', 15.439, 47.071], ['Linz', 14.286, 48.306], ['Salzburg', 13.055, 47.809], ['Innsbruck', 11.404, 47.269]] },
   { id: 'cz-prague', name: 'Czechia', core: 'cz', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, pop: 2700,
     lands: { ese: { name: 'Moravia' }, s: { name: 'South Bohemia' }, w: { name: 'West Bohemia' }, e: { name: 'East Bohemia' } },
