@@ -71,6 +71,13 @@ export function rateDiffP(a: Rate, b: Rate): number {
   return se === 0 ? 1 : twoSided((b.k / b.n - a.k / a.n) / se);
 }
 
+/** p-value for "this mean differs from zero", e.g. paired differences (normal approximation). */
+export function meanZeroP(m: Mean): number {
+  if (m.n < 2) return 1;
+  const se = m.sd / Math.sqrt(m.n);
+  return se === 0 ? (m.mean === 0 ? 1 : 0) : twoSided(m.mean / se);
+}
+
 /** p-value for "the two means differ" (Welch's test, normal approximation: runs have hundreds of games). */
 export function meanDiffP(a: Mean, b: Mean): number {
   if (a.n < 2 || b.n < 2) return 1;

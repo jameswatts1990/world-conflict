@@ -10,6 +10,8 @@ import { balanceWorld, catalogue, loadSim, type Sim } from '../scripts/balance/s
 import { knobPosition, knobValue, type Knob } from '../scripts/balance/space';
 import { meanDiffP, median, meanOf, qValues, quantile, rateDiffP, wilsonHalfWidth } from '../scripts/balance/stats';
 import { describeSeeds, summarise, type Summary } from '../scripts/balance/summary';
+import { grantTech, runTechSeed, testSeat } from '../scripts/balance/techlab';
+import { mergeRuns, renderTechs, techRows, type TechRun } from '../scripts/balance/techreport';
 
 describe('balance statistics', () => {
   it('gives rates an honest margin of error', () => {
@@ -150,5 +152,43 @@ describe('balance runs', () => {
       ['tank', 2],
       ['infantry', 6],
     ]);
+  });
+
+  it('hands a technology over as if its research had just finished', () => {
+    const state = createInitialState(balanceWorld(sim), { seed: 9, humanNation: null });
+    const r = state.nations.fr.research;
+    r.queue = ['staffCollege'];
+    expect(grantTech(state, 'fr', 'staffCollege')).toBe(true);
+    expect(r.completed).toContain('staffCollege');
+    expect(r.queue).not.toContain('staffCollege');
+    expect(grantTech(state, 'fr', 'staffCollege')).toBe(false);
+  });
+
+  it('tests a different playable nation on each seed, skipping the knocked out', () => {
+    const state = createInitialState(balanceWorld(sim), { seed: 9, humanNation: null });
+    expect(testSeat(state, ['uk', 'fr', 'de'], 1)).toBe('fr');
+    state.nations.fr.eliminated = true;
+    expect(testSeat(state, ['uk', 'fr', 'de'], 1)).toBe('de');
+  });
+
+  it('measures a technology on paired campaigns and joins runs split over runners', () => {
+    const world = balanceWorld(sim);
+    const settings = { at: 2, minutes: 5 };
+    const result = runTechSeed(sim, world, 5, ['staffCollege', 'landships'], settings)!;
+    expect(result.control.place).toBeGreaterThan(0);
+    expect(Object.keys(result.granted)).toEqual(['staffCollege', 'landships']);
+    expect(runTechSeed(sim, world, 5, ['staffCollege'], settings)!.granted.staffCollege).toEqual(result.granted.staffCollege);
+    const run = (techs: string[]): TechRun => ({
+      label: 'test',
+      commit: 'test',
+      overrides: [],
+      settings,
+      seeds: '5',
+      techs: techs.map((id) => ({ id, name: id, branch: 'x', col: 0, cost: '' })),
+      results: [{ ...result, granted: Object.fromEntries(techs.map((t) => [t, result.granted[t]])) }],
+    });
+    const merged = mergeRuns([run(['staffCollege']), run(['landships'])]);
+    expect(techRows(merged).map((r) => r.id).sort()).toEqual(['landships', 'staffCollege']);
+    expect(renderTechs(merged)).toContain('## Technologies, most valuable first');
   });
 });

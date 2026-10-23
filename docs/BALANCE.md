@@ -6,6 +6,7 @@ Three tools play the game against itself in the background and report what they 
 | --- | --- | --- |
 | `npm run balance` | How campaigns play: who wins and who is knocked out, pace, drama, which AI personalities do well, what the AI does with every unit, building and technology | 200 campaigns in about 9 minutes |
 | `npm run balance:units` | What each unit type is worth for its price, by technology level, ground and role, and which armies beat which | under a minute |
+| `npm run balance:techs` | What each technology is worth to the nation that has it, by experiment: the same campaigns with and without it | about 2 hours for all of them (one technology: a few minutes); on demand in CI |
 | `npm run balance:tune` | Trains the AI: searches its settings for the ones that best meet the design goals | about 1.5 hours (`--quick`: 5 minutes) |
 
 Everything reads nations, power tiers, unit types, buildings and research from the scenario and config, so a new
@@ -25,11 +26,14 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
    Check also that the AI actually uses the new content: a unit nobody raises needs a share in `AI.doctrineMix`
    (`src/sim/config/ai.ts`), and a building nobody builds needs a rule in `handleConstruction`
    (`src/sim/ai/economy.ts`).
-3. **Try a fix** without editing anything: `npm run balance -- --vs defaults --set UNITS.tank.cost.money=280`. Once it
+3. **Technologies:** `npm run balance:techs -- --techs <id> --games 100` measures a new or changed technology: how
+   many places it is worth to the nation handed it. Run every technology from time to time (the Tech lab workflow, on
+   demand), since a change elsewhere can make one dominant or worthless.
+4. **Try a fix** without editing anything: `npm run balance -- --vs defaults --set UNITS.tank.cost.money=280`. Once it
    works, put the value in config and rerun step 2.
-4. **If the AI handles the new content badly,** tune it: `npm run balance:tune` (overnight), or a few knobs at a time
+5. **If the AI handles the new content badly,** tune it: `npm run balance:tune` (overnight), or a few knobs at a time
    with `--knob`.
-5. **Label the pull request `balance`** and CI runs the comparison against the base branch, with the reports on the
+6. **Label the pull request `balance`** and CI runs the comparison against the base branch, with the reports on the
    run's summary page.
 
 ## Campaigns: `npm run balance`
@@ -69,7 +73,8 @@ The report, top to bottom:
   for doctrine.
 - **Units, buildings, research:** for each unit type, the share of campaigns in which some nation had researched it,
   could raise it (and held the buildings it needs) and did; the same for buildings; the technologies winners research
-  more than others, and those almost nobody researches.
+  more than others, and those almost nobody researches. That last table is correlation (winners may research a
+  technology because they are winning); the tech lab measures what a technology is actually worth.
 
 ### Overrides: `--set PATH=VALUE`
 
@@ -159,6 +164,38 @@ you like into `src/sim/config/ai.ts`, run `npm run balance -- --vs main`, and pl
 The tuner optimises the goals as written, so read the comparison for side effects, and do not use the AI to hide a
 rules problem: a unit that is too strong should be fixed in its stats or price, not by making the AI avoid it.
 
+## The tech lab: `npm run balance:techs`
+
+```bash
+npm run balance:techs                                       # every technology, 60 campaigns each
+npm run balance:techs -- --techs staffCollege,infiltrationTactics --games 200
+npm run balance:techs -- --set TECH_BY_ID.staffCollege.seconds=600   # after a change
+npm run balance:techs -- --at 40                            # handed over at minute 40 instead of 20
+```
+
+An experiment, not an observation. Each seed's campaign is played to the handover minute (`--at`, 20) and kept. From
+there it plays on to the end as it was (the control), and once more for each technology, with that technology handed
+to a test seat: a playable nation, a different one each seed, as if its research had just finished. Prerequisites are
+not handed over, so this is the technology's own effect. The difference in the test seat's result, on the same seed,
+is what the technology was worth to it:
+
+- **Places:** places gained among the playable nations by the end, with a 95% margin and a q-value (corrected for
+  testing every technology at once; under 0.05 is likely real).
+- **Wins, survival and provinces:** the same comparison for each.
+- **Had it:** how often the seat already had the technology at the handover; such campaigns are not counted, so a
+  technology everyone has by then is measured on few.
+
+Red flags: a technology worth half a place or more (and likely real), one that costs the nation that gets it, and one
+too small to notice (under 0.15 places even at the top of its margin). The thresholds are `GOALS.techValue` in
+`scripts/balance/goals.ts`.
+
+Every technology costs one campaign per seed: all of them at 60 seeds is about 3,000 campaigns, two hours on 4 cores.
+Margins at 60 seeds are about ±0.5 places, enough to find a technology that decides games, not to rank close ones; give
+the ones you care about `--games 200`. `--shard 2/4` plays a quarter of the technologies and `merge <dir>… --out DIR`
+joins the parts, which is how the Tech lab workflow splits the work over four runners. A technology handed over at
+minute 20 that a nation would normally reach at minute 90 is worth a lot more than it costs; compare a technology
+with others of its column, or move `--at`.
+
 ## Goals and red flags
 
 `scripts/balance/goals.ts` holds the design judgements the reports check against. Change them as the design changes;
@@ -179,7 +216,8 @@ rules problem: a unit that is too strong should be fixed in its stats or price, 
 The red flags use looser bounds (a nation lasting under 40% of campaigns, winning over 2.5 times its fair share, more
 than 10% of seats out early, a length outside 90–150 minutes, a doctrine spread over 1.5, under 10% of minor powers
 standing at 30 minutes). They also flag content the AI never uses even though it could in at least a quarter of
-campaigns. In the unit lab, they flag values outside 0.75–1.35 and armies that beat, or lose to, every other.
+campaigns. In the unit lab, they flag values outside 0.75–1.35 and armies that beat, or lose to, every other. The
+tech lab's are above.
 
 ## Continuous integration
 
@@ -188,6 +226,9 @@ campaigns. In the unit lab, they flag values outside 0.75–1.35 and armies that
   and posts the reports on the run's summary page with the raw runs as an artifact.
 - **On demand** from the Actions tab, with the number of campaigns, a ref to compare with and overrides.
 - **On pull requests labelled `balance`**, it plays 200 campaigns of each against the base branch.
+- **The Tech lab workflow** (`tech-lab.yml`) runs only on demand (Actions → Tech lab → Run workflow), with the number of
+  campaigns, the technologies, the handover minute and overrides. It splits the technologies over four runners and
+  posts the joined report on the run's summary page; all of them at 60 campaigns take about 40 minutes.
 
 Runners are free for a public repository.
 
@@ -206,6 +247,7 @@ Runners are free for a public repository.
 | `goals.ts` | Goals, the goal penalty and the red flags |
 | `lab.ts` | The unit lab's battles and its value search |
 | `space.ts` | The tuner's search spaces |
+| `techs.ts`, `techlab.ts`, `techreport.ts` | The tech lab: its command, its paired campaigns, and its numbers and report |
 | `git.ts` | Worktrees for `--vs` |
 
 The tools never import the simulation statically: they load whichever copy a run asks for, which is how they can
