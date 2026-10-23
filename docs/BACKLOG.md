@@ -161,15 +161,15 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
 - [ ] France is the weakest great power in AI campaigns (mean rank 6.3 of 7, conquered in 6 of 8 runs); Germany
-      comes next (4.5, conquered in 2). Over 200 campaigns in the balance lab: France, which borders four great powers,
-      lasts 25% of them and is out within the first hour in 51%; Serbia lasts 18% (out within the hour in 76%); in all,
-      24% of playable seats are out within an hour, which in multiplayer is a player with nothing to do
+      comes next (4.5, conquered in 2). Over 200 campaigns in the balance lab, with the AI work above: France, which borders four
+      great powers, lasts 59% of them (out within the first hour in 11%); Serbia lasts 45% and never wins, Romania
+      wins 1%; 3% of playable seats are out within the hour
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Line infantry is the best buy at every technology level: in the unit lab an army of it beats every other army of
       the same cost, and battle tanks give about 0.56× their price (fuel is scarce). AIs with the infantry doctrine win
-      18% of campaigns, armour 7% and artillery 9%. Armour-doctrine great powers field 7% vehicles against a 47% target
-      (and 20% cavalry against 4%): only a third of them ever build a Tank Works. Make armour pay its way (price, fuel,
-      or the AI's Tank Works and refinery plans)
+      19% of campaigns, armour and artillery 7% each (200 campaigns). Armour-doctrine great powers field 13% vehicles
+      against a 47% target (and 18% cavalry against 4%), though two in three build a Tank Works. Make armour pay its way
+      (price, fuel, or the AI's Tank Works and refinery plans)
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
