@@ -1,10 +1,14 @@
 // Static, derived lookup tables for a scenario (adjacency, distances, objectives).
+import { MOVEMENT } from './config/rules';
 import type { ConnectionKind, Effect, NationDef, NationId, ProvinceDef, ProvinceId, ScenarioDef } from './types';
 
 export interface Neighbor {
   id: ProvinceId;
   kind: ConnectionKind;
-  /** Great-circle distance between the two city anchors, whole kilometres. */
+  /**
+   * Road distance in whole kilometres: great-circle between the two provinces' hubs (see `hub`), or the
+   * short march between a city and the land round it.
+   */
   distanceKm: number;
   label?: string;
 }
@@ -17,6 +21,18 @@ export interface World {
   nationIds: NationId[];
   nations: Record<NationId, NationDef>;
   objectiveIds: ProvinceId[];
+  /** Provinces that are cities, in scenario order. */
+  cityIds: ProvinceId[];
+  /**
+   * For each province, the cities next door: those whose land borders (or is a crossing from) the land this
+   * province lies in. Cities are never neighbours themselves; this is how near they are.
+   */
+  nearbyCities: Record<ProvinceId, ProvinceId[]>;
+  /**
+   * For each province, everywhere next door as civilians reckon it: its own land and city, the lands that land
+   * borders (or is a crossing from) and the cities in them.
+   */
+  vicinity: Record<ProvinceId, ProvinceId[]>;
   totalVp: number;
   /** Provinces where a sea crossing lands (coastal batteries allowed). */
   seaLandings: Set<ProvinceId>;
@@ -31,6 +47,12 @@ export function specialityEffects(scenarioId: string, nation: NationId): Effect[
 }
 
 const EARTH_RADIUS_KM = 6371;
+
+/** Where a province's roads meet: its city, or the city in its middle; land without a city, its anchor. */
+function hub(provinces: Record<ProvinceId, ProvinceDef>, pid: ProvinceId): [number, number] {
+  const p = provinces[pid];
+  return p.city?.coord ?? (p.contains ? provinces[p.contains].anchor : p.anchor);
+}
 
 export function greatCircleKm(a: [number, number], b: [number, number]): number {
   const toRad = Math.PI / 180;
@@ -56,8 +78,10 @@ export function buildWorld(scenario: ScenarioDef): World {
     const key = [c.a, c.b].sort().join('|');
     if (seen.has(key)) throw new Error(`Duplicate connection ${key}`);
     seen.add(key);
-    // Rounded to whole km so movement timing never depends on float trig details.
-    const distanceKm = Math.round(greatCircleKm(provinces[c.a].city.coord, provinces[c.b].city.coord));
+    // Rounded to whole km so movement timing never depends on float trig details. Roads run between the
+    // lands' cities, as they did before cities were split out; a city and its own land are a short march apart.
+    const gate = provinces[c.a].within === c.b || provinces[c.b].within === c.a;
+    const distanceKm = gate ? MOVEMENT.cityGateKm : Math.round(greatCircleKm(hub(provinces, c.a), hub(provinces, c.b)));
     neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label });
     neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label });
   }
@@ -75,6 +99,18 @@ export function buildWorld(scenario: ScenarioDef): World {
     }
   }
   specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality?.effects ?? []])));
+  const cityIds = scenario.provinces.filter((p) => p.city).map((p) => p.id);
+  const nearbyCities: Record<ProvinceId, ProvinceId[]> = {};
+  const vicinity: Record<ProvinceId, ProvinceId[]> = {};
+  for (const p of scenario.provinces) {
+    const land = p.within ?? p.id;
+    const own = provinces[land].contains;
+    const lands = neighbors[land].map((n) => n.id).filter((id) => !provinces[id].city);
+    nearbyCities[p.id] = lands.map((id) => provinces[id].contains).filter((c): c is ProvinceId => !!c);
+    vicinity[p.id] = [land, ...(own ? [own] : []), ...lands.flatMap((id) => [id, ...(provinces[id].contains ? [provinces[id].contains!] : [])])].filter(
+      (id) => id !== p.id,
+    );
+  }
 
   return {
     scenario,
@@ -84,6 +120,9 @@ export function buildWorld(scenario: ScenarioDef): World {
     nationIds: scenario.nations.map((n) => n.id),
     nations,
     objectiveIds,
+    cityIds,
+    nearbyCities,
+    vicinity,
     totalVp,
     seaLandings,
   };
@@ -92,6 +131,21 @@ export function buildWorld(scenario: ScenarioDef): World {
 /** Whether any province starts unowned: neutral states, garrisoned, that anyone may invade. */
 export function hasNeutrals(world: World): boolean {
   return world.provinceIds.some((id) => !world.provinces[id].core);
+}
+
+/** Is this province a city (rather than the land between cities)? */
+export function isCity(world: World, pid: ProvinceId): boolean {
+  return world.provinces[pid].city !== undefined;
+}
+
+/** The land a province lies in: the land round a city, or the land itself. */
+export function landOf(world: World, pid: ProvinceId): ProvinceId {
+  return world.provinces[pid].within ?? pid;
+}
+
+/** The city of a province: a city itself, or the city inside a land (none for land without one). */
+export function cityOf(world: World, pid: ProvinceId): ProvinceId | undefined {
+  return world.provinces[pid].city ? pid : world.provinces[pid].contains;
 }
 
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {

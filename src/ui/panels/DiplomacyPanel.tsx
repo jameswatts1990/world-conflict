@@ -189,8 +189,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
         </tbody>
       </table>
       <p className="intro small">
-        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perProvince} × provinces + {VICTORY.score.perTech} × technologies. The highest score wins when
-        the campaign time limit is reached.
+        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perCity} × cities + {VICTORY.score.perLand} × other provinces + {VICTORY.score.perTech} ×
+        technologies. The highest score wins when the campaign time limit is reached.
       </p>
 
       <h4>
@@ -213,7 +213,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             <li key={id}>
               <button className={`objective-chip${owner === human ? ' mine' : ''}`} onClick={() => onFocus(id)} title={`${world.provinces[id].name}: show on map`}>
                 <span className="obj-vp">{world.provinces[id].objectiveVp}</span>
-                <span className="obj-name">{world.provinces[id].city.name}</span>
+                <span className="obj-name">{world.provinces[id].name}</span>
                 <OwnerFlag world={world} owner={owner} province={id} size={12} />
               </button>
             </li>

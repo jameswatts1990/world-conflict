@@ -23,7 +23,7 @@ describe('cities', () => {
     richen(state, 'fr');
     const town = 'fr-centre';
     expect(state.provinces[town].tier).toBe(1);
-    expect(buildingSlots(state, town)).toBe(CITY.slots[1]);
+    expect(buildingSlots(state, world, town)).toBe(CITY.slots[1]);
     for (const b of ['barracks', 'armsWorks', 'housing'] as BuildingType[]) {
       expect(build(state, town, b).ok).toBe(true);
       finish(state, town);
@@ -83,7 +83,7 @@ describe('cities', () => {
     run(state, 60 * 20);
     expect(state.provinces[town].tier).toBe(2);
     expect(state.events.some((e) => e.kind === 'city-growth' && e.province === town)).toBe(true);
-    expect(buildingSlots(state, town)).toBe(CITY.slots[2]);
+    expect(buildingSlots(state, world, town)).toBe(CITY.slots[2]);
     expect(need).toBeGreaterThan(0);
   });
 
@@ -92,8 +92,13 @@ describe('cities', () => {
     richen(state, 'fr');
     state.nations.fr.research.completed.push('fieldRailways', 'fortificationEngineering', 'coastalDefences', 'propagandaMinistry', 'radioBroadcasting', 'occupationPolicy');
     // Coastal batteries only where a sea crossing lands.
-    expect(checkBuild(state, world, 'fr', 'fr-nord', 'coastalBattery').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-nord-land', 'coastalBattery').ok).toBe(true);
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'coastalBattery').ok).toBe(false);
+    // The land between cities takes infrastructure but nothing that needs a city's slots.
+    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'fortifications').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'railway').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-east-land', 'barracks').reason).toMatch(/Needs a city/);
+    expect(buildingSlots(state, world, 'fr-east-land')).toBe(0);
     // Occupation HQs only in occupied land.
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'garrisonHq').ok).toBe(false);
     state.provinces['de-baden'].owner = 'fr';
@@ -123,7 +128,7 @@ describe('cities', () => {
 });
 
 describe('map towns', () => {
-  it('every secondary town lies inside its own province shape', () => {
+  it('every city lies inside its own shape and every secondary town in its land', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8')) as Topology<{
       provinces: GeometryCollection<{ pid: string }>;
     }>;
@@ -132,8 +137,10 @@ describe('map towns', () => {
     const outside: string[] = [];
     for (const id of world.provinceIds) {
       const def = world.provinces[id];
-      for (const t of [{ name: def.city.name, coord: def.city.coord }, ...def.towns]) {
-        if (!geoContains(shapes.get(id)!, t.coord)) outside.push(`${t.name} (${id})`);
+      // A city lies in its own small province; the towns lie in the land round it (or in its city's edge).
+      if (def.city && !geoContains(shapes.get(id)!, def.city.coord)) outside.push(`${def.city.name} (${id})`);
+      for (const t of def.towns) {
+        if (!geoContains(shapes.get(id)!, t.coord) && !(def.contains && geoContains(shapes.get(def.contains)!, t.coord))) outside.push(`${t.name} (${id})`);
       }
     }
     expect(outside).toEqual([]);

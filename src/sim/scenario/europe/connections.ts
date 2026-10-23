@@ -1,7 +1,9 @@
-// Explicit movement connections. Land links were seeded from shared borders in
-// the map data and then curated by hand; straits are sea crossings for land
-// units (no naval combat in this milestone). This list is authoritative for
-// movement — the map shapes are never consulted for adjacency at runtime.
+// Explicit movement connections between rows. Land links were seeded from shared
+// borders in the map data and then curated by hand; straits are sea crossings for
+// land units (no naval combat in this milestone). Each one joins the two rows'
+// lands; every city is joined only to the land round it (buildConnections in
+// ../build.ts). This list is authoritative for movement — the map shapes are
+// never consulted for adjacency at runtime.
 import type { ConnectionDef } from '../../types';
 
 const land = (a: string, b: string): ConnectionDef => ({ a, b, kind: 'land' });

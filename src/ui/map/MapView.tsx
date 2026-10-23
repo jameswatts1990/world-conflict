@@ -8,7 +8,7 @@
 import { select } from 'd3-selection';
 import 'd3-transition';
 import { zoom, zoomIdentity, zoomTransform, type D3ZoomEvent, type ZoomBehavior, type ZoomTransform } from 'd3-zoom';
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
   armyMorale,
@@ -68,8 +68,6 @@ export interface MapViewProps {
   insetRight: number;
   /** Screen pixels at the bottom covered by a panel (the compact layouts' bottom sheet). */
   insetBottom: number;
-  /** Pan the selected province into view when it falls under a panel (compact layouts). */
-  followSelection: boolean;
   /** Phone layouts: the map opens close in on the capital, detail waits for a closer zoom, and there is no overview map. */
   compact: boolean;
   /**
@@ -89,7 +87,7 @@ export interface MapViewProps {
 }
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
-const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, townNames: 3.2, cityModels: 1.15 };
+const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, cityModels: 1.15 };
 /**
  * Closest zoom (relative to the fit). Counters, models and labels stop growing long before
  * it, so zooming in spreads a crowded front out; close-up terrain tiles keep the relief sharp.
@@ -139,10 +137,10 @@ function cityModelProps(state: GameState, world: World, geo: MapGeometry, id: Pr
   return {
     seed: id,
     tier: ps.tier,
-    capital: def.city.size === 'capital',
+    capital: def.city?.size === 'capital',
     buildings: known ? ps.buildings : {},
     construction: job,
-    freeSlots: known ? buildingSlots(state, id) - slotsUsed(ps.buildings, job) : 0,
+    freeSlots: known ? buildingSlots(state, world, id) - slotsUsed(ps.buildings, job) : 0,
     terrain: def.terrain,
     exits: geo.roads[id],
     // In model units, rounded so the sprite cache sees few distinct values; past the cap the land goes on.
@@ -166,9 +164,12 @@ function portModelProps(state: GameState, world: World, geo: MapGeometry, id: Pr
   };
 }
 
-/** Where a city's model puts things, in screen pixels from its centre. */
+/**
+ * Where a city's model puts things, in screen pixels from its centre. Land has no model (no sprite): its
+ * armies stand round its anchor, clear of its name.
+ */
 interface CityFootprint {
-  sprite: CitySprite;
+  sprite: CitySprite | null;
   /** The city's port and its spot on the coast (map units). */
   port: { image: SpriteImage; x: number; y: number } | null;
   /** The built-up area's middle, and its half-width and half-depth: armies stand around it, the name plate lines up on it. */
@@ -339,7 +340,8 @@ function tint(p: ProvinceLayerProps, id: ProvinceId, i: number, values: string[]
     if (neutral || values[i] === '') return { fill: ownerColor(p.world, owner), opacity: 0.1 };
     return { fill: moraleRamp(Number(values[i])), opacity: 0.62 };
   }
-  if (p.mode === 'development') return { fill: TIER_COLORS[Number(values[i])], opacity: 0.62 };
+  // Land has no city to grow.
+  if (p.mode === 'development') return values[i] === '' ? { fill: ownerColor(p.world, owner), opacity: 0.1 } : { fill: TIER_COLORS[Number(values[i])], opacity: 0.62 };
   if (p.mode === 'supply') {
     if (mine) return { fill: p.supplied[i] === '1' ? '#3fae5a' : '#e0473a', opacity: 0.5 };
     return { fill: ownerColor(p.world, owner), opacity: 0.1 };
@@ -435,6 +437,7 @@ const BorderLayer = memo(function BorderLayer({
         ))}
       </defs>
       <path d={geo.provinceBorders} className="province-border" />
+      <path d={geo.cityBorders} className="city-border" />
       {outlines.map((o) => (
         <g key={o.id} clipPath={`url(#clip-own-${o.id})`}>
           <path d={o.d} className="nation-band wide" stroke={o.color} />
@@ -663,27 +666,23 @@ function LabelLayer({
       </g>
     );
   }
+  // Closer in, the provinces without a city carry their names (cities have their name plates).
   const s = 1 / k;
   return (
     <g className="label-layer" pointerEvents="none">
-      {world.provinceIds.map((id) => {
-        let [x, y] = geo.labelPoints[id];
-        const [ax, ay] = geo.anchors[id];
-        // Keep the name clear of the city marker and the counters stacked over it, or of the model and its plate.
-        const city = cities?.[id];
-        const half = city ? Math.max(80, city.half[0] + 30) : 80;
-        const above = city ? city.above + 24 : 70;
-        const below = city ? city.below + 20 : 40;
-        if (Math.abs(x - ax) * k < half && (y - ay) * k > -above && (y - ay) * k < below) {
-          x = ax + (city?.mid[0] ?? 0) * s;
-          y = ay + (below - 10) * s;
-        }
-        return (
-          <text key={id} x={x} y={y + 12 * s} fontSize={10.5 * s} strokeWidth={2.6 * s} className="province-label">
-            {world.provinces[id].name}
-          </text>
-        );
-      })}
+      {world.provinceIds
+        .filter((id) => !world.provinces[id].city)
+        .map((id) => {
+          const [x, y] = geo.anchors[id];
+          // Under the anchor, where its armies leave room for it (they stand round and above it).
+          const foot = cities?.[id];
+          const top = foot ? foot.below - 3 : 10;
+          return (
+            <text key={id} x={x} y={y + (top + LAND_NAME) * s} fontSize={LAND_NAME * s} strokeWidth={2.6 * s} className="province-label">
+              {world.provinces[id].name}
+            </text>
+          );
+        })}
     </g>
   );
 }
@@ -697,10 +696,16 @@ const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
-/** A city's name plate (shown with its model), relative to the middle of its built-up area, in screen pixels. */
+/** Size of the name a land carries at its anchor, in screen pixels. */
+const LAND_NAME = 10.5;
+
+/**
+ * A city's name plate (shown with its model), or a land's name under its anchor, relative to the middle
+ * of its built-up area (the anchor for land), in screen pixels.
+ */
 function plateBox(world: World, id: ProvinceId, city: CityFootprint): PlateBox {
-  const def = world.provinces[id].city;
-  const [w, h] = plateSize(def.name, def.size === 'capital' ? 10.5 : 9.5);
+  const def = world.provinces[id];
+  const [w, h] = def.city ? plateSize(def.city.name, def.city.size === 'capital' ? 10.5 : 9.5) : plateSize(def.name, LAND_NAME);
   const top = city.below - 3 - city.mid[1];
   return { half: w / 2, top, bottom: top + h };
 }
@@ -748,11 +753,11 @@ function CityGroundLayer({
   seen: ReadonlySet<ProvinceId>;
 }) {
   const px = cityModelScale(ratio);
-  const streets = (id: ProvinceId) => <ModelImage key={id} image={cities[id].sprite.ground} at={geo.anchors[id]} k={k} px={px} fogged={!seen.has(id)} />;
+  const streets = (id: ProvinceId) => <ModelImage key={id} image={cities[id].sprite!.ground} at={geo.anchors[id]} k={k} px={px} fogged={!seen.has(id)} />;
   return (
     <g className="city-ground" pointerEvents="none">
-      {world.provinceIds.filter((id) => !geo.reach[id]).map(streets)}
-      <g clipPath="url(#land-clip)">{world.provinceIds.filter((id) => geo.reach[id]).map(streets)}</g>
+      {world.cityIds.filter((id) => !geo.reach[id]).map(streets)}
+      <g clipPath="url(#land-clip)">{world.cityIds.filter((id) => geo.reach[id]).map(streets)}</g>
     </g>
   );
 }
@@ -762,15 +767,15 @@ function CityNameLayer({ geo, state, world, k, cities }: { geo: MapGeometry; sta
   const s = 1 / k;
   return (
     <g className="city-layer city-names" pointerEvents="none">
-      {world.provinceIds.map((id) => {
+      {world.cityIds.map((id) => {
         const def = world.provinces[id];
         const city = cities[id];
         const [x, y] = geo.anchors[id];
-        const isCapital = def.city.size === 'capital';
+        const isCapital = def.city!.size === 'capital';
         return (
           <g key={id} transform={`translate(${x + city.mid[0] * s},${y}) scale(${s})`}>
             <Plate
-              text={def.city.name}
+              text={def.city!.name}
               y={city.below - 3}
               color={ownerColor(world, state.provinces[id].owner)}
               size={isCapital ? 10.5 : 9.5}
@@ -783,6 +788,18 @@ function CityNameLayer({ geo, state, world, k, cities }: { geo: MapGeometry; sta
   );
 }
 
+/** Pointer handlers for a province, shared by its shape on the map and its city's marker or model. */
+interface ProvinceHandlers {
+  onClick: (pid: ProvinceId, e: React.MouseEvent) => void;
+  onContext: (pid: ProvinceId, e: React.MouseEvent) => void;
+  onHover: (pid: ProvinceId | null) => void;
+}
+
+/**
+ * The cities: a marker growing with the city zoomed out, its 3D model closer in, each with any objective
+ * badge and capture ring, and the land's towns as dots. A city is a small province: its marker or built-up
+ * area answers a click or tap as well as its shape does, so it is easy to hit with a finger.
+ */
 function CityLayer({
   geo,
   state,
@@ -791,6 +808,7 @@ function CityLayer({
   ratio,
   cities,
   seen,
+  handlers,
 }: {
   geo: MapGeometry;
   state: GameState;
@@ -799,43 +817,51 @@ function CityLayer({
   ratio: number;
   cities: Record<ProvinceId, CityFootprint> | null;
   seen: ReadonlySet<ProvinceId>;
+  handlers: ProvinceHandlers;
 }) {
   const s = 1 / k;
   const px = cityModelScale(ratio);
+  const hit = (id: ProvinceId) => ({
+    'data-city': id,
+    onClick: (e: React.MouseEvent) => {
+      e.stopPropagation();
+      handlers.onClick(id, e);
+    },
+    onContextMenu: (e: React.MouseEvent) => {
+      e.stopPropagation();
+      handlers.onContext(id, e);
+    },
+    onMouseEnter: () => handlers.onHover(id),
+    onMouseLeave: () => handlers.onHover(null),
+  });
   return (
-    <g className="city-layer" pointerEvents="none">
-      {ratio >= ZOOM.townDots &&
-        world.provinceIds.map((id) =>
-          geo.towns[id].map((t) => (
-            <g key={`${id}-${t.name}`} transform={`translate(${t.x},${t.y}) scale(${s})`}>
-              <circle r={1.8} className="town-dot" />
-              {ratio >= ZOOM.townNames && (
-                <text y={-4.5} className="town-label">
-                  {t.name}
-                </text>
-              )}
-            </g>
-          )),
-        )}
+    <g className="city-layer">
+      {ratio >= ZOOM.townDots && (
+        <g pointerEvents="none">
+          {world.provinceIds.map((id) =>
+            geo.towns[id].map((t) => <circle key={`${id}-${t.name}`} cx={t.x} cy={t.y} r={1.8 * s} className="town-dot" />),
+          )}
+        </g>
+      )}
       {cities &&
-        world.provinceIds.map((id) => {
+        world.cityIds.map((id) => {
           const port = cities[id].port;
           return port && <ModelImage key={`port-${id}`} image={port.image} at={[port.x, port.y]} k={k} px={px} fogged={!seen.has(id)} />;
         })}
-      {world.provinceIds.map((id) => {
+      {world.cityIds.map((id) => {
         const def = world.provinces[id];
         const [x, y] = geo.anchors[id];
         const ps = state.provinces[id];
         // Under the fog of war nobody reports a siege.
         const capture = seen.has(id) ? ps.capture : null;
         const fogged = !seen.has(id);
-        const size = def.city.size;
+        const size = def.city!.size;
         const isCapital = size === 'capital';
         // Markers grow with the city: tier 1 (town) to tier 5 (world city).
         const tierScale = 0.76 + ps.tier * 0.12;
         const showName = isCapital ? ratio >= ZOOM.capitals : size === 'major' ? ratio >= ZOOM.majorCities : ratio >= ZOOM.towns;
         const city = cities?.[id];
-        if (city) {
+        if (city?.sprite) {
           const sp = city.sprite;
           const st = sp.structures;
           // The capture ring circles the built-up area.
@@ -843,15 +869,16 @@ function CityLayer({
           const [rx, ry] = [city.half[0] + 1.5 * px, city.half[1] + px];
           return (
             <g key={id} transform={`translate(${x},${y}) scale(${s})`} data-city-model={id} className={fogged ? 'fogged' : undefined}>
-              <image href={st.href} x={-st.cx * px} y={-st.cy * px} width={st.width * px} height={st.height * px} />
+              <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="city-hit" {...hit(id)} />
+              <image href={st.href} x={-st.cx * px} y={-st.cy * px} width={st.width * px} height={st.height * px} pointerEvents="none" />
               {capture && (
-                <g className="capture">
+                <g className="capture" pointerEvents="none">
                   <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="capture-track" />
                   <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="capture-ring" stroke={world.nations[capture.by]?.color} pathLength={100} strokeDasharray={`${(capture.progress / capture.required) * 100} 100`} />
                 </g>
               )}
               {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 4},${-sp.back * px * 0.3})`}>
+                <g className="vp-badge-map" transform={`translate(${cx + city.half[0] + 4},${-sp.back * px * 0.3})`} pointerEvents="none">
                   <circle r={5.6} />
                   <text y={3.1}>{def.objectiveVp}</text>
                 </g>
@@ -861,48 +888,51 @@ function CityLayer({
         }
         return (
           <g key={id} transform={`translate(${x},${y}) scale(${s})`} className={fogged ? 'fogged' : undefined}>
-            {capture && (
-              <g className="capture">
-                <circle r={11} className="capture-track" />
-                <circle
-                  r={11}
-                  className="capture-ring"
-                  stroke={world.nations[capture.by]?.color}
-                  strokeDasharray={`${(capture.progress / capture.required) * 69.1} 69.1`}
-                  transform="rotate(-90)"
-                />
+            <circle r={isCapital ? 14 : 12} className="city-hit" {...hit(id)} />
+            <g pointerEvents="none">
+              {capture && (
+                <g className="capture">
+                  <circle r={11} className="capture-track" />
+                  <circle
+                    r={11}
+                    className="capture-ring"
+                    stroke={world.nations[capture.by]?.color}
+                    strokeDasharray={`${(capture.progress / capture.required) * 69.1} 69.1`}
+                    transform="rotate(-90)"
+                  />
+                </g>
+              )}
+              <g transform={`scale(${tierScale})`}>
+                {isCapital ? (
+                  <g className={`city-icon capital${def.core ? ' national' : ''}`}>
+                    <circle r={6.6} />
+                    <path d={STAR} transform="scale(0.72)" />
+                  </g>
+                ) : size === 'major' ? (
+                  <g className="city-icon major">
+                    <circle r={4.2} />
+                    <circle r={1.6} className="dot" />
+                  </g>
+                ) : (
+                  <circle r={2.7} className="city-icon town" />
+                )}
               </g>
-            )}
-            <g transform={`scale(${tierScale})`}>
-              {isCapital ? (
-                <g className={`city-icon capital${def.core ? ' national' : ''}`}>
-                  <circle r={6.6} />
-                  <path d={STAR} transform="scale(0.72)" />
+              {def.objectiveVp ? (
+                <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
+                  <circle r={5.6} />
+                  <text y={3.1}>{def.objectiveVp}</text>
                 </g>
-              ) : size === 'major' ? (
-                <g className="city-icon major">
-                  <circle r={4.2} />
-                  <circle r={1.6} className="dot" />
-                </g>
-              ) : (
-                <circle r={2.7} className="city-icon town" />
+              ) : null}
+              {showName && (
+                <Plate
+                  text={def.city!.name}
+                  y={isCapital ? 8.5 : 6.5}
+                  color={ownerColor(world, ps.owner)}
+                  size={isCapital ? 10.5 : 9.5}
+                  className={isCapital ? 'capital' : ''}
+                />
               )}
             </g>
-            {def.objectiveVp ? (
-              <g className="vp-badge-map" transform={`translate(${isCapital ? 11 : 9},1)`}>
-                <circle r={5.6} />
-                <text y={3.1}>{def.objectiveVp}</text>
-              </g>
-            ) : null}
-            {showName && (
-              <Plate
-                text={def.city.name}
-                y={isCapital ? 8.5 : 6.5}
-                color={ownerColor(world, ps.owner)}
-                size={isCapital ? 10.5 : 9.5}
-                className={isCapital ? 'capital' : ''}
-              />
-            )}
           </g>
         );
       })}
@@ -1056,6 +1086,7 @@ function ArmyLayer({
   ctrl,
   geo,
   k,
+  panning,
   selectedArmies,
   onArmyClick,
   onArmyContext,
@@ -1064,13 +1095,13 @@ function ArmyLayer({
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
+  panning: RefObject<boolean>;
   selectedArmies: ArmyId[];
   onArmyClick: (army: Army, additive: boolean) => void;
   onArmyContext: (army: Army) => void;
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }) {
-  // Re-render every animation frame for smooth interpolation of marching armies.
-  useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
+  useArmyClock(ctrl, panning);
   const { state, human, world } = ctrl;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
@@ -1151,6 +1182,24 @@ function ArmyLayer({
 export function unitModelScale(ratio: number): number {
   return Math.min(20, 2.5 + 5 * ratio);
 }
+
+/**
+ * The army layers' clock. While an army is marching they redraw every animation frame, so marches glide;
+ * otherwise once a game tick. While the map is being dragged or pinched they wait, so moving the map
+ * comes first, and catch up when it is let go.
+ */
+function useArmyClock(ctrl: GameController, panning: RefObject<boolean>): void {
+  const last = useRef(0);
+  useSyncExternalStore(ctrl.subscribeFrame, () => {
+    if (panning.current) return last.current;
+    const marching = Object.values(ctrl.state.armies).some((a) => a.move?.leg);
+    last.current = ctrl.state.tick * 1000 + (marching ? Math.floor(ctrl.loop.alpha * 1000) : 0);
+    return last.current;
+  });
+}
+
+/** While a pinch or wheel zoom lasts, the map is redrawn for the new scale at most this often (ms). */
+const RESCALE_MS = 120;
 
 /** How long an army takes to walk to a new spot (arriving, setting off, making room). */
 const SETTLE_MS = 450;
@@ -1262,6 +1311,7 @@ function ArmyModelLayer({
   px,
   cities,
   back,
+  panning,
   selectedArmies,
   onArmyClick,
   onArmyContext,
@@ -1270,6 +1320,7 @@ function ArmyModelLayer({
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
+  panning: RefObject<boolean>;
   /** Screen pixels per model unit. */
   px: number;
   cities: Record<ProvinceId, CityFootprint>;
@@ -1280,8 +1331,7 @@ function ArmyModelLayer({
   onArmyContext: (army: Army) => void;
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }) {
-  // Re-render every animation frame while the game runs, for smooth marching.
-  useSyncExternalStore(ctrl.subscribeFrame, () => ctrl.state.tick * 1000 + Math.floor(ctrl.loop.alpha * 1000));
+  useArmyClock(ctrl, panning);
   // While paused, armies still finish walking to new spots.
   const [, bump] = useState(0);
   const motion = useRef(new Map<ArmyId, Motion>());
@@ -1621,7 +1671,15 @@ export function MapView(props: MapViewProps) {
   insetBottomRef.current = props.insetBottom;
   const compactRef = useRef(props.compact);
   compactRef.current = props.compact;
+  // The view the map is drawn for (`transform`), and the one on screen right now (`live`). A pan only
+  // moves the picture: the zoom handler sets the map group's transform itself, and React draws again
+  // when the gesture ends. A change of scale redraws the counters, labels and models for the new zoom
+  // as well, at most every RESCALE_MS while it lasts.
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
+  const live = useRef<ZoomTransform>(zoomIdentity);
+  const viewRef = useRef<SVGGElement>(null);
+  // Whether a drag, pinch, wheel or animated move of the map is under way.
+  const panning = useRef(false);
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
   const [hovered, setHovered] = useState<ProvinceId | null>(null);
@@ -1643,7 +1701,7 @@ export function MapView(props: MapViewProps) {
   // Build every city's model, and every army's at rest, in idle moments, so the first zoom-in does not stall.
   useEffect(() => {
     const seen = ctrl.sight();
-    const jobs: (() => void)[] = world.provinceIds.map((id) => () => void citySprite(cityModelProps(ctrl.state, world, geo, id, seen.has(id))));
+    const jobs: (() => void)[] = world.cityIds.map((id) => () => void citySprite(cityModelProps(ctrl.state, world, geo, id, seen.has(id))));
     for (const a of Object.values(ctrl.state.armies)) {
       const type = mainUnitType(composition(a));
       for (const heading of [0, 4]) jobs.push(() => void unitSprite(ctrl.world, type, unitGen(ctrl.state, a.owner, type), a.owner, heading));
@@ -1675,7 +1733,27 @@ export function MapView(props: MapViewProps) {
       .clickDistance(5)
       // Shift-drag draws a selection box instead of panning.
       .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
-      .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => setTransform(e.transform));
+      .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => {
+        live.current = e.transform;
+        viewRef.current?.setAttribute('transform', e.transform.toString());
+        if (!panning.current) commit();
+        else if (e.transform.k !== drawnK && !rescale) rescale = window.setTimeout(commit, RESCALE_MS);
+      })
+      .on('start', () => {
+        panning.current = true;
+      })
+      .on('end', () => {
+        panning.current = false;
+        commit();
+      });
+    let drawnK = 0;
+    let rescale = 0;
+    const commit = () => {
+      window.clearTimeout(rescale);
+      rescale = 0;
+      drawnK = live.current.k;
+      setTransform(live.current);
+    };
     zoomRef.current = behavior;
     setFitK(fit.k);
     setSize([width, height]);
@@ -1691,6 +1769,7 @@ export function MapView(props: MapViewProps) {
     ro.observe(svg);
     return () => {
       ro.disconnect();
+      window.clearTimeout(rescale);
       sel.on('.zoom', null);
     };
   }, [geo, world, ctrl]);
@@ -1714,26 +1793,7 @@ export function MapView(props: MapViewProps) {
       .call(behavior.transform, zoomIdentity.translate(cx - x * k, cy - y * k).scale(k));
   }, []);
 
-  // On a small screen the selection's panel can cover the province itself: bring it back
-  // into the open part of the map (when that part is big enough to be worth it).
-  useEffect(() => {
-    const svg = svgRef.current;
-    const pid = props.selectedProvince;
-    if (!props.followSelection || !pid || !svg) return;
-    const { width, height } = svg.getBoundingClientRect();
-    const w = width - props.insetRight;
-    const h = height - props.insetBottom;
-    if (w < 160 || h < 160) return;
-    const [x, y] = geo.anchors[pid];
-    const [sx, sy] = zoomTransform(svg).apply([x, y]);
-    // Army counters stack above the city and the map toolbar sits at the top.
-    if (sx >= 30 && sx <= w - 30 && sy >= 90 && sy <= h - 30) return;
-    centreOn(x, y, null, 300);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.selectedProvince, props.insetRight, props.insetBottom, props.followSelection]);
-
-  // Centre on a province when requested (e.g. clicking an event). Declared after the
-  // follow effect above: when both fire, this zoom's transition wins.
+  // Centre on a province when requested (e.g. clicking an event). Selecting one never moves the map.
   useEffect(() => {
     if (!props.focus) return;
     const [x, y] = geo.anchors[props.focus.province];
@@ -1837,7 +1897,7 @@ export function MapView(props: MapViewProps) {
     props.mapMode === 'morale'
       ? world.provinceIds.map((id) => (seen.has(id) ? Math.round(state.provinces[id].morale / 2) * 2 : '')).join('|')
       : props.mapMode === 'development'
-        ? world.provinceIds.map((id) => state.provinces[id].tier).join('|')
+        ? world.provinceIds.map((id) => (world.provinces[id].city ? state.provinces[id].tier : '')).join('|')
         : '';
   const ownerOf = useMemo(() => {
     const o: Record<ProvinceId, string> = {};
@@ -1904,6 +1964,11 @@ export function MapView(props: MapViewProps) {
     if (!modelPx) return null;
     const out: Record<ProvinceId, CityFootprint> = {};
     for (const [i, id] of world.provinceIds.entries()) {
+      // Land has no model: its armies stand round its anchor, its name just below.
+      if (!world.provinces[id].city) {
+        out[id] = { sprite: null, port: null, mid: [0, 0], half: [0, 0], above: 0, below: 14 };
+        continue;
+      }
       const known = fogSig[i] === '1';
       const sprite = citySprite(cityModelProps(state, world, geo, id, known));
       const portProps = portModelProps(state, world, geo, id, known);
@@ -1916,7 +1981,7 @@ export function MapView(props: MapViewProps) {
         const [ax, ay] = geo.anchors[id];
         const im = port.image;
         const [left, top] = [(port.x - ax) * k - im.cx * modelPx, (port.y - ay) * k - im.cy * modelPx];
-        const city = world.provinces[id].city;
+        const city = world.provinces[id].city!;
         const [w, h] = plateSize(city.name, city.size === 'capital' ? 10.5 : 9.5);
         const overlap = left < mid[0] + w / 2 && left + im.width * modelPx > mid[0] - w / 2 && top < below - 3 + h && top + im.height * modelPx > below - 3;
         if (overlap) below = top + im.height * modelPx + 3;
@@ -1972,7 +2037,8 @@ export function MapView(props: MapViewProps) {
             );
           })}
         </defs>
-        <g transform={transform.toString()}>
+        {/* Drawn at the live view: React may redraw in the middle of a pan (the game runs on). */}
+        <g ref={viewRef} transform={live.current.toString()}>
           <SeaLayer geo={geo} glow={glow} />
           <WorldLayer geo={geo} />
           <TerrainLayer geo={geo} world={world} texture={texture} />
@@ -2019,12 +2085,22 @@ export function MapView(props: MapViewProps) {
               <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} cities={cities} />
               {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />}
               <g ref={setArmyBack} className="army-layer army-models army-back" />
-              <CityLayer geo={geo} state={state} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />
+              <CityLayer
+                geo={geo}
+                state={state}
+                world={world}
+                k={k}
+                ratio={ratio}
+                cities={cities}
+                seen={seen}
+                handlers={{ onClick: onProvinceClick, onContext: onProvinceContext, onHover }}
+              />
               {cities ? (
                 <ArmyModelLayer
                   ctrl={ctrl}
                   geo={geo}
                   k={k}
+                  panning={panning}
                   px={unitModelScale(ratio)}
                   cities={cities}
                   back={armyBack}
@@ -2038,6 +2114,7 @@ export function MapView(props: MapViewProps) {
                   ctrl={ctrl}
                   geo={geo}
                   k={k}
+                  panning={panning}
                   selectedArmies={props.selectedArmies}
                   onArmyClick={onArmyClick}
                   onArmyContext={onArmyContext}
@@ -2050,7 +2127,7 @@ export function MapView(props: MapViewProps) {
                   {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
                   <g transform={`translate(${geo.anchors[preview.to].join(',')}) scale(${1 / k})`}>
                     <Plate
-                      text={preview.path ? `${world.provinces[preview.to].city.name} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
+                      text={preview.path ? `${world.provinces[preview.to].name} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
                       y={-34}
                       size={10.5}
                       className="eta"

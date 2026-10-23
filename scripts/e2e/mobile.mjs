@@ -1,8 +1,10 @@
 // Browser check of the phone layouts against the test build: a touch screen
 // held upright (bottom tab bar, bottom sheet), then turned on its side (slim tab bar,
 // side sheet). It plays a short stretch as Spain through the touch controls only:
-// build, recruit, the sheet's handle, a move previewed and confirmed, research,
-// field reports, pause and save; and checks that nothing spills off the screen.
+// a city's full-screen page (build, recruit with a steady layout, a unit's details),
+// the sheet's handle on a province without a city, a move previewed and confirmed,
+// research, field reports, pause and save; and checks that nothing spills off the
+// screen and that tapping never moves the map.
 //
 //   npm run build:e2e && npm run e2e:mobile
 //
@@ -43,7 +45,7 @@ function step(name, detail = {}) {
 }
 
 await waitForServer();
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 // A common Android phone held upright: narrower than most iPhones.
 const context = await browser.newContext({ viewport: { width: 360, height: 780 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await context.newPage();
@@ -96,6 +98,20 @@ async function armyPoint(id) {
 
 const tapAt = (p) => page.touchscreen.tap(p.x, p.y);
 
+/** The middle of a city's marker or model, which answers taps for the city, if nothing covers it. */
+async function cityPoint(pid) {
+  const p = await page.evaluate((pid) => {
+    const el = document.querySelector(`[data-city="${pid}"]`);
+    const r = el.getBoundingClientRect();
+    const [x, y] = [r.left + r.width / 2, r.top + r.height / 2];
+    return document.elementFromPoint(x, y) === el ? { x, y } : null;
+  }, pid);
+  if (!p) throw new Error(`the city ${pid} is covered or off screen`);
+  return p;
+}
+
+const mapView = () => page.evaluate(() => document.querySelector('svg.map > g').getAttribute('transform'));
+
 /** Fails if the briefing's text or buttons reach past the dialog or the screen. */
 async function checkBriefingFits(label) {
   const problem = await page.evaluate(() => {
@@ -117,7 +133,7 @@ async function checkFits(label) {
     const w = window.innerWidth;
     const h = window.innerHeight;
     if (document.documentElement.scrollWidth > w) out.push(`page scrolls sideways (${document.documentElement.scrollWidth} > ${w})`);
-    const parts = ['.topbar', '.nav-rail', '.map-toolbar', '.map-nav', '.selection-dock', '.tb-res', '.tb-vp', '.tb-clock', '.tb-speed', '.rail-btn'];
+    const parts = ['.topbar', '.nav-rail', '.map-toolbar', '.map-nav', '.selection-dock', '.city-page', '.tb-res', '.tb-vp', '.tb-clock', '.tb-speed', '.rail-btn'];
     for (const sel of parts) {
       for (const el of document.querySelectorAll(sel)) {
         const r = el.getBoundingClientRect();
@@ -157,20 +173,44 @@ try {
   await shot('03-portrait');
   step('campaign started on an upright phone; briefing in touch terms and on screen; map clear; HUD fits the screen');
 
-  // 2. Tap Madrid: its city opens in the bottom sheet, halfway up. Build and recruit there.
-  await tapAt(await provincePoint('es-madrid'));
-  await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
+  // 2. Tap Madrid: the city opens as a page of its own, without the skyline, and the map stays where it was.
+  //    Build and recruit there: recruiting again and again never moves the Recruit button.
+  const before = await mapView();
+  await tapAt(await cityPoint('es-madrid'));
+  await page.waitForSelector('[data-testid="city-page"] [data-testid="province-panel"][data-province="es-madrid"]');
   await settle();
-  if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'half') throw new Error('the sheet did not open at half');
+  if (await page.$('.selection-dock')) throw new Error('the city page and the sheet are both open');
+  if (await page.$('.city-page .city-scene-wrap')) throw new Error('the phone city page should not show the skyline');
+  if ((await mapView()) !== before) throw new Error('tapping a city moved the map');
+  await checkFits('city page');
   await page.tap('[data-build="industry"]');
   if (!(await state((s) => s.provinces['es-madrid'].construction))) throw new Error('construction did not start');
   await page.tap('[data-tab="recruit"]');
+  const button = async () => (await page.locator('[data-recruit="infantry"]').boundingBox()).y;
+  const y0 = await button();
   await page.tap('[data-recruit="infantry"]');
-  if ((await state((s) => s.provinces['es-madrid'].recruitQueue.length)) !== 1) throw new Error('recruitment did not queue');
-  await shot('04-madrid-sheet');
-  step('tapped Madrid: city in the bottom sheet; ordered Industrial Works and infantry');
+  await page.tap('[data-recruit="infantry"]');
+  if ((await state((s) => s.provinces['es-madrid'].recruitQueue.length)) !== 2) throw new Error('recruitment did not queue');
+  if (Math.abs((await button()) - y0) > 0.5) throw new Error('recruiting moved the Recruit button');
+  if (await page.$('[data-unit-card="lightTank"]')) throw new Error('units not yet researched should not be offered');
+  await shot('04-madrid-page');
+  await page.tap('[data-unit-info="artillery"]');
+  await page.waitForSelector('[data-testid="unit-info"][data-unit="artillery"]');
+  const info = await page.textContent('[data-testid="unit-info"]');
+  if (!info.includes('Strengths') || !info.includes('Weaknesses')) throw new Error('the unit details lack strengths and weaknesses');
+  await shot('05-unit-info');
+  await page.tap('.modal [aria-label="Close"]');
+  await page.tap('[data-testid="close-page"]');
+  if (await page.$('[data-testid="city-page"]')) throw new Error('the city page did not close');
+  step('tapped Madrid: a full-screen city page without the skyline, the map unmoved; built, recruited twice with the button in place, read the artillery details');
 
-  // 3. The handle: drag up to full, then down past peek to close.
+  // 3. A province without a city opens in the bottom sheet, halfway up. Its handle drags up to full,
+  //    then down past peek to close.
+  await tapAt(await provincePoint('es-madrid-land'));
+  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-land"]');
+  await settle();
+  if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'half') throw new Error('the sheet did not open at half');
+  if ((await mapView()) !== before) throw new Error('tapping a province moved the map');
   const handle = await page.locator('[data-testid="sheet-handle"]').boundingBox();
   const hx = handle.x + handle.width / 2;
   const hy = handle.y + handle.height / 2;
@@ -187,7 +227,7 @@ try {
   await page.mouse.up();
   await settle();
   if (await page.$('.selection-dock')) throw new Error('dragging the handle down did not close the sheet');
-  step('dragged the sheet open to full, then down to close it');
+  step('tapped La Mancha: a province without a city in the bottom sheet; dragged it open to full, then down to close it');
 
   // 4. Move an army: tap it, Move, tap the destination (a preview), then Confirm.
   const army = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
@@ -196,7 +236,7 @@ try {
   await page.tap('[data-testid="move-mode"]');
   await settle();
   if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'peek') throw new Error('move mode did not lower the sheet');
-  await tapAt(await provincePoint('es-castile'));
+  await tapAt(await provincePoint('es-castile-land'));
   await settle();
   const banner = await page.textContent('[data-testid="move-confirm"]');
   if (!banner.includes('Move to')) throw new Error(`no route preview: "${banner}"`);
@@ -204,7 +244,7 @@ try {
   await shot('05-move-preview');
   await page.tap('[data-testid="confirm-move"]');
   const path = await state(`(s) => s.armies['${army}'].move?.path`);
-  if (!path || path.at(-1) !== 'es-castile') throw new Error('move order not given');
+  if (!path || path.at(-1) !== 'es-castile-land') throw new Error('move order not given');
   step('tapped an army, Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
   // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
@@ -243,7 +283,7 @@ try {
   //    pause from the top bar, resume from the Paused banner.
   await page.evaluate(() => window.__game.setSpeed(20));
   await page.tap('[data-testid="pause"]');
-  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile' && !s.armies['${army}'].move`, 30000, 'army arrival');
+  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile-land' && !s.armies['${army}'].move`, 30000, 'army arrival');
   await page.tap('[data-testid="pause"]');
   await page.tap('[data-testid="paused-banner"]');
   if (await page.evaluate(() => window.__game.loop.paused)) throw new Error('tapping the Paused banner did not resume');
@@ -265,12 +305,20 @@ try {
   if (!turned.includes('layout-landscape')) throw new Error(`expected the landscape layout, got "${turned}"`);
   const bar = await page.locator('.nav-rail').boundingBox();
   if (bar.width < 840 || bar.y + bar.height < 389 || bar.height > 48) throw new Error(`expected a slim tab bar along the bottom, got ${JSON.stringify(bar)}`);
-  await tapAt(await provincePoint('es-madrid'));
-  await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
+  // Turning the phone keeps the view where it was: bring the capital back into it (C).
+  await page.keyboard.press('c');
+  await page.waitForTimeout(700);
+  await tapAt(await cityPoint('es-madrid'));
+  await page.waitForSelector('[data-testid="city-page"] [data-testid="province-panel"][data-province="es-madrid"]');
   await settle();
   await checkFits('landscape');
   await shot('08-landscape');
-  step('turned the phone: landscape layout with the tab bar along the bottom and the city in a side sheet; HUD fits the screen');
+  await page.tap('[data-testid="close-page"]');
+  await tapAt(await provincePoint('es-madrid-land'));
+  await page.waitForSelector('.selection-dock [data-testid="province-panel"][data-province="es-madrid-land"]');
+  await settle();
+  await checkFits('landscape sheet');
+  step('turned the phone: landscape layout with the tab bar along the bottom, the city as a page and La Mancha in a side sheet; HUD fits the screen');
 } catch (e) {
   summary.errors.push(`step failed: ${e.message}`);
   await shot('error').catch(() => {});

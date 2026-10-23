@@ -189,7 +189,7 @@ export function ArmyPanel({
 
         {army.move && dest && (
           <div className="march-box">
-            {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
+            {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].name}`} tone="blue" />}
             <div className="march-meta">
               <span>
                 <Icon name="target" size={13} /> {world.provinces[dest].name}

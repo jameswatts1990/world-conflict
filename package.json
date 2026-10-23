@@ -17,7 +17,7 @@
     "balance:units": "vite-node scripts/balance/units.ts",
     "balance:tune": "vite-node scripts/balance/tune.ts",
     "map:fetch": "node scripts/map/fetch-natural-earth.mjs",
-    "map:build": "node scripts/map/build-map.mjs",
+    "map:build": "node scripts/map/build-map.mjs && vite-node scripts/map/city-provinces.ts",
     "audio:fetch": "node scripts/audio/fetch.mjs",
     "audio:build": "node scripts/audio/build.mjs",
     "e2e": "node scripts/e2e/playthrough.mjs",

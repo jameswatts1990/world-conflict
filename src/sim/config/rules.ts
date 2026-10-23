@@ -113,8 +113,11 @@ export const MOVEMENT = {
   terrain: { plains: 1, forest: 1.1, hills: 1.15, mountains: 1.35, urban: 1, marsh: 1.25 } satisfies Record<Terrain, number>,
   /** Road distance is longer than the great-circle distance. */
   routeFactor: 1.15,
-  /** A leg never takes less than this many seconds. */
+  /** A leg never takes less than this many seconds... */
   minLegSeconds: 15,
+  /** ...except out of a city into the land round it, or back: this short march (km), at least this long. */
+  cityGateKm: 12,
+  minGateSeconds: 5,
 };
 
 export const CAPTURE = {
@@ -147,5 +150,6 @@ export const VICTORY = {
   objectiveShare: 0.4,
   /** Objective threshold must be held continuously this long. */
   holdSeconds: 90,
-  score: { perVp: 10, perProvince: 3, perTech: 2 },
+  /** A city and the land round it together score what one province did before cities were split out. */
+  score: { perVp: 10, perCity: 2, perLand: 1, perTech: 2 },
 };

@@ -9,6 +9,7 @@ import { DIPLOMACY } from '../config/rules';
 import { atWar, heldVp, isContender, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
+import { landOf } from '../world';
 import { graceOver, issue, mainEnemy, nationPower, type Ctx } from './context';
 
 function neighbourNations(ctx: Ctx): NationId[] {
@@ -36,9 +37,14 @@ export function runawayLeader(ctx: Ctx): NationId | null {
   return best?.id ?? null;
 }
 
-/** Enemy's core provinces I hold, a rough measure of who is winning a war. */
+/** Enemy's home cities I hold (its land without them counting for less), a rough measure of who is winning a war. */
 function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId): number {
-  return ctx.world.provinceIds.filter((id) => ctx.world.provinces[id].core === victim && ctx.state.provinces[id].owner === holder).length;
+  let held = 0;
+  for (const id of ctx.world.provinceIds) {
+    const def = ctx.world.provinces[id];
+    if (def.core === victim && ctx.state.provinces[id].owner === holder) held += def.city ? 1 : AI.landShare;
+  }
+  return held;
 }
 
 /**
@@ -151,11 +157,12 @@ export function handleDiplomacy(ctx: Ctx): void {
     if (wars >= ctx.level.maxWarsOnTarget) continue;
     const theirPower = nationPower(state, target) * (1 - AI.distractedDiscount * wars) + 1;
     const ratio = myPower / theirPower;
-    // Prize: their objectives that border my land.
+    // Prize: their objectives whose land borders mine.
     let prize = 0;
     for (const pid of world.objectiveIds) {
       if (state.provinces[pid].owner !== target) continue;
-      if (world.neighbors[pid].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
+      const land = landOf(world, pid);
+      if (ctx.ownedSet.has(land) || world.neighbors[land].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
     }
     const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
     const expansion = minor && opening === 'expand' ? AI.expandMinorBonus : 0;

@@ -158,6 +158,8 @@ export function GameScreen({
   const [mapHeight, setMapHeight] = useState(() => window.innerHeight);
   // Touch move mode: the destination tapped once, previewed until confirmed.
   const [moveTarget, setMoveTarget] = useState<ProvinceId | null>(null);
+  // Phone layouts: a city tapped on the map opens as a full-screen page.
+  const [cityPage, setCityPage] = useState<ProvinceId | null>(null);
   const lastEventId = useRef(state.nextEventId - 1);
   const dockRef = useRef<HTMLElement>(null);
   const mapWrapRef = useRef<HTMLDivElement>(null);
@@ -256,12 +258,21 @@ export function GameScreen({
     [ctrl, selectedArmies, moveMode],
   );
 
-  const selectProvince = useCallback((pid: ProvinceId | null) => {
-    setSelectedProvince(pid);
-    setSelectedArmies([]);
-    setMoveMode(null);
-    // Tapping the province already selected raises a peeking sheet too.
-    if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
+  const selectProvince = useCallback(
+    (pid: ProvinceId | null) => {
+      setSelectedProvince(pid);
+      setSelectedArmies([]);
+      setMoveMode(null);
+      // On a phone a city opens as a page of its own, with room for its choices; land keeps the sheet.
+      setCityPage(compact && pid && world.provinces[pid].city ? pid : null);
+      // Tapping the province already selected raises a peeking sheet too.
+      if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
+    },
+    [compact, world],
+  );
+  const closeCityPage = useCallback(() => {
+    setCityPage(null);
+    setSelectedProvince(null);
   }, []);
 
   // Moving: in portrait the sheet drops to peek so the map is free to pick a destination.
@@ -287,6 +298,7 @@ export function GameScreen({
         ctrl.setSpeed(CLIENT_SPEEDS[Number(e.key) - 1].multiplier);
       } else if (e.key === 'Escape') {
         if (moveMode) setMoveMode(null);
+        else if (cityPage) closeCityPage();
         else if (legendOpen) setLegendOpen(false);
         else {
           setSelectedArmies([]);
@@ -315,7 +327,7 @@ export function GameScreen({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, moveMode, legendOpen, selectedArmies, focusOn, cycleArmy, world, human]);
+  }, [ctrl, moveMode, legendOpen, selectedArmies, focusOn, cycleArmy, world, human, cityPage, closeCityPage]);
 
   useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
   const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
@@ -329,7 +341,8 @@ export function GameScreen({
   const offers = state.outcome ? [] : state.peaceOffers.filter((o) => o.to === human);
   const offerTicks = scaledTicks(state, DIPLOMACY.peaceOfferExpirySeconds);
   const armySelected = selectedArmies.length > 0 && !!state.armies[selectedArmies[0]];
-  const dockOpen = armySelected || !!selectedProvince;
+  // The city page takes the dock's place while it is open.
+  const dockOpen = (armySelected || !!selectedProvince) && !cityPage;
   const outcome = state.outcome;
 
   // A new selection raises the portrait sheet to half, where an army's orders are in reach;
@@ -382,7 +395,6 @@ export function GameScreen({
             mapMode={mapMode}
             insetRight={insetRight}
             insetBottom={insetBottom}
-            followSelection={compact}
             compact={compact}
             touch={touch}
             moveTarget={moveTarget}
@@ -449,11 +461,11 @@ export function GameScreen({
                       <span>Tap a destination</span>
                     ) : pendingRoute?.blocked ? (
                       <span>
-                        {world.provinces[moveTarget].city.name} <span className="muted">· {pendingRoute.blocked}</span>
+                        {world.provinces[moveTarget].name} <span className="muted">· {pendingRoute.blocked}</span>
                       </span>
                     ) : (
                       <span>
-                        {ORDER[moveMode].hint} {world.provinces[moveTarget].city.name}
+                        {ORDER[moveMode].hint} {world.provinces[moveTarget].name}
                         {pendingRoute && <span className="muted"> · {formatDuration(pendingRoute.ticks, state)}</span>}
                       </span>
                     )}
@@ -562,14 +574,35 @@ export function GameScreen({
               )}
               {selectedProvince && (
                 <ProvincePanel
+                  key={selectedProvince}
                   ctrl={ctrl}
                   pid={selectedProvince}
                   selectedArmies={selectedArmies}
                   onSelectArmy={selectArmy}
+                  onSelectProvince={selectProvince}
                   onClose={() => setSelectedProvince(null)}
+                  compact={compact}
                 />
               )}
             </aside>
+          )}
+          {cityPage && (
+            <div className="city-page" data-testid="city-page">
+              <ProvincePanel
+                key={cityPage}
+                ctrl={ctrl}
+                pid={cityPage}
+                selectedArmies={selectedArmies}
+                onSelectArmy={(id, additive) => {
+                  setCityPage(null);
+                  selectArmy(id, additive);
+                }}
+                onSelectProvince={selectProvince}
+                onClose={closeCityPage}
+                compact
+                page
+              />
+            </div>
           )}
         </div>
       </div>
@@ -742,7 +775,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     // What the city's model shows, spelt out: its buildings, free slots and work in progress.
     const built = known ? BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0) : [];
     const job = known ? (ps.construction?.building ?? null) : null;
-    const free = known ? buildingSlots(state, pid) - slotsUsed(ps.buildings, job) : 0;
+    const free = known ? buildingSlots(state, world, pid) - slotsUsed(ps.buildings, job) : 0;
     const battle = known && !!state.battles[pid];
     const capture = known ? ps.capture : null;
     body = (
@@ -782,9 +815,15 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
           <span>
             <Icon name={def.terrain} size={13} /> {TERRAIN_LABEL[def.terrain]}
           </span>
-          <span>
-            <Icon name="city" size={13} /> {def.city.name} · {CITY.tierNames[ps.tier]}
-          </span>
+          {def.city ? (
+            <span>
+              <Icon name="city" size={13} /> {CITY.tierNames[ps.tier]}
+            </span>
+          ) : def.contains ? (
+            <span className="muted">
+              <Icon name="city" size={13} /> Around {world.provinces[def.contains].name}
+            </span>
+          ) : null}
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}
         </div>
         {(built.length > 0 || free > 0 || job) && (

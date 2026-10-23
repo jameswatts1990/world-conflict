@@ -126,7 +126,7 @@ export type Effect =
 
 export interface CityDef {
   name: string;
-  /** [longitude, latitude] — also the province's movement anchor. */
+  /** [longitude, latitude] — also the city province's movement anchor. */
   coord: [number, number];
   size: 'capital' | 'major' | 'town';
 }
@@ -146,8 +146,14 @@ export interface NeutralStateDef {
   article?: Article;
 }
 
+/**
+ * A province is either a city, drawn tight round it, or the land round a city (or, in time, land with no
+ * city at all). Cities hold the population, buildings, output and objectives; the land between them is
+ * where armies march and fronts run, and can take infrastructure (forts, depots, railways, batteries).
+ */
 export interface ProvinceDef {
   id: ProvinceId;
+  /** A city province is named after its city. */
   name: string;
   article?: Article;
   /** Nation whose core territory this is; null for neutral minor states. */
@@ -155,14 +161,21 @@ export interface ProvinceDef {
   /** The neutral state this province belongs to (neutral provinces only). */
   neutral?: NeutralStateDef;
   terrain: Terrain;
-  city: CityDef;
-  /** Starting city tier. */
+  /** The city, for a city province; land has none. */
+  city?: CityDef;
+  /** [longitude, latitude]: where armies stand and roads meet (the city, or a point inside the land). */
+  anchor: [number, number];
+  /** For a city: the province round it, its only neighbour. */
+  within?: ProvinceId;
+  /** For land: the city province inside it. */
+  contains?: ProvinceId;
+  /** Starting city tier (1 for land, which has no city to grow). */
   tier: CityTier;
-  /** Urban population of the principal city in thousands (display and growth). */
+  /** Urban population of the city in thousands (display, growth and national morale); 0 for land. */
   population: number;
-  /** Smaller towns drawn on the map at close zoom (no gameplay effect). */
+  /** Smaller towns drawn on the land at close zoom (no gameplay effect). */
   towns: TownDef[];
-  /** Has a sea coast (skyline art; coastal batteries also need a sea crossing). */
+  /** Has a sea coast (a city: skyline art and its port; land: sea crossings land on it). */
   coastal: boolean;
   /** Base output per minute (Standard speed) before buildings and research. */
   production: Resources;

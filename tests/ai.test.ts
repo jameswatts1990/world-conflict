@@ -42,12 +42,17 @@ describe('AI army control', () => {
     const army = place(state, 'es', 'pt-lisbon', { infantry: 3 });
     const orders: AiOrderTrace[] = [];
     setAiOrderTrace((t) => orders.push(t));
+    let fell = Infinity;
     try {
-      run(state, captureTicks(state, world, 'pt-lisbon') + 5);
+      for (let t = 0; t < captureTicks(state, world, 'pt-lisbon') + 5; t++) {
+        run(state, 1);
+        if (state.provinces['pt-lisbon'].owner === 'es') fell = Math.min(fell, state.tick);
+      }
     } finally {
       setAiOrderTrace(null);
     }
-    expect(orders.filter((o) => o.armyId === army.id)).toEqual([]);
+    // Once Lisbon has fallen, the land round it is the next target; until then the army stays.
+    expect(orders.filter((o) => o.armyId === army.id && o.tick < fell)).toEqual([]);
     expect(state.provinces['pt-lisbon'].owner).toBe('es');
   });
 
@@ -148,7 +153,7 @@ describe('AI difficulty', () => {
 });
 
 describe('AI personalities', () => {
-  it('each AI claims provinces across its land borders, drawn from the seed', () => {
+  it('each AI claims cities across its land borders, drawn from the seed', () => {
     const drawn = new Set<string>();
     for (let seed = 1; seed <= 10; seed++) {
       const state = createInitialState(world, { seed, humanNation: null });
@@ -157,8 +162,10 @@ describe('AI personalities', () => {
         drawn.add(`${n}:${claims.join(',')}`);
         expect(new Set(claims).size).toBe(claims.length);
         for (const pid of claims) {
+          // A city whose land borders the AI's own.
+          expect(world.provinces[pid].city).toBeDefined();
           expect(state.provinces[pid].owner).not.toBe(n);
-          expect(world.neighbors[pid].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n)).toBe(true);
+          expect(world.neighbors[world.provinces[pid].within!].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n)).toBe(true);
         }
       }
       // An island power has no land border to claim across.
@@ -253,14 +260,14 @@ describe('AI under the fog of war', () => {
     const state = aiGame(5);
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    // Baden borders France and is in sight; Bavaria, behind it, and Berlin are not.
-    const army = place(state, 'de', 'de-bavaria', { infantry: 10 });
-    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden');
+    // Baden's land borders France and is in sight; Bavaria's, behind it, and Berlin are not.
+    const army = place(state, 'de', 'de-bavaria-land', { infantry: 10 });
+    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-land');
     const hidden = need();
     army.province = 'de-berlin';
     expect(need()).toBeCloseTo(hidden);
     // In plain sight next door, the same army raises the bar.
-    army.province = 'de-hesse';
+    army.province = 'de-hesse-land';
     expect(need()).toBeGreaterThan(hidden);
   });
 

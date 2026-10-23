@@ -2,9 +2,9 @@
 // picker; unit cards for recruitment; armies present and routes.
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
-import { BUILDING_UNLOCKED_BY, TECH_BY_ID, UNIT_UNLOCKED_BY } from '../../sim/config/research';
+import { BUILDING_UNLOCKED_BY, TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, SIGHT } from '../../sim/config/rules';
-import { UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
+import { ARMY_RULES, UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
 import {
   RESOURCE_KEYS,
   alliesOf,
@@ -26,6 +26,7 @@ import {
   isUnitUnlocked,
   nationName,
   provinceMoraleTarget,
+  provinceName,
   provinceOutput,
   recruitCost,
   recruitTicks,
@@ -53,7 +54,8 @@ import type { GameController } from '../game/GameController';
 import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
-import { Cost, MoraleMeter, Progress, Section } from './Common';
+import { unitTraits } from '../unitInfo';
+import { Cost, Modal, MoraleMeter, Progress, Section } from './Common';
 
 const CATEGORY_LABEL: Record<BuildingCategory, string> = {
   economy: 'Economy',
@@ -92,7 +94,7 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
     <div className="battle-box" data-testid="battle-box">
       <div className="battle-head">
         <Icon name="swords" size={15} />
-        <span>Battle of {world.provinces[pid].city.name}</span>
+        <span>Battle of {provinceName(world, pid)}</span>
         <span className="muted">{formatDuration(state.tick - battle.startedAt, state)}</span>
       </div>
       <div className="balance" title="Share of the firepower in this battle">
@@ -131,18 +133,32 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 
 type Tab = 'city' | 'recruit' | 'armies';
 
+/**
+ * A province's card: a city (its skyline on larger screens, buildings, recruitment and armies) or the land
+ * round a city (its morale, infrastructure and armies). On a phone a city opens as a full-screen page
+ * (`page`), with no skyline so its choices come first.
+ */
 export function ProvincePanel({
   ctrl,
   pid,
   selectedArmies,
   onSelectArmy,
+  onSelectProvince,
   onClose,
+  compact = false,
+  page = false,
 }: {
   ctrl: GameController;
   pid: ProvinceId;
   selectedArmies: ArmyId[];
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
+  /** Moves the card to another province: from a city to the land round it, or back. */
+  onSelectProvince: (pid: ProvinceId) => void;
   onClose: () => void;
+  /** Phone layouts: no skyline. */
+  compact?: boolean;
+  /** Shown as a full-screen page (a city on a phone): the close button reads as "back to the map". */
+  page?: boolean;
 }) {
   const { state, world, human } = ctrl;
   const [tab, setTab] = useState<Tab>('city');
@@ -151,39 +167,49 @@ export function ProvincePanel({
   const owner = ps.owner;
   const mine = owner === human;
   const color = ownerColor(world, owner);
+  const city = def.city;
   // Under the fog of war only the map is known: who holds it, its city and its ground.
   const seen = ctrl.sight();
   const known = seen.has(pid);
   const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
   const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
-  const nationalCapital = def.city.size === 'capital' && def.core !== null;
+  const nationalCapital = city?.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
-  const activeTab: Tab = !mine && tab === 'recruit' ? 'city' : tab;
+  const activeTab: Tab = (!mine || !city) && tab === 'recruit' ? 'city' : tab;
+  // The other half of this place: the land round a city, or the city in a land.
+  const partner = def.within ?? def.contains;
 
   return (
-    <section className="panel province-panel" data-testid="province-panel" data-province={pid}>
+    <section className={`panel province-panel${page ? ' page' : ''}${city ? '' : ' land'}`} data-testid="province-panel" data-province={pid}>
       <header className={`panel-hero terrain-${def.terrain}`} style={{ '--owner': color } as React.CSSProperties}>
         <div className="hero-top">
+          {page ? (
+            <button className="back-btn" onClick={onClose} aria-label="Back to the map" data-testid="close-page">
+              <Icon name="back" size={18} /> Map
+            </button>
+          ) : null}
           <OwnerFlag world={world} owner={owner} province={pid} size={16} />
-          <span className="hero-owner">
-            {ownerShortName(world, owner, pid) === def.name ? ownerLabel(world, owner, pid) : `${def.name} · ${ownerLabel(world, owner, pid)}`}
-          </span>
-          <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
-            <Icon name="close" size={16} />
-          </button>
+          <span className="hero-owner">{ownerLabel(world, owner, pid)}</span>
+          {!page && (
+            <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
+              <Icon name="close" size={16} />
+            </button>
+          )}
         </div>
         <h3>
           {nationalCapital && <Icon name="star" size={18} className="capital-star" />}
-          {def.city.name}
-          <span className="tier-badge">{CITY.tierNames[ps.tier]}</span>
+          {def.name}
+          <span className="tier-badge">{city ? CITY.tierNames[ps.tier] : 'Province'}</span>
         </h3>
         <div className="chips">
           <span className="chip">
             <Icon name={def.terrain} size={13} /> {TERRAIN_LABEL[def.terrain]}
           </span>
-          <span className="chip" title="Urban population">
-            <Icon name="city" size={13} /> {fmtPopulation(cityPopulation(state, world, pid))}
-          </span>
+          {city && (
+            <span className="chip" title="Urban population">
+              <Icon name="city" size={13} /> {fmtPopulation(cityPopulation(state, world, pid))}
+            </span>
+          )}
           {def.objectiveVp ? <strong className="chip gold vp-badge">★ {def.objectiveVp} VP objective</strong> : null}
           {owner !== 'neutral' && known && (
             <span className={`chip ${ps.supplied ? 'ok' : 'bad'}`} title={ps.supplied ? 'Connected to a supply hub' : 'Cut off from supply hubs'}>
@@ -200,36 +226,49 @@ export function ProvincePanel({
               <Icon name="anchor" size={13} /> Landing
             </span>
           )}
+          {partner && (
+            <button
+              className="chip chip-link"
+              onClick={() => onSelectProvince(partner)}
+              title={city ? `The province round ${def.name}` : `The city in ${def.name}`}
+              data-testid="partner-province"
+            >
+              <Icon name={city ? 'flag' : 'city'} size={13} /> {city ? 'In' : 'City:'} {world.provinces[partner].name}
+              <span className="chip-owner" style={{ background: ownerColor(world, state.provinces[partner].owner) }} />
+            </button>
+          )}
         </div>
         <div className="hero-note">{TERRAIN_NOTE[def.terrain]}</div>
         {occupied && (
           <div className="hero-note warn-note">
-            {def.core ? `Occupied ${world.nations[def.core].adjective} core territory` : `Occupied ${def.neutral?.name ?? 'territory'}`}: output follows
-            morale, few volunteers
+            {def.core ? `Occupied ${world.nations[def.core].adjective} core territory` : `Occupied ${def.neutral?.name ?? 'territory'}`}
+            {city ? ': output follows morale, few volunteers' : ''}
           </div>
         )}
       </header>
 
-      <div className="city-scene-wrap">
-        <CityScene
-          seed={pid}
-          tier={ps.tier}
-          capital={capital || nationalCapital}
-          buildings={known ? ps.buildings : {}}
-          construction={known ? (ps.construction?.building ?? null) : null}
-          terrain={def.terrain}
-          coastal={def.coastal}
-          nationColor={owner === 'neutral' ? undefined : color}
-          battle={known && !!state.battles[pid]}
-          width={354}
-        />
-      </div>
+      {city && !compact && (
+        <div className="city-scene-wrap">
+          <CityScene
+            seed={pid}
+            tier={ps.tier}
+            capital={capital || nationalCapital}
+            buildings={known ? ps.buildings : {}}
+            construction={known ? (ps.construction?.building ?? null) : null}
+            terrain={def.terrain}
+            coastal={def.coastal}
+            nationColor={owner === 'neutral' ? undefined : color}
+            battle={known && !!state.battles[pid]}
+            width={354}
+          />
+        </div>
+      )}
 
       <nav className="tabs" role="tablist">
         <button className={activeTab === 'city' ? 'active' : ''} onClick={() => setTab('city')} data-tab="city">
-          <Icon name="city" size={14} /> City
+          <Icon name={city ? 'city' : 'flag'} size={14} /> {city ? 'City' : 'Province'}
         </button>
-        {mine && (
+        {mine && city && (
           <button className={activeTab === 'recruit' ? 'active' : ''} onClick={() => setTab('recruit')} data-tab="recruit">
             <Icon name="shield" size={14} /> Recruit{ps.recruitQueue.length ? ` (${ps.recruitQueue.length})` : ''}
           </button>
@@ -250,11 +289,83 @@ export function ProvincePanel({
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />
           </div>
         )}
-        {activeTab === 'city' && (known ? <CityTab ctrl={ctrl} pid={pid} /> : <FogNote ctrl={ctrl} />)}
+        {activeTab === 'city' && (!known ? <FogNote ctrl={ctrl} /> : city ? <CityTab ctrl={ctrl} pid={pid} /> : <LandTab ctrl={ctrl} pid={pid} />)}
         {activeTab === 'recruit' && <RecruitTab ctrl={ctrl} pid={pid} />}
         {activeTab === 'armies' && <ArmiesTab ctrl={ctrl} pid={pid} selectedArmies={selectedArmies} onSelectArmy={onSelectArmy} />}
       </div>
     </section>
+  );
+}
+
+/**
+ * A province without a city: no people to speak of, no building slots and no recruiting, but armies
+ * march and fight over it, and it takes infrastructure (forts, a supply depot, a railway junction,
+ * coastal batteries where a sea crossing lands).
+ */
+function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
+  const { state, world, human } = ctrl;
+  const def = world.provinces[pid];
+  const ps = state.provinces[pid];
+  const mine = ps.owner === human;
+  const res = state.nations[human].resources;
+  const morale = provinceMoraleTarget(state, world, pid);
+  const infra = BUILDING_ORDER.filter((b) => BUILDINGS[b].category === 'infrastructure').filter((b) => !BUILDINGS[b].coastalOnly || world.seaLandings.has(pid));
+  return (
+    <>
+      <p className="muted small land-note">
+        {def.contains
+          ? `The land round ${world.provinces[def.contains].name}: armies march and fight across it, and whoever holds it can cut the city off. `
+          : 'Open country: armies march and fight across it. '}
+        No city stands here, so nothing is raised or produced; only infrastructure can be built.
+      </p>
+      {ps.owner !== 'neutral' && (
+        <Section title="Morale" icon="morale">
+          <div className="meter-row">
+            <span className="meter-label">Morale</span>
+            <MoraleMeter value={ps.morale} target={morale.target} factors={morale.factors} />
+          </div>
+        </Section>
+      )}
+      {ps.construction && (
+        <Section title="Under construction" icon="clock">
+          <div className="job">
+            <span className="bld-icon active">
+              <BuildingIcon kind={ps.construction.building} size={18} />
+            </span>
+            <div>
+              <div className="job-name">
+                Building {BUILDINGS[ps.construction.building].name}
+                {BUILDINGS[ps.construction.building].maxLevel > 1 ? ` L${ps.construction.targetLevel}` : ''}
+              </div>
+              <Progress value={1 - ps.construction.remaining / ps.construction.total} label={formatDuration(ps.construction.remaining, state)} tone="gold" />
+            </div>
+            {mine && (
+              <button
+                className="icon-btn"
+                title={refundTitle('construction', ps.construction.remaining < ps.construction.total)}
+                aria-label="Cancel construction"
+                onClick={() => ctrl.submit({ type: 'cancelBuild', nation: human, province: pid })}
+                data-testid="cancel-build"
+              >
+                <Icon name="close" size={14} />
+              </button>
+            )}
+          </div>
+        </Section>
+      )}
+      {mine ? (
+        <Section title="Infrastructure" icon="plus">
+          {ps.construction && <p className="muted small build-note">One project at a time: new orders open when the current work is done.</p>}
+          <ul className="building-list">
+            {infra.map((b) => (
+              <BuildRow key={b} ctrl={ctrl} pid={pid} building={b} res={res} />
+            ))}
+          </ul>
+        </Section>
+      ) : (
+        <BuildingSummary buildings={ps.buildings} />
+      )}
+    </>
   );
 }
 
@@ -304,7 +415,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const morale = provinceMoraleTarget(state, world, pid);
   const growth = cityGrowthPerMinute(state, pid, !!state.battles[pid]);
   const next = CITY.growthToNext[ps.tier];
-  const slots = buildingSlots(state, pid);
+  const slots = buildingSlots(state, world, pid);
   const used = slotsUsed(ps.buildings, ps.construction?.building ?? null);
   const cityBuildings = BUILDING_ORDER.filter((b) => BUILDINGS[b].category !== 'infrastructure' && (ps.buildings[b] ?? 0) > 0);
   const building =
@@ -433,7 +544,7 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
   const nextLevel = level + 1;
   const demolishable = level > 0 && cfg.category !== 'infrastructure';
   // Why it cannot be ordered here (the city's one-job-at-a-time rule is explained once, above the list).
-  const fullCity = cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, pid);
+  const fullCity = cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, world, pid);
   const why = locked || maxed || rules.ok ? null : fullCity ? 'No free slot' : rules.reason.replace(/\.$/, '');
   return (
     <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}`}>
@@ -541,70 +652,67 @@ function BuildingSummary({ buildings }: { buildings: Partial<Record<BuildingType
   );
 }
 
+/**
+ * Raising units in a city. Only what has been researched is offered. The training queue sits in a strip of
+ * fixed height above the cards, so ordering several in a row never moves the buttons under your finger.
+ */
 function RecruitTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const { state, world, human } = ctrl;
   const ps = state.provinces[pid];
-  const locked: UnitType[] = [];
+  const [info, setInfo] = useState<UnitType | null>(null);
+  const queued = (t: UnitType) => ps.recruitQueue.filter((j) => j.unitType === t).length;
   return (
     <>
-      {ps.recruitQueue.length > 0 && (
-        <Section title="In training" icon="clock" extra={ps.recruitQueue.length}>
-          <ul className="queue">
-            {ps.recruitQueue.map((j, i) => (
-              <li key={i}>
-                <span className="unit-plate">
-                  <UnitIconArt world={world} type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
-                </span>
-                <span className="q-name" title={currentModel(state, world, human, j.unitType).name}>
-                  {currentModel(state, world, human, j.unitType).name}
-                </span>
-                {i === 0 ? <Progress value={1 - j.remaining / j.total} label={formatDuration(j.remaining, state)} /> : <span className="muted">Queued</span>}
-                <button
-                  className="icon-btn"
-                  title={refundTitle('training', j.remaining < j.total)}
-                  aria-label={`Cancel ${currentModel(state, world, human, j.unitType).name}`}
-                  onClick={() => ctrl.submit({ type: 'cancelRecruit', nation: human, province: pid, index: i })}
-                >
-                  <Icon name="close" size={13} />
-                </button>
-              </li>
-            ))}
+      <div className="training-strip" data-testid="training-strip" aria-label="In training">
+        <span className="ts-title">
+          <Icon name="clock" size={13} /> Training {ps.recruitQueue.length}/{ARMY_RULES.maxRecruitQueue}
+        </span>
+        {ps.recruitQueue.length === 0 ? (
+          <span className="ts-empty muted">Nothing in training</span>
+        ) : (
+          <ul className="ts-list">
+            {ps.recruitQueue.map((j, i) => {
+              const model = currentModel(state, world, human, j.unitType);
+              return (
+                <li key={i} className={i === 0 ? 'active' : ''} title={`${model.name}: ${i === 0 ? `ready in ${formatDuration(j.remaining, state)}` : 'queued'}`}>
+                  <span className="unit-plate">
+                    <UnitIconArt world={world} type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
+                  </span>
+                  {i === 0 && <span className="ts-progress" style={{ width: `${(1 - j.remaining / j.total) * 100}%` }} />}
+                  <button
+                    className="ts-cancel"
+                    title={refundTitle('training', j.remaining < j.total)}
+                    aria-label={`Cancel ${model.name}`}
+                    onClick={() => ctrl.submit({ type: 'cancelRecruit', nation: human, province: pid, index: i })}
+                  >
+                    <Icon name="close" size={10} />
+                  </button>
+                </li>
+              );
+            })}
           </ul>
-        </Section>
-      )}
+        )}
+      </div>
       {(Object.keys(UNITS_BY_CLASS) as UnitClass[]).map((cls) => {
-        const types = UNITS_BY_CLASS[cls].filter((t) => {
-          if (isUnitUnlocked(state, human, t)) return true;
-          locked.push(t);
-          return false;
-        });
+        // Units not yet researched are left out altogether: the research tree says what is coming.
+        const types = UNITS_BY_CLASS[cls].filter((t) => isUnitUnlocked(state, human, t));
         if (types.length === 0) return null;
         return (
           <Section key={cls} title={CLASS_LABEL[cls]} icon={CLASS_ICON[cls]}>
             <div className="recruit-cards">
               {types.map((t) => (
-                <RecruitCard key={t} ctrl={ctrl} pid={pid} type={t} />
+                <RecruitCard key={t} ctrl={ctrl} pid={pid} type={t} queued={queued(t)} onInfo={() => setInfo(t)} />
               ))}
             </div>
           </Section>
         );
       })}
-      {locked.length > 0 && (
-        <Section title="Not yet researched" icon="lock">
-          <ul className="locked-units">
-            {locked.map((t) => (
-              <li key={t}>
-                <strong>{UNITS[t].name}</strong> <span className="muted">— {TECH_BY_ID[UNIT_UNLOCKED_BY[t]!].name}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
+      {info && <UnitInfo ctrl={ctrl} type={info} pid={pid} onClose={() => setInfo(null)} />}
     </>
   );
 }
 
-function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceId; type: UnitType }) {
+function RecruitCard({ ctrl, pid, type, queued, onInfo }: { ctrl: GameController; pid: ProvinceId; type: UnitType; queued: number; onInfo: () => void }) {
   const { state, world, human } = ctrl;
   const cfg = UNITS[type];
   const check = checkRecruit(state, world, human, pid, type);
@@ -617,11 +725,21 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
   const time = formatDuration(recruitTicks(state, human, type), state);
   return (
     <div className={`recruit-card${check.ok ? '' : ' disabled'}${missing.length ? ' locked' : ''}`} data-unit-card={type}>
-      <UnitPicture world={world} type={type} gen={gen} nation={human} width={104} />
+      <button className="uc-info" onClick={onInfo} title={`What the ${cfg.name.toLowerCase()} do, and what they are good and bad at`} data-unit-info={type}>
+        <UnitPicture world={world} type={type} gen={gen} nation={human} width={104} />
+        <span className="uc-info-tag">
+          <Icon name="info" size={12} /> Details
+        </span>
+      </button>
+      {queued > 0 && (
+        <span className="uc-queued" title={`${queued} in training here`}>
+          +{queued}
+        </span>
+      )}
       <div className="uc-body">
-        <div className="uc-name" title={model.detail}>
+        <button className="uc-name" onClick={onInfo} title={model.detail}>
           {model.name}
-        </div>
+        </button>
         <div className="uc-type">
           {cfg.name} · {model.year} · {cfg.role}
         </div>
@@ -657,6 +775,107 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
         </div>
       </div>
     </div>
+  );
+}
+
+/** Everything about a unit type: what it is for, its numbers, and what it is good and bad at. */
+function UnitInfo({ ctrl, type, pid, onClose }: { ctrl: GameController; type: UnitType; pid: ProvinceId; onClose: () => void }) {
+  const { state, world, human } = ctrl;
+  const cfg = UNITS[type];
+  const gen = unitGen(state, human, type);
+  const model = currentModel(state, world, human, type);
+  const s = unitStats(state, human, type);
+  const traits = unitTraits(state, world, human, type);
+  const check = checkRecruit(state, world, human, pid, type);
+  const upkeep = Object.entries(cfg.upkeepPerMinute).filter(([, v]) => v);
+  return (
+    <Modal title={model.name} icon="shield" subtitle={`${cfg.name} · ${model.year} · ${CLASS_LABEL[cfg.class]}`} onClose={onClose} size="narrow">
+      <div className="unit-info" data-testid="unit-info" data-unit={type}>
+        <div className="ui-hero">
+          <UnitPicture world={world} type={type} gen={gen} nation={human} width={150} />
+          <div>
+            <div className="ui-role">{cfg.role}</div>
+            <p className="ui-desc">{cfg.description}</p>
+            {model.detail && <p className="muted small">{model.detail}</p>}
+          </div>
+        </div>
+        <div className="ui-stats">
+          <span title="Damage when attacking, against unarmoured / armoured targets">
+            Attack <b>{s.attack.soft.toFixed(1)}</b> / {s.attack.hard.toFixed(1)}
+          </span>
+          <span title="Damage when defending its own province, against unarmoured / armoured targets">
+            Defence <b>{s.defence.soft.toFixed(1)}</b> / {s.defence.hard.toFixed(1)}
+          </span>
+          <span>
+            Hit points <b>{s.maxHp}</b>
+          </span>
+          <span>
+            Armour <b>{Math.round(s.hardness * 100)}%</b>
+          </span>
+          <span>
+            Speed <b>{(s.speedKmPerTick * 60).toFixed(0)}</b> km/min
+          </span>
+          <span>
+            Trains in <b>{formatDuration(recruitTicks(state, human, type), state)}</b>
+          </span>
+        </div>
+        <div className="ui-lists">
+          {traits.strengths.length > 0 && (
+            <div className="ui-list good">
+              <h5>
+                <Icon name="check" size={14} /> Strengths
+              </h5>
+              <ul>
+                {traits.strengths.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {traits.weaknesses.length > 0 && (
+            <div className="ui-list bad">
+              <h5>
+                <Icon name="warning" size={14} /> Weaknesses
+              </h5>
+              <ul>
+                {traits.weaknesses.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {traits.bonuses.length > 0 && (
+            <div className="ui-list bonus">
+              <h5>
+                <Icon name="star" size={14} /> National bonus: {traits.bonuses[0]}
+              </h5>
+              <ul>
+                {traits.bonuses.slice(1).map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+        <div className="ui-foot">
+          <span>
+            Cost <Cost cost={recruitCost(state, human, type)} have={state.nations[human].resources} />
+          </span>
+          {upkeep.length > 0 && (
+            <span className="muted small">
+              Upkeep {upkeep.map(([k, v]) => `${v} ${RESOURCE_LABEL[k as keyof typeof RESOURCE_LABEL].toLowerCase()}`).join(', ')} a minute
+            </span>
+          )}
+          {cfg.requires.length > 0 && <span className="muted small">Raised where there is a {cfg.requires.map((b) => BUILDINGS[b].name).join(' and a ')}</span>}
+        </div>
+        <div className="btn-row">
+          <button onClick={onClose}>Close</button>
+          <button className="primary" disabled={!check.ok} title={check.ok ? undefined : check.reason} onClick={() => ctrl.submit({ type: 'recruit', nation: human, province: pid, unitType: type })}>
+            Recruit
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

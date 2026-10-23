@@ -141,7 +141,8 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   return ctx.enemies.includes(owner) && (main === null || owner === main);
 }
 
-function targetValue(ctx: Ctx, pid: ProvinceId): number {
+/** What a province is worth in itself: its objectives, output and city, and whether it is a capital, lost land or coveted. */
+function placeValue(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
   const def = world.provinces[pid];
   const owner = state.provinces[pid].owner;
@@ -150,6 +151,17 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += tv.capital;
   if (def.core === ctx.me) v += tv.reclaimCore; // reclaim lost core territory
   if (ctx.mem.claims?.includes(pid)) v += AI.claimValue; // a province this AI covets
+  return v;
+}
+
+function targetValue(ctx: Ctx, pid: ProvinceId): number {
+  const { state, world } = ctx;
+  const owner = state.provinces[pid].owner;
+  const tv = AI.targetValue;
+  let v = placeValue(ctx, pid);
+  // Land is worth part of the city it surrounds: taking it is the way in, and cuts the city off.
+  const city = world.provinces[pid].contains;
+  if (city && state.provinces[city].owner !== ctx.me) v += placeValue(ctx, city) * tv.cityBehind;
   // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {

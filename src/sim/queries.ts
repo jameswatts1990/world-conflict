@@ -336,7 +336,7 @@ export function captureTicks(state: GameState, world: World, province: ProvinceI
   const fort = p.buildings.fortifications ?? 0;
   let seconds = CAPTURE.baseSeconds + fort * BUILDING_EFFECTS.fortCaptureSecondsPerLevel;
   seconds *= 1 + (p.tier - 1) * CITY.captureTimePerTier;
-  if (def.city.size === 'capital') seconds *= CAPTURE.capitalMult;
+  if (def.city?.size === 'capital') seconds *= CAPTURE.capitalMult;
   if ((p.buildings.garrisonHq ?? 0) > 0) seconds *= BUILDING_EFFECTS.garrisonHqCapture;
   return scaledTicks(state, seconds);
 }
@@ -345,7 +345,9 @@ export function captureTicks(state: GameState, world: World, province: ProvinceI
 // Cities
 // ---------------------------------------------------------------------------
 
-export function buildingSlots(state: GameState, province: ProvinceId): number {
+/** Building slots of a city; land has none (it takes only infrastructure, which needs no slot). */
+export function buildingSlots(state: GameState, world: World, province: ProvinceId): number {
+  if (!world.provinces[province].city) return 0;
   const p = state.provinces[province];
   let slots: number = CITY.slots[p.tier];
   if (p.owner !== NEUTRAL) for (const e of techEffects(state, p.owner)) if (e.kind === 'buildingSlots') slots += e.amount;
@@ -389,8 +391,8 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   const industry = b.industry ?? 0;
   const power = (b.powerPlant ?? 0) > 0 ? E.powerPlantLocal : 0;
   let adjacentPower = 0;
-  for (const n of world.neighbors[province]) {
-    const np = state.provinces[n.id];
+  for (const c of world.nearbyCities[province]) {
+    const np = state.provinces[c];
     if (np.owner === ps.owner && (np.buildings.powerPlant ?? 0) > 0) adjacentPower += E.powerPlantAdjacentMaterials;
   }
   const tierBonus = 1 + (ps.tier - def.tier) * CITY.outputPerTier;
@@ -488,10 +490,12 @@ export function vpToWin(world: World): number {
 export function computeScores(state: GameState, world: World): ScoreLine[] {
   const lines: ScoreLine[] = world.nationIds.map((nation) => {
     const vp = heldVp(state, world, nation);
-    const provinces = world.provinceIds.filter((id) => state.provinces[id].owner === nation).length;
+    const held = world.provinceIds.filter((id) => state.provinces[id].owner === nation);
+    const cities = held.filter((id) => world.provinces[id].city).length;
     const techs = state.nations[nation].research.completed.length;
     const s = VICTORY.score;
-    return { nation, vp, provinces, techs, score: vp * s.perVp + provinces * s.perProvince + techs * s.perTech };
+    const score = vp * s.perVp + cities * s.perCity + (held.length - cities) * s.perLand + techs * s.perTech;
+    return { nation, vp, provinces: held.length, techs, score };
   });
   // Stable ranking: score, then VP, then provinces, then scenario order.
   return lines
