@@ -100,7 +100,7 @@ describe('power tiers', () => {
     expect(units('aa-b')).toEqual({ infantry: 3 }); // borders the major power
     expect(units('aa-a')).toEqual({ infantry: 2, cavalry: 1 });
     expect(units('bb-a')).toEqual(POWERS.major.armies.field);
-    expect(units('mm-cap')).toEqual({ infantry: 4 });
+    expect(units('mm-cap')).toEqual(startingUnits('minor'));
     expect(units('nt-x')).toEqual({ infantry: 2 });
     for (const n of NATIONS) {
       const total: Record<string, number> = {};

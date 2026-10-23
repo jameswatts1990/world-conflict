@@ -96,10 +96,13 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 ### 2.6 Balance and presentation
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [x] Campaigns that sometimes end by objectives: since AI armies hold a province until the capture completes, 5 of
-      8 AI-vs-AI test campaigns end on objectives
-- [ ] Minor powers rarely last: in AI-vs-AI campaigns nearly every minor power is conquered, most within 20 minutes;
-      Serbia falls in every run and Romania in most. Tune the AI's appetite for small neighbours or their defence
+- [x] Campaigns that sometimes end by objectives: all 8 AI-vs-AI test campaigns now end on objectives (68–137 min)
+- [x] Minor powers cost an investment and never win: fortified capitals (level 2, Switzerland 3) and six starting
+      divisions topped up to seven or eight. An eight-unit probe fails; twelve to fourteen units with artillery take
+      a capital and lose 40–60% of their strength. Minor powers never start wars (they used to start two to four a
+      game, mostly on each other) and only great and major powers count for victory
+- [ ] Minor powers still fall to the AI between minutes 10 and 40 in most campaigns (by minute 20: 43 of 80, down
+      from 65): make the AI weigh the cost of a fortress against other targets
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -111,8 +114,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
-- [ ] France is now the weakest great power in AI campaigns (mean rank 6.6 of 7, last in 5 of 8 runs, conquered in
-      all 8); Germany comes next (4.6, conquered in 4)
+- [ ] France is the weakest great power in AI campaigns (mean rank 6.3 of 7, conquered in 6 of 8 runs); Germany
+      comes next (4.5, conquered in 2)
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
