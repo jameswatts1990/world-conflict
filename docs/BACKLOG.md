@@ -267,6 +267,8 @@ Found by playing full campaigns in the browser and reading the code end to end.
       two, each half with a share of every kind of unit
 - [x] Closing the army card returned to the city it stood in instead of the map
 - [x] The overview map is hidden until its button (under the zoom buttons) opens it
+- [x] With several armies selected, Split, Merge and Disband acted on the first army only (Merge on every army in its
+      province): they now act on the selection, Merge joining the selected armies that stand together
 
 ## M4 — Fog of war and diplomacy
 

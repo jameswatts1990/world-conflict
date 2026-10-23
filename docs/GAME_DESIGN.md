@@ -240,7 +240,10 @@ Specialities are optional: a nation without one shows its bloc instead.
   own, until it is given a new march order or released. Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves
   immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and **disband** (half the
   manpower returns; not in battle) are available while stationary. Split takes the ticked formations into a new
-  army or, with none ticked, every other formation of each kind, so both halves keep the army's mix.
+  army or, with none ticked, every other formation of each kind, so both halves keep the army's mix. With several
+  armies selected, every order applies to all of them: Split halves each one, Merge joins those standing in the same
+  province (each group into its senior army), and Disband stands down every one that is not marching or in battle;
+  ticking formations needs a single army.
 - Each army has a **Fall back when broken** option, off by default: when its strength-weighted morale drops below
   **25%** in battle it withdraws on its own to the best friendly neighbouring province, paying the usual price of a
   withdrawal under fire. With nowhere to go, or while holding position, it fights on. A split army keeps its

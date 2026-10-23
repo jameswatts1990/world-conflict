@@ -42,6 +42,18 @@ export function RankChevrons({ xp }: { xp: number }) {
   );
 }
 
+/** Items by key, in first-seen order. */
+function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const out = new Map<K, T[]>();
+  for (const item of items) {
+    const k = key(item);
+    const list = out.get(k);
+    if (list) list.push(item);
+    else out.set(k, [item]);
+  }
+  return out;
+}
+
 /** Every other formation of each kind: the half that splits off when none are ticked. */
 function halfOf(army: Army): UnitId[] {
   const kinds = [...new Set(army.units.map((u) => u.type))];
@@ -127,18 +139,41 @@ export function ArmyPanel({
   };
   const stoppable = selectedOwn.filter((a) => a.move && !a.move.halting);
 
-  const sameProvinceOwn = armiesIn(state, army.province).filter((a) => a.owner === human);
   const grace = scaledTicks(state, SUPPLY.attritionGraceSeconds);
 
+  // Several armies selected: split, merge and disband act on whole armies, and ticking formations waits for one.
+  const multi = selectedOwn.length > 1;
+  const ticked = (a: Army) => (multi ? [] : a.units.filter((u) => checked.has(u.id)).map((u) => u.id));
+  // Only armies standing in a province can reorganise.
+  const settled = multi ? selectedOwn.filter((a) => !a.move?.leg) : own && !leg ? [army] : [];
+  const splittable = settled.filter((a) => a.units.length > 1 && ticked(a).length < a.units.length);
+  const disbandable = settled.filter((a) => hostileArmiesIn(state, a.province, a.owner).length === 0);
+  // Several selected: those standing together, province by province. One: all of yours where it stands.
+  const mergeGroups = multi
+    ? [...groupBy(settled, (a) => a.province).values()].filter((g) => g.length > 1)
+    : settled.map((a) => armiesIn(state, a.province).filter((b) => b.owner === human)).filter((g) => g.length > 1);
+
   const split = () => {
-    const ids = checked.size > 0 ? army.units.filter((u) => checked.has(u.id)).map((u) => u.id) : halfOf(army);
     const before = new Set(Object.keys(state.armies));
-    const r = ctrl.submit({ type: 'split', nation: human, armyId: army.id, unitIds: ids });
-    if (r.ok) {
-      setChecked(new Set());
-      const created = Object.keys(state.armies).find((id) => !before.has(id));
-      if (created) onSelectArmies([created]);
+    for (const a of splittable) {
+      const ids = ticked(a);
+      ctrl.submit({ type: 'split', nation: human, armyId: a.id, unitIds: ids.length > 0 ? ids : halfOf(a) });
     }
+    setChecked(new Set());
+    // The armies split off are selected, ready for their orders.
+    const created = Object.keys(state.armies).filter((id) => !before.has(id));
+    if (created.length > 0) onSelectArmies(created);
+  };
+
+  const merge = () => {
+    const seniors: ArmyId[] = [];
+    for (const group of mergeGroups) {
+      // The senior (lowest-numbered) army absorbs the others and keeps its name.
+      const ids = [...group].sort((a, b) => a.serial - b.serial).map((a) => a.id);
+      if (ctrl.submit({ type: 'merge', nation: human, armyIds: ids }).ok) seniors.push(ids[0]);
+    }
+    if (seniors.length === 0) return;
+    onSelectArmies(multi ? armyIds.filter((id) => state.armies[id]) : seniors);
   };
 
   const disband = () => {
@@ -147,11 +182,14 @@ export function ArmyPanel({
       setTimeout(() => setConfirmDisband(false), 2500);
       return;
     }
-    const ids = checked.size > 0 ? army.units.filter((u) => checked.has(u.id)).map((u) => u.id) : undefined;
-    ctrl.submit({ type: 'disband', nation: human, armyId: army.id, unitIds: ids });
+    for (const a of disbandable) {
+      const ids = ticked(a);
+      ctrl.submit({ type: 'disband', nation: human, armyId: a.id, unitIds: ids.length > 0 ? ids : undefined });
+    }
     setChecked(new Set());
     setConfirmDisband(false);
   };
+  const reorganiseBlocked = multi ? 'None of the selected armies is standing in a province' : 'Cannot reorganise while marching';
 
   return (
     <section className="panel army-panel" data-testid="army-panel" data-army={army.id}>
@@ -288,42 +326,55 @@ export function ArmyPanel({
             </button>
             <button
               className="order-btn"
-              disabled={army.units.length < 2 || checked.size === army.units.length || !!leg}
+              disabled={splittable.length === 0}
               onClick={split}
               title={
-                leg
-                  ? 'Cannot reorganise while marching'
-                  : checked.size > 0
-                    ? 'Split the ticked formations into a new army'
-                    : 'Split the army in two, each half with a share of every kind of unit (or tick formations below to choose)'
+                settled.length === 0
+                  ? reorganiseBlocked
+                  : multi
+                    ? 'Split each selected army in two, each half with a share of every kind of unit'
+                    : checked.size > 0
+                      ? 'Split the ticked formations into a new army'
+                      : 'Split the army in two, each half with a share of every kind of unit (or tick formations below to choose)'
               }
               data-testid="split"
             >
               <Icon name="split" size={18} />
-              <span>{checked.size > 0 ? `Split ${checked.size}` : 'Split'}</span>
+              <span>{!multi && checked.size > 0 ? `Split ${checked.size}` : 'Split'}</span>
             </button>
             <button
               className="order-btn"
-              disabled={sameProvinceOwn.length < 2 || !!leg}
-              onClick={() => {
-                // The senior (lowest-numbered) army absorbs the others and keeps its name.
-                const ids = [...sameProvinceOwn].sort((a, b) => a.serial - b.serial).map((a) => a.id);
-                if (ctrl.submit({ type: 'merge', nation: human, armyIds: ids }).ok) onSelectArmies([ids[0]]);
-              }}
-              title="Merge all your armies in this province into the senior one"
+              disabled={mergeGroups.length === 0}
+              onClick={merge}
+              title={
+                multi
+                  ? 'Merge the selected armies that stand in the same province, each group into its senior army'
+                  : 'Merge all your armies in this province into the senior one'
+              }
+              data-testid="merge"
             >
               <Icon name="merge" size={18} />
-              <span>Merge here</span>
+              <span>{multi ? 'Merge' : 'Merge here'}</span>
             </button>
             <button
               className={`order-btn danger${confirmDisband ? ' active' : ''}`}
-              disabled={!!leg}
+              disabled={disbandable.length === 0}
               onClick={disband}
-              title={checked.size > 0 ? 'Disband the ticked formations (half their manpower returns)' : 'Disband the whole army (half its manpower returns)'}
+              title={
+                settled.length === 0
+                  ? reorganiseBlocked
+                  : disbandable.length === 0
+                    ? 'Cannot disband in battle: order a retreat instead'
+                    : multi
+                      ? `Disband ${disbandable.length === selectedOwn.length ? 'every selected army' : `the ${disbandable.length} selected armies standing out of battle`} (half their manpower returns)`
+                      : checked.size > 0
+                        ? 'Disband the ticked formations (half their manpower returns)'
+                        : 'Disband the whole army (half its manpower returns)'
+              }
               data-testid="disband"
             >
               <Icon name="exit" size={18} />
-              <span>{confirmDisband ? 'Confirm' : checked.size > 0 ? `Disband ${checked.size}` : 'Disband'}</span>
+              <span>{confirmDisband ? 'Confirm' : multi ? (disbandable.length === selectedOwn.length ? 'Disband all' : `Disband ${disbandable.length} armies`) : checked.size > 0 ? `Disband ${checked.size}` : 'Disband'}</span>
             </button>
           </div>
         )}
@@ -337,7 +388,11 @@ export function ArmyPanel({
             <span className="muted">{!army.autoRetreat ? 'fights to the end' : army.holding ? 'not while holding' : `withdraws below ${Math.round(MORALE.autoRetreatAt * 100)}% morale`}</span>
           </label>
         )}
-        {own && armyIds.length > 1 && <div className="muted multi-note">{armyIds.length} armies selected — orders and options apply to all.</div>}
+        {multi && (
+          <div className="muted multi-note">
+            {selectedOwn.length} armies selected: orders and options apply to all. Select one army to tick formations.
+          </div>
+        )}
 
         <Section
           title={`Formations (${army.units.length})`}
@@ -355,7 +410,7 @@ export function ArmyPanel({
               const name = formationName(world, army.owner, u);
               return (
                 <li key={u.id} className={checked.has(u.id) ? 'checked' : ''}>
-                  {own ? (
+                  {own && !multi ? (
                     <input
                       type="checkbox"
                       checked={checked.has(u.id)}
