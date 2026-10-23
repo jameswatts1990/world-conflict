@@ -1,8 +1,9 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Seven great powers and seven minor powers on recognisable Earth
-geography start with Great War technology and research their way towards the Second World War. The current build is a local
-single-player campaign on the **European theatre** at **Standard** speed (target ~2–3 hours).
+A browser-based, real-time global strategy game. Seven great powers, two major powers and ten minor powers on
+recognisable Earth geography start with Great War technology and research their way towards the Second World War.
+The current build is a local single-player campaign on the **European theatre** at **Standard** speed (target ~2–3
+hours).
 
 What is in it (Milestone 2, Depth):
 
@@ -11,14 +12,16 @@ What is in it (Milestone 2, Depth):
   speciality**. Each nation belongs to an equipment **bloc** (Western, Central or Eastern) that supplies its
   designs, formation names and unit art; the original six override nearly all of it with their own, Hungary a
   few signature designs.
-- **Hungary**, the first nation added through the bloc system: six provinces behind Austria, Central-pattern
+- **Hungary**, the first nation added through the bloc system: six provinces in the Danube basin, Central-pattern
   equipment, its own hussars and Toldi, Turán and Zrínyi armour.
+- **Romania and Serbia**, the first major powers (playable, five and three provinces, Western-pattern equipment),
+  with Slovakia, Slovenia and Croatia as minor powers: Hungary now has a neighbour on every side.
 - **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
   get output, starting armies, objectives and size from their tier, so a new country is province rows,
   connections and one line.
-- **Seven minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal):
-  one-province nations run by the computer that recruit, research, make war and peace, and must be fought to be
-  taken. They keep a garrison of about five units rather than a field army.
+- **Ten minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
+  Slovakia, Slovenia, Croatia): one- or two-province nations run by the computer that recruit, research, make war
+  and peace, and must be fought to be taken. They keep a garrison of about five units rather than a field army.
 - **Morale** for units (low morale blunts firepower; armies fight to the death unless ordered out, and a
   withdrawal under fire costs strength), provinces (drives output; conquests
   integrate over time) and nations.
@@ -141,8 +144,9 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **17 of the 42 objective victory points** (★ great-power capitals 3 VP, industrial heartlands 2 VP,
-minor-power capitals 1 VP) continuously for **90 seconds**, or have the **highest score** when the **2 h 30 min** time limit ends.
+Hold **21 of the 51 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
+major-power capitals 2 VP and heartlands 1 VP, minor-power capitals 1 VP) continuously for **90 seconds**, or have
+the **highest score** when the **2 h 30 min** time limit ends.
 You lose if your nation is eliminated or another power wins.
 
 ## Saving
@@ -181,14 +185,14 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  every campaign ends on the time limit: nobody reaches the 17 VP objective threshold, partly because the AI gangs up
-  on a leader.
+  most campaigns end on objectives (5 of 8), after the AI has conquered nearly every minor power, mostly within the
+  first 20 minutes. Serbia is always conquered, Romania usually, and France in every run.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The main bundle is ~995 KB (326 KB gzipped).
+  devices. The main bundle is ~1,015 KB (334 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
-- Hungary's other modern neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia) are not in the theatre yet, so its
-  only way out is through Austria.
+- The theatre's south-eastern edge follows Romania's and Serbia's borders: Bulgaria, the western Balkans, Greece
+  and everything east of Romania are drawn for context only.

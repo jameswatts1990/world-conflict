@@ -28,20 +28,22 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ## 3. The theatre
 
-- **Seven playable nations:** United Kingdom, France, Germany, Italy, Spain, Poland and Hungary. The human picks
-  one; the AI plays the rest. Hungary's other modern neighbours lie outside the theatre, so its only road out runs
-  through Austria.
-- **Seven minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia and
-  Portugal, one province each and always computer-controlled. They are nations like the others: they recruit,
+- **Nine playable nations:** the great powers United Kingdom, France, Germany, Italy, Spain, Poland and Hungary,
+  and the major powers Romania and Serbia. The human picks one; the AI plays the rest. The theatre's south-eastern
+  edge follows Romania's and Serbia's borders.
+- **Ten minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal and
+  Slovenia, one province each, and Slovakia and Croatia, two each; always computer-controlled. They are nations
+  like the others: they recruit,
   research, declare war and make peace, and invading one means declaring war on it. The AI keeps a minor power to a
   garrison of about five units (its starting four plus one, more as its economy grows), not a field army. Their
   capitals keep their old city sizes and border forts (Switzerland 2, Belgium and Czechia 1). The engine still
   supports neutral states (garrisoned, never attack, open to invasion without war); this scenario has none.
-- **56 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
+- **69 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
-- **119 explicit movement connections**: 100 land, 12 mountain passes and 7 sea crossings. Connections are
-  authored data, separate from the map shapes.
+- **156 explicit movement connections**: 127 land, 21 mountain passes and 8 sea crossings. Connections are
+  authored data, separate from the map shapes; a test checks that every shared border has a land or mountain
+  link and every such link a shared border (`scripts/map/check-borders.ts` prints the same report).
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -55,11 +57,11 @@ broadly balanced:
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
 | Minor | No (computer-controlled) | 70 / 35 / 20 | 4 units | Capital 1 | 1–2 |
 
-Europe has seven great powers and seven minor powers. Each great power has one oil province, the same city ladder (one
+Europe has seven great powers, two major powers and ten minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF
 and 1 cavalry in the field. The smaller tiers keep the same share of income on starting upkeep. Starting buildings
 and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
-the rows place them, or onto border provinces first. Geography stays asymmetric, and each great power has one
+the rows place them, or onto border provinces first. Geography stays asymmetric, and each playable nation has one
 modest speciality (§6.4).
 
 ## 4. Time model
@@ -180,9 +182,9 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields named eq
 **Western** (French and British exports: Renault FT, Vickers 6-ton, the 75), **Central** (Škoda guns and German
 armour) and **Eastern** (Russian and Soviet designs: T-26, BT-7, T-34). Each supplies a complete identity and a
 unit look (uniform colours, headgear, insignia). A nation names its bloc and overrides any part: the original six
-override nearly everything, Hungary only its hussars and five armour designs. Within a bloc, nations are told
-apart by counter colour and by the bloc insignia drawn in each nation's colour. Blocs are equipment, not
-alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
+override nearly everything, Hungary only its hussars and five armour designs, and Romania and Serbia nothing.
+Within a bloc, nations are told apart by counter colour and by the bloc insignia drawn in each nation's colour.
+Blocs are equipment, not alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
 
 ### 6.4 National specialities
 
@@ -195,6 +197,8 @@ alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
 | Spain | La Legión | Assault infantry +20% resilience, +10% attack, always raised as Regulars |
 | Poland | Ułani | Cavalry +25% attack, +10% speed, +15% resilience |
 | Hungary | Huszárok | Cavalry and armoured cars +15% attack, 10% faster; cavalry always raised as Regulars |
+| Romania | Ploiești | Refineries produce 25% more fuel and cost 20% less to build |
+| Serbia | Kolubara | Infantry +15% morale resilience and +10% defence |
 
 Specialities are optional: a nation without one shows its bloc instead.
 
@@ -284,8 +288,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 42 VP in total (great-power capitals 3, industrial heartlands 2, minor-power capitals 1). Holding **40% (17
-  VP)** continuously for **90 s** wins.
+- **Objectives:** 51 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
+  heartlands 1, minor-power capitals 1). Holding **40% (21 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 3 × provinces + 2 × technologies.
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
 
@@ -444,7 +448,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 17 VP / 90 s reachable for a human in 2–3 hours? AI-vs-AI campaigns currently end on the time limit.
+- Is 21 VP / 90 s reachable for a human in 2–3 hours? Since AI armies hold a province until its capture completes,
+  most AI-vs-AI campaigns end on objectives (5 of 8 test runs), after nearly every minor power has been conquered.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?

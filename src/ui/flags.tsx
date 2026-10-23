@@ -23,6 +23,11 @@ const STRIPED: Record<string, FlagStripes> = {
   be: { dir: 'v', colors: ['#151515', '#fdda24', '#ef3340'] },
   nl: { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
   at: { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
+  ro: { dir: 'v', colors: ['#002b7f', '#fcd116', '#ce1126'] },
+  rs: { dir: 'h', colors: ['#c6363c', '#0c4076', '#f4f4f4'] },
+  sk: { dir: 'h', colors: ['#f4f4f4', '#0b4ea2', '#ee1c25'] },
+  si: { dir: 'h', colors: ['#f4f4f4', '#005da4', '#ed1c24'] },
+  hr: { dir: 'h', colors: ['#d4172a', '#f4f4f4', '#171796'] },
 };
 
 function stripes({ dir, colors }: FlagStripes): ReactElement {
@@ -41,8 +46,44 @@ export function flagStripes(id: string): FlagStripes | null {
   return STRIPED[id] ?? null;
 }
 
+/** Croatia's red and white chequy shield. */
+function chequy(x: number, y: number, size: number): ReactElement {
+  const cells = [];
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 3; c++) cells.push(<rect key={`${r}-${c}`} x={x + c * size} y={y + r * size} width={size} height={size} fill={(r + c) % 2 ? '#f4f4f4' : '#d4172a'} />);
+  }
+  return (
+    <>
+      {cells}
+      <rect x={x} y={y} width={3 * size} height={4 * size} fill="none" stroke="#171796" strokeWidth={0.5} />
+    </>
+  );
+}
+
 const FLAGS: Record<string, ReactElement> = {
   ...Object.fromEntries(Object.entries(STRIPED).map(([id, s]) => [id, stripes(s)])),
+  // Stripes shared with another flag: their shields tell them apart (the 3D models fly the stripes alone).
+  sk: (
+    <>
+      {stripes(STRIPED.sk)}
+      <path d="M7 4.6H14V11.4Q14 15 10.5 16.4Q7 15 7 11.4Z" fill="#ee1c25" stroke="#f4f4f4" strokeWidth={0.9} />
+      <path d="M10.5 6.4V14M8.6 8.4H12.4M8.1 10.6H12.9" stroke="#f4f4f4" strokeWidth={0.9} />
+      <path d="M7.9 14Q9.2 12.6 10.5 14Q11.8 12.6 13.1 14L12.4 15.1Q10.5 16.6 8.6 15.1Z" fill="#0b4ea2" />
+    </>
+  ),
+  si: (
+    <>
+      {stripes(STRIPED.si)}
+      <path d="M5 3.2H10.4V7.6Q10.4 10.4 7.7 11.4Q5 10.4 5 7.6Z" fill="#005da4" stroke="#ed1c24" strokeWidth={0.7} />
+      <path d="M5.7 8.4L6.9 6.6L7.7 7.6L8.6 5.6L9.7 8.4" fill="none" stroke="#f4f4f4" strokeWidth={0.7} />
+    </>
+  ),
+  hr: (
+    <>
+      {stripes(STRIPED.hr)}
+      {chequy(12.3, 4.4, 1.8)}
+    </>
+  ),
   uk: (
     <>
       <rect width={W} height={H} fill="#1f3a8a" />

@@ -21,8 +21,8 @@ Guidance for Claude Code working in this repository.
 
 ## Debugging AI behaviour
 
-- `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game; its `neutral:N` column shows how many
-  neutral provinces are left.
+- `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,
+  units, VP and wars every 10 minutes (`neutral:N` is always 0 in Europe: its former neutral states are minor powers).
 - The AI plays under the fog of war: it may read other nations' armies only through the context (`ctx.seen`,
   `ctx.hostile`, `ctx.unseen`, `ctx.enemyArmour` in `ai/context.ts`) or with `isArmyVisible`, never straight from
   `state.armies` or `hostileArmiesIn` on a province it cannot see. Military power totals (`nationPower`), ownership

@@ -553,6 +553,22 @@ export const SPECIALITIES: Record<string, NationSpeciality | undefined> = {
       { kind: 'unitStat', units: ['cavalry'], stat: 'resilience', mult: 1.15 },
     ],
   },
+  ro: {
+    name: 'Ploiești',
+    description: "Europe's own oil field: refineries produce 25% more fuel and cost 20% less to build.",
+    effects: [
+      { kind: 'refinery', mult: 1.25 },
+      { kind: 'constructionCost', mult: 0.8, building: 'refinery' },
+    ],
+  },
+  rs: {
+    name: 'Kolubara',
+    description: 'The army that would not break: infantry +15% morale resilience and +10% defence.',
+    effects: [
+      { kind: 'unitStat', units: ['infantry'], stat: 'resilience', mult: 1.15 },
+      { kind: 'unitStat', units: ['infantry'], stat: 'defence', mult: 1.1 },
+    ],
+  },
   hu: {
     name: 'Huszárok',
     description: 'The original hussars: cavalry and armoured cars +15% attack and 10% faster, and cavalry are always raised as Regulars.',

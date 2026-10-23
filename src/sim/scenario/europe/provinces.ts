@@ -118,6 +118,38 @@ export const ROWS: ProvinceRow[] = [
   { id: 'hu-southwest', name: 'Southern Transdanubia', core: 'hu', terrain: 'hills', tier: 'town', city: { name: 'Pécs', coord: [18.233, 46.072], size: 'town' }, pop: 240,
     towns: [['Kaposvár', 17.797, 46.359], ['Szekszárd', 18.704, 46.348], ['Mohács', 18.683, 45.993], ['Siófok', 18.049, 46.905]] },
 
+  // Romania (major power)
+  { id: 'ro-bucharest', name: 'Bucharest & Muntenia', core: 'ro', terrain: 'urban', tier: 'capital', city: { name: 'Bucharest', coord: [26.103, 44.427], size: 'capital' }, pop: 2200, oil: true,
+    towns: [['Ploiești', 26.014, 44.946], ['Pitești', 24.869, 44.856], ['Târgoviște', 25.459, 44.925], ['Giurgiu', 25.969, 43.904]] },
+  { id: 'ro-banat', name: 'Banat & Oltenia', core: 'ro', terrain: 'plains', tier: 'industrial', city: { name: 'Timișoara', coord: [21.208, 45.749], size: 'major' }, pop: 380,
+    towns: [['Reșița', 21.889, 45.3], ['Craiova', 23.795, 44.319], ['Arad', 21.312, 46.186], ['Hunedoara', 22.9, 45.75], ['Drobeta-Turnu Severin', 22.687, 44.652]] },
+  { id: 'ro-transylvania', name: 'Transylvania', core: 'ro', terrain: 'hills', tier: 'city', city: { name: 'Cluj-Napoca', coord: [23.594, 46.77], size: 'major' }, pop: 420,
+    towns: [['Brașov', 25.601, 45.658], ['Sibiu', 24.152, 45.792], ['Oradea', 21.919, 47.047], ['Târgu Mureș', 24.557, 46.545], ['Baia Mare', 23.58, 47.659]] },
+  { id: 'ro-moldavia', name: 'Moldavia', core: 'ro', terrain: 'hills', tier: 'city', city: { name: 'Iași', coord: [27.588, 47.159], size: 'major' }, pop: 380,
+    towns: [['Bacău', 26.913, 46.567], ['Suceava', 26.255, 47.651], ['Piatra Neamț', 26.381, 46.927], ['Botoșani', 26.666, 47.746]] },
+  { id: 'ro-dobruja', name: 'Dobruja & the Lower Danube', core: 'ro', terrain: 'plains', tier: 'town', city: { name: 'Constanța', coord: [28.634, 44.173], size: 'town' }, pop: 420, coast: true,
+    towns: [['Galați', 28.008, 45.435], ['Brăila', 27.957, 45.271], ['Tulcea', 28.79, 45.179], ['Buzău', 26.823, 45.152]] },
+
+  // Serbia (major power)
+  { id: 'rs-belgrade', name: 'Belgrade & Vojvodina', core: 'rs', terrain: 'urban', tier: 'capital', city: { name: 'Belgrade', coord: [20.457, 44.787], size: 'capital' }, pop: 1700,
+    towns: [['Novi Sad', 19.845, 45.267], ['Subotica', 19.665, 46.1], ['Zrenjanin', 20.389, 45.381], ['Pančevo', 20.64, 44.871]] },
+  { id: 'rs-sumadija', name: 'Šumadija & Western Serbia', core: 'rs', terrain: 'hills', tier: 'industrial', city: { name: 'Kragujevac', coord: [20.911, 44.012], size: 'major' }, pop: 180,
+    towns: [['Čačak', 20.349, 43.891], ['Kraljevo', 20.687, 43.725], ['Šabac', 19.69, 44.756], ['Užice', 19.84, 43.858]] },
+  { id: 'rs-south', name: 'Southern & Eastern Serbia', core: 'rs', terrain: 'mountains', tier: 'city', city: { name: 'Niš', coord: [21.896, 43.321], size: 'major' }, pop: 260,
+    towns: [['Leskovac', 21.946, 42.998], ['Smederevo', 20.93, 44.664], ['Zaječar', 22.274, 43.904], ['Vranje', 21.9, 42.551], ['Požarevac', 21.187, 44.62]] },
+
+  // Minor powers of the Danube and the Adriatic
+  { id: 'sk-bratislava', name: 'Western Slovakia', core: 'sk', terrain: 'plains', tier: 'capital', city: { name: 'Bratislava', coord: [17.107, 48.149], size: 'capital' }, pop: 660,
+    towns: [['Trnava', 17.585, 48.377], ['Nitra', 18.087, 48.307], ['Trenčín', 18.044, 48.894], ['Komárno', 18.128, 47.763]] },
+  { id: 'sk-kosice', name: 'Central & Eastern Slovakia', core: 'sk', terrain: 'mountains', tier: 'town', city: { name: 'Košice', coord: [21.258, 48.716], size: 'town' }, pop: 360,
+    towns: [['Prešov', 21.239, 48.998], ['Žilina', 18.74, 49.223], ['Banská Bystrica', 19.146, 48.736], ['Poprad', 20.297, 49.059]] },
+  { id: 'si-ljubljana', name: 'Slovenia', core: 'si', terrain: 'mountains', tier: 'capital', city: { name: 'Ljubljana', coord: [14.506, 46.056], size: 'capital' }, pop: 540, coast: true,
+    towns: [['Maribor', 15.646, 46.554], ['Celje', 15.262, 46.231], ['Koper', 13.73, 45.548], ['Kranj', 14.355, 46.239]] },
+  { id: 'hr-zagreb', name: 'Continental Croatia', core: 'hr', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Zagreb', coord: [15.978, 45.815], size: 'capital' }, pop: 1100,
+    towns: [['Osijek', 18.694, 45.554], ['Varaždin', 16.338, 46.304], ['Karlovac', 15.555, 45.487], ['Slavonski Brod', 18.016, 45.16]] },
+  { id: 'hr-dalmatia', name: 'Dalmatia & Istria', core: 'hr', terrain: 'mountains', tier: 'town', city: { name: 'Split', coord: [16.48, 43.548], size: 'town' }, pop: 350, coast: true,
+    towns: [['Rijeka', 14.442, 45.327], ['Zadar', 15.261, 44.129], ['Dubrovnik', 18.094, 42.65], ['Pula', 13.85, 44.868]] },
+
   // Minor powers: one province each, computer-controlled. Their cities keep the sizes they had as neutral
   // states, and the old border forts stand.
   { id: 'be-brussels', name: 'Belgium & Luxembourg', core: 'be', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true, buildings: { fortifications: 1 },

@@ -96,7 +96,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 ### 2.6 Balance and presentation
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
+- [x] Campaigns that sometimes end by objectives: since AI armies hold a province until the capture completes, 5 of
+      8 AI-vs-AI test campaigns end on objectives
+- [ ] Minor powers rarely last: in AI-vs-AI campaigns nearly every minor power is conquered, most within 20 minutes;
+      Serbia falls in every run and Romania in most. Tune the AI's appetite for small neighbours or their defence
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -108,8 +111,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
-- [ ] Germany is still the weakest great power in AI campaigns (mean rank 5.9 of 7, last in 2 of 8 runs): it borders
-      six minor powers and two great powers
+- [ ] France is now the weakest great power in AI campaigns (mean rank 6.6 of 7, last in 5 of 8 runs, conquered in
+      all 8); Germany comes next (4.6, conquered in 4)
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
@@ -211,8 +214,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
 - [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
-- [ ] Hungary's missing neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia), then Eastern-bloc nations east of
-      Poland
+- [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
+- [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
+- [ ] Eastern-bloc nations east of Poland and Romania
 - [ ] A nation picker that scales past a dozen nations (pick on the map)
 - [ ] Expand beyond Europe: more theatres, then the whole world
 - [ ] Authoritative multiplayer server running `src/sim` unchanged; client sends commands only
