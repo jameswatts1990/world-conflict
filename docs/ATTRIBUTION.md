@@ -44,7 +44,7 @@ Build and test: Vite, Vitest, TypeScript, mapshaper, Playwright.
 ## Artwork
 
 All icons, unit silhouettes and the advisor portrait are original inline SVG. National flags are simplified
-drawings of the public national flags of the nations and neutral states in the scenario. The map's relief texture is
+drawings of the public national flags of the nations in the scenario. The map's relief texture is
 generated procedurally in the browser from each province's terrain type; it is not elevation data. The 3D city
 models on the map are built in code from simple solids and drawn as SVG by a small renderer in `src/ui/art/iso3d.ts`;
 no generated or downloaded 3D assets are used.

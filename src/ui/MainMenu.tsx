@@ -1,7 +1,8 @@
 import { memo, useEffect, useMemo, useState } from 'react';
+import { POWERS } from '../sim/config/powers';
 import { VICTORY } from '../sim/config/rules';
 import { SPEED_PRESETS } from '../sim/config/timing';
-import { vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
+import { BLOCS, vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
 import { lighten, ownerColor } from './color';
 import { Flag } from './flags';
 import { hoursText, proseDuration } from './format';
@@ -9,25 +10,6 @@ import { Icon } from './icons';
 import { mapGeometry, type MapGeometry } from './map/geo';
 import { TERRAIN_BASE, seaGlowTexture, terrainTexture, type TerrainTexture } from './map/terrain';
 import { LoadDialog } from './panels/Dialogs';
-
-const BLURB: Record<string, string> = {
-  uk: 'An island fortress. Safe behind the Channel, but every offensive starts with a slow sea crossing.',
-  fr: 'The continental hinge. Many provinces and many neighbours: Germany, Italy, Spain and Britain.',
-  de: 'Central and exposed. Borders six neutral states and two great powers.',
-  it: 'Alpine walls to the north, a long peninsula behind. Mountains favour the defender.',
-  es: 'A Pyrenean bastion with France as the only great-power neighbour. Portugal is within reach.',
-  pl: 'Open plains between Germany and the edge of the theatre. Czechia lies to the south.',
-};
-
-/** Each nation's strategic character, shown on its card. */
-const TRAIT: Record<string, string> = {
-  uk: 'Defensive',
-  fr: 'Many fronts',
-  de: 'Encircled',
-  it: 'Mountain wall',
-  es: 'Secure flank',
-  pl: 'Open plains',
-};
 
 /** Starting map of the theatre, used as the menu backdrop; the chosen nation is lit up. */
 const MenuBackdrop = memo(function MenuBackdrop({ world, geo, selected }: { world: World; geo: MapGeometry; selected: NationId }) {
@@ -135,7 +117,7 @@ export function MainMenu({
 
         <h2 className="menu-h2">Choose your nation</h2>
         <div className="nation-grid">
-          {world.scenario.nations.map((n) => (
+          {world.scenario.nations.filter((n) => POWERS[n.power].playable).map((n) => (
             <button
               key={n.id}
               className={`nation-card${nation === n.id ? ' selected' : ''}`}
@@ -146,7 +128,7 @@ export function MainMenu({
               <Flag id={n.id} size={22} />
               <span className="nc-text">
                 <strong>{n.name}</strong>
-                <span className="nc-tag">{TRAIT[n.id]}</span>
+                <span className="nc-tag">{n.trait ?? BLOCS[n.bloc].name}</span>
               </span>
             </button>
           ))}
@@ -158,13 +140,18 @@ export function MainMenu({
             <div>
               <div className="mb-name">{def.name}</div>
               <div className="mb-cap">
-                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name}
+                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name} · {POWERS[def.power].name}
               </div>
             </div>
           </div>
-          <p>{BLURB[nation]}</p>
-          <p className="speciality" title="National speciality">
-            <Icon name="bolt" size={13} /> <em>{def.speciality.name}</em> — {def.speciality.description}
+          {def.blurb && <p>{def.blurb}</p>}
+          {def.speciality && (
+            <p className="speciality" title="National speciality">
+              <Icon name="bolt" size={13} /> <em>{def.speciality.name}</em> — {def.speciality.description}
+            </p>
+          )}
+          <p className="speciality" title="Equipment family: where the nation's designs come from">
+            <Icon name="shield" size={13} /> <em>{BLOCS[def.bloc].name}</em> — {BLOCS[def.bloc].description}
           </p>
           <div className="mb-stats">
             <span>
@@ -203,7 +190,7 @@ export function MainMenu({
         </div>
         <p className="menu-victory">
           <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
-          the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. Five computer opponents control the other powers.
+          the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. {world.nationIds.length - 1} computer opponents control the other powers.
         </p>
         <div className="btn-row menu-actions">
           <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">

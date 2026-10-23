@@ -313,6 +313,6 @@ function atWW2(ctx: Ctx): ReactElement {
 
 export function drawAntiTank(ctx: Ctx): ReactElement {
   if (ctx.gen === 'ww2') return atWW2(ctx);
-  if (ctx.nation === 'pl') return atRiflePL(ctx);
+  if (ctx.pattern === 'pl') return atRiflePL(ctx);
   return atInterwar(ctx);
 }

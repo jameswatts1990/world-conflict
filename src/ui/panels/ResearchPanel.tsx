@@ -117,9 +117,9 @@ function TechIcon({ tech, ctrl }: { tech: TechConfig; ctrl: GameController }) {
   for (const e of tech.effects) {
     if (e.kind === 'unlockUnit') {
       const gen = unitGen(state, human, e.unit);
-      return <TechUnitIcon type={e.unit} gen={gen} nation={human} title={modelName(world, human, e.unit, gen).name} />;
+      return <TechUnitIcon world={world} type={e.unit} gen={gen} nation={human} title={modelName(world, human, e.unit, gen).name} />;
     }
-    if (e.kind === 'unitModel') return <TechUnitIcon type={e.units[0]} gen={e.gen} nation={human} title={modelName(world, human, e.units[0], e.gen).name} />;
+    if (e.kind === 'unitModel') return <TechUnitIcon world={world} type={e.units[0]} gen={e.gen} nation={human} title={modelName(world, human, e.units[0], e.gen).name} />;
   }
   for (const e of tech.effects) if (e.kind === 'unlockBuilding') return <BuildingGlyphArt kind={e.building} size={24} />;
   return <BranchIcon branch={tech.branch} size={20} />;

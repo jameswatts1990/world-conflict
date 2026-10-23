@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { VICTORY } from '../../sim/config/rules';
-import { vpToWin, type World } from '../../sim';
+import { hasNeutrals, vpToWin, type World } from '../../sim';
 import { hoursText, proseDuration } from '../format';
 import { AdvisorPortrait, Icon, type IconName } from '../icons';
 import { useEscape } from './Common';
@@ -19,18 +19,19 @@ export function tutorialSteps(
 ): { title: string; icon: IconName; body: string }[] {
   // Save, load and help sit behind More in the compact layouts.
   const saveWhere = compact ? ' from More' : '';
+  const lands = hasNeutrals(world) ? '; hatched beige regions are neutral states you may invade' : ', from great powers to one-province minor powers';
   return [
     {
       title: `You lead ${nationName}`,
       icon: 'flag',
-      body: `An alternate history: six powers hold today's borders but fight with 1914 technology. Win by holding ${vpToWin(world)} of ${world.totalVp} objective victory points (★) for ${proseDuration(VICTORY.holdSeconds)}, or by leading on score when the ${hoursText(limitMinutes)} campaign ends. Every nation has its own named equipment and one national speciality. The game is paused — take your time.`,
+      body: `An alternate history: the powers hold today's borders but fight with 1914 technology. Win by holding ${vpToWin(world)} of ${world.totalVp} objective victory points (★) for ${proseDuration(VICTORY.holdSeconds)}, or by leading on score when the ${hoursText(limitMinutes)} campaign ends. Every nation fields named equipment, its own or its bloc's, and most have one national speciality. The game is paused — take your time.`,
     },
     {
       title: 'The map',
       icon: 'diplomacy',
       body: touch
-        ? 'Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.'
-        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the six powers; hatched beige regions are neutral states you may invade. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
+        ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the powers${lands}. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
+        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the powers${lands}. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',

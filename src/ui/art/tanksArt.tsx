@@ -29,7 +29,7 @@ export function Plate({ ctx, d, hi, lo, children, tone = 0 }: { ctx: Ctx; d: str
 }
 
 export function Badge({ ctx, cx, cy, r = 3.4 }: { ctx: Ctx; cx: number; cy: number; r?: number }) {
-  return <InsigniaMark nation={ctx.nation} cx={cx} cy={cy} r={r} ow={0.55} />;
+  return <InsigniaMark nation={ctx.nation} accent={ctx.accent} cx={cx} cy={cy} r={r} ow={0.55} />;
 }
 
 /** Machine-gun barrel poking from a mount, with an optional cooling jacket. */
@@ -289,8 +289,8 @@ function tankWW2(ctx: Ctx): ReactElement {
 
 export function drawTank(ctx: Ctx): ReactElement {
   if (ctx.gen === 'ww1') {
-    if (ctx.nation === 'de') return a7v(ctx);
-    if (ctx.nation === 'fr') return schneider(ctx);
+    if (ctx.pattern === 'de') return a7v(ctx);
+    if (ctx.pattern === 'fr') return schneider(ctx);
     return markIV(ctx);
   }
   if (ctx.gen === 'interwar') return tankInterwar(ctx);

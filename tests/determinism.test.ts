@@ -6,6 +6,7 @@ import {
   applyCommand,
   deserializeGame,
   hashState,
+  joinNewcomers,
   replay,
   serializeGame,
   stepState,
@@ -133,6 +134,47 @@ describe('save / load', () => {
     const loaded = deserializeGame(JSON.stringify(old), state.scenarioId);
     expect(loaded.schemaVersion).toBe(SCHEMA_VERSION);
     expect(hashState(loaded.state)).toBe(hashState(state));
+  });
+
+  it('a save from before a country joined the scenario takes it in and plays on', () => {
+    const state = aiGame(31, 'fr');
+    run(state, 900);
+    // Strip Hungary out, as in a save made before it was added.
+    const hu = world.provinceIds.filter((id) => world.provinces[id].core === 'hu');
+    delete state.nations.hu;
+    for (const n of Object.values(state.nations)) delete n.relations.hu;
+    for (const id of hu) delete state.provinces[id];
+    for (const [id, a] of Object.entries(state.armies)) if (a.owner === 'hu' || hu.includes(a.province)) delete state.armies[id];
+    for (const key of Object.keys(state.serials)) if (key.startsWith('hu:')) delete state.serials[key];
+    const old = deserializeGame(serializeGame(state, 'before Hungary'), state.scenarioId).state;
+    const rng = old.rng;
+
+    expect(joinNewcomers(old, world)).toEqual(['hu']);
+    expect(old.rng).toBe(rng);
+    expect(old.nations.hu.controller).toBe('ai');
+    expect(old.nations.fr.relations.hu.status).toBe('peace');
+    expect(Object.keys(old.nations.hu.relations).sort()).toEqual(world.nationIds.filter((id) => id !== 'hu').sort());
+    for (const id of hu) expect(old.provinces[id].owner).toBe('hu');
+    const huArmies = Object.values(old.armies).filter((a) => a.owner === 'hu');
+    expect(huArmies.reduce((s, a) => s + a.units.length, 0)).toBe(13);
+    const ids = Object.values(old.armies).flatMap((a) => [a.id, ...a.units.map((u) => u.id)]);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(old.events.at(-1)!.text).toBe('Hungary joins the campaign, fresh from 1914.');
+    expect(joinNewcomers(old, world)).toEqual([]);
+
+    run(old, 1200);
+    expect(old.nations.hu.research.completed.length + old.nations.hu.research.active.length).toBeGreaterThan(0);
+  });
+
+  it('refuses a save from a redrawn map', () => {
+    const vanished = aiGame(32);
+    vanished.provinces['xx-atlantis'] = { ...vanished.provinces['fr-paris'], id: 'xx-atlantis' };
+    delete vanished.provinces['hu-west'];
+    expect(() => joinNewcomers(vanished, world)).toThrow(/earlier map/);
+    // Hungary missing, but its provinces present: a country carved out of existing land, not added.
+    const carved = aiGame(33);
+    delete carved.nations.hu;
+    expect(() => joinNewcomers(carved, world)).toThrow(/earlier map/);
   });
 
   it('rejects foreign or incompatible saves', () => {

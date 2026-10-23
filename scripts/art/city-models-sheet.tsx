@@ -67,7 +67,7 @@ section('Growth: an empty city at each tier (free slots shown as plots)', [1, 2,
 section('Every building on its own (tier 3, French)', [...SLOT_BUILDINGS, ...INFRA].map((b) =>
   card(b, { seed: 'fr-rhone', tier: 3, buildings: { [b]: b === 'fortifications' ? 3 : 1 }, terrain: 'plains', nationColor: NATIONS.fr }),
 ));
-section('Capitals', ['uk-london', 'fr-paris', 'de-berlin', 'it-rome', 'es-madrid', 'pl-warsaw', 'nt-austria'].map((seed) =>
+section('Capitals', ['uk-london', 'fr-paris', 'de-berlin', 'it-rome', 'es-madrid', 'pl-warsaw', 'at-vienna'].map((seed) =>
   card(seed, {
     seed, tier: 4, capital: true, terrain: 'urban',
     buildings: { industry: 2, market: 1, barracks: 1, university: 1, railway: 1, supplyDepot: 1 },
@@ -83,7 +83,7 @@ section('Busy cities', [
     seed: 'uk-london', tier: 5, capital: true, terrain: 'urban', nationColor: NATIONS.uk,
     buildings: { industry: 3, market: 2, powerPlant: 1, university: 1, barracks: 1, armsWorks: 1, tankWorks: 1, hospital: 1, fortifications: 3, railway: 1, supplyDepot: 1 },
   }),
-  card('Neutral town in the woods', { seed: 'nt-switzerland', tier: 2, terrain: 'forest', buildings: { barracks: 1, fortifications: 1 }, freeSlots: 3 }),
+  card('Alpine town in the woods', { seed: 'ch-bern', tier: 2, terrain: 'forest', buildings: { barracks: 1, fortifications: 1 }, freeSlots: 3 }),
   card('Occupied, with HQ and propaganda', {
     seed: 'pl-warsaw', tier: 3, capital: true, terrain: 'urban', nationColor: NATIONS.de,
     buildings: { garrisonHq: 1, propaganda: 1, hospital: 1, motorPool: 1, refinery: 2 },

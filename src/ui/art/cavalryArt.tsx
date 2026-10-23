@@ -45,11 +45,12 @@ export interface HorseProps {
   mane: string;
   cloth: string;
   nation: Ctx['nation'];
+  accent?: string;
   /** Icon rendering: no bridle or muscle lines. */
   bold?: boolean;
 }
 
-export function Horse({ x, y, s = 1, ow, coat, mane, cloth, nation, bold }: HorseProps) {
+export function Horse({ x, y, s = 1, ow, coat, mane, cloth, nation, accent, bold }: HorseProps) {
   const lw = ow / s;
   const far = shade(coat, -0.28);
   const farLegs = [
@@ -82,7 +83,7 @@ export function Horse({ x, y, s = 1, ow, coat, mane, cloth, nation, bold }: Hors
       {/* Saddle cloth with national badge, girth and saddle. */}
       <Shape d="M-8.6 -25.2L4.8 -25.6L5.4 -18.4Q5.2 -16.6 3.4 -16.6L-7.0 -16.8Q-8.8 -16.8 -8.8 -18.6Z" fill={cloth} ow={lw * 0.85} hi="M-9 -26L6 -26V-23.6H-9Z" />
       {!bold && <path d="M-8.2 -18.0L4.8 -17.8" stroke="#e6dcc0" strokeWidth={0.5} opacity={0.6} />}
-      <InsigniaMark nation={nation} cx={-4.6} cy={-21.0} r={bold ? 3 : 2.3} ow={bold ? 0.8 : 0.4} />
+      <InsigniaMark nation={nation} accent={accent} cx={-4.6} cy={-21.0} r={bold ? 3 : 2.3} ow={bold ? 0.8 : 0.4} />
       <Line pts={[[3.2, -16.8], [3.6, -13.8]]} w={1.2} stroke={LEATHER} opacity={1} />
       <path d="M-6.8 -24.4Q-7.4 -27.4 -5 -27.2Q-1 -25.8 2.6 -26.8Q4.8 -27.6 5.0 -25.0Z" fill={LEATHER} stroke={OUTLINE} strokeWidth={lw * 0.8} strokeLinejoin="round" />
     </g>
@@ -90,14 +91,14 @@ export function Horse({ x, y, s = 1, ow, coat, mane, cloth, nation, bold }: Hors
 }
 
 export function drawCavalry(ctx: Ctx): ReactElement {
-  const { ow, nation, gen } = ctx;
+  const { ow, nation, pattern, gen } = ctx;
   let kit: Kit = { ...ctx.kit, jackboots: true };
   let cuirass = false;
   if (gen === 'ww1') {
-    if (nation === 'fr') {
+    if (pattern === 'fr') {
       kit = { ...withHeadgear(ctx, 'cuirassier'), jackboots: true };
       cuirass = true;
-    } else if (nation === 'de') {
+    } else if (pattern === 'de') {
       kit = { ...withHeadgear(ctx, 'czapka'), jackboots: true };
     }
   }
@@ -115,7 +116,7 @@ export function drawCavalry(ctx: Ctx): ReactElement {
     <g>
       <GroundShadow cx={44} cy={GROUND} rx={34} ry={4} />
       <CornerBadge ctx={ctx} />
-      <Horse x={hx} y={hy} s={s} ow={ow} coat={coat.coat} mane={coat.mane} cloth={shade(ctx.kit.uniform, -0.42)} nation={nation} />
+      <Horse x={hx} y={hy} s={s} ow={ow} coat={coat.coat} mane={coat.mane} cloth={shade(ctx.kit.uniform, -0.42)} nation={nation} accent={ctx.accent} />
       <Soldier
         kit={kit}
         pose={pose}

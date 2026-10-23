@@ -705,7 +705,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
               {c.types.slice(0, 4).map(([t, n]) => (
                 <span key={t}>
                   <span className="unit-plate">
-                    <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={20} />
+                    <UnitIconArt world={world} type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={20} />
                   </span>{' '}
                   {n}
                 </span>

@@ -40,6 +40,7 @@ import {
   type Resources,
   type UnitClass,
   type UnitType,
+  type World,
 } from '../../sim';
 import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
@@ -514,7 +515,7 @@ function RecruitTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
             {ps.recruitQueue.map((j, i) => (
               <li key={i}>
                 <span className="unit-plate">
-                  <UnitIconArt type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
+                  <UnitIconArt world={world} type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
                 </span>
                 <span className="q-name" title={currentModel(state, world, human, j.unitType).name}>
                   {currentModel(state, world, human, j.unitType).name}
@@ -578,7 +579,7 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
   const time = formatDuration(recruitTicks(state, human, type), state);
   return (
     <div className={`recruit-card${check.ok ? '' : ' disabled'}${missing.length ? ' locked' : ''}`} data-unit-card={type}>
-      <UnitPicture type={type} gen={gen} nation={human} width={104} />
+      <UnitPicture world={world} type={type} gen={gen} nation={human} width={104} />
       <div className="uc-body">
         <div className="uc-name" title={model.detail}>
           {model.name}
@@ -622,14 +623,14 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
 }
 
 /** Up to four unit-type icons with counts. */
-export function CompositionIcons({ state, army, size = 22 }: { state: GameState; army: Army; size?: number }) {
+export function CompositionIcons({ world, state, army, size = 22 }: { world: World; state: GameState; army: Army; size?: number }) {
   const c = composition(army);
   return (
     <span className="ar-comp">
       {c.types.slice(0, 4).map(([t, n]) => (
         <span key={t} title={UNITS[t].name}>
           <span className="unit-plate">
-            <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={size} />
+            <UnitIconArt world={world} type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={size} />
           </span>
           {n}
         </span>
@@ -670,7 +671,7 @@ function ArmiesTab({
                 >
                   <OwnerFlag world={world} owner={a.owner} province={a.province} size={13} />
                   <span className="ar-name">{name}</span>
-                  <CompositionIcons state={state} army={a} size={20} />
+                  <CompositionIcons world={world} state={state} army={a} size={20} />
                   <span className="ar-bars">
                     <span className="ar-str">
                       <span style={{ width: `${c.strength * 100}%`, background: strengthColor(c.strength) }} />

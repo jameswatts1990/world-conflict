@@ -7,7 +7,7 @@
 //
 // A model's local axes: u forward, v across, z up, origin on the ground under
 // its middle. Sizes are toy-like: a soldier stands about as tall as a lorry is long.
-import { makeKit, type Headgear, type Kit } from './context';
+import { makeKit, patternOf, type Headgear, type Kit } from './context';
 import { Scene, mixColor, shadeColor, type V2, type V3 } from './iso3d';
 import { BLADE, BRASS, FLAME, FLAME_CORE, HORSE_COATS, LEATHER, NATION_PALETTES, PENNANTS, SKIN, STEEL, TRACK, TRACK_LIGHT, TYRE, WOOD, type NationPalette } from './palettes';
 import { resolveArtGen, type ArtGen, type ArtNation, type ArtUnitType } from './types';
@@ -23,6 +23,10 @@ export interface UnitModelProps {
   type: UnitModelKind;
   gen: ArtGen;
   nation: ArtNation;
+  /** For the bloc looks: the nation's own colour, flown as its flag when it has no striped one. */
+  accent?: string;
+  /** For the bloc looks: the nation's own flag, when it is a striped one. */
+  flag?: { dir: 'h' | 'v'; colors: string[] };
   /** 0..15: heading 0 faces the screen's lower right, and each step turns a sixteenth clockwise on screen. */
   heading: number;
 }
@@ -216,6 +220,10 @@ function cross(a: V3, b: V3): V3 {
 
 interface Gear {
   nation: ArtNation;
+  /** Whose equipment and drill the drawings follow (a bloc borrows its patron's). */
+  pattern: ArtNation;
+  /** The flag the model flies. */
+  flag: FlagCell[];
   gen: ArtGen;
   pal: NationPalette;
   /** How the soldiers are dressed (the 2D art's rules). */
@@ -227,10 +235,12 @@ interface Gear {
   webbing: string;
 }
 
-function gearOf(nation: ArtNation, gen: ArtGen): Gear {
+function gearOf(nation: ArtNation, gen: ArtGen, accent?: string, flagStripes?: UnitModelProps['flag']): Gear {
   const pal = NATION_PALETTES[nation][gen];
   return {
     nation,
+    pattern: patternOf(nation),
+    flag: flagStripes ? stripes(flagStripes.dir, flagStripes.colors) : (FLAG_CELLS[nation] ?? stripes('h', [accent ?? pal.vehicleDark, '#f4f4f4'])),
     gen,
     pal,
     kit: makeKit(nation, gen),
@@ -269,7 +279,8 @@ function unionCells(): FlagCell[] {
   return out;
 }
 
-const FLAG_CELLS: Record<ArtNation, FlagCell[]> = {
+/** The six powers' and the neutrals' flags; a bloc look flies its nation's own. */
+const FLAG_CELLS: Partial<Record<ArtNation, FlagCell[]>> = {
   uk: unionCells(),
   fr: stripes('v', ['#1f4fa0', '#f4f4f4', '#e0383e']),
   de: stripes('h', ['#121212', '#d40000', '#ffcc00']),
@@ -280,9 +291,9 @@ const FLAG_CELLS: Record<ArtNation, FlagCell[]> = {
 };
 
 /** A national flag flying back from a pole top at (u, v, top), with a little wave. */
-function flag(r: Rig, nation: ArtNation, u: number, v: number, top: number, w: number, h: number): void {
+function flag(r: Rig, g: Gear, u: number, v: number, top: number, w: number, h: number): void {
   const wave = (x: number) => Math.sin(x * Math.PI * 1.7) * 0.07 * w;
-  for (const [x0, x1, y0, y1, color] of FLAG_CELLS[nation]) {
+  for (const [x0, x1, y0, y1, color] of g.flag) {
     const p = (x: number, y: number): V3 => [u - x * w, v + wave(x), top - y * h - x * 0.08 * h];
     r.panel([p(x0, y0), p(x1, y0), p(x1, y1), p(x0, y1)], color);
   }
@@ -291,7 +302,7 @@ function flag(r: Rig, nation: ArtNation, u: number, v: number, top: number, w: n
 /** Radio aerial with a small national flag: how vehicles show whose they are. */
 function aerial(r: Rig, g: Gear, u: number, v: number, z: number, h = 0.95): void {
   r.line([[u, v, z], [u, v, z + h]], DARK, 0.04);
-  flag(r, g.nation, u - 0.02, v, z + h, 0.52, 0.34);
+  flag(r, g, u - 0.02, v, z + h, 0.52, 0.34);
 }
 
 // ------------------------------------------------------------------ figures
@@ -447,7 +458,7 @@ function soldier(r: Rig, g: Gear, f: Figure = {}): void {
       break;
     case 'flag':
       r.line([[0.17, 0.34, t0 - 0.2], [0.17, 0.34, t1 + 1.15]], POLE, 0.055);
-      flag(r, g.nation, 0.15, 0.34, t1 + 1.13, 0.86, 0.56);
+      flag(r, g, 0.15, 0.34, t1 + 1.13, 0.86, 0.56);
       break;
     case 'staff':
       r.line([[0.3, -0.34, 0], [0.22, -0.34, t1 + 0.35]], WOOD, 0.05);
@@ -615,14 +626,14 @@ const MODELS: Record<UnitModelKind, Builder> = {
 
   stormtroopers: (r, g) => {
     // Running in, bayonets levelled; a flamethrower in the Great War and in 1940. The Arditi wear the fez.
-    const kit = g.nation === 'it' && g.gen === 'ww1' ? kitWith(g, 'fez') : g.kit;
+    const kit = g.pattern === 'it' && g.gen === 'ww1' ? kitWith(g, 'fez') : g.kit;
     const run: Figure = { kit, arm: 'aim', lean: 0.1, stride: 0.2, back: 'none' };
     const flamer: Figure = g.gen === 'interwar' ? run : { ...run, arm: 'flamer', back: 'tanks' };
     squad(r, g, [run, flamer, run], [[0.55, -0.05], [-0.35, 0.68], [-0.25, -0.62]]);
   },
 
   mountain: (r, g) => {
-    const head: Headgear | null = g.nation === 'it' ? 'alpini' : g.nation === 'fr' ? 'beret' : g.nation === 'de' && g.gen !== 'ww1' ? 'bergmutze' : null;
+    const head: Headgear | null = g.pattern === 'it' ? 'alpini' : g.pattern === 'fr' ? 'beret' : g.pattern === 'de' && g.gen !== 'ww1' ? 'bergmutze' : null;
     const kit = head ? kitWith(g, head) : g.kit;
     r.shadow(1.35, 1.1);
     const mule = r.at(-0.15, 0.55, 0, 0, 0.82);
@@ -638,10 +649,10 @@ const MODELS: Record<UnitModelKind, Builder> = {
 
   cavalry: (r, g) => {
     let kit: Kit = { ...g.kit, jackboots: true };
-    if (g.gen === 'ww1' && g.nation === 'fr') kit = kitWith(g, 'cuirassier');
-    if (g.gen === 'ww1' && g.nation === 'de') kit = kitWith(g, 'czapka');
+    if (g.gen === 'ww1' && g.pattern === 'fr') kit = kitWith(g, 'cuirassier');
+    if (g.gen === 'ww1' && g.pattern === 'de') kit = kitWith(g, 'czapka');
     kit = { ...kit, jackboots: true };
-    const arm: Figure['arm'] = g.gen === 'ww1' || g.nation === 'pl' ? 'lance' : g.gen === 'interwar' ? 'sabre' : 'none';
+    const arm: Figure['arm'] = g.gen === 'ww1' || g.pattern === 'pl' ? 'lance' : g.gen === 'interwar' ? 'sabre' : 'none';
     rider(r.at(0.5, 0.45), g, { kit, arm });
     rider(r.at(-0.55, -0.45), g, { kit, arm });
   },
@@ -716,7 +727,7 @@ const MODELS: Record<UnitModelKind, Builder> = {
 
   tank: (r, g) => {
     if (g.gen === 'ww1') {
-      if (g.nation === 'de') {
+      if (g.pattern === 'de') {
         // A7V: an armoured box on a tractor chassis, the gun in its nose.
         r.shadow(1.6, 0.95);
         tracks(r, 2.6, 1.5, 0.32, 5, 0.28);
@@ -824,7 +835,7 @@ const MODELS: Record<UnitModelKind, Builder> = {
         r.vcyl(u, v, 0.68, 0.76, 0.08, 0.07, 6, g.kit.hat);
       }
     r.line([[-1.62, 0, 0.5], [-1.62, 0, 1.4]], POLE, 0.045);
-    flag(r, g.nation, -1.64, 0, 1.38, 0.6, 0.4);
+    flag(r, g, -1.64, 0, 1.38, 0.6, 0.4);
   },
 };
 
@@ -834,7 +845,7 @@ export function buildUnitModel(props: UnitModelProps): UnitModel {
   const scene = new Scene({ exact: true, edge: 0.05 });
   const heading = ((Math.round(props.heading) % UNIT_HEADINGS) + UNIT_HEADINGS) % UNIT_HEADINGS;
   const gen = props.type === 'transport' ? props.gen : resolveArtGen(props.type, props.gen);
-  MODELS[props.type](new Rig(scene, 0, 0, 0, heading * STEP), gearOf(props.nation, gen));
+  MODELS[props.type](new Rig(scene, 0, 0, 0, heading * STEP), gearOf(props.nation, gen, props.accent, props.flag));
   const { markup, bounds } = scene.render();
   const [x0, y0, x1, y1] = bounds;
   const w = x1 - x0;
