@@ -81,6 +81,8 @@ export interface MapViewProps {
   onPickTarget: (pid: ProvinceId) => void;
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
+  /** Shift-drag (desktop): your armies inside the box. */
+  onBoxSelect?: (ids: ArmyId[]) => void;
   onOrderMove: (pid: ProvinceId) => void;
   /** Province under the cursor, and the army counter if pointing at one. */
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
@@ -1671,6 +1673,8 @@ export function MapView(props: MapViewProps) {
         [x1, y1],
       ])
       .clickDistance(5)
+      // Shift-drag draws a selection box instead of panning.
+      .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
       .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => setTransform(e.transform));
     zoomRef.current = behavior;
     setFitK(fit.k);
@@ -1736,6 +1740,64 @@ export function MapView(props: MapViewProps) {
     centreOn(x, y, Math.max(transform.k, fitK * 2.2), 450);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.focus?.seq]);
+
+  // Arrow keys pan the map (Shift for bigger steps), unless a window is open.
+  useEffect(() => {
+    const PAN: Record<string, [number, number]> = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+    const onKey = (e: KeyboardEvent) => {
+      const dir = PAN[e.key];
+      if (!dir || e.ctrlKey || e.metaKey || e.altKey) return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || document.querySelector('.modal-backdrop, .tutorial-backdrop')) return;
+      const svg = svgRef.current;
+      const behavior = zoomRef.current;
+      if (!svg || !behavior) return;
+      e.preventDefault();
+      const step = (e.shiftKey ? 260 : 90) / zoomTransform(svg).k;
+      select(svg).call(behavior.translateBy, dir[0] * step, dir[1] * step);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Shift-drag: a box that selects your armies inside it. A short drag is a Shift-click (adds one army).
+  const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const boxEnded = useRef(false);
+  const startBox = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!e.shiftKey || e.button !== 0 || props.touch || !props.onBoxSelect) return;
+    const svg = svgRef.current!;
+    const r = svg.getBoundingClientRect();
+    const [x0, y0] = [e.clientX - r.left, e.clientY - r.top];
+    let end: [number, number] | null = null;
+    const move = (ev: MouseEvent) => {
+      const [x1, y1] = [ev.clientX - r.left, ev.clientY - r.top];
+      if (!end && Math.hypot(x1 - x0, y1 - y0) < 6) return;
+      end = [x1, y1];
+      setBox({ x0, y0, x1, y1 });
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+      setBox(null);
+      if (!end) return;
+      // The click that ends the drag must not clear the selection.
+      boxEnded.current = true;
+      const [left, right] = [r.left + Math.min(x0, end[0]), r.left + Math.max(x0, end[0])];
+      const [top, bottom] = [r.top + Math.min(y0, end[1]), r.top + Math.max(y0, end[1])];
+      const ids = new Set<ArmyId>();
+      for (const g of svg.querySelectorAll('g[data-army]')) {
+        const id = g.getAttribute('data-army')!;
+        if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
+        const b = g.getBoundingClientRect();
+        const [cx, cy] = [b.left + b.width / 2, b.top + b.height / 2];
+        if (cx >= left && cx <= right && cy >= top && cy <= bottom) ids.add(id);
+      }
+      if (ids.size) props.onBoxSelect!([...ids]);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+    e.preventDefault();
+  };
 
   const zoomBy = (factor: number) => {
     if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(220).call(zoomRef.current.scaleBy, factor);
@@ -1860,6 +1922,12 @@ export function MapView(props: MapViewProps) {
         ref={svgRef}
         className={`map mode-${props.mapMode}${props.moveMode ? ' move-mode' : ''}`}
         onContextMenu={(e) => e.preventDefault()}
+        onMouseDown={startBox}
+        onClickCapture={(e) => {
+          if (!boxEnded.current) return;
+          boxEnded.current = false;
+          e.stopPropagation();
+        }}
         onClick={(e) => {
           if (!(e.target as Element).closest('[data-province],[data-army]')) props.onSelectProvince(null);
         }}
@@ -1971,6 +2039,12 @@ export function MapView(props: MapViewProps) {
           )}
         </g>
       </svg>
+      {box && (
+        <div
+          className="select-box"
+          style={{ left: Math.min(box.x0, box.x1), top: Math.min(box.y0, box.y1), width: Math.abs(box.x1 - box.x0), height: Math.abs(box.y1 - box.y0) }}
+        />
+      )}
       <div className="map-vignette" />
       <div className="map-nav">
         <div className="zoom-controls">

@@ -218,6 +218,14 @@ kbd {
   position: absolute;
   inset: 0;
 }
+.select-box {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: rgba(240, 166, 58, 0.12);
+  pointer-events: none;
+}
 
 /* ---------------------------------------------------------------- Top bar */
 .topbar {

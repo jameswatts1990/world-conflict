@@ -93,9 +93,13 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | --- | --- |
 | Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, forces present, routes |
 | Left-click army (its model or counter) | Select army (Shift-click adds more of your armies) |
+| **Shift**-drag | Select every army of yours inside the box |
+| **,** / **.** | Previous / next of your armies |
 | Right-click province or enemy army | March the selected armies there (or press **M** / the **Move** button, then left-click) |
 | **S** | Stop the selected armies after their current leg |
 | Drag / mouse wheel | Pan / zoom |
+| Arrow keys | Pan the map (with **Shift**, further) |
+| **C** / **Home** | Jump to your capital |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
 | **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |

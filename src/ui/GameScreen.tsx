@@ -223,6 +223,21 @@ export function GameScreen({
     [ctrl],
   );
 
+  /** The next (or previous) of your armies, in the order they were raised: selected, and brought into view. */
+  const cycleArmy = useCallback(
+    (dir: 1 | -1) => {
+      const own = Object.values(ctrl.state.armies)
+        .filter((a) => a.owner === ctrl.human)
+        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      if (!own.length) return;
+      const i = own.findIndex((a) => a.id === selectedArmies[0]);
+      const next = own[i < 0 ? (dir > 0 ? 0 : own.length - 1) : (i + dir + own.length) % own.length];
+      selectArmy(next.id, false);
+      setFocus((f) => ({ province: next.move?.leg ? next.move.leg.from : next.province, seq: (f?.seq ?? 0) + 1 }));
+    },
+    [ctrl, selectedArmies, selectArmy],
+  );
+
   const orderMove = useCallback(
     (pid: ProvinceId) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
@@ -290,13 +305,15 @@ export function GameScreen({
       }
       else if (key === 's' && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
-      } else if (key === 'l') setFeedOpen((o) => !o);
+      } else if (key === 'c' || e.key === 'Home') focusOn(world.nations[human].capital);
+      else if (e.key === '.' || e.key === ',') cycleArmy(e.key === '.' ? 1 : -1);
+      else if (key === 'l') setFeedOpen((o) => !o);
       else if (key === 'k') setLegendOpen((o) => !o);
       else if (key === 'v') setMapMode((m) => MAP_MODES[(MAP_MODES.findIndex(([id]) => id === m) + 1) % MAP_MODES.length][0]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, moveMode, legendOpen, selectedArmies]);
+  }, [ctrl, moveMode, legendOpen, selectedArmies, focusOn, cycleArmy, world, human]);
 
   useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
   const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
@@ -370,6 +387,12 @@ export function GameScreen({
             onPickTarget={setMoveTarget}
             onSelectProvince={selectProvince}
             onSelectArmy={selectArmy}
+            onBoxSelect={(ids) => {
+              const first = ctrl.state.armies[ids[0]];
+              setSelectedArmies(ids);
+              setSelectedProvince(first.move?.leg ? first.move.leg.from : first.province);
+              setMoveMode(null);
+            }}
             onOrderMove={orderMove}
             onHover={(pid, army) => setHover(pid ? { pid, army } : null)}
           />
