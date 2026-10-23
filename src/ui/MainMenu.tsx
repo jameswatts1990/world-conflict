@@ -69,12 +69,17 @@ const MenuBackdrop = memo(function MenuBackdrop({ world, geo, selected }: { worl
         );
       })}
       <path d={geo.provinceBorders} className="province-border" />
-      <path d={geo.nationBorders(startOwner)} className="nation-border" />
       <g clipPath="url(#menu-sel)">
-        <path d={outline} className="nation-glow wide" stroke={color} />
-        <path d={outline} className="nation-glow" stroke={lighten(color, 0.4)} />
+        <path d={outline} className="nation-band wide" stroke={color} />
+        <path d={outline} className="nation-band" stroke={lighten(color, 0.4)} />
       </g>
       <path d={geo.coastline} className="coastline" />
+      <path d={geo.nationBorders(startOwner)} className="nation-border-casing" />
+      <path d={geo.nationBorders(startOwner)} className="nation-border" />
+      {/* The chosen nation's land glows, as your own does in the campaign. */}
+      <path d={outline} className="home-glow wide" />
+      <path d={outline} className="home-glow" />
+      <path d={outline} className="home-line" />
     </svg>
   );
 });

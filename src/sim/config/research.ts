@@ -697,6 +697,18 @@ export const TECHS: TechConfig[] = [
     effects: [{ kind: 'xpGain', mult: 1.5 }],
   },
   {
+    id: 'liaisonOfficers',
+    name: 'Liaison Officers',
+    branch: 'society',
+    col: 2,
+    row: 1,
+    description:
+      'Officers posted to allied headquarters pool their reports: see everything your allies see through the fog of war. Allies are powers at peace with you and at war with a common enemy.',
+    requires: ['staffCollege'],
+    ...tier(2),
+    effects: [{ kind: 'alliedSight' }],
+  },
+  {
     id: 'radioBroadcasting',
     name: 'Radio Broadcasting',
     branch: 'society',

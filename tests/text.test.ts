@@ -105,12 +105,12 @@ describe('event wording', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'nl');
-    // A shaken army breaks before it can be destroyed and, with nowhere to retreat, surrenders.
-    place(state, 'nl', 'nl-amsterdam', { infantry: 1 }).units[0].morale = 0.3;
+    place(state, 'nl', 'nl-amsterdam', { infantry: 1 });
     place(state, 'fr', 'nl-amsterdam', { infantry: 6, artillery: 2 });
     run(state, 200);
-    const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
-    expect(lost.text).toBe('Encircled at Amsterdam, the Dutch 2nd Army surrendered to France — 1 unit lost.');
+    // The army fights to the last man.
+    const lost = state.events.find((e) => e.kind === 'army-destroyed')!;
+    expect(lost.text).toBe('The Netherlands lost the 2nd Army at Amsterdam.');
     expect(lost.subject).toBe('nl');
     const captured = state.events.find((e) => e.kind === 'capture')!;
     expect(captured.subject).toBe('nl');

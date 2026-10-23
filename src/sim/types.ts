@@ -116,7 +116,9 @@ export type Effect =
   | { kind: 'healing'; mult: number }
   /** Scales the penalty for attacking straight off a sea crossing. */
   | { kind: 'amphibious'; mult: number }
-  | { kind: 'movement'; mult: number };
+  | { kind: 'movement'; mult: number }
+  /** Fog of war: see everything your allies (powers at war with a common enemy) see. */
+  | { kind: 'alliedSight' };
 
 // ---------------------------------------------------------------------------
 // Static scenario definition (never mutated during play)
@@ -273,7 +275,7 @@ export interface Unit {
   type: UnitType;
   /** Fraction of full strength, 0..1. Max HP comes from config + research. */
   strength: number;
-  /** Fighting spirit, 0..1. Broken armies rout. */
+  /** Fighting spirit, 0..1. Low morale blunts firepower; armies never break. */
   morale: number;
   /** Combat experience; ranks Green, Regular, Veteran, Elite. */
   xp: number;
@@ -309,8 +311,6 @@ export interface Army {
   unsuppliedTicks: number;
   /** How the army reached its current province (sea landings fight at a penalty). */
   arrivedVia: ConnectionKind | null;
-  /** A routed army cannot take orders until this tick. */
-  routedUntil: number;
 }
 
 export interface ConstructionJob {
@@ -388,6 +388,12 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /**
+   * Fog of war: the share of armour among each nation's units, as far as this AI has seen
+   * them (a running estimate, so tanks that drop out of sight are not forgotten at once).
+   * Absent until it first sees foreign troops, and in older saves.
+   */
+  armourSeen?: Record<NationId, number>;
 }
 
 export interface NationState {
@@ -402,7 +408,7 @@ export interface NationState {
   /** Home-front morale 0..100 (population-weighted core province morale). */
   morale: number;
   ai: AiMemory | null;
-  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; armiesSurrendered: number };
+  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; retreats: number };
 }
 
 export interface PeaceOffer {

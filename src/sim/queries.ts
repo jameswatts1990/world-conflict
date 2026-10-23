@@ -294,10 +294,6 @@ export function isArmyInTransit(army: Army): boolean {
   return army.move?.leg != null;
 }
 
-export function isRouted(state: GameState, army: Army): boolean {
-  return army.routedUntil > state.tick;
-}
-
 // ---------------------------------------------------------------------------
 // Diplomacy & movement legality
 // ---------------------------------------------------------------------------

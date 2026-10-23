@@ -1,6 +1,6 @@
 // Army control for computer opponents. Each think:
-//   1. armies in a losing battle fall back before they break (a rout costs
-//      more, and an encircled rout means surrender);
+//   1. armies fight to the death, pulling out only of a hopeless battle (a
+//      withdrawal under fire costs every unit strength);
 //   2. starving or worn-out armies go home to recover;
 //   3. threatened provinces are covered first, nearest armies moving in;
 //   4. up to two offensives mass at a staging province and strike together,
@@ -58,20 +58,31 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
   return dist;
 }
 
-/** Defending power at a province, adjusted for terrain, forts, morale and nearby reinforcements. */
+/** Hostile armies standing in a province, if I can see it (the fog of war hides the rest). */
+function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
+  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, pid, ctx.me) : [];
+}
+
+/**
+ * Defending power at a province, adjusted for terrain, forts, morale and nearby reinforcements.
+ * Where the fog of war hides a province, its owner's estimated strength there stands in.
+ */
 function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
-  let p = 0;
-  for (const a of hostileArmiesIn(state, pid, ctx.me)) p += armyPower(state, a);
   const owner = state.provinces[pid].owner;
+  const guess = owner === NEUTRAL ? 0 : (ctx.unseen.get(owner) ?? 0);
+  let p = ctx.seen.has(pid) ? 0 : guess;
+  for (const a of hostilesInSight(ctx, pid)) p += armyPower(state, a);
   // Enemy armies next door can join the fight.
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      for (const a of hostileArmiesIn(state, n.id, ctx.me)) if (a.owner === owner) p += armyPower(state, a) * 0.35;
+      if (!ctx.seen.has(n.id)) p += guess * 0.35;
+      for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * 0.35;
     }
   }
-  const fort = state.provinces[pid].buildings.fortifications ?? 0;
+  // Forts are buildings: hidden under the fog of war too.
+  const fort = ctx.seen.has(pid) ? (state.provinces[pid].buildings.fortifications ?? 0) : 0;
   if (fort > 0) p /= 1 - fortificationReduction(state, owner, fort) * 0.7;
   return p * TERRAIN_DEFENCE[world.provinces[pid].terrain] * MORALE.defenderResilience;
 }
@@ -99,8 +110,8 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
   if (def.core === ctx.me) v += 14; // reclaim lost core territory
-  // Defenders with nowhere to run surrender: a bigger prize.
-  const defenders = hostileArmiesIn(state, pid, ctx.me).filter((a) => a.owner !== NEUTRAL);
+  // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
+  const defenders = hostilesInSight(ctx, pid).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
     const escape = world.neighbors[pid].filter((n) => state.provinces[n.id].owner === owner && (ctx.presence.get(n.id) ?? 0) === 0).length;
     if (escape === 0) v += 10;
@@ -173,17 +184,16 @@ export function handleMilitary(ctx: Ctx): void {
   const committed = new Set<ArmyId>();
   const power = (a: Army) => armyPower(state, a);
 
-  // 1. Battles: fight on, or fall back before the army breaks.
+  // 1. Battles: fight on unless the battle is hopeless, the army is spent and there is somewhere to go.
   for (const army of idleArmies(ctx)) {
-    const hostiles = hostileArmiesIn(state, army.province, me);
+    const hostiles = hostilesInSight(ctx, army.province);
     if (hostiles.length === 0) continue;
     committed.add(army.id);
     const enemy = hostiles.reduce((s, a) => s + power(a), 0);
     const mine = Object.values(state.armies)
       .filter((a) => a.owner === me && a.province === army.province && !a.move)
       .reduce((s, a) => s + power(a), 0);
-    const shaky = armyMorale(army) < AI.retreatMorale && enemy >= mine * 0.8;
-    if (shaky || mine < enemy * 0.3) {
+    if (mine < enemy * AI.retreatOdds && armyMorale(army) < AI.retreatMorale) {
       const refuge = retreatTarget(state, world, army, army.province);
       if (refuge) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: refuge });
     }

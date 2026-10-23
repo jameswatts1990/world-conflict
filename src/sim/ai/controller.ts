@@ -5,7 +5,7 @@ import { AI } from '../config/ai';
 import { scaledTicks } from '../queries';
 import type { GameState, NationId } from '../types';
 import type { World } from '../world';
-import { buildContext } from './context';
+import { buildContext, observeForces } from './context';
 import { handleDiplomacy } from './diplomacy';
 import { handleConstruction, handleResearch } from './economy';
 import { handleMilitary } from './military';
@@ -19,6 +19,7 @@ export function runAi(state: GameState, world: World, me: NationId): void {
   if (state.tick < nation.ai.nextThinkTick) return;
   nation.ai.nextThinkTick = state.tick + scaledTicks(state, AI.thinkIntervalSeconds);
 
+  observeForces(state, world, me);
   handleDiplomacy(buildContext(state, world, me));
   const ctx = buildContext(state, world, me);
   handleResearch(ctx);

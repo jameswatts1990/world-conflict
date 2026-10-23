@@ -44,12 +44,16 @@ export const AI = {
   /** Armies below these do not attack; they rest first. */
   attackMorale: 0.5,
   attackStrength: 0.55,
-  /** In battle, pull back before routing when morale is this low and the enemy is not weaker. */
-  retreatMorale: 0.33,
+  /** Only pull out of a battle (and pay the withdrawal penalty) when our power there is below this share of the enemy's. */
+  retreatOdds: 0.2,
+  /** ...and only once the army's morale has sunk this low. */
+  retreatMorale: 0.3,
   /** Defenders wanted per unit of threat on a frontier province. */
   defenceFactor: 0.9,
   /** Most offensives run at once. */
   maxCampaigns: 2,
   /** A new campaign target must beat the current one by this factor to replace it. */
   campaignStickiness: 1.25,
+  /** Fog of war: how far each think's sightings move the AI's estimate of a nation's armour share (0..1). */
+  armourSightingWeight: 0.3,
 };

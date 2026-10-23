@@ -111,6 +111,8 @@ const LINE = {
   mountains: 'M2 20L9 7l4 7 2-3 7 9zM7.6 9.6L9 7l1.8 3.3',
   urban: 'M4 20V10l4-2v12M8 20V5h7v15M15 20v-8h5v8M3 20h18M10.5 8.5h2M10.5 12h2M10.5 15.5h2',
   marsh: 'M4 15c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M4 19c2-1.3 4-1.3 6 0s4 1.3 6 0 2-1 4 0M9 12V6M13 12V4M17 12V7',
+  eye: 'M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12s-3.5 6.5-9.5 6.5S2.5 12 2.5 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6z',
+  fog: 'M3 9.5h11M6 13h14M3 16.5h9M15.5 16.5H21M8 6h8',
 } satisfies Record<string, string>;
 
 const FILLED = {

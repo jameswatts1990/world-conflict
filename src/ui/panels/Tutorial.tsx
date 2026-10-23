@@ -5,6 +5,14 @@ import { hoursText, proseDuration } from '../format';
 import { AdvisorPortrait, Icon, type IconName } from '../icons';
 import { useEscape } from './Common';
 
+/** What the map's colours mean, for the briefing. */
+function landText(world: World): string {
+  const others = hasNeutrals(world) ? 'Hatched beige states are neutral' : 'The powers range from great powers to one-province minor powers';
+  return `Your land glows inside a white outline, other powers show their colour along their borders, and your front with an enemy is red. ${others}; dark grey land lies outside the campaign.`;
+}
+const FOG =
+  ' Hazy land is under the fog of war: you only see armies near your provinces and armies (cavalry see further; Liaison Officers add what your allies see). Your opponents are under it too.';
+
 /** How the player is playing: touch input and the compact (phone) layouts change some instructions. */
 export interface BriefingInput {
   touch: boolean;
@@ -19,7 +27,6 @@ export function tutorialSteps(
 ): { title: string; icon: IconName; body: string }[] {
   // Save, load and help sit behind More in the compact layouts.
   const saveWhere = compact ? ' from More' : '';
-  const lands = hasNeutrals(world) ? '; hatched beige regions are neutral states you may invade' : ', from great powers to one-province minor powers';
   return [
     {
       title: `You lead ${nationName}`,
@@ -30,8 +37,8 @@ export function tutorialSteps(
       title: 'The map',
       icon: 'diplomacy',
       body: touch
-        ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. Tinted land belongs to the powers${lands}. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
-        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. Tinted land belongs to the powers${lands}. Dark grey land lies outside this campaign. Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
+        ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
+        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',
@@ -52,7 +59,7 @@ export function tutorialSteps(
         touch
           ? 'Tap an army counter to select it, press Move, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army.'
           : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, then click). The route and arrival time show as you point.'
-      } Battles wear down strength and morale: a broken army routs to a friendly neighbour, and one with nowhere to run surrenders, so encircle the enemy. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
+      } Battles wear down strength and morale, and armies fight to the death: pull one out under fire and every unit pays in strength, so encircle the enemy and leave it nowhere to go. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
     },
     {
       title: 'War, supply and research',

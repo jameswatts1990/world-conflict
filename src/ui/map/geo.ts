@@ -37,6 +37,8 @@ export interface MapGeometry {
   /** Projected area of each province, in map units² (for label weighting). */
   provinceArea: Record<ProvinceId, number>;
   provinceBounds: Record<ProvinceId, [[number, number], [number, number]]>;
+  /** Bounds of each province's whole shape, islands included (provinceBounds keeps to its largest part). */
+  shapeBounds: Record<ProvinceId, [[number, number], [number, number]]>;
   /** Bounding box of the playable theatre, in map units. */
   theatreBounds: [[number, number], [number, number]];
   coastline: string;
@@ -48,6 +50,13 @@ export interface MapGeometry {
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
+  /**
+   * The province borders that pass a test, as one path: `b` is the province on the other
+   * side, or null for the coast and the edge of the theatre.
+   */
+  arcs: (test: (a: ProvinceId, b: ProvinceId | null) => boolean) => string;
+  /** The provinces that pass a test as one shape, without the borders between them. */
+  union: (test: (pid: ProvinceId) => boolean) => string;
   /** Screen directions (radians) from each city towards its neighbours over land: the roads out of town. */
   roads: Record<ProvinceId, number[]>;
   /**
@@ -213,11 +222,13 @@ export function buildMapGeometry(world: World): MapGeometry {
   const labelPoints: Record<ProvinceId, [number, number]> = {};
   const provinceArea: Record<ProvinceId, number> = {};
   const provinceBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
+  const shapeBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
   provinces.features.forEach((f) => {
     provincePaths[f.properties.pid] = path(f) ?? '';
     labelPoints[f.properties.pid] = path.centroid(largestPolygon(f));
     provinceArea[f.properties.pid] = path.area(f);
     provinceBounds[f.properties.pid] = path.bounds(largestPolygon(f)) as [[number, number], [number, number]];
+    shapeBounds[f.properties.pid] = path.bounds(f) as [[number, number], [number, number]];
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
@@ -280,6 +291,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     countries: countryShapes,
     provinceArea,
     provinceBounds,
+    shapeBounds,
     theatreBounds,
     coastline,
     land,
@@ -298,5 +310,10 @@ export function buildMapGeometry(world: World): MapGeometry {
           return a === b ? inA : inA !== (ownerOf(pidOf(b)) === owner);
         }),
       ) ?? '',
+    arcs: (test) => path(mesh(topo, geoms, (a, b) => test(pidOf(a), a === b ? null : pidOf(b)))) ?? '',
+    union: (test) => {
+      const parts = geoms.geometries.filter((g) => test(pidOf(g))) as (TopoPolygon | TopoMultiPolygon)[];
+      return parts.length ? (path(merge(topo, parts)) ?? '') : '';
+    },
   };
 }

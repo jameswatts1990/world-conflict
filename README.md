@@ -22,7 +22,8 @@ What is in it (Milestone 2, Depth):
 - **Ten minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
   Slovakia, Slovenia, Croatia): one- or two-province nations run by the computer that recruit, research, make war
   and peace, and must be fought to be taken. They keep a garrison of about five units rather than a field army.
-- **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
+- **Morale** for units (low morale blunts firepower; armies fight to the death unless ordered out, and a
+  withdrawal under fire costs strength), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
@@ -30,7 +31,15 @@ What is in it (Milestone 2, Depth):
 - **3D armies**: zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
   lorries, tanks) in its nation's uniforms, paint and flag. Armies gather around their city, march along the roads
   facing the way they go, and cross the sea in troopships.
-- A **59-technology research tree** across four eras with slots, a queue and a classic tree view.
+- A **60-technology research tree** across four eras with slots, a queue and a classic tree view.
+- **Fog of war**: you see your own land, wherever your armies stand, and one province around them (cavalry and
+  armoured cars see two). Beyond that the map lies under haze and drifting cloud, and its armies, battles, sieges,
+  buildings and morale are hidden. Powers fighting a common enemy are **allies**: research **Liaison Officers** and
+  you also see everything your allies see. The computer opponents play under the same fog.
+- A **map that reads at a glance**: natural relief under light national colours, your own land lit up inside a
+  glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
+  power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
+  long before that, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
 - **Computer opponents** that plan offensives, answer the enemy's composition, manage morale and gang up on a
   power close to victory.
 
@@ -57,7 +66,7 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
-| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
@@ -105,8 +114,14 @@ buildings. At the same zoom the army counters become 3D models standing around t
 colour (white-rimmed for yours, red for enemies at war with you), each under a badge with its flag, number of
 formations, strength and morale. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
-provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
+provinces you win or lose, attacks on your territory, enemy withdrawals. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
+
+Land outside your sight lies under the fog of war: a darker veil with drifting cloud, a faint line where your sight
+ends, and no armies, battles, sieges or buildings in it (a city there shows only its old town). Pointing at a fogged
+province says so, and its city panel explains how to see it; the morale view shows its morale as unknown. Who holds
+it and how big its city is are always known. Diplomacy marks your allies (powers at peace with you and at war with a
+common enemy) and whether you share their sight. When the campaign ends the fog lifts.
 
 ### On a phone or tablet
 
@@ -170,13 +185,13 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  most campaigns end on objectives (7 of 8), after the AI has conquered every minor power, mostly within the first
-  20 minutes; Romania and Serbia are usually conquered too.
-- No fog of war: every army is visible.
+  most campaigns end on objectives (5 of 8), after the AI has conquered nearly every minor power, mostly within the
+  first 20 minutes. Serbia is always conquered, Romania usually, and France in every run.
+- Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. The main bundle is ~1,004 KB (330 KB gzipped).
+  devices. The main bundle is ~1,015 KB (334 KB gzipped).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
 - The theatre's south-eastern edge follows Romania's and Serbia's borders: Bulgaria, the western Balkans, Greece

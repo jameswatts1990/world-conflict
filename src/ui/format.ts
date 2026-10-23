@@ -19,6 +19,11 @@ export function countOf(n: number, noun: string, plural = `${noun}s`): string {
   return `${n} ${n === 1 ? noun : plural}`;
 }
 
+/** "France", "France and Italy", "France, Italy and Spain". */
+export function listText(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? '') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 /** Whole seconds in running prose: "90 seconds", "1 minute", "4 minutes". */
 export function proseDuration(seconds: number): string {
   if (seconds % 60 !== 0) return `${seconds} seconds`;
