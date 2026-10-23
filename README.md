@@ -19,7 +19,8 @@ What is in it (Milestone 2, Depth):
 - **Seven minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal):
   one-province nations run by the computer that recruit, research, make war and peace, and must be fought to be
   taken. They keep a garrison of about five units rather than a field army.
-- **Morale** for units (broken armies rout; encircled ones surrender), provinces (drives output; conquests
+- **Morale** for units (low morale blunts firepower; armies fight to the death unless ordered out, and a
+  withdrawal under fire costs strength), provinces (drives output; conquests
   integrate over time) and nations.
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
@@ -54,7 +55,7 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
-| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (routs, surrenders, captures, wars, research pace) |
+| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
@@ -102,7 +103,7 @@ buildings. At the same zoom the army counters become 3D models standing around t
 colour (white-rimmed for yours, red for enemies at war with you), each under a badge with its flag, number of
 formations, strength and morale. Click a field report or an alert to jump to its
 province. Peace offers (with time left to answer) and key events pop up at the top left: wars, research, objectives,
-provinces you win or lose, attacks on your territory, routs and surrenders. Alerts wait while the game is paused.
+provinces you win or lose, attacks on your territory, enemy withdrawals. Alerts wait while the game is paused.
 Declaring war and leaving the campaign ask for confirmation.
 
 ### On a phone or tablet

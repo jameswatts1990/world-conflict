@@ -15,9 +15,9 @@ import {
   canAfford,
   constructionCost,
   constructionTicks,
+  hostileArmiesIn,
   isArmyInTransit,
   isBuildingUnlocked,
-  isRouted,
   isUnitUnlocked,
   recruitCost,
   recruitTicks,
@@ -26,6 +26,7 @@ import {
   scaledTicks,
 } from './queries';
 import { createArmy } from './state';
+import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
@@ -65,10 +66,6 @@ function checkActor(state: GameState, nation: NationId): CommandResult {
   return OK;
 }
 
-function routedReason(state: GameState, routedUntil: number): string {
-  return `The army is routing and cannot take orders for ${Math.ceil((routedUntil - state.tick) / state.settings.durationScale)}s.`;
-}
-
 // ---------------------------------------------------------------------------
 // Validators (exported for the UI and AI)
 // ---------------------------------------------------------------------------
@@ -78,7 +75,6 @@ export function checkMove(state: GameState, world: World, nation: NationId, army
   if (!actor.ok) return actor;
   const army = state.armies[armyId];
   if (!army || army.owner !== nation) return fail('Not your army.');
-  if (isRouted(state, army)) return fail(routedReason(state, army.routedUntil));
   if (!world.provinces[to]) return fail('Unknown province.');
   const from = army.move?.leg ? army.move.leg.to : army.province;
   if (to === from && !army.move?.leg) return fail('The army is already there.');
@@ -249,8 +245,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       }
       const route = findPath(state, world, army, army.province, cmd.to)!;
       army.move = { path: route.path, leg: null };
-      // An explicit order departs immediately, even from a battle (retreat).
-      startLeg(state, world, army);
+      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
+      if (startLeg(state, world, army)) withdrawArmy(state, world, army, army.province);
       return OK;
     }
     case 'stop': {
@@ -258,7 +254,6 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (!actor.ok) return actor;
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
-      if (isRouted(state, army)) return fail(routedReason(state, army.routedUntil));
       if (!army.move) return fail('The army is not moving.');
       army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg } : null;
       return OK;
@@ -278,7 +273,6 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const created = createArmy(state, cmd.nation, army.province, moving);
       created.supplied = army.supplied;
       created.arrivedVia = army.arrivedVia;
-      created.routedUntil = army.routedUntil;
       return OK;
     }
     case 'merge': {
@@ -293,7 +287,6 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const [first, ...rest] = armies;
       for (const a of rest) {
         first.units.push(...a.units);
-        first.routedUntil = Math.max(first.routedUntil, a.routedUntil);
         delete state.armies[a.id];
       }
       first.move = null;
@@ -305,6 +298,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (isArmyInTransit(army)) return fail('Cannot disband while marching.');
+      if (hostileArmiesIn(state, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
       const ids = cmd.unitIds ? new Set(cmd.unitIds) : null;
       const leaving = ids ? army.units.filter((u) => ids.has(u.id)) : army.units;
       if (leaving.length === 0 || (ids && leaving.length !== ids.size)) return fail('Select units of this army to disband.');

@@ -1,6 +1,6 @@
 // Army control for computer opponents. Each think:
-//   1. armies in a losing battle fall back before they break (a rout costs
-//      more, and an encircled rout means surrender);
+//   1. armies fight to the death, pulling out only of a hopeless battle (a
+//      withdrawal under fire costs every unit strength);
 //   2. starving or worn-out armies go home to recover;
 //   3. threatened provinces are covered first, nearest armies moving in;
 //   4. up to two offensives mass at a staging province and strike together,
@@ -99,7 +99,7 @@ function targetValue(ctx: Ctx, pid: ProvinceId): number {
   let v = 5 + (def.objectiveVp ?? 0) * 7 + def.production.money / 10 + def.production.materials / 10 + state.provinces[pid].tier;
   if (owner !== NEUTRAL && world.nations[owner]?.capital === pid) v += 8;
   if (def.core === ctx.me) v += 14; // reclaim lost core territory
-  // Defenders with nowhere to run surrender: a bigger prize.
+  // Defenders with nowhere to withdraw to must fight to the end: a bigger prize.
   const defenders = hostileArmiesIn(state, pid, ctx.me).filter((a) => a.owner !== NEUTRAL);
   if (defenders.length > 0) {
     const escape = world.neighbors[pid].filter((n) => state.provinces[n.id].owner === owner && (ctx.presence.get(n.id) ?? 0) === 0).length;
@@ -173,7 +173,7 @@ export function handleMilitary(ctx: Ctx): void {
   const committed = new Set<ArmyId>();
   const power = (a: Army) => armyPower(state, a);
 
-  // 1. Battles: fight on, or fall back before the army breaks.
+  // 1. Battles: fight on unless the battle is hopeless, the army is spent and there is somewhere to go.
   for (const army of idleArmies(ctx)) {
     const hostiles = hostileArmiesIn(state, army.province, me);
     if (hostiles.length === 0) continue;
@@ -182,8 +182,7 @@ export function handleMilitary(ctx: Ctx): void {
     const mine = Object.values(state.armies)
       .filter((a) => a.owner === me && a.province === army.province && !a.move)
       .reduce((s, a) => s + power(a), 0);
-    const shaky = armyMorale(army) < AI.retreatMorale && enemy >= mine * 0.8;
-    if (shaky || mine < enemy * 0.3) {
+    if (mine < enemy * AI.retreatOdds && armyMorale(army) < AI.retreatMorale) {
       const refuge = retreatTarget(state, world, army, army.province);
       if (refuge) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: refuge });
     }

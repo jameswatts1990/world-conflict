@@ -23,7 +23,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface NewGameOptions {
   seed: number;
@@ -71,7 +71,6 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
     supplied: true,
     unsuppliedTicks: 0,
     arrivedVia: null,
-    routedUntil: 0,
   };
   state.armies[army.id] = army;
   return army;
@@ -157,7 +156,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
             campaigns: [],
           },
-      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },
+      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, retreats: 0 },
     };
   }
 

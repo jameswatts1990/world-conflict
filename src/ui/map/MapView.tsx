@@ -17,7 +17,6 @@ import {
   connectionBetween,
   findPath,
   isArmyInTransit,
-  isRouted,
   nationName,
   unitGen,
   type Army,
@@ -822,11 +821,10 @@ function ArmyMarker({
   const main = mainUnitType(c);
   const avg = c.strength;
   const morale = armyMorale(army);
-  const routed = isRouted(state, army);
   return (
     <g
       transform={`translate(${x},${y}) scale(${1 / k})`}
-      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`}
+      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}`}
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
@@ -849,7 +847,6 @@ function ArmyMarker({
       <rect x={-21} y={10.6} width={42} height={6.2} rx={1.6} className="army-hp-bg" />
       <rect x={-21} y={10.6} width={42 * avg} height={3} rx={1.5} fill={strengthColor(avg)} />
       <rect x={-21} y={14} width={42 * morale} height={2.6} rx={1.3} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
-      {routed && <path d="M15,-10 L15,-22 L24,-19 L15,-16" className="routed-flag" />}
       {!army.supplied && (
         <g transform="translate(20,-11)" className="army-badge warn">
           <circle r={5.4} />
@@ -1129,7 +1126,6 @@ function ArmyModelLayer({
     const own = army.owner === human;
     const sel = selected.has(army.id);
     const hostile = army.owner !== 'neutral' && !own && relations[army.owner]?.status === 'war';
-    const routed = isRouted(state, army);
     if (army.move && (own || sel)) routes.push(<Route key={`r-${army.id}`} geo={geo} army={army} x={p.x} y={p.y} k={k} own={own} selected={sel} />);
     const gen = unitGen(state, army.owner, p.model === 'transport' ? mainUnitType(composition(army)) : p.model);
     const sprite = unitSprite(world, p.model, gen, army.owner, p.heading);
@@ -1149,7 +1145,7 @@ function ArmyModelLayer({
       onMouseEnter: () => onHover(armyTarget(army), army.id),
       onMouseLeave: () => onHover(null),
     };
-    const status = `${sel ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}${routed ? ' routed' : ''}`;
+    const status = `${sel ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}`;
     const transform = `translate(${p.x},${p.y}) scale(${1 / k})`;
     // The hit area comes first: it is what scripts and touch aim for.
     const hw = Math.max(13, w / 2, room * 0.9);
@@ -1162,10 +1158,10 @@ function ArmyModelLayer({
         <rect x={-hw} y={Math.min(top, -26)} width={hw * 2} height={Math.max(top + h, room * 0.5) - Math.min(top, -26)} className="army-hit" />
         {p.model !== 'transport' && <ellipse rx={room} ry={room / 2} className="army-ring" fill={ownerColor(world, army.owner)} />}
         {sel && <ellipse rx={room * 1.22} ry={room * 0.61} className="army-select-ring" />}
-        <image href={sprite.href} x={left} y={top} width={w} height={h} className={routed ? 'army-routed-img' : undefined} />
+        <image href={sprite.href} x={left} y={top} width={w} height={h} />
       </g>,
     );
-    badges.push([sel, <ArmyBadge key={army.id} army={army} y={top - 3} transform={transform} status={status} routed={routed} handlers={handlers} />]);
+    badges.push([sel, <ArmyBadge key={army.id} army={army} y={top - 3} transform={transform} status={status} handlers={handlers} />]);
   }
   // The selection's badges go on top, so they can always be clicked.
   badges.sort((a, b) => Number(a[0]) - Number(b[0]));
@@ -1187,14 +1183,12 @@ function ArmyBadge({
   y,
   transform,
   status,
-  routed,
   handlers,
 }: {
   army: Army;
   y: number;
   transform: string;
   status: string;
-  routed: boolean;
   handlers: object;
 }) {
   const count = String(army.units.length);
@@ -1212,7 +1206,6 @@ function ArmyBadge({
         <rect x={-w / 2} y={-5.4} width={w} height={5.2} rx={1.4} className="army-hp-bg" />
         <rect x={-w / 2} y={-5.4} width={w * strength} height={2.5} rx={1.2} fill={strengthColor(strength)} />
         <rect x={-w / 2} y={-2.6} width={w * morale} height={2.3} rx={1.1} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
-        {routed && <path d={`M${w / 2 - 2},-18 L${w / 2 - 2},-29 L${w / 2 + 6},-26 L${w / 2 - 2},-23`} className="routed-flag" />}
         {!army.supplied && (
           <g transform={`translate(${w / 2 + 1},-19)`} className="army-badge warn">
             <circle r={5} />
