@@ -186,12 +186,13 @@ is what the technology was worth to it:
   technology everyone has by then is measured on few.
 
 Red flags: a technology worth half a place or more (and likely real), one that costs the nation that gets it, and one
-too small to notice (under 0.15 places even at the top of its margin). The thresholds are `GOALS.techValue` in
+too small to notice (under 0.35 places even at the top of its margin, which takes about 200 campaigns to show). The thresholds are `GOALS.techValue` in
 `scripts/balance/goals.ts`.
 
 Every technology costs one campaign per seed: all of them at 60 seeds is about 3,000 campaigns, two hours on 4 cores.
-Margins at 60 seeds are about ±0.5 places, enough to find a technology that decides games, not to rank close ones; give
-the ones you care about `--games 200`. `--shard 2/4` plays a quarter of the technologies and `merge <dir>… --out DIR`
+A nation's place with and without a technology differs by about two places from campaign to campaign, so margins are
+about ±0.55 places at 60 seeds and ±0.3 at 200: enough at 60 to find a technology that decides games, not to rank close
+ones. Give the ones you care about `--games 200`. `--shard 2/4` plays a quarter of the technologies and `merge <dir>… --out DIR`
 joins the parts, which is how the Tech lab workflow splits the work over four runners. A technology handed over at
 minute 20 that a nation would normally reach at minute 90 is worth a lot more than it costs; compare a technology
 with others of its column, or move `--at`.

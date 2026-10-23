@@ -16,9 +16,10 @@ export const GOALS = {
   /**
    * The tech lab (techs.ts) measures a technology's worth in places gained (among the playable nations) by the
    * nation handed it. It flags one worth at least `strong` places (and likely real), and one that, even at the top of
-   * its margin of error, is worth under `weak`: too small for a player to notice.
+   * its margin of error, is worth under `weak`: too small for a player to notice. Margins are about ±0.55 places at
+   * 60 campaigns and ±0.3 at 200, so the second flag needs about 200.
    */
-  techValue: { strong: 0.5, weak: 0.15 },
+  techValue: { strong: 0.5, weak: 0.35 },
   flags: {
     /** Every playable nation should last the whole campaign at least this often... */
     minSurvival: 0.4,
