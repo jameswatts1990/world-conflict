@@ -9,6 +9,7 @@ import {
   atWar,
   buildingSlots,
   eventsFor,
+  isArmyVisible,
   nationName,
   provinceName,
   scaledTicks,
@@ -163,8 +164,9 @@ export function GameScreen({
     return () => ro.disconnect();
   }, []);
 
-  // Drop selections of armies that no longer exist.
-  const liveArmies = selectedArmies.filter((id) => state.armies[id]);
+  // Drop selections of armies that no longer exist, or that have gone into the fog of war.
+  const seen = ctrl.sight();
+  const liveArmies = selectedArmies.filter((id) => state.armies[id] && isArmyVisible(state.armies[id], human, seen));
   if (liveArmies.length !== selectedArmies.length) setSelectedArmies(liveArmies);
 
   // Raise alerts for important new events.
@@ -676,18 +678,25 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const def = world.provinces[pid];
     const ps = state.provinces[pid];
     const owner = ps.owner;
+    // Under the fog of war only the map is known: who holds it and how big its city is.
+    const seen = ctrl.sight();
+    const known = seen.has(pid);
     // Units standing here by owner, yours first.
     const units = new Map<OwnerId, number>();
-    for (const a of armiesIn(state, pid).sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
+    for (const a of armiesIn(state, pid)
+      .filter((a) => isArmyVisible(a, human, seen))
+      .sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
       units.set(a.owner, (units.get(a.owner) ?? 0) + a.units.length);
     }
     const adjective = (o: OwnerId) => (o === 'neutral' ? (def.neutral?.adjective ?? 'neutral') : world.nations[o].adjective);
     const army = armyId ? state.armies[armyId] : undefined;
     const c = army ? composition(army) : null;
     // What the city's model shows, spelt out: its buildings, free slots and work in progress.
-    const built = BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0);
-    const job = ps.construction?.building ?? null;
-    const free = buildingSlots(state, pid) - slotsUsed(ps.buildings, job);
+    const built = known ? BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0) : [];
+    const job = known ? (ps.construction?.building ?? null) : null;
+    const free = known ? buildingSlots(state, pid) - slotsUsed(ps.buildings, job) : 0;
+    const battle = known && !!state.battles[pid];
+    const capture = known ? ps.capture : null;
     body = (
       <>
         {army && c && (
@@ -741,14 +750,14 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
             {job && <span className="warn-text">Building {BUILDINGS[job].name}</span>}
           </div>
         )}
-        {owner !== 'neutral' && (
+        {owner !== 'neutral' && known && (
           <div className="hc-row">
             <span className={ps.morale >= 60 ? 'ok' : ps.morale < 35 ? 'bad' : 'warn-text'}>
               <Icon name="morale" size={13} /> Morale {Math.round(ps.morale)}
             </span>
           </div>
         )}
-        {(units.size > 0 || state.battles[pid] || ps.capture) && (
+        {(units.size > 0 || battle || capture) && (
           <div className="hc-row">
             {[...units].map(([o, n]) =>
               o === human ? (
@@ -761,12 +770,17 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
                 </span>
               ),
             )}
-            {state.battles[pid] && (
+            {battle && (
               <span className="bad">
                 <Icon name="swords" size={13} /> Battle
               </span>
             )}
-            {ps.capture && <span className="warn-text">Being captured</span>}
+            {capture && <span className="warn-text">Being captured</span>}
+          </div>
+        )}
+        {!known && (
+          <div className="hc-row hc-fog">
+            <Icon name="fog" size={13} /> Fog of war: no reports from here
           </div>
         )}
       </>

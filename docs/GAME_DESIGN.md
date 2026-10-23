@@ -216,6 +216,20 @@ Specialities are optional: a nation without one shows its bloc instead.
   An army is supplied there or within one connection of it (Supply Corps research +1; railway junctions +1).
 - Unsupplied armies fight at 75% and do not recover; after 120 s they lose strength and morale.
 
+### 6.7 Sight and the fog of war
+
+- A nation sees every province it holds and every province where its armies stand (or march from), and the provinces
+  one connection away from them, sea crossings included. An army with a reconnaissance unit (cavalry, armoured cars)
+  sees two connections away. A marching army is seen at the nearer end of its road.
+- **Allies** are powers at peace with each other and at war with a common enemy (there are no treaties yet). With
+  **Liaison Officers** (Society & Morale, the Twenties, after Staff College) a nation also sees everything its allies see
+  with their own eyes. The research only helps the nation that has it.
+- Under the fog the player sees who holds each province and how big its city is, nothing else: no armies, battles,
+  sieges, buildings, construction, morale or supply. The map dims it under a veil and drifting cloud. When the
+  campaign ends the fog lifts.
+- Sight is worked out from the state whenever it is asked for (`src/sim/visibility.ts`) and never stored.
+- **Computer opponents play under the same fog** (§11): they know only what a human in their place could.
+
 ## 7. Morale
 
 Morale works on three levels.
@@ -244,7 +258,7 @@ capital is occupied. Shocks: declaring war −3 (the victim's people rally +2); 
 
 ## 8. Research
 
-59 technologies in **six branches** (Infantry & Doctrine, Artillery, Armour & Mobility, Industry, Logistics &
+60 technologies in **six branches** (Infantry & Doctrine, Artillery, Armour & Mobility, Industry, Logistics &
 Engineering, Society & Morale) across **eight columns in four eras** (Great War, Twenties, Thirties, Second World
 War). Technologies unlock units and buildings, upgrade equipment generations, and grant modifiers.
 
@@ -253,7 +267,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 - Cost is paid when a project starts; cancelling refunds half. A queue (up to 8) starts projects in order as
   slots, prerequisites and funds allow. Clicking a locked technology in the tree queues its whole path.
 - **Era:** Interwar after 3 technologies from the Twenties onwards; WWII after 3 from column 5 (1935) onwards.
-- The tree is deliberately longer than a campaign: in AI campaigns nations finish 30–50 of the 59 technologies
+- The tree is deliberately longer than a campaign: in AI campaigns nations finish 30–50 of the 60 technologies
   (fewer when beaten early).
 - A queued project that cannot be paid for yet waits, and the queue behind it waits too; the top bar and the research
   window say what it is still short of.
@@ -299,6 +313,14 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
   guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
   provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
   fully against one province, so a single army cannot tie down a whole frontier.
+- **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
+  military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
+  (§6.7), and its allies' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot see is
+  spread evenly over that power's unseen provinces, and counts that when sizing an attack whose reinforcements could
+  come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
+  30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
+  are noticed once they cross the middle of their road. It values Liaison Officers once it has allies.
+  All of this lives in the context the AI builds each think (`src/sim/ai/context.ts`).
 
 ## 12. Architecture
 
@@ -328,13 +350,17 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 - **Map.** Shaded-relief terrain is baked once per session from each province's terrain type (an SVG turbulence and
   lighting filter rendered to a bitmap, `src/ui/map/terrain.ts`), so mountains, hills, forests and marshes read at a
-  glance. The relief is kept low in contrast so it never competes with borders, counters and labels. Ownership is a
-  translucent nation tint over the terrain, with a glowing inner border in each nation's colour. The sea has a depth
+  glance. The relief is kept low in contrast so it never competes with borders, counters and labels. The sea has a depth
   gradient, baked coastal shallows and a 5° graticule; land outside the theatre is dark grey. Provinces and the world
   around them come from one topology, so their coasts and borders are the same lines.
-  Five map views, cycled with V: **Political** (strong tint), **Terrain** (light tint), **Supply** (your provinces
-  green when connected to a supply hub, red when cut off), **Morale** (civilian morale, red to green) and **Cities**
-  (city tier).
+- **Colour on the map** is kept for what the player needs to tell apart, so the land still looks like land. Each power
+  washes its territory lightly in its colour (the relief reads through) and runs a band of it along the inside of its
+  border; borders between powers are a light line on a dark casing, those between provinces a faint light line. The
+  player's own land is lit up: a brighter, richer wash of its colour inside a glowing white outline. The **front**,
+  where the player's land meets a power at war with them, is red, as are the rims of enemy armies. Unseen land lies
+  under the fog of war (§6.7). Five map views, cycled with V: **Political** (the scheme above), **Terrain** (the same
+  borders over almost bare land), **Supply** (your provinces green when connected to a supply hub, red when cut off),
+  **Morale** (civilian morale, red to green; unknown under the fog) and **Cities** (city tier).
 - **Labels.** Nation names are painted across their territory when zoomed out, as a translucent, widely spaced
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
   cities and counters where possible. Province names take over when zoomed in. Cities have dark name plates with an
@@ -382,8 +408,12 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings
   and cached as one image per look.
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
-  the whole theatre. Zoom stops at 7× the fitted view, where the baked relief is still sharp. A phone opens closer in,
-  centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so they stand apart.
+  the whole theatre. Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
+  so zooming further spreads a crowded front out instead of magnifying it. Past the zoom where the session's relief
+  texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
+  match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
+  opens closer in, centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so
+  they stand apart.
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
@@ -418,3 +448,5 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
+- Is one province of sight around your land and armies the right amount of fog? Should sight be blocked by mountains or
+  reach further across the sea?

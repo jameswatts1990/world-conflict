@@ -54,4 +54,6 @@ export const AI = {
   maxCampaigns: 2,
   /** A new campaign target must beat the current one by this factor to replace it. */
   campaignStickiness: 1.25,
+  /** Fog of war: how far each think's sightings move the AI's estimate of a nation's armour share (0..1). */
+  armourSightingWeight: 0.3,
 };

@@ -144,7 +144,8 @@ function unlockChips(ctrl: GameController, tech: TechConfig): ReactNode[] {
         );
       }
     }
-    if (e.kind === 'researchSlot') chips.push(<span key="slot" className="chip slot">+1 research slot</span>);
+    if (e.kind === 'researchSlot') chips.push(<span key="slot" className="chip perk">+1 research slot</span>);
+    if (e.kind === 'alliedSight') chips.push(<span key="sight" className="chip perk">Allies' sight</span>);
   }
   return chips;
 }

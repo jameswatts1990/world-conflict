@@ -113,6 +113,16 @@ export const CAPTURE = {
   capitalMult: 1.5,
 };
 
+/** Fog of war: how far, in connections, a nation's provinces and armies see. */
+export const SIGHT = {
+  /** Every province a nation holds watches itself and its neighbours. */
+  province: 1,
+  /** So does every army, from the province it stands in or marches from. */
+  army: 1,
+  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far. */
+  recon: 2,
+};
+
 export const DIPLOMACY = {
   /** A war must last this long before peace can be offered. */
   minWarSecondsBeforePeace: 180,

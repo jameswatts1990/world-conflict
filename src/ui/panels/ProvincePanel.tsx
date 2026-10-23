@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
 import { BUILDING_UNLOCKED_BY, TECH_BY_ID, UNIT_UNLOCKED_BY } from '../../sim/config/research';
-import { ECONOMY } from '../../sim/config/rules';
+import { ECONOMY, SIGHT } from '../../sim/config/rules';
 import { UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
 import {
   RESOURCE_KEYS,
+  alliesOf,
   armiesIn,
   armyMorale,
   armyName,
@@ -20,6 +21,7 @@ import {
   constructionCost,
   constructionTicks,
   currentModel,
+  isArmyVisible,
   isUnitUnlocked,
   nationName,
   provinceMoraleTarget,
@@ -27,6 +29,7 @@ import {
   recruitCost,
   recruitTicks,
   sentence,
+  sharesAlliedSight,
   unitGen,
   unitStats,
   type Army,
@@ -46,7 +49,7 @@ import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/ada
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { countOf, fmtPopulation, fmtRate, formatDuration } from '../format';
+import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
 import { Cost, MoraleMeter, Progress, Section } from './Common';
@@ -141,7 +144,10 @@ export function ProvincePanel({
   const owner = ps.owner;
   const mine = owner === human;
   const color = ownerColor(world, owner);
-  const armies = armiesIn(state, pid);
+  // Under the fog of war only the map is known: who holds it, its city and its ground.
+  const seen = ctrl.sight();
+  const known = seen.has(pid);
+  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
   const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
   const nationalCapital = def.city.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
@@ -172,7 +178,7 @@ export function ProvincePanel({
             <Icon name="city" size={13} /> {fmtPopulation(cityPopulation(state, world, pid))}
           </span>
           {def.objectiveVp ? <strong className="chip gold vp-badge">★ {def.objectiveVp} VP objective</strong> : null}
-          {owner !== 'neutral' && (
+          {owner !== 'neutral' && known && (
             <span className={`chip ${ps.supplied ? 'ok' : 'bad'}`} title={ps.supplied ? 'Connected to a supply hub' : 'Cut off from supply hubs'}>
               <Icon name="supply" size={13} /> {ps.supplied ? 'Supplied' : 'Cut off'}
             </span>
@@ -202,12 +208,12 @@ export function ProvincePanel({
           seed={pid}
           tier={ps.tier}
           capital={capital || nationalCapital}
-          buildings={ps.buildings}
-          construction={ps.construction?.building ?? null}
+          buildings={known ? ps.buildings : {}}
+          construction={known ? (ps.construction?.building ?? null) : null}
           terrain={def.terrain}
           coastal={def.coastal}
           nationColor={owner === 'neutral' ? undefined : color}
-          battle={!!state.battles[pid]}
+          battle={known && !!state.battles[pid]}
           width={354}
         />
       </div>
@@ -227,8 +233,8 @@ export function ProvincePanel({
       </nav>
 
       <div className="panel-body">
-        {state.battles[pid] && <BattleBox ctrl={ctrl} pid={pid} />}
-        {ps.capture && (
+        {known && state.battles[pid] && <BattleBox ctrl={ctrl} pid={pid} />}
+        {known && ps.capture && (
           <div className="capture-box">
             <span>
               <Icon name="target" size={14} /> {sentence(nationName(world, ps.capture.by))} capturing
@@ -237,11 +243,36 @@ export function ProvincePanel({
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />
           </div>
         )}
-        {activeTab === 'city' && <CityTab ctrl={ctrl} pid={pid} />}
+        {activeTab === 'city' && (known ? <CityTab ctrl={ctrl} pid={pid} /> : <FogNote ctrl={ctrl} />)}
         {activeTab === 'recruit' && <RecruitTab ctrl={ctrl} pid={pid} />}
         {activeTab === 'armies' && <ArmiesTab ctrl={ctrl} pid={pid} selectedArmies={selectedArmies} onSelectArmy={onSelectArmy} />}
       </div>
     </section>
+  );
+}
+
+/** A province under the fog of war shows this instead of its city: what is hidden, and how to see it. */
+function FogNote({ ctrl }: { ctrl: GameController }) {
+  const { state, world, human } = ctrl;
+  const allies = alliesOf(state, world, human).map((a) => world.nations[a].name);
+  const reach = (n: number) => (n === 1 ? 'the provinces next to them' : `${n} provinces out`);
+  return (
+    <div className="fog-note" data-testid="fog-note">
+      <div className="fog-title">
+        <Icon name="fog" size={15} /> Under the fog of war
+      </div>
+      <p className="muted small">
+        No reports come from here: its armies, battles, buildings and morale are hidden. Your provinces watch {reach(SIGHT.province)}, armies{' '}
+        {reach(SIGHT.army)}, and armies with reconnaissance units (cavalry, armoured cars) {reach(SIGHT.recon)}.
+      </p>
+      <p className="muted small">
+        {sharesAlliedSight(state, human)
+          ? allies.length
+            ? `Your liaison officers share what ${listText(allies)} can see, and none of them can see here either.`
+            : 'Your liaison officers will share what your allies see once you fight a common enemy.'
+          : 'Research Liaison Officers to see what your allies (powers fighting a common enemy) see.'}
+      </p>
+    </div>
   );
 }
 
@@ -651,11 +682,13 @@ function ArmiesTab({
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
 }) {
   const { state, world, human } = ctrl;
-  const armies = armiesIn(state, pid);
+  const seen = ctrl.sight();
+  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
   return (
     <>
+      {!seen.has(pid) && <p className="muted small fog-text">Under the fog of war: armies here cannot be seen.</p>}
       <Section title="Forces present" icon="swords" extra={armies.length ? armies.length : undefined}>
-        {armies.length === 0 && <div className="muted empty">No armies in this province</div>}
+        {armies.length === 0 && <div className="muted empty">{seen.has(pid) ? 'No armies in this province' : 'None in sight'}</div>}
         <ul className="army-list">
           {armies.map((a) => {
             const name = a.owner === 'neutral' ? armyName(world, a, pid) : armyName(world, a);

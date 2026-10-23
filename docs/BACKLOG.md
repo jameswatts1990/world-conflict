@@ -131,6 +131,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Cities drawn as part of the map instead of on a round token: a web of streets that fades into the countryside,
       main roads running on towards the neighbouring cities, the old town round the landmark and each building on its
       pad around it; seaside cities keep to the land (streets stop at the coast) and get a port on the real coast
+- [x] A map that reads at a glance: lighter national washes over natural relief, each power's colour along the inside of
+      its border under a cased border line, your own land lit up inside a glowing white outline, the front with an enemy
+      in red; zoom to 20× the whole-theatre view (overlays stop growing, so fronts spread out) with close-up relief
+      tiles baked on demand
 
 ### Polish pass (done)
 
@@ -173,8 +177,13 @@ Found by playing full campaigns in the browser and reading the code end to end.
 
 ## M4 — Fog of war and diplomacy
 
-- [ ] Fog of war and reconnaissance (recon units gain a sight bonus)
-- [ ] Alliances, right of passage, non-aggression pacts, coalition victory
+- [x] Fog of war: provinces and armies see one province around them, reconnaissance units two; unseen land is veiled and
+      hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
+- [x] Shared sight between allies (powers fighting a common enemy) with the Liaison Officers research
+- [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
+      (and allies, with Liaison Officers) can see, guess at the rest from public totals, and remember enemy armour
+- [ ] Alliances as treaties (today any powers fighting a common enemy count as allies), right of passage,
+      non-aggression pacts, coalition victory
 - [ ] Peace terms: province transfers and reparations
 - [ ] Minor powers that can be courted or guaranteed, and that react to invasions of their neighbours
 
