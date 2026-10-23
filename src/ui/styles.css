@@ -1164,6 +1164,11 @@ kbd {
   border-radius: 6px;
   box-shadow: var(--shadow);
 }
+.zoom-controls button.active {
+  background: linear-gradient(180deg, rgba(240, 166, 58, 0.32), rgba(240, 166, 58, 0.12));
+  border-color: var(--accent);
+  color: var(--accent-2);
+}
 .minimap {
   width: 240px;
   height: 178px;
@@ -1778,7 +1783,8 @@ kbd {
   right: var(--dock);
 }
 @media (max-width: 1250px) {
-  .layout-desktop .map-wrap.dock-open .minimap {
+  .layout-desktop .map-wrap.dock-open .minimap,
+  .layout-desktop .map-wrap.dock-open .overview-toggle {
     display: none;
   }
 }

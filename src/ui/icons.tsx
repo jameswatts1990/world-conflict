@@ -86,6 +86,7 @@ const LINE = {
   minus: 'M5 12h14',
   fit: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   legend: 'M5 5h14v14H5zM8 9h8M8 12h8M8 15h5',
+  overview: 'M3 6.5L9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20zM9 4v13.5M15 6.5V20',
   clock: 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7v5l3.2 2',
   swords: 'M4 4l11 11M13 17l4-4M15 15l4.5 4.5M20 4L9 15M11 17l-4-4M9 15l-4.5 4.5',
   supply: 'M4 8l8-4 8 4v8l-8 4-8-4zM4 8l8 4 8-4M12 12v8',

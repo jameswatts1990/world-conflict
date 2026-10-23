@@ -16,8 +16,10 @@ import {
   unitGen,
   unitStats,
   veterancyRank,
+  type Army,
   type ArmyId,
   type MoveMode,
+  type UnitId,
 } from '../../sim';
 import { UnitIconArt } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
@@ -36,6 +38,15 @@ export function RankChevrons({ xp }: { xp: number }) {
       {rank === 0 ? '·' : '❯'.repeat(rank)}
     </span>
   );
+}
+
+/** Every other formation of each kind: the half that splits off when none are ticked. */
+function halfOf(army: Army): UnitId[] {
+  const kinds = [...new Set(army.units.map((u) => u.type))];
+  return kinds
+    .flatMap((t) => army.units.filter((u) => u.type === t))
+    .filter((_, i) => i % 2 === 1)
+    .map((u) => u.id);
 }
 
 export function ArmyPanel({
@@ -75,6 +86,9 @@ export function ArmyPanel({
   if (army.holding && !leg) {
     status = hostiles.length > 0 ? `Holding ${here} under attack` : `Holding position in ${here}`;
     statusIcon = 'lock';
+  } else if (leg && army.move?.halting) {
+    status = `Turning back to ${provinceName(world, leg.to)}`;
+    statusIcon = 'stop';
   } else if (army.move?.patrol) {
     const [a, b] = army.move.patrol;
     status = `Patrolling between ${provinceName(world, a)} and ${provinceName(world, b)}`;
@@ -107,12 +121,13 @@ export function ArmyPanel({
   const holdAll = (hold: boolean) => {
     for (const a of selectedOwn) ctrl.submit({ type: 'hold', nation: human, armyId: a.id, hold });
   };
+  const stoppable = selectedOwn.filter((a) => a.move && !a.move.halting);
 
   const sameProvinceOwn = armiesIn(state, army.province).filter((a) => a.owner === human);
   const grace = scaledTicks(state, SUPPLY.attritionGraceSeconds);
 
   const split = () => {
-    const ids = army.units.filter((u) => checked.has(u.id)).map((u) => u.id);
+    const ids = checked.size > 0 ? army.units.filter((u) => checked.has(u.id)).map((u) => u.id) : halfOf(army);
     const before = new Set(Object.keys(state.armies));
     const r = ctrl.submit({ type: 'split', nation: human, armyId: army.id, unitIds: ids });
     if (r.ok) {
@@ -247,19 +262,41 @@ export function ArmyPanel({
             <button
               className={`order-btn${army.holding ? ' active' : ''}`}
               onClick={() => holdAll(!army.holding)}
-              title={army.holding ? 'Release the hold (G)' : 'Hold position: halt after the current leg and stay, never withdrawing on its own, until given a new order (G)'}
+              title={
+                army.holding
+                  ? 'Release the hold (G)'
+                  : 'Hold position: halt at once (an army on the road turns back to the province it set out from) and stay, never withdrawing on its own, until given a new order (G)'
+              }
               data-testid="hold"
             >
               <Icon name="lock" size={18} />
               <span>{army.holding ? 'Holding' : 'Hold'}</span>
             </button>
-            <button className="order-btn" disabled={!army.move} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
+            <button
+              className="order-btn"
+              disabled={stoppable.length === 0}
+              onClick={() => stoppable.forEach((a) => ctrl.submit({ type: 'stop', nation: human, armyId: a.id }))}
+              title="Stop at once: an army on the road turns back to the province it set out from (S)"
+              data-testid="stop"
+            >
               <Icon name="stop" size={18} />
               <span>Stop</span>
             </button>
-            <button className="order-btn" disabled={checked.size === 0 || checked.size === army.units.length || !!leg} onClick={split} title="Split ticked formations into a new army">
+            <button
+              className="order-btn"
+              disabled={army.units.length < 2 || checked.size === army.units.length || !!leg}
+              onClick={split}
+              title={
+                leg
+                  ? 'Cannot reorganise while marching'
+                  : checked.size > 0
+                    ? 'Split the ticked formations into a new army'
+                    : 'Split the army in two, each half with a share of every kind of unit (or tick formations below to choose)'
+              }
+              data-testid="split"
+            >
               <Icon name="split" size={18} />
-              <span>Split</span>
+              <span>{checked.size > 0 ? `Split ${checked.size}` : 'Split'}</span>
             </button>
             <button
               className="order-btn"

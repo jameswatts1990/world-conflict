@@ -38,7 +38,7 @@ export function tutorialSteps(
       icon: 'diplomacy',
       body: touch
         ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
-        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
+        : `Drag to pan, scroll to zoom${compact ? '' : ' (the map button under the zoom buttons opens an overview)'}; towns appear as you zoom in. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',
@@ -143,8 +143,8 @@ export const CONTROLS: [string, string][] = [
   ['Right-click', 'Send the selected armies to the province or enemy army under the cursor (Attack into foreign land, Move within your own)'],
   ['M / A / P', 'Move, Attack or Patrol: the next left-click sets the destination'],
   ['G', 'Hold position: halt and stay, never withdrawing on its own, until given a new order (again to release)'],
-  ['S', 'Stop the selected armies after their current leg'],
-  ['Drag / Mouse wheel', 'Pan / zoom the map (or use the overview map)'],
+  ['S', 'Stop the selected armies at once: one on the road turns back to the province it left'],
+  ['Drag / Mouse wheel', 'Pan / zoom the map (or open the overview map by the zoom buttons)'],
   ['Arrow keys', 'Pan the map (with Shift, further)'],
   ['C / Home', 'Jump to your capital'],
   ['Space', 'Pause / resume'],
@@ -162,7 +162,8 @@ export const TOUCH_CONTROLS: [string, string][] = [
   ['Tap province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
   ['Tap army counter', 'Select the army'],
   ['Move / Attack / Patrol, then tap', 'Preview the route and arrival time; tap the same place again (or Confirm) to march'],
-  ['Stop', 'Halt the selected army after its current leg'],
+  ['Stop', 'Halt the selected armies at once: one on the road turns back to the province it left'],
+  ['Split', 'Split the army in two, or tick formations first to choose which go'],
   ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],
   ['Panel handle', 'Drag the selection panel up for more, down to close it (upright phones)'],
   ['Tap resource', 'Income, army upkeep and net change'],

@@ -239,6 +239,16 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Corrected equipment details (Panhard 178, 105 mm mle 1935 B, Polish 20TP) and tech and speciality descriptions
       that overstated their effects; removed dead code and styles
 
+### Playtest fixes: army orders
+
+- [x] Stop did nothing on a one-province march (it only cut the path after the current leg): Stop and Hold now halt at
+      once, an army on the road turning back to the province it set out from. The Stop button applies to every selected
+      army
+- [x] Split was greyed out until formations were ticked, with nothing to say so: with none ticked it splits the army in
+      two, each half with a share of every kind of unit
+- [x] Closing the army card returned to the city it stood in instead of the map
+- [x] The overview map is hidden until its button (under the zoom buttons) opens it
+
 ## M4 — Fog of war and diplomacy
 
 - [x] Fog of war: provinces and armies see one province around them, reconnaissance units two over open land
