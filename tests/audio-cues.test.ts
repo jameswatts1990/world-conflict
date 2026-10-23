@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand, pushEvent } from '../src/sim';
-import { battleIntensity, cuesForEvents, eventCue, freshEvents } from '../src/audio/cues';
+import { battleIntensity, concernsPlayer, cuesForEvents, eventCue, freshEvents } from '../src/audio/cues';
 import { quietGame, world } from './helpers';
 
 const latest = (state: ReturnType<typeof quietGame>) => state.events[state.events.length - 1];
@@ -12,6 +12,19 @@ describe('sound cues for game events', () => {
     expect(eventCue(latest(state), state, world, 'fr')).toBe('war');
     expect(eventCue(latest(state), state, world, 'de')).toBe('war');
     expect(eventCue(latest(state), state, world, 'uk')).toBe('report');
+  });
+
+  it("other powers' wars are news only next door or between great powers", () => {
+    const state = quietGame();
+    // Slovakia and Slovenia: minor powers with no border with Spain.
+    applyCommand(state, world, { type: 'declareWar', nation: 'sk', target: 'si' });
+    expect(eventCue(latest(state), state, world, 'es')).toBeNull();
+    expect(concernsPlayer(state, world, 'es', latest(state))).toBe(false);
+    // Hungary borders Slovakia: the same war is news there.
+    expect(eventCue(latest(state), state, world, 'hu')).toBe('report');
+    // Two great powers at war: news everywhere.
+    applyCommand(state, world, { type: 'declareWar', nation: 'it', target: 'pl' });
+    expect(eventCue(latest(state), state, world, 'es')).toBe('report');
   });
 
   it('captures are good news for the new owner and bad news for the old one', () => {

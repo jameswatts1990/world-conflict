@@ -1,6 +1,6 @@
 // Which sound each game event makes for the player. Pure (no audio, no DOM), so the
 // mapping can be tested; the recordings for each cue are listed in ./assets.
-import { eventsFor, type GameEvent, type GameState, type NationId, type World } from '../sim';
+import { eventsFor, ownersBorder, type GameEvent, type GameState, type NationId, type OwnerId, type World } from '../sim';
 
 export type CueId =
   | 'ui.click'
@@ -63,14 +63,24 @@ export const CUES: Record<CueId, CueSpec> = {
 /** At most this many sounds per update, so a burst of reports stays legible. */
 const MAX_PER_BATCH = 2;
 
+/**
+ * Whether another power's war or peace is news to the player (an alert, a sound): when one side borders
+ * them, or both sides are great powers. Anything else stays in the field reports.
+ */
+export function concernsPlayer(state: GameState, world: World, human: NationId, e: GameEvent): boolean {
+  const sides = [e.actor, e.subject].filter((n): n is OwnerId => !!n && !!world.nations[n as NationId]);
+  if (sides.some((n) => ownersBorder(state, world, n, human))) return true;
+  return sides.length === 2 && sides.every((n) => world.nations[n as NationId].power === 'great');
+}
+
 /** The sound one event makes for the human player, if any. */
 export function eventCue(e: GameEvent, state: GameState, world: World, human: NationId): CueId | null {
   const ours = e.subject === human;
   switch (e.kind) {
     case 'war':
-      return ours || e.actor === human ? 'war' : 'report';
+      return ours || e.actor === human ? 'war' : concernsPlayer(state, world, human, e) ? 'report' : null;
     case 'peace':
-      return ours || e.actor === human ? 'peace' : 'report';
+      return ours || e.actor === human ? 'peace' : concernsPlayer(state, world, human, e) ? 'report' : null;
     case 'peace-offer':
       return e.nations[0] !== human && e.nations.includes(human) ? 'report' : null;
     case 'peace-rejected':

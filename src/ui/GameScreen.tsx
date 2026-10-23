@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
+import { concernsPlayer } from '../audio/cues';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
   armiesIn,
@@ -82,10 +83,10 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
   const { state, world, human } = ctrl;
   switch (e.kind) {
     case 'war':
-      // War on us is bad news; our own declaration and other powers' wars are worth knowing.
-      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : 'info';
+      // War on us is bad news; our own declaration, and other powers' wars that concern us, are worth knowing.
+      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'peace':
-      return e.subject === human || e.actor === human ? 'good' : 'info';
+      return e.subject === human || e.actor === human ? 'good' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'research':
     case 'shortage':
     case 'eliminated':
