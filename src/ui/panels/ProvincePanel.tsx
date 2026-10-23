@@ -54,8 +54,8 @@ import type { GameController } from '../game/GameController';
 import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
-import { unitTraits } from '../unitInfo';
-import { Cost, Modal, MoraleMeter, Progress, Section } from './Common';
+import { Cost, MoraleMeter, Progress, Section } from './Common';
+import { CLASS_LABEL, UnitInfo } from './UnitInfo';
 
 const CATEGORY_LABEL: Record<BuildingCategory, string> = {
   economy: 'Economy',
@@ -64,7 +64,6 @@ const CATEGORY_LABEL: Record<BuildingCategory, string> = {
   infrastructure: 'Infrastructure (no slot)',
 };
 
-const CLASS_LABEL: Record<UnitClass, string> = { infantry: 'Infantry', mobile: 'Mobile', support: 'Support', armour: 'Armour' };
 const CLASS_ICON: Record<UnitClass, IconName> = { infantry: 'shield', mobile: 'move', support: 'target', armour: 'bolt' };
 
 const ROUTE_KIND: Record<ConnectionKind, { label: string; icon: IconName }> = {
@@ -707,7 +706,7 @@ function RecruitTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
           </Section>
         );
       })}
-      {info && <UnitInfo ctrl={ctrl} type={info} pid={pid} onClose={() => setInfo(null)} />}
+      {info && <UnitInfo ctrl={ctrl} type={info} nation={human} pid={pid} onClose={() => setInfo(null)} />}
     </>
   );
 }
@@ -775,107 +774,6 @@ function RecruitCard({ ctrl, pid, type, queued, onInfo }: { ctrl: GameController
         </div>
       </div>
     </div>
-  );
-}
-
-/** Everything about a unit type: what it is for, its numbers, and what it is good and bad at. */
-function UnitInfo({ ctrl, type, pid, onClose }: { ctrl: GameController; type: UnitType; pid: ProvinceId; onClose: () => void }) {
-  const { state, world, human } = ctrl;
-  const cfg = UNITS[type];
-  const gen = unitGen(state, human, type);
-  const model = currentModel(state, world, human, type);
-  const s = unitStats(state, human, type);
-  const traits = unitTraits(state, world, human, type);
-  const check = checkRecruit(state, world, human, pid, type);
-  const upkeep = Object.entries(cfg.upkeepPerMinute).filter(([, v]) => v);
-  return (
-    <Modal title={model.name} icon="shield" subtitle={`${cfg.name} · ${model.year} · ${CLASS_LABEL[cfg.class]}`} onClose={onClose} size="narrow">
-      <div className="unit-info" data-testid="unit-info" data-unit={type}>
-        <div className="ui-hero">
-          <UnitPicture world={world} type={type} gen={gen} nation={human} width={150} />
-          <div>
-            <div className="ui-role">{cfg.role}</div>
-            <p className="ui-desc">{cfg.description}</p>
-            {model.detail && <p className="muted small">{model.detail}</p>}
-          </div>
-        </div>
-        <div className="ui-stats">
-          <span title="Damage when attacking, against unarmoured / armoured targets">
-            Attack <b>{s.attack.soft.toFixed(1)}</b> / {s.attack.hard.toFixed(1)}
-          </span>
-          <span title="Damage when defending its own province, against unarmoured / armoured targets">
-            Defence <b>{s.defence.soft.toFixed(1)}</b> / {s.defence.hard.toFixed(1)}
-          </span>
-          <span>
-            Hit points <b>{s.maxHp}</b>
-          </span>
-          <span>
-            Armour <b>{Math.round(s.hardness * 100)}%</b>
-          </span>
-          <span>
-            Speed <b>{(s.speedKmPerTick * 60).toFixed(0)}</b> km/min
-          </span>
-          <span>
-            Trains in <b>{formatDuration(recruitTicks(state, human, type), state)}</b>
-          </span>
-        </div>
-        <div className="ui-lists">
-          {traits.strengths.length > 0 && (
-            <div className="ui-list good">
-              <h5>
-                <Icon name="check" size={14} /> Strengths
-              </h5>
-              <ul>
-                {traits.strengths.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {traits.weaknesses.length > 0 && (
-            <div className="ui-list bad">
-              <h5>
-                <Icon name="warning" size={14} /> Weaknesses
-              </h5>
-              <ul>
-                {traits.weaknesses.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {traits.bonuses.length > 0 && (
-            <div className="ui-list bonus">
-              <h5>
-                <Icon name="star" size={14} /> National bonus: {traits.bonuses[0]}
-              </h5>
-              <ul>
-                {traits.bonuses.slice(1).map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-        <div className="ui-foot">
-          <span>
-            Cost <Cost cost={recruitCost(state, human, type)} have={state.nations[human].resources} />
-          </span>
-          {upkeep.length > 0 && (
-            <span className="muted small">
-              Upkeep {upkeep.map(([k, v]) => `${v} ${RESOURCE_LABEL[k as keyof typeof RESOURCE_LABEL].toLowerCase()}`).join(', ')} a minute
-            </span>
-          )}
-          {cfg.requires.length > 0 && <span className="muted small">Raised where there is a {cfg.requires.map((b) => BUILDINGS[b].name).join(' and a ')}</span>}
-        </div>
-        <div className="btn-row">
-          <button onClick={onClose}>Close</button>
-          <button className="primary" disabled={!check.ok} title={check.ok ? undefined : check.reason} onClick={() => ctrl.submit({ type: 'recruit', nation: human, province: pid, unitType: type })}>
-            Recruit
-          </button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 

@@ -233,6 +233,10 @@ try {
   const army = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
   await tapAt(await armyPoint(army));
   await page.waitForSelector(`[data-testid="army-panel"][data-army="${army}"]`);
+  // Its formations open their unit's details too.
+  await page.tap('[data-testid="army-panel"] [data-unit-info]');
+  await page.waitForSelector('[data-testid="unit-info"]');
+  await page.tap('.modal [aria-label="Close"]');
   await page.tap('[data-testid="move-mode"]');
   await settle();
   if ((await page.getAttribute('.selection-dock', 'data-sheet')) !== 'peek') throw new Error('move mode did not lower the sheet');
@@ -245,7 +249,7 @@ try {
   await page.tap('[data-testid="confirm-move"]');
   const path = await state(`(s) => s.armies['${army}'].move?.path`);
   if (!path || path.at(-1) !== 'es-castile-land') throw new Error('move order not given');
-  step('tapped an army, Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
+  step('tapped an army (and a formation, for its details), Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
   // 5. Research from the tab bar: the phone list, one branch at a time. A tap shows a
   //    technology's details without spending anything; the order comes from there.

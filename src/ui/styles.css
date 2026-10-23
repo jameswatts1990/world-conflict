@@ -2981,6 +2981,16 @@ button.uc-name {
   background: linear-gradient(180deg, #2c1f20, #1d1516);
   border-color: rgba(232, 85, 63, 0.45);
 }
+/* A formation's picture and name open its unit's details. */
+.unit-info-btn {
+  padding: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
 .formation-list li {
   grid-template-columns: 16px 36px 1fr auto;
 }
