@@ -355,6 +355,8 @@ export interface AiMemory {
   claims?: ProvinceId[];
   /** How it opens the campaign, drawn from the seed (absent in older saves, which open with 'strike'). */
   opening?: AiOpening;
+  /** On several fronts, the enemy it concentrates on while holding the others. */
+  focus?: NationId | null;
 }
 
 /** strike: war as soon as it may; expand: neutral states first; build: a longer peace to build up. */

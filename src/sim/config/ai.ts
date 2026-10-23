@@ -25,6 +25,12 @@ export interface AiLevel {
   targetNoise: number;
   /** Accept peace when own strength falls below this fraction of the enemy's. */
   acceptPeaceRatio: number;
+  /**
+   * Fights a war on several fronts by interior lines: concentrates its offensives and reserves on one main enemy,
+   * holds the other fronts, settles the main front once it has its gains, and counts its railways when moving
+   * armies between fronts.
+   */
+  interiorLines: boolean;
 }
 
 export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
@@ -40,6 +46,7 @@ export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
     maxWarsOnTarget: 2,
     targetNoise: 0.01,
     acceptPeaceRatio: 0.85,
+    interiorLines: true,
   },
   // Slow to react, thin on the ground, cautious in attack, sloppy in defence,
   // late to fall back; later and rarer wars, no ganging up, quicker peace.
@@ -55,6 +62,7 @@ export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
     maxWarsOnTarget: 1,
     targetNoise: 0.3,
     acceptPeaceRatio: 1,
+    interiorLines: false,
   },
 };
 
@@ -81,6 +89,11 @@ export const AI = {
   /** A winning AI settles once it holds this many of the enemy's core provinces, and the war is this old. */
   warAimProvinces: 2,
   warAimSeconds: 600,
+  /** Choosing the main enemy on several fronts: weight of each of my home provinces it holds, of each of my claims it
+   * holds, and how much better another enemy must look to replace the current one. */
+  focusLiberate: 0.25,
+  focusClaim: 0.15,
+  focusStickiness: 1.25,
   /** Any power holding this many VP short of victory becomes everyone's target. */
   leaderAlarmVp: 3,
   /** Reserve kept back when spending (fraction of income per minute). */

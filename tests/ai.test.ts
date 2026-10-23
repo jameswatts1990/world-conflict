@@ -62,6 +62,49 @@ describe('AI army control', () => {
   });
 });
 
+describe('AI on several fronts (interior lines)', () => {
+  /** Germany at war with a strong France and a weak Poland; the French border is thinly held. */
+  function twoFronts() {
+    const state = soloAi('de');
+    clearArmies(state);
+    place(state, 'de', 'de-hesse', { infantry: 6, artillery: 1 });
+    place(state, 'de', 'de-berlin', { infantry: 6, artillery: 1 });
+    place(state, 'fr', 'fr-east', { infantry: 1 });
+    place(state, 'fr', 'fr-paris', { infantry: 10, artillery: 2 });
+    place(state, 'pl', 'pl-greater', { infantry: 1 });
+    setWar(state, 'de', 'fr');
+    setWar(state, 'de', 'pl');
+    return state;
+  }
+
+  it('attacks only its main enemy and holds the other front', () => {
+    // Without interior lines the army in Hesse takes lightly held Strasbourg.
+    const state = twoFronts();
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      run(state, 90);
+    } finally {
+      setAiOrderTrace(null);
+    }
+    expect(state.nations.de.ai!.focus).toBe('pl');
+    expect(orders.filter((o) => o.to.startsWith('fr-'))).toEqual([]);
+    expect(state.provinces['fr-east'].owner).toBe('fr');
+  });
+
+  it('offers peace on the main front once its gains are in hand, and not on the other', () => {
+    const state = twoFronts();
+    for (const n of ['fr', 'pl'] as const) {
+      state.nations.de.relations[n].since = -60 * 11;
+      state.nations[n].relations.de.since = -60 * 11;
+    }
+    state.provinces['pl-greater'].owner = 'de';
+    state.provinces['pl-pomerania'].owner = 'de';
+    run(state, 20);
+    expect(state.peaceOffers.filter((o) => o.from === 'de').map((o) => o.to)).toEqual(['pl']);
+  });
+});
+
 describe('AI difficulty', () => {
   it('new games record the difficulty; saves without one play at normal', () => {
     expect(aiLevel(createInitialState(world, { seed: 1, humanNation: 'fr', difficulty: 'easy' }))).toBe(AI_LEVELS.easy);

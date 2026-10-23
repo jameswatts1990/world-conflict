@@ -31,7 +31,8 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
 - **Strategic.** Every move has a reason a player could guess: mass before striking, prefer valuable or encircled
   targets, defend what matters (the capital keeps a garrison against danger up to two provinces away), finish what
   it starts (a capture in progress is held until the province falls), make peace when losing, and fight wars for
-  limited aims: once it has taken enough, it settles rather than fighting on to annihilation.
+  limited aims: once it has taken enough, it settles rather than fighting on to annihilation. On several fronts it
+  fights by interior lines: one main enemy at a time, the other fronts held, reserves sent by rail to the main one.
 - **Readable, not jittery.** No marching back and forth, no orders abandoned before they can pay off, no armies
   idling far from any front while a war is on. Plans should be visible on the map (a build-up, then an attack) so
   the player can react.
@@ -61,7 +62,7 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
 - **Normal** is the reference AI. Tune it deliberately and measure the change.
 - **Easy** plays worse with the same resources: slower decisions, smaller armies, more caution before attacking,
   one offensive at a time, thinner garrisons, later retreats, looser target choice, later and rarer wars, no
-  ganging up, quicker peace.
+  ganging up, quicker peace, no interior lines.
 - Changing one level must not change the other. When tuning Easy, check that Normal campaigns keep the same state
   hashes (`npm run sim:campaign -- <seed> <minutes>` prints one).
 
@@ -84,7 +85,8 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently the central powers survive but rarely win: France 1 and Germany 2 of 80, the others 13–23.
+  limit). Currently the central powers win less than the others: France 6 and Germany 5 of 80, the others 15–22,
+  and France is eliminated in about a quarter of campaigns.
 - **Challenge**: when war comes to an idle player and when they fall (currently 7–13 and about 30 minutes at
   Normal, 13–27 and about 45 at Easy). An idle player should lose, just not at once.
 

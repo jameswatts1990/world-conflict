@@ -1,13 +1,15 @@
 // War and peace for computer opponents. They answer and offer peace from
 // relative strength, home-front morale and war weariness; they pick wars of
 // opportunity against weaker or distracted neighbours, avoid opening a second
-// front, and gang up on any power that is close to an objective victory.
+// front, and gang up on any power that is close to an objective victory. On
+// several fronts they fight by interior lines: one main enemy at a time, the
+// other fronts held, and peace offered on the main front once it is won.
 import { AI } from '../config/ai';
 import { DIPLOMACY } from '../config/rules';
 import { atWar, heldVp, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
-import { graceOver, issue, nationPower, type Ctx } from './context';
+import { graceOver, issue, mainEnemy, nationPower, type Ctx } from './context';
 
 function neighbourNations(ctx: Ctx): NationId[] {
   const set = new Set<NationId>();
@@ -39,11 +41,35 @@ function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId): number {
   return ctx.world.provinceIds.filter((id) => ctx.world.provinces[id].core === victim && ctx.state.provinces[id].owner === holder).length;
 }
 
+/**
+ * The enemy to concentrate on when fighting on several fronts: a power about to win, otherwise the one that is
+ * weakest against me, holds my home provinces or holds my claims. The current choice stands unless another enemy
+ * looks clearly better.
+ */
+function chooseFocus(ctx: Ctx, leader: NationId | null): NationId | null {
+  const { state, me } = ctx;
+  if (ctx.enemies.length < 2) return null;
+  if (leader && ctx.enemies.includes(leader)) return leader;
+  const reachable = new Set(neighbourNations(ctx));
+  const myPower = nationPower(state, me);
+  let best: { id: NationId; score: number } | null = null;
+  for (const e of ctx.enemies) {
+    if (!reachable.has(e)) continue;
+    const claims = (ctx.mem.claims ?? []).filter((pid) => state.provinces[pid].owner === e).length;
+    let score = myPower / (nationPower(state, e) + 1) + occupiedCores(ctx, e, me) * AI.focusLiberate + claims * AI.focusClaim;
+    if (e === ctx.mem.focus) score *= AI.focusStickiness;
+    if (!best || score > best.score) best = { id: e, score };
+  }
+  return best?.id ?? null;
+}
+
 export function handleDiplomacy(ctx: Ctx): void {
   const { state, world, me } = ctx;
   const myPower = nationPower(state, me);
   const morale = state.nations[me].morale;
   const leader = runawayLeader(ctx);
+  if (ctx.level.interiorLines) ctx.mem.focus = chooseFocus(ctx, leader);
+  const main = mainEnemy(ctx);
 
   // Answer peace offers: accept when actually losing (ground, capital or nerve), weary of a war going nowhere,
   // or holding enough of the enemy's land to call it won.
@@ -63,7 +89,9 @@ export function handleDiplomacy(ctx: Ctx): void {
     issue(ctx, { type: 'respondPeace', nation: me, from: offer.from, accept });
   }
 
-  // Sue for peace when beaten or demoralised, or when a long war has stalled.
+  // Sue for peace when beaten or demoralised, or when a long war has stalled. On several fronts, offer it on the
+  // main front once the gains are in hand, to free the army for the next. (Settling the other fronts as well only
+  // invited fresh wars once each truce ran out.)
   for (const enemy of ctx.enemies) {
     const rel = state.nations[me].relations[enemy];
     if (state.tick - rel.since < scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace)) continue;
@@ -76,7 +104,15 @@ export function handleDiplomacy(ctx: Ctx): void {
     const winning = occupiedCores(ctx, me, enemy) > occupiedCores(ctx, enemy, me);
     // On two fronts, close the one that is going worse.
     const worstFront = ctx.enemies.length >= 2 && theirPower >= Math.max(...ctx.enemies.map((e) => nationPower(state, e))) && !winning;
-    if (beaten || morale < AI.offerPeaceMorale || (weary && !winning && random(state) < AI.wearyPeaceChance) || (worstFront && weary && random(state) < 0.1)) {
+    const aimsMet =
+      main === enemy && state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, enemy) >= AI.warAimProvinces;
+    if (
+      beaten ||
+      morale < AI.offerPeaceMorale ||
+      (weary && !winning && random(state) < AI.wearyPeaceChance) ||
+      (worstFront && weary && random(state) < 0.1) ||
+      aimsMet
+    ) {
       issue(ctx, { type: 'offerPeace', nation: me, target: enemy });
     }
   }

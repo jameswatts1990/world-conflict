@@ -122,7 +122,7 @@ tests/              Simulation tests
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs at
   Normal, about half the campaigns end before the time limit, most after the first hour, and an idle player is
-  overrun in about 30 minutes (about 45 at Easy). France and Germany, in the middle, survive but rarely win.
+  overrun in about 30 minutes (about 45 at Easy). France and Germany, in the middle, win less often than the others.
 - No fog of war: every army is visible.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

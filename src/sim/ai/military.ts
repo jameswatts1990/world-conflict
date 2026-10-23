@@ -11,7 +11,11 @@
 //   6. threatened provinces are covered, nearest armies moving in, and free
 //      armies take any neighbouring target they can manage alone;
 //   7. anything left moves up to the front.
+// On several fronts (interior lines) it attacks only its main enemy, holds the
+// other fronts with the armies already there, and sends its reserves to the
+// main front, counting its railways when it reckons distances.
 import { AI } from '../config/ai';
+import { BUILDING_EFFECTS } from '../config/buildings';
 import { MORALE, SUPPLY } from '../config/rules';
 import {
   areHostile,
@@ -27,7 +31,7 @@ import {
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
-import { battleReady, graceOver, idleArmies, issue, type Ctx } from './context';
+import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
 const TERRAIN_DEFENCE: Record<string, number> = { plains: 1, forest: 1.15, hills: 1.15, marsh: 1.1, mountains: 1.35, urban: 1.3 };
 
@@ -52,7 +56,15 @@ function mergeIdle(ctx: Ctx): void {
   }
 }
 
-/** Shortest road distance (km) from `from` to every province, through territory the AI may cross. */
+/** How much faster my railways make a leg between two provinces (as movement reckons it). */
+function railFactor(ctx: Ctx, a: ProvinceId, b: ProvinceId): number {
+  if (!ctx.level.interiorLines) return 1;
+  let rail = 0;
+  for (const end of [a, b]) if (ctx.ownedSet.has(end) && (ctx.state.provinces[end].buildings.railway ?? 0) > 0) rail++;
+  return rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
+}
+
+/** Shortest road distance (km, shortened by my railways) from `from` to every province the AI may cross. */
 function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<ProvinceId, number> {
   const dist = new Map<ProvinceId, number>([[from, 0]]);
   const open: ProvinceId[] = [from];
@@ -63,7 +75,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
     for (const n of ctx.world.neighbors[cur]) {
       const passable = ownOnly ? ctx.ownedSet.has(n.id) : canEnterProvince(ctx.state, ctx.me, n.id);
       if (!passable) continue;
-      const nd = dist.get(cur)! + n.distanceKm * (n.kind === 'strait' ? 2.2 : n.kind === 'mountain' ? 1.6 : 1);
+      const nd = dist.get(cur)! + n.distanceKm * (n.kind === 'strait' ? 2.2 : n.kind === 'mountain' ? 1.6 : 1) * railFactor(ctx, cur, n.id);
       if (nd < (dist.get(n.id) ?? Infinity)) {
         if (!dist.has(n.id)) open.push(n.id);
         dist.set(n.id, nd);
@@ -114,7 +126,9 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const owner = ctx.state.provinces[pid].owner;
   if (owner === ctx.me) return false;
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);
-  return ctx.enemies.includes(owner);
+  // On several fronts, only the main enemy is attacked; the other fronts are held.
+  const main = mainEnemy(ctx);
+  return ctx.enemies.includes(owner) && (main === null || owner === main);
 }
 
 function targetValue(ctx: Ctx, pid: ProvinceId): number {
@@ -363,11 +377,15 @@ export function handleMilitary(ctx: Ctx): void {
     if (best && !guarding && issue(ctx, { type: 'move', nation: me, armyId: army.id, to: best.pid }, 'strike')) committed.add(army.id);
   }
 
-  // 7. Anything left in the rear moves up to the most threatened frontier province.
-  const fronts = [...ctx.frontier].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
+  // 7. Anything left in the rear moves up to the most threatened frontier province; on several fronts, to the main
+  //    front. Armies already on another front stay as its garrison.
+  const main = mainEnemy(ctx);
+  const mainFront = new Set(main ? ctx.owned.filter((pid) => world.neighbors[pid].some((n) => state.provinces[n.id].owner === main)) : []);
+  const front = mainFront.size > 0 ? mainFront : ctx.frontier;
+  const fronts = [...front].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
   if (fronts.length === 0) return;
   for (const army of free()) {
-    if (ctx.frontier.has(army.province)) continue;
+    if (front.has(army.province) || ctx.frontier.has(army.province)) continue;
     const dist = distancesFrom(ctx, army.province, true);
     const dest = fronts.slice(0, 4).sort((a, b) => (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity))[0];
     if (dest && dist.has(dest)) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'advance');

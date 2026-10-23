@@ -262,7 +262,8 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   three-quarters of the army, want a bigger edge before attacking and run one offensive at a time, garrison more
   thinly, hang on longer before falling back and choose targets less carefully. They start wars of opportunity half
   as often and not before 12 minutes, never join a war on a nation that is already fighting one, and accept peace
-  once they are no longer stronger. The levels live in `AI_LEVELS` (`src/sim/config/ai.ts`).
+  once they are no longer stronger. They do not plan by interior lines (below). The levels live in `AI_LEVELS`
+  (`src/sim/config/ai.ts`).
 - **Diplomacy:** it leaves neutral states alone for at least the first 10 minutes, so a player can take a
   neighbouring one first. After at least a 6-minute grace period it starts wars of opportunity against weaker or
   distracted neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power
@@ -284,8 +285,15 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   neighbouring powers still at peace), set aside before any offensive; up to two offensives mass at a staging
   province and strike together, frontier armies leaving a rear guard sized to the threat that remains; targets
   whose defenders would be encircled are preferred; threatened provinces are covered by the nearest free armies;
-  the rest moves up to the front. An enemy stack only counts
-  fully against one province, so a single army cannot tie down a whole frontier.
+  the rest moves up to the front. An enemy stack only counts fully against one province, so a single army cannot
+  tie down a whole frontier.
+- **Interior lines:** at war on several fronts, it picks a main enemy (a power about to win; otherwise the weakest
+  against it, the one holding its home provinces or its claims, kept unless another looks clearly better). It
+  attacks only the main enemy, holds the other fronts with the armies already there, sends its reserves to the
+  main front, and offers the main enemy peace once it holds two of its home provinces, then turns to the next.
+  Its distance estimates count its own railway junctions, so a front linked by rail counts as near. Settling the
+  other fronts as well was tried and dropped: each truce ran out into a fresh war, and the central powers fared
+  worse.
 
 ## 12. Architecture
 
@@ -368,8 +376,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - Do national specialities feel distinct without breaking the starting balance?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player? Normal declares war
   on an idle player at 7–13 minutes, sometimes two powers at once.
-- The central powers survive but rarely win. In 80 full AI-only campaigns France wins 1 and is eliminated in 18 (33
-  before home soil and the North Sea, Biscay and Mediterranean crossings; 49 before capitals were garrisoned and
-  wars got limited aims) and holds 5.4 provinces after two hours (2.7 before). Germany wins 2 and is eliminated in
-  16. The powers with a quiet rear win most: Poland 23, Britain 21, Italy 20, Spain 13. Do central powers need a
-  way to exploit their interior lines?
+- The central powers still win less than the others. In 80 full AI-only campaigns France wins 6 and is eliminated
+  in 22, Germany wins 5 and is eliminated in 13; Poland wins 22, Britain and Italy 16, Spain 15. Before interior
+  lines France won 1 and Germany 2; before home soil and the new sea crossings France was eliminated in 33, and
+  before capitals were garrisoned and wars got limited aims, in 49. Is a quarter of campaigns ending with France
+  eliminated acceptable for the most exposed position?

@@ -127,8 +127,12 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       (Barcelona–Palermo), so every power but Poland has at least two neighbouring powers. Over 80 full campaigns
       France is eliminated in 18 instead of 33 and holds twice the land after two hours; any pair of the three
       routes made a new bully (Spain or Italy), all three spread the wins
-- [ ] Balance: the central powers survive but rarely win (France 1 and Germany 2 of 80 campaigns, the others 13–23);
-      let them exploit interior lines (railway redeployment, picking off the weakest front)
+- [x] AI interior lines: on several fronts it concentrates offensives and reserves on one main enemy, holds the
+      other fronts, offers the main enemy peace once its gains are in hand, and counts railways in its distances.
+      Over 80 full campaigns France wins 6 instead of 1 and Germany 5 instead of 2. Also settling the other fronts
+      made things worse (each truce ran out into a fresh war) and was dropped
+- [ ] Balance: France is still eliminated in about a quarter of campaigns and the central powers win 5–6 of 80
+      against 15–22 for the others
 - [ ] AI: don't pile into a province already falling uncontested (3–5% of orders), and don't snatch a neutral another
       power is halfway through capturing
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment

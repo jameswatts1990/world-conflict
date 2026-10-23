@@ -195,6 +195,13 @@ export function battleReady(army: Army): boolean {
   return armyMorale(army) >= AI.attackMorale && avgStrength(army) >= AI.attackStrength;
 }
 
+/** On several fronts, the enemy this AI concentrates on (null on one front, or if its level does not plan so). */
+export function mainEnemy(ctx: Ctx): NationId | null {
+  const focus = ctx.mem.focus;
+  if (!ctx.level.interiorLines || ctx.enemies.length < 2 || !focus || !ctx.enemies.includes(focus)) return null;
+  return focus;
+}
+
 export function graceOver(ctx: Ctx, seconds: number): boolean {
   return ctx.state.tick >= scaledTicks(ctx.state, seconds);
 }
