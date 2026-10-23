@@ -73,7 +73,7 @@ describe('fog of war', () => {
     expect(isArmyVisible(german, 'de', new Set())).toBe(true);
   });
 
-  it('allies are powers at peace with each other fighting a common enemy', () => {
+  it('co-belligerents are powers at peace with each other fighting a common enemy', () => {
     const state = quietGame();
     expect(areAllies(state, 'fr', 'it')).toBe(false);
     setWar(state, 'fr', 'de');
@@ -93,7 +93,7 @@ describe('fog of war', () => {
     expect(areAllies(state, 'fr', 'it')).toBe(false);
   });
 
-  it('Liaison Officers show what allies see', () => {
+  it('Liaison Officers show what co-belligerents see', () => {
     const tech = TECH_BY_ID.liaisonOfficers;
     expect(tech.effects).toEqual([{ kind: 'alliedSight' }]);
     expect(tech.requires.every((r) => TECH_BY_ID[r])).toBe(true);
@@ -109,9 +109,9 @@ describe('fog of war', () => {
     expect(visibleProvinces(state, world, 'it').has('fr-aquitaine')).toBe(false);
     research(state, 'it', 'liaisonOfficers');
     expect(visibleProvinces(state, world, 'it').has('fr-aquitaine')).toBe(true);
-    // Not from powers that are not allies.
+    // Not from powers that are not co-belligerents.
     expect(visibleProvinces(state, world, 'fr').has('es-andalusia')).toBe(false);
-    // Peace with the common enemy ends the alliance, and the shared sight with it.
+    // Peace with the common enemy ends the co-belligerence, and the shared sight with it.
     state.nations.fr.relations.de.status = 'peace';
     state.nations.de.relations.fr.status = 'peace';
     expect(visibleProvinces(state, world, 'fr').has('it-naples')).toBe(false);

@@ -1,7 +1,9 @@
 # World Conflict
 
 Browser-based real-time grand strategy (WWI → WWII) on the European theatre. Design: `docs/GAME_DESIGN.md` (living
-document, keep it current); roadmap: `docs/BACKLOG.md`. British English throughout (behaviour, armour, defence).
+document, keep it current); roadmap: `docs/BACKLOG.md`. British English throughout (behaviour, armour, defence). Powers fighting a common enemy are
+co-belligerents, never "allies", in anything the player reads: there are no treaties yet, so nobody agrees to it
+(`areAllies` in `src/sim/visibility.ts` is that informal relation).
 
 ## Workflow
 

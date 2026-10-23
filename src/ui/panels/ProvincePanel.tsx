@@ -277,8 +277,8 @@ function FogNote({ ctrl }: { ctrl: GameController }) {
         {sharesAlliedSight(state, human)
           ? allies.length
             ? `Your liaison officers share what ${listText(allies)} can see, and none of them can see here either.`
-            : 'Your liaison officers will share what your allies see once you fight a common enemy.'
-          : 'Research Liaison Officers to see what your allies (powers fighting a common enemy) see.'}
+            : 'Your liaison officers will share what other powers see once you fight a common enemy.'
+          : 'Research Liaison Officers to see what your co-belligerents (powers fighting a common enemy) see.'}
       </p>
     </div>
   );

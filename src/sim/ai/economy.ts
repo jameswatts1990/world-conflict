@@ -27,7 +27,7 @@ function techScore(ctx: Ctx, t: TechConfig): number {
     }
     if (e.kind === 'morale' && ctx.state.nations[ctx.me].morale < 55) score += 3;
     if (e.kind === 'fortification' && ctx.enemies.length > 0) score += 1;
-    // Allies' sight is worth most with allies to share it.
+    // Co-belligerents' sight is worth most with co-belligerents to share it.
     if (e.kind === 'alliedSight') score += alliesOf(ctx.state, ctx.world, ctx.me).length > 0 ? 3 : -1;
   }
   return score;

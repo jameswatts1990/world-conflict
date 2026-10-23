@@ -2,7 +2,7 @@
 // where friendly and hostile power stands, and what the enemy fields. It plays
 // by the fog of war: it knows what a human in its place could, the map, the
 // military power figures every Diplomacy window shows, and the armies it (and,
-// with Liaison Officers, its allies) can see. Other nations' armies are read
+// with Liaison Officers, its co-belligerents) can see. Other nations' armies are read
 // only through this context, never straight from the state.
 import { AI, aiLevel, type AiLevel } from '../config/ai';
 import { UNITS } from '../config/units';

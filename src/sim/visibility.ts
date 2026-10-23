@@ -2,7 +2,7 @@
 // army it fields watch their own province and the ones next to it (an army with
 // reconnaissance units sees further over open land; mountains and narrow seas are
 // seen across but not beyond, wide seas not at all), and a nation that has researched Liaison
-// Officers also sees everything its allies see. Sight is worked out from the
+// Officers also sees everything its co-belligerents see. Sight is worked out from the
 // state whenever it is asked for and never stored, so it cannot go stale and
 // saves are unchanged. Computer opponents do not use it yet: they see the map.
 import { SIGHT } from './config/rules';
@@ -11,7 +11,11 @@ import { atWar, techEffects } from './queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId } from './types';
 import type { World } from './world';
 
-/** Two powers at peace with each other and at war with a common enemy fight as allies. */
+/**
+ * Two powers at peace with each other and at war with a common enemy are co-belligerents
+ * (the player sees them called so). It is not an alliance: there are no treaties, nobody
+ * agrees to it, and all it changes is what Liaison Officers share.
+ */
 export function areAllies(state: GameState, a: OwnerId, b: OwnerId): boolean {
   if (a === b || a === NEUTRAL || b === NEUTRAL) return false;
   const na = state.nations[a];
@@ -27,12 +31,12 @@ export function commonEnemies(state: GameState, a: NationId, b: NationId): Natio
     .filter((c) => !state.nations[c].eliminated && atWar(state, a, c) && atWar(state, b, c));
 }
 
-/** A nation's allies, in scenario order. */
+/** A nation's co-belligerents, in scenario order. */
 export function alliesOf(state: GameState, world: World, nation: NationId): NationId[] {
   return world.nationIds.filter((id) => areAllies(state, nation, id));
 }
 
-/** Does this nation see what its allies see (Liaison Officers)? */
+/** Does this nation see what its co-belligerents see (Liaison Officers)? */
 export function sharesAlliedSight(state: GameState, nation: NationId): boolean {
   return techEffects(state, nation).some((e) => e.kind === 'alliedSight');
 }
@@ -78,7 +82,7 @@ export function ownSight(state: GameState, world: World, nation: NationId): Set<
 
 /**
  * Every province a nation can see now: its own sight and, with Liaison Officers, its
- * allies'. When the campaign is over the fog lifts.
+ * co-belligerents'. When the campaign is over the fog lifts.
  */
 export function visibleProvinces(state: GameState, world: World, nation: NationId): Set<ProvinceId> {
   if (state.outcome) return new Set(world.provinceIds);

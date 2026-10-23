@@ -265,7 +265,7 @@ describe('AI under the fog of war', () => {
     expect(need()).toBeGreaterThan(hidden);
   });
 
-  it('sees what its allies see once it has Liaison Officers', () => {
+  it('sees what its co-belligerents see once it has Liaison Officers', () => {
     const state = aiGame(5);
     setWar(state, 'fr', 'de');
     setWar(state, 'it', 'de');
