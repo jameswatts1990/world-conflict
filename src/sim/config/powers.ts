@@ -14,7 +14,7 @@ type Buildings = Partial<Record<BuildingType, number>>;
 export interface PowerTemplate {
   /** Shown on the nation picker and in diplomacy. */
   name: string;
-  /** Whether a human may play it; minor powers are always computer-controlled. */
+  /** Whether a human may play it, and whether it can win (`isContender`); minor powers can do neither. */
   playable: boolean;
   /** The nation's core provinces are scaled to these totals per minute (Standard speed). */
   output: Omit<Resources, 'fuel'>;
@@ -79,11 +79,13 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
     startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70 },
     vp: { capital: 1 },
     capitalCity: 2,
+    // A fortress rather than a rival: a fortified capital and a garrison larger than its economy alone would
+    // keep, so taking one costs a real army (about twelve units, half of them lost) rather than a probe.
     buildings: {
-      capital: { industry: 1, barracks: 1, supplyDepot: 1 },
+      capital: { industry: 1, barracks: 1, supplyDepot: 1, fortifications: 2 },
     },
     armies: {
-      capital: { infantry: 3 },
+      capital: { infantry: 5 },
       field: { infantry: 1 },
     },
     provinces: [1, 2],

@@ -1,6 +1,7 @@
 // Pure read-only helpers shared by systems, commands, the AI and the UI.
 import { BUILDINGS, BUILDING_EFFECTS, CITY } from './config/buildings';
 import { BUILDING_UNLOCKED_BY, ERA_RULES, RESEARCH_RULES, TECH_BY_ID, UNIT_UNLOCKED_BY } from './config/research';
+import { POWERS } from './config/powers';
 import { CAPTURE, ECONOMY, MORALE, VICTORY } from './config/rules';
 import { TICKS_PER_MINUTE } from './config/timing';
 import { ARMY_RULES, UNITS, VETERANCY, baseGen, usesFuel, type CombatValues } from './config/units';
@@ -486,6 +487,11 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     .map((l, i) => ({ l, i }))
     .sort((x, y) => y.l.score - x.l.score || y.l.vp - x.l.vp || y.l.provinces - x.l.provinces || x.i - y.i)
     .map((x) => x.l);
+}
+
+/** Great and major powers contend for victory; minor powers can be conquered but never win. */
+export function isContender(world: World, nation: NationId): boolean {
+  return POWERS[world.nations[nation].power].playable;
 }
 
 export function provincesOwnedBy(state: GameState, world: World, owner: OwnerId): ProvinceId[] {

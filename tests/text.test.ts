@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, armyName, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
+import { applyCommand, armyName, captureTicks, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
 import { DIPLOMACY } from '../src/sim/config/rules';
 import { clearArmies, place, quietGame, richen, run, setWar, world } from './helpers';
 
@@ -45,11 +45,11 @@ describe('event wording', () => {
     // A second province keeps the Netherlands in the war after Amsterdam falls.
     state.provinces['de-north'].owner = 'nl';
     place(state, 'fr', 'nl-amsterdam', { infantry: 3 });
-    run(state, 40);
+    run(state, captureTicks(state, world, 'nl-amsterdam') + 1);
     expect(texts(state, 'capture')).toEqual(['France captured the Netherlands (objective, 1 VP).']);
     clearArmies(state, 'nl-amsterdam');
     place(state, 'nl', 'nl-amsterdam', { infantry: 3 });
-    run(state, 40);
+    run(state, captureTicks(state, world, 'nl-amsterdam') + 1);
     expect(texts(state, 'capture').at(-1)).toBe('The Netherlands drove France out (objective, 1 VP).');
   });
 

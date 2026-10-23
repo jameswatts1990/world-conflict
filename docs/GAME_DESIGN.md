@@ -32,12 +32,14 @@ espionage, naval and air warfare, later eras, multiplayer.
   and the major powers Romania and Serbia. The human picks one; the AI plays the rest. The theatre's south-eastern
   edge follows Romania's and Serbia's borders.
 - **Ten minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal and
-  Slovenia, one province each, and Slovakia and Croatia, two each; always computer-controlled. They are nations
-  like the others: they recruit,
-  research, declare war and make peace, and invading one means declaring war on it. The AI keeps a minor power to a
-  garrison of about five units (its starting four plus one, more as its economy grows), not a field army. Their
-  capitals keep their old city sizes and border forts (Switzerland 2, Belgium and Czechia 1). The engine still
-  supports neutral states (garrisoned, never attack, open to invasion without war); this scenario has none.
+  Slovenia, one province each, and Slovakia and Croatia, two each; always computer-controlled. They are there to
+  be conquered, at a price. They recruit, research, defend themselves and make peace, but **never start a war and
+  never win** (§10); invading one means declaring war on it. Every minor capital is fortified (level 2,
+  Switzerland's mountain redoubt 3) and starts with six infantry divisions, which the AI tops up to about seven or
+  eight as a garrison, not a field army. Taking one costs a real army: an eight-unit probe fails, and about twelve
+  to fourteen units with artillery take it in three to five minutes while losing 40–60% of their strength
+  (Switzerland needs about sixteen). The engine still supports neutral states (garrisoned, never attack, open to
+  invasion without war); this scenario has none.
 - **69 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
@@ -55,11 +57,12 @@ broadly balanced:
 | --- | --- | --- | --- | --- | --- |
 | Great | Yes | 260 / 140 / 70 | 13 units | Capital 3, heartland 2 | 6–9 |
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
-| Minor | No (computer-controlled) | 70 / 35 / 20 | 4 units | Capital 1 | 1–2 |
+| Minor | No (computer-controlled; never wins) | 70 / 35 / 20 | 6 units behind level-2 forts | Capital 1 | 1–2 |
 
 Europe has seven great powers, two major powers and ten minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, plus 5 INF
-and 1 cavalry in the field. The smaller tiers keep the same share of income on starting upkeep. Starting buildings
+and 1 cavalry in the field. Major powers keep the same share of income on starting upkeep; minor powers spend more
+(about a quarter), since their garrison is what makes them worth an investment. Starting buildings
 and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
 the rows place them, or onto border provinces first. Geography stays asymmetric, and each playable nation has one
 modest speciality (§6.4).
@@ -302,6 +305,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
   heartlands 1, minor-power capitals 1). Holding **40% (21 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 3 × provinces + 2 × technologies.
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
+- **Minor powers never win.** Only great and major powers count for an objective victory, the top score and the
+  last power standing; a minor power can survive the campaign, but someone else wins it.
 
 ## 11. Computer opponents
 
@@ -309,7 +314,7 @@ The AI uses only the public command API, is deterministic through the seeded RNG
 personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery).
 
 - **Diplomacy:** after a 6-minute grace period it starts wars of opportunity against weaker or distracted
-  neighbours, preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
+  neighbours (minor powers never start a war), preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
   VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing (ground,
   capital or morale), closes the worse of two fronts first, and keeps fighting a war it is winning.
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
@@ -461,7 +466,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 ## 14. Open questions for playtesting
 
 - Is 21 VP / 90 s reachable for a human in 2–3 hours? Since AI armies hold a province until its capture completes,
-  most AI-vs-AI campaigns end on objectives (5 of 8 test runs), after nearly every minor power has been conquered.
+  AI-vs-AI campaigns end on objectives (8 of 8 test runs, after 68 to 137 minutes); the AI conquers nearly every
+  minor power along the way, most between minutes 10 and 40.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?

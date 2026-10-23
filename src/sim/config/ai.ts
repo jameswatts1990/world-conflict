@@ -30,12 +30,11 @@ export const AI = {
   reserveMinutes: 0.5,
   /**
    * Army size cap: units per owned province, a flat reserve by power tier, and one unit per this much
-   * money income a minute. A one-province minor power keeps a garrison of about five, not a field army:
-   * a focused seven-unit attack takes its capital (with a reserve of 1 it holds six and refills, and
-   * repels that attack seven times in ten).
+   * money income a minute. A one-province minor power keeps a garrison of about seven behind its forts,
+   * not a field army.
    */
   unitsPerProvince: 3,
-  unitsFlat: { great: 8, major: 5, minor: 0 } as Record<PowerTier, number>,
+  unitsFlat: { great: 8, major: 5, minor: 3 } as Record<PowerTier, number>,
   unitsPerIncome: 50,
   /** Share of money income that may go to upkeep (scaled up by aggression and war). */
   upkeepShare: 0.45,

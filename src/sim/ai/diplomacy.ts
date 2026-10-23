@@ -4,7 +4,7 @@
 // front, and gang up on any power that is close to an objective victory.
 import { AI } from '../config/ai';
 import { DIPLOMACY } from '../config/rules';
-import { atWar, heldVp, scaledTicks, vpToWin } from '../queries';
+import { atWar, heldVp, isContender, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
 import { graceOver, issue, nationPower, type Ctx } from './context';
@@ -26,7 +26,7 @@ export function runawayLeader(ctx: Ctx): NationId | null {
   const need = vpToWin(world);
   let best: { id: NationId; vp: number } | null = null;
   for (const id of world.nationIds) {
-    if (id === ctx.me || state.nations[id].eliminated) continue;
+    if (id === ctx.me || state.nations[id].eliminated || !isContender(world, id)) continue;
     const vp = heldVp(state, world, id);
     if (vp >= need - AI.leaderAlarmVp && (!best || vp > best.vp)) best = { id, vp };
   }
@@ -77,6 +77,8 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
   }
 
+  // Minor powers defend themselves and make peace, but never start a war.
+  if (!isContender(world, me)) return;
   if (!graceOver(ctx, AI.peaceGraceSeconds)) return;
 
   // A power about to win becomes everyone's target.

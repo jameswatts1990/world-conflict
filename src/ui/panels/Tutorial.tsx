@@ -7,7 +7,7 @@ import { useEscape } from './Common';
 
 /** What the map's colours mean, for the briefing. */
 function landText(world: World): string {
-  const others = hasNeutrals(world) ? 'Hatched beige states are neutral' : 'The powers range from great powers to one-province minor powers';
+  const others = hasNeutrals(world) ? 'Hatched beige states are neutral' : 'The powers range from great powers to small minor powers that never win but must be fought for';
   return `Your land glows inside a white outline, other powers show their colour along their borders, and your front with an enemy is red. ${others}; dark grey land lies outside the campaign.`;
 }
 const FOG =

@@ -4,6 +4,8 @@
 //
 // It plays Spain and invades Portugal, which borders only Spain, so no computer
 // opponent can race the player to the target however the real-time clock falls.
+// Portugal is a minor power with a fortified capital: Spain gathers most of its
+// army and raises more before it attacks.
 //
 //   npm run build && npm run e2e
 //
@@ -147,12 +149,25 @@ try {
   if (!order || order.at(-1) !== 'es-castile') throw new Error('move order not accepted');
   await shot('04-move-order');
   step('ordered Madrid army to Castile & León', { path: order });
+  // The Catalan and northern armies join them.
+  const others = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && ['es-catalonia', 'es-north'].includes(a.province)).map((a) => a.id));
+  for (const id of others) {
+    p = await armyPoint(id);
+    await page.mouse.click(p.x, p.y);
+    await page.waitForSelector(`[data-testid="army-panel"][data-army="${id}"]`);
+    await page.mouse.click(castile.x, castile.y, { button: 'right' });
+    const path = await page.evaluate((id) => window.__game.state.armies[id].move?.path, id);
+    if (!path || path.at(-1) !== 'es-castile') throw new Error('move order not accepted');
+  }
+  step('ordered the Catalan and northern armies to Castile & León', { armies: others.length });
 
   // 6. Run at DEV speed until the army arrives and the timers complete.
   await setSpeed(20);
   await setPaused(false);
   await waitUntil(`(s) => s.armies['${madridArmy}'].province === 'es-castile' && !s.armies['${madridArmy}'].move`, 30000, 'army arrival');
   step('army arrived in Castile & León');
+  await waitUntil(`(s) => ${JSON.stringify(others)}.every((id) => s.armies[id].province === 'es-castile' && !s.armies[id].move)`, 60000, 'Catalan and northern armies');
+  step('the Catalan and northern armies arrived');
   await waitUntil((s) => (s.provinces['es-madrid'].buildings.industry ?? 0) >= 2, 30000, 'Industrial Works L2');
   step('Industrial Works level 2 completed (production improved)', {
     rate: await page.textContent('[data-resource="money"] .tb-res-rate'),
@@ -160,7 +175,18 @@ try {
   await waitUntil((s) => s.nations.es.research.completed.includes('industrialMobilisation'), 40000, 'research');
   step('research completed: Industrial Mobilisation');
   await waitUntil((s) => s.provinces['es-madrid'].recruitQueue.length === 0, 30000, 'recruitment');
-  step('infantry recruited');
+  // With the new works paying out, raise more for Portugal's fortified capital: infantry and an artillery battery.
+  await setPaused(true);
+  const madridPoint = await provincePoint('es-madrid');
+  await page.mouse.click(madridPoint.x, madridPoint.y);
+  await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
+  await page.click('[data-tab="recruit"]');
+  await page.click('[data-recruit="infantry"]');
+  await page.click('[data-recruit="artillery"]');
+  if ((await state((s) => s.provinces['es-madrid'].recruitQueue.length)) !== 2) throw new Error('second recruitment did not queue');
+  await setPaused(false);
+  await waitUntil((s) => s.provinces['es-madrid'].recruitQueue.length === 0, 30000, 'second recruitment');
+  step('infantry recruited, then more infantry and an artillery battery');
 
   // The recruits joined up in Madrid after the army left: march them to Castile & León as well.
   const recruits = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
@@ -200,7 +226,12 @@ try {
   await waitUntil((s) => s.provinces['pt-lisbon'].owner === 'es', 90000, 'capture of Portugal');
   await setPaused(true);
   await shot('06-captured');
-  step('captured Portugal', { tick: await state((s) => s.tick) });
+  // What the fortress cost: the invaders' remaining strength (100% = every division at full strength).
+  const strength = await state((s) => {
+    const units = Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'pt-lisbon').flatMap((a) => a.units);
+    return `${units.length} divisions at ${Math.round((100 * units.reduce((t, u) => t + u.strength, 0)) / units.length)}%`;
+  });
+  step('captured Portugal', { tick: await state((s) => s.tick), invaders: strength });
 
   // 8. Save to slot 1, reload the page, load the slot and compare state hashes.
   await page.click('[data-testid="open-save"]');

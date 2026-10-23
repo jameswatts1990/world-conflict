@@ -20,8 +20,10 @@ What is in it (Milestone 2, Depth):
   get output, starting armies, objectives and size from their tier, so a new country is province rows,
   connections and one line.
 - **Ten minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
-  Slovakia, Slovenia, Croatia): one- or two-province nations run by the computer that recruit, research, make war
-  and peace, and must be fought to be taken. They keep a garrison of about five units rather than a field army.
+  Slovakia, Slovenia, Croatia): one- or two-province nations run by the computer. They recruit, research, defend
+  themselves and make peace, but never start a war and never win. Each holds a fortified capital with a garrison of
+  six to eight divisions: an eight-unit probe fails, and taking one takes twelve to fourteen units with artillery
+  and costs them 40–60% of their strength.
 - **Morale** for units (low morale blunts firepower; armies fight to the death unless ordered out, and a
   withdrawal under fire costs strength), provinces (drives output; conquests
   integrate over time) and nations.
@@ -146,8 +148,8 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 Hold **21 of the 51 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
 major-power capitals 2 VP and heartlands 1 VP, minor-power capitals 1 VP) continuously for **90 seconds**, or have
-the **highest score** when the **2 h 30 min** time limit ends.
-You lose if your nation is eliminated or another power wins.
+the **highest score** when the **2 h 30 min** time limit ends. Only great and major powers can win: minor powers
+are there to be conquered. You lose if your nation is eliminated or another power wins.
 
 ## Saving
 
@@ -185,8 +187,8 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  most campaigns end on objectives (5 of 8), after the AI has conquered nearly every minor power, mostly within the
-  first 20 minutes. Serbia is always conquered, Romania usually, and France in every run.
+  every campaign ends on objectives (8 of 8, after 68–137 minutes), and the AI conquers nearly every minor power
+  along the way, most between minutes 10 and 40. Serbia is nearly always conquered, and France in most runs.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
