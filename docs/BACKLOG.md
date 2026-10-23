@@ -52,8 +52,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ### 2.2 Morale
 
-- [x] **Unit morale**: damage breaks morale before it destroys units. Broken armies **rout** to a friendly
-      neighbour, and armies with nowhere to go **surrender**, so encirclement matters
+- [x] **Unit morale**: damage wears morale down, blunting firepower. Armies **fight to the death** unless
+      ordered out; a **withdrawal under fire** costs every unit a set share of strength
 - [x] Morale recovers out of combat, faster in supplied home territory and near hospitals
 - [x] **Province morale** (0–100): drives output. It is lowered by nearby enemies, battles, shortages and a lost
       capital, and raised by garrisons, propaganda and time. It replaces the flat 50% occupied-output penalty
@@ -88,7 +88,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Army-size discipline: upkeep budgets and disbanding obsolete units when bankrupt
 - [x] Composition that answers the enemy and terrain (anti-tank against armour, mountain troops on alpine
       fronts, siege guns against forts)
-- [x] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
+- [x] Morale-aware combat: attack where it can break the enemy, withdraw only from hopeless battles, exploit encirclement
 - [x] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
 - [x] Research strategies by personality (doctrine) and need
 - [x] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
@@ -145,7 +145,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       answer offers from the Diplomacy window
 - [x] Resource breakdown (production, upkeep, net) on the top bar; live rates from the first second
 - [x] Battle box in the province card (with each side's morale); results screen with provinces captured, units
-      destroyed, units lost and armies surrendered
+      destroyed, units lost and retreats ordered
 - [x] Alerts that wait while paused; Ctrl/Alt shortcuts left to the browser; working campaign-speed select
 - [x] Event wording ("the United Kingdom", "occupied the Netherlands"), config-driven rule text, distinct tech art,
       map key for army rims, country names as a background layer placed clear of cities, constant-size neutral hatching

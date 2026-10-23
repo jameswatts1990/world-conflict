@@ -275,7 +275,7 @@ export interface Unit {
   type: UnitType;
   /** Fraction of full strength, 0..1. Max HP comes from config + research. */
   strength: number;
-  /** Fighting spirit, 0..1. Broken armies rout. */
+  /** Fighting spirit, 0..1. Low morale blunts firepower; armies never break. */
   morale: number;
   /** Combat experience; ranks Green, Regular, Veteran, Elite. */
   xp: number;
@@ -311,8 +311,6 @@ export interface Army {
   unsuppliedTicks: number;
   /** How the army reached its current province (sea landings fight at a penalty). */
   arrivedVia: ConnectionKind | null;
-  /** A routed army cannot take orders until this tick. */
-  routedUntil: number;
 }
 
 export interface ConstructionJob {
@@ -410,7 +408,7 @@ export interface NationState {
   /** Home-front morale 0..100 (population-weighted core province morale). */
   morale: number;
   ai: AiMemory | null;
-  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; armiesSurrendered: number };
+  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; retreats: number };
 }
 
 export interface PeaceOffer {

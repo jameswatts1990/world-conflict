@@ -59,7 +59,7 @@ export function tutorialSteps(
         touch
           ? 'Tap an army counter to select it, press Move, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army.'
           : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, then click). The route and arrival time show as you point.'
-      } Battles wear down strength and morale: a broken army routs to a friendly neighbour, and one with nowhere to run surrenders, so encircle the enemy. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
+      } Battles wear down strength and morale, and armies fight to the death: pull one out under fire and every unit pays in strength, so encircle the enemy and leave it nowhere to go. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
     },
     {
       title: 'War, supply and research',

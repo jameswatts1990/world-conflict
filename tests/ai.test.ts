@@ -6,14 +6,14 @@ import { attackNeed } from '../src/sim/ai/military';
 import { aiGame, clearArmies, place, run, setWar, world } from './helpers';
 
 describe('AI military', () => {
-  it('holds an occupied province until the capture completes', () => {
+  it('holds an occupied enemy province until the capture completes', () => {
     const state = aiGame(3);
     run(state, scaledTicks(state, AI.neutralGraceSeconds));
-    // Belgium, a one-province minor power, with its garrison gone and no means to raise another.
     setWar(state, 'fr', 'be');
+    // Belgium has no army left and nothing to raise one with.
     clearArmies(state, 'be-brussels');
-    state.nations.be.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
     state.provinces['be-brussels'].recruitQueue = [];
+    state.nations.be.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
     place(state, 'fr', 'be-brussels', { infantry: 4 });
     for (let t = 0; t < 400 && state.provinces['be-brussels'].owner === 'be'; t++) {
       run(state, 1);
