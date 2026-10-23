@@ -52,8 +52,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ### 2.2 Morale
 
-- [x] **Unit morale**: damage breaks morale before it destroys units. Broken armies **rout** to a friendly
-      neighbour, and armies with nowhere to go **surrender**, so encirclement matters
+- [x] **Unit morale**: damage wears morale down, blunting firepower. Armies **fight to the death** unless
+      ordered out; a **withdrawal under fire** costs every unit a set share of strength
 - [x] Morale recovers out of combat, faster in supplied home territory and near hospitals
 - [x] **Province morale** (0–100): drives output. It is lowered by nearby enemies, battles, shortages and a lost
       capital, and raised by garrisons, propaganda and time. It replaces the flat 50% occupied-output penalty
@@ -88,15 +88,22 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Army-size discipline: upkeep budgets and disbanding obsolete units when bankrupt
 - [x] Composition that answers the enemy and terrain (anti-tank against armour, mountain troops on alpine
       fronts, siege guns against forts)
-- [x] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
+- [x] Morale-aware combat: attack where it can break the enemy, withdraw only from hopeless battles, exploit encirclement
 - [x] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
 - [x] Research strategies by personality (doctrine) and need
 - [x] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
 
 ### 2.6 Balance and presentation
 
-- [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
+- [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`; see also the balance lab, M3)
+- [x] Campaigns that sometimes end by objectives: all 8 AI-vs-AI test campaigns now end on objectives (68–137 min)
+- [x] Minor powers cost an investment and never win: fortified capitals (level 2, Switzerland 3) and six starting
+      divisions topped up to seven or eight. An eight-unit probe fails; twelve to fourteen units with artillery take
+      a capital and lose 40–60% of their strength. Minor powers never start wars (they used to start two to four a
+      game, mostly on each other) and only great and major powers count for victory
+- [ ] Minor powers still fall to the AI between minutes 10 and 40 in most campaigns (by minute 20: 43 of 80, down
+      from 65; with the 10-minute grace on wars against them, most between minutes 25 and 50): make the AI weigh the
+      cost of a fortress against other targets; `AI.minorTargetWeight` now sets the AI's appetite for them, ready for the tuner
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -106,22 +113,98 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
+- [x] AI: armies hold a province they are capturing instead of being pulled back to the frontier and sent in
+      again (a third of all AI move orders were straight reversals; `scripts/dev/ai-moves.ts` traces them)
+- [x] AI: neutral states (now minor powers) are left alone for the first 10 minutes, so a player can take a
+      neighbouring one first; otherwise Britain took Belgium before France in almost every game
+- [x] AI difficulty: Easy and Normal on the main menu (Easy plays worse rather than getting less)
+- [x] AI behaviour report (`scripts/dev/ai-report.ts`): wasted effort, variety across seeds, and how long an idle
+      player lasts
+- [x] AI variety: each AI draws two claims (provinces across its land borders) and an opening (strike, expand or
+      build) from the seed. Openings overlap 10–11% between two Normal campaigns once timing counts (16–20% before);
+      what remains alike is geography (Spain → Lisbon, Poland → Prague, Germany–Poland)
+- [x] AI balance (`scripts/dev/balance.ts`): capitals keep a garrison sized to the danger up to two provinces away,
+      and winning AIs settle once they hold two enemy home provinces. Over 80 campaigns France's capital fell in 49
+      instead of 66 and Germany's in 26 instead of 44 (at about minute 56 instead of 22); France is eliminated in 28
+      instead of 49, Germany in 15 instead of 25
+- [x] Home soil: armies fight harder in their own nation's home provinces, by up to +20% with national morale
+      (nothing at 30, the full bonus at 90); the battle view and the morale tooltip show it
+- [x] Sea crossings: North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western Mediterranean
+      (Barcelona–Palermo), so every power but Poland has at least two neighbouring powers. Over 80 full campaigns
+      France is eliminated in 18 instead of 33 and holds twice the land after two hours; any pair of the three
+      routes made a new bully (Spain or Italy), all three spread the wins
+- [x] AI interior lines: on several fronts it concentrates offensives and reserves on one main enemy, holds the
+      other fronts, offers the main enemy peace once its gains are in hand, and counts railways in its distances.
+      Over 80 full campaigns France wins 6 instead of 1 and Germany 5 instead of 2. Also settling the other fronts
+      made things worse (each truce ran out into a fresh war) and was dropped
+- [x] Balance: the measures above were taken on the six-power map, where France was then eliminated in about a
+      quarter of campaigns and the central powers won 5–6 of 80 against 15–22 for the others. On the map with
+      minor powers (80 full campaigns), they cut eliminations: France 31 instead of 61, Serbia 46 instead of 67,
+      Germany 24 instead of 35, Britain 11 instead of 25
+- [ ] Balance on the map with minor powers: Poland, with one great-power neighbour and two minor powers to absorb,
+      wins 20 of 80 (counting wins on score) and is never eliminated; it leads with any one of capital garrisons,
+      war aims, home soil or interior lines switched off (18–32 wins). Serbia and Romania win 0–2. Look at routes
+      that give Poland a second great-power neighbour and at how the others gang up on a leader
+- [ ] Game length: with limited war aims, about a third of all-AI campaigns end on objectives within 150 minutes
+      (59 of 80 before), the rest on score at the time limit
+- [ ] AI: don't pile into a province already falling uncontested (3–5% of orders)
+- [x] Balance lab ([BALANCE.md](BALANCE.md)): `npm run balance` plays hundreds of all-AI campaigns in parallel and
+      reports on nations, pace, AI personalities and how the AI uses every unit, building and technology, with red
+      flags; `--vs <ref>` compares two commits on the same seeds and `--set PATH=VALUE` tries any config value.
+      `npm run balance:units` prices every unit in staged battles; `npm run balance:tune` searches the AI's settings
+      for the design goals. Every number the AI weighs now lives in `config/ai.ts`. CI runs it nightly and on pull
+      requests labelled `balance`
+- [ ] Balance lab, next: a random stream for AI decisions apart from combat, and personalities fixed per seat (quieter
+      comparisons; seats that pass between a human and the AI); AI profiles beyond Easy and Normal (a caretaker
+      for absent players, minor powers) ranked by tournament; recorded human games (seed, version, every command including the AI's)
+      run through the same reports; a read-only combat hook for damage by unit type
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
-- [ ] Germany is still the weakest great power in AI campaigns (mean rank 5.9 of 7, last in 2 of 8 runs): it borders
-      six minor powers and two great powers
+- [ ] France is the weakest great power in AI campaigns (mean rank 6.3 of 7, conquered in 6 of 8 runs); Germany
+      comes next (4.5, conquered in 2). Over 200 campaigns in the balance lab, with the AI work above: France, which borders four
+      great powers, lasts 59% of them (out within the first hour in 11%); Serbia lasts 45% and never wins, Romania
+      wins 1%; 3% of playable seats are out within the hour
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
+- [ ] Line infantry is the best buy at every technology level: in the unit lab an army of it beats every other army of
+      the same cost, and battle tanks give about 0.56× their price (fuel is scarce). AIs with the infantry doctrine win
+      19% of campaigns, armour and artillery 7% each (200 campaigns). Armour-doctrine great powers field 13% vehicles
+      against a 47% target (and 18% cavalry against 4%), though two in three build a Tank Works. Make armour pay its way
+      (price, fuel, or the AI's Tank Works and refinery plans)
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
       done, rejected peace offers)
-- [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
+- [x] Multi-select by box-drag (Shift-drag); hotkeys to cycle armies (, and .)
+- [ ] Army groups: saved selections on the number keys
 - [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim tab bar,
       side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
 - [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
       top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
 - [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
-- [ ] Code-split the bundle; lazy-load the world context layer
+- [x] Phones, third pass (playtest feedback): a tapped city opens as a full-screen page without the skyline;
+      selecting never moves the map; the recruit tab offers only researched units, keeps its training queue in a
+      strip of fixed height so repeated recruiting never moves the buttons, and a tapped unit shows its role,
+      numbers, strengths, weaknesses and national bonus; panning no longer redraws the map's layers on every frame
+      (on an emulated phone at a quarter of the CPU, script time while dragging fell from 8.3 s to 1.8 s)
+- [ ] Panning, next: the browser still repaints the whole map on every frame of a drag; measure on real phones
+      (`scripts/dev/pan-perf.mjs` emulates one) before moving the picture as a composited layer
+- [x] Cities are provinces of their own, drawn tight round each city inside the land round it, which keeps the
+      region's name (138 provinces in all). Cities hold the output, buildings, recruitment and objectives; the land
+      is where armies march and fronts run, takes infrastructure, and cuts its city off when lost. Map labels show
+      city names and the names of provinces without a city; secondary towns are unnamed dots
+- [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
+      entrenchments; and provinces with no city at all where the map needs them
+- [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal
+      penalty is unchanged (4.31), but fewer campaigns end on objectives (19% instead of 32%), Poland wins 33%
+      instead of 26% (not yet significant, p 0.10), Hungary lasts 71% of campaigns instead of 83%, and minor
+      powers stand longer (33% at 60 minutes instead of 21%). Look at how fast cities fall once their land is lost,
+      whether the AI defends cities as well as it holds the land, and the simulation's cost (38 s of CPU per
+      campaign instead of 26)
+- [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
+- [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
+- [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
+- [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
+- [x] Sound window: mute, overall / music / effects volumes, the piece playing now and a skip (rail on the desktop, More on phones)
 - [x] 3D city models on the map: each city shows its buildings (on category-coloured plinths), free slots as empty
       plots, construction, battles, regional architecture and the capitals' landmarks; the tooltip lists them too
 - [x] 3D armies on the map: zoomed in, each army is a 3D model of its main unit for its nation and generation,
@@ -131,6 +214,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Cities drawn as part of the map instead of on a round token: a web of streets that fades into the countryside,
       main roads running on towards the neighbouring cities, the old town round the landmark and each building on its
       pad around it; seaside cities keep to the land (streets stop at the coast) and get a port on the real coast
+- [x] A map that reads at a glance: lighter national washes over natural relief, each power's colour along the inside of
+      its border under a cased border line, your own land lit up inside a glowing white outline, the front with an enemy
+      in red; zoom to 20× the whole-theatre view (overlays stop growing, so fronts spread out) with close-up relief
+      tiles baked on demand
 
 ### Polish pass (done)
 
@@ -141,7 +228,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       answer offers from the Diplomacy window
 - [x] Resource breakdown (production, upkeep, net) on the top bar; live rates from the first second
 - [x] Battle box in the province card (with each side's morale); results screen with provinces captured, units
-      destroyed, units lost and armies surrendered
+      destroyed, units lost and retreats ordered
 - [x] Alerts that wait while paused; Ctrl/Alt shortcuts left to the browser; working campaign-speed select
 - [x] Event wording ("the United Kingdom", "occupied the Netherlands"), config-driven rule text, distinct tech art,
       map key for army rims, country names as a background layer placed clear of cities, constant-size neutral hatching
@@ -173,8 +260,14 @@ Found by playing full campaigns in the browser and reading the code end to end.
 
 ## M4 — Fog of war and diplomacy
 
-- [ ] Fog of war and reconnaissance (recon units gain a sight bonus)
-- [ ] Alliances, right of passage, non-aggression pacts, coalition victory
+- [x] Fog of war: provinces and armies see one province around them, reconnaissance units two over open land
+      (mountains and narrow seas are seen across but not beyond, seas over 350 km not at all); unseen land is veiled and
+      hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
+- [x] Shared sight between allies (powers fighting a common enemy) with the Liaison Officers research
+- [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
+      (and allies, with Liaison Officers) can see, guess at the rest from public totals, and remember enemy armour
+- [ ] Alliances as treaties (today any powers fighting a common enemy count as allies), right of passage,
+      non-aggression pacts, coalition victory
 - [ ] Peace terms: province transfers and reparations
 - [ ] Minor powers that can be courted or guaranteed, and that react to invasions of their neighbours
 
@@ -202,8 +295,10 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
 - [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
-- [ ] Hungary's missing neighbours (Slovakia, Romania, Serbia, Croatia, Slovenia), then Eastern-bloc nations east of
-      Poland
+- [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
+- [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
+- [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
+- [ ] Eastern-bloc nations east of Poland and Romania
 - [ ] A nation picker that scales past a dozen nations (pick on the map)
 - [ ] Expand beyond Europe: more theatres, then the whole world
 - [ ] Authoritative multiplayer server running `src/sim` unchanged; client sends commands only

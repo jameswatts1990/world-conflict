@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, joinNewcomers, type GameSettings, type GameState, type NationId } from '../sim';
+import { EUROPE_SCENARIO, buildWorld, createInitialState, hashState, joinNewcomers, type AiDifficulty, type GameSettings, type GameState, type NationId } from '../sim';
 import { GameController } from './game/GameController';
 import { GameScreen } from './GameScreen';
 import { MainMenu } from './MainMenu';
+
+const DEBUG_HANDLE = import.meta.env.DEV || import.meta.env.MODE === 'e2e';
 
 export function App() {
   const world = useMemo(() => buildWorld(EUROPE_SCENARIO), []);
@@ -14,15 +16,17 @@ export function App() {
     return () => session.ctrl.dispose();
   }, [session]);
 
-  // Expose a debug handle for automated browser checks (scripts/e2e) and tinkering.
+  // Expose a debug handle for automated browser checks (scripts/e2e) and tinkering: in the dev
+  // server and the test build (`npm run build:e2e`) only, so the published game carries none.
   useEffect(() => {
+    if (!DEBUG_HANDLE) return;
     const w = window as unknown as { __game?: unknown; __hash?: () => string | null };
     w.__game = session?.ctrl ?? null;
     w.__hash = () => (session ? hashState(session.ctrl.state) : null);
   }, [session]);
 
-  const startNew = (nation: NationId, seed: number, speed: GameSettings['speed']) => {
-    const state = createInitialState(world, { seed, humanNation: nation, speed });
+  const startNew = (nation: NationId, seed: number, speed: GameSettings['speed'], difficulty: AiDifficulty) => {
+    const state = createInitialState(world, { seed, humanNation: nation, speed, difficulty });
     setSession({ ctrl: new GameController(world, state), tutorial: true, key: Date.now() });
   };
 

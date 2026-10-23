@@ -21,18 +21,25 @@ export const MORALE = {
   hitFactor: 1.3,
   /** Defenders on their own ground hold their nerve better. */
   defenderResilience: 1.3,
+  /**
+   * Armies fighting on their own nation's home soil, defending or liberating it, hit harder and hold firmer: by up
+   * to this much, scaled by national morale from nothing at `homeSoilFrom` to all of it at `homeSoilFull`.
+   */
+  homeSoil: 0.2,
+  homeSoilFrom: 30,
+  homeSoilFull: 90,
   /** Base morale drain per combat round, scaled by how outnumbered the army is. */
   roundDrain: 0.012,
   /** Morale lost by the rest of an army each time one of its units is destroyed. */
   lossShock: 0.03,
-  /** Firepower at zero morale (scales linearly to 1 at full morale). */
+  /** Firepower at zero morale (scales linearly to 1 at full morale). Armies never break: they fight to the death. */
   firepowerFloor: 0.5,
-  /** An army whose strength-weighted morale falls below this routs. */
-  routThreshold: 0.25,
-  /** Strength lost by every unit of a routing army (halved with recon). */
-  routLosses: 0.08,
-  /** A routed army cannot take orders for this long. */
-  routedSeconds: 30,
+  /** Strength (absolute) lost by every unit of an army ordered out of a battle (halved with recon); units it kills are left behind. */
+  retreatLoss: 0.15,
+  /** Morale lost by every unit of an army withdrawing under fire. */
+  retreatMoraleShock: 0.1,
+  /** An army set to fall back withdraws on its own when its strength-weighted morale drops below this. */
+  autoRetreatAt: 0.25,
   /** Neutral garrisons defend their homeland stubbornly. */
   neutralResilience: 1.4,
   /** Morale regained per army upkeep step out of combat. */
@@ -83,7 +90,6 @@ export const MORALE = {
   capitalLostShock: -15,
   declareWarShock: -3,
   rallyShock: 2,
-  surrenderShock: -3,
 };
 
 export const SUPPLY = {
@@ -107,13 +113,30 @@ export const MOVEMENT = {
   terrain: { plains: 1, forest: 1.1, hills: 1.15, mountains: 1.35, urban: 1, marsh: 1.25 } satisfies Record<Terrain, number>,
   /** Road distance is longer than the great-circle distance. */
   routeFactor: 1.15,
-  /** A leg never takes less than this many seconds. */
+  /** A leg never takes less than this many seconds... */
   minLegSeconds: 15,
+  /** ...except out of a city into the land round it, or back: this short march (km), at least this long. */
+  cityGateKm: 12,
+  minGateSeconds: 5,
 };
 
 export const CAPTURE = {
   baseSeconds: 20,
   capitalMult: 1.5,
+  /** Open land, with no city to fight through, falls this much faster (forts still count in full). */
+  landMult: 0.5,
+};
+
+/** Fog of war: how far, in connections, a nation's provinces and armies see. */
+export const SIGHT = {
+  /** Every province a nation holds watches itself and its neighbours. */
+  province: 1,
+  /** So does every army, from the province it stands in or marches from. */
+  army: 1,
+  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far over land (mountains and seas stop it). */
+  recon: 2,
+  /** Sea crossings up to this long (city to city) are watched like a mountain border: the far shore, nothing beyond. Wider seas hide everything. */
+  seaKm: 350,
 };
 
 export const DIPLOMACY = {
@@ -131,5 +154,6 @@ export const VICTORY = {
   objectiveShare: 0.4,
   /** Objective threshold must be held continuously this long. */
   holdSeconds: 90,
-  score: { perVp: 10, perProvince: 3, perTech: 2 },
+  /** A city and the land round it together score what one province did before cities were split out. */
+  score: { perVp: 10, perCity: 2, perLand: 1, perTech: 2 },
 };

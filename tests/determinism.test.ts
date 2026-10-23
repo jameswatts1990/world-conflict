@@ -136,6 +136,42 @@ describe('save / load', () => {
     expect(hashState(loaded.state)).toBe(hashState(state));
   });
 
+  it('gives armies in older saves a march mode and the new army options', () => {
+    const state = aiGame(5, 'fr');
+    run(state, 120);
+    const old = JSON.parse(serializeGame(state, 'v4'));
+    old.schemaVersion = old.state.schemaVersion = 4;
+    for (const a of Object.values(old.state.armies) as Record<string, any>[]) {
+      delete a.autoRetreat;
+      delete a.holding;
+      if (a.move) delete a.move.mode;
+    }
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
+    expect(hashState(loaded)).toBe(hashState(state));
+  });
+
+  it('splits the cities of a save from before cities were provinces of their own', () => {
+    const state = aiGame(9, 'fr');
+    run(state, 600);
+    // As a schema 5 save had it: no land round the cities, every army in a city, Paris lost to Germany.
+    const old = JSON.parse(serializeGame(state, 'v5'));
+    old.schemaVersion = old.state.schemaVersion = 5;
+    for (const id of Object.keys(old.state.provinces)) if (id.endsWith('-land')) delete old.state.provinces[id];
+    for (const a of Object.values(old.state.armies) as Record<string, any>[]) {
+      a.province = a.province.replace(/-land$/, '');
+      if (a.move) a.move = { ...a.move, path: [], leg: null };
+    }
+    old.state.provinces['fr-paris'].owner = 'de';
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
+    expect(Object.keys(loaded.provinces).sort()).toEqual([...world.provinceIds].sort());
+    expect(loaded.provinces['fr-paris-land'].owner).toBe('de');
+    expect(loaded.provinces['fr-nord-land'].owner).toBe('fr');
+    expect(Object.values(loaded.armies).every((a) => a.move === null)).toBe(true);
+    // And it plays on.
+    run(loaded, 600);
+    expect(loaded.outcome).toBeNull();
+  });
+
   it('a save from before a country joined the scenario takes it in and plays on', () => {
     const state = aiGame(31, 'fr');
     run(state, 900);

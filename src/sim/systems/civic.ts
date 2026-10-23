@@ -7,6 +7,7 @@ import { INTERVALS } from '../config/timing';
 import { pushEvent } from '../events';
 import { areHostile, atWar, isArmyInTransit, techEffects } from '../queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type ProvinceId } from '../types';
+import { provinceName } from '../text';
 import type { World } from '../world';
 
 export interface MoraleFactor {
@@ -119,7 +120,7 @@ export function provinceMoraleTarget(
   if (nc.moneyShort) add('Treasury empty', MORALE.moneyShortage);
   if (here.some((a) => a.owner !== NEUTRAL && areHostile(state, a.owner, owner))) add('Battle raging', MORALE.battle);
   else if (
-    world.neighbors[pid].some((n) => (ctx.stationed.get(n.id) ?? []).some((a) => a.owner !== NEUTRAL && atWar(state, a.owner, owner)))
+    world.vicinity[pid].some((id) => (ctx.stationed.get(id) ?? []).some((a) => a.owner !== NEUTRAL && atWar(state, a.owner, owner)))
   ) {
     add('Enemy at the border', MORALE.enemyAdjacent);
   }
@@ -180,13 +181,15 @@ export function civicSystem(state: GameState, world: World): void {
     const diff = target - p.morale;
     p.morale += Math.max(-MORALE.driftPerStep, Math.min(MORALE.driftPerStep, diff));
 
+    // Only cities grow: the land round them has no city to grow.
+    if (!world.provinces[pid].city) continue;
     const battle = !!state.battles[pid];
     p.growth = Math.max(0, p.growth + cityGrowthPerMinute(state, pid, battle) * minutes);
     const need = CITY.growthToNext[p.tier];
     if (p.tier < 5 && p.growth >= need) {
       p.tier = (p.tier + 1) as typeof p.tier;
       p.growth = 0;
-      pushEvent(state, 'city-growth', `${world.provinces[pid].city.name} has grown into a ${CITY.tierNames[p.tier]}.`, {
+      pushEvent(state, 'city-growth', `${provinceName(world, pid)} has grown into a ${CITY.tierNames[p.tier]}.`, {
         nations: [p.owner],
         province: pid,
         severity: 'good',

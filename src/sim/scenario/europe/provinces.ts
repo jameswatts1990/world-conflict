@@ -1,13 +1,16 @@
-// Gameplay data for each playable province, one row each. What a row leaves
+// Gameplay data for each city and the land round it, one row each: a row becomes
+// a city province (the row's id) and its land (`<id>-land`). What a row leaves
 // out (output totals, objective values, the capital's size, starting buildings
 // and armies) comes from the owner's power tier: see src/sim/scenario/build.ts
-// and src/sim/config/powers.ts. Shapes live in src/assets/map/map.topo.json.
+// and src/sim/config/powers.ts. Shapes live in src/assets/map/map.topo.json;
+// where the land is anchored comes from them (land.ts, generated).
 import { buildProvinces, type ProvinceRow } from '../build';
+import { LAND } from './land';
 import { NATIONS } from './nations';
 
 export const ROWS: ProvinceRow[] = [
   // United Kingdom
-  { id: 'uk-london', name: 'London & the South East', core: 'uk', terrain: 'urban', tier: 'capital', city: { name: 'London', coord: [-0.128, 51.507], size: 'capital' }, pop: 9000, coast: true,
+  { id: 'uk-london', name: 'London & the South East', land: { name: 'South East', article: 'the' }, core: 'uk', terrain: 'urban', tier: 'capital', city: { name: 'London', coord: [-0.128, 51.507], size: 'capital' }, pop: 9000, coast: true,
     towns: [['Brighton', -0.137, 50.822], ['Southampton', -1.404, 50.909], ['Oxford', -1.258, 51.752], ['Dover', 1.313, 51.127]] },
   { id: 'uk-midlands', name: 'Midlands', article: 'the', core: 'uk', terrain: 'plains', tier: 'industrial', city: { name: 'Birmingham', coord: [-1.89, 52.486], size: 'major' }, pop: 2900,
     towns: [['Nottingham', -1.15, 52.954], ['Leicester', -1.133, 52.637], ['Coventry', -1.512, 52.407]] },
@@ -41,9 +44,9 @@ export const ROWS: ProvinceRow[] = [
     towns: [['Limoges', 1.261, 45.834], ['Poitiers', 0.34, 46.58], ['Biarritz', -1.559, 43.483], ['Pau', -0.37, 43.295]] },
 
   // Germany
-  { id: 'de-berlin', name: 'Berlin & Brandenburg', core: 'de', terrain: 'urban', tier: 'capital', city: { name: 'Berlin', coord: [13.405, 52.52], size: 'capital' }, pop: 4700,
+  { id: 'de-berlin', name: 'Berlin & Brandenburg', land: { name: 'Brandenburg' }, core: 'de', terrain: 'urban', tier: 'capital', city: { name: 'Berlin', coord: [13.405, 52.52], size: 'capital' }, pop: 4700,
     towns: [['Potsdam', 13.064, 52.391], ['Frankfurt (Oder)', 14.55, 52.342], ['Cottbus', 14.334, 51.756]] },
-  { id: 'de-ruhr', name: 'Rhineland & Ruhr', core: 'de', terrain: 'urban', tier: 'industrial', city: { name: 'Essen', coord: [7.012, 51.456], size: 'major' }, pop: 5100,
+  { id: 'de-ruhr', name: 'Rhineland & Ruhr', land: { terrain: 'hills' }, core: 'de', terrain: 'urban', tier: 'industrial', city: { name: 'Essen', coord: [7.012, 51.456], size: 'major' }, pop: 5100,
     towns: [['Cologne', 6.96, 50.937], ['Düsseldorf', 6.773, 51.228], ['Dortmund', 7.466, 51.514], ['Bonn', 7.098, 50.737]] },
   { id: 'de-saxony', name: 'Saxony & Thuringia', core: 'de', terrain: 'hills', tier: 'city', city: { name: 'Leipzig', coord: [12.373, 51.34], size: 'major' }, pop: 1100, recruiting: true, garrison: { infantry: 1, cavalry: 1 },
     towns: [['Dresden', 13.737, 51.05], ['Chemnitz', 12.921, 50.828], ['Erfurt', 11.03, 50.978]] },
@@ -59,7 +62,7 @@ export const ROWS: ProvinceRow[] = [
     towns: [['Karlsruhe', 8.404, 49.007], ['Mannheim', 8.487, 49.488], ['Freiburg', 7.842, 47.999], ['Ulm', 9.993, 48.401]] },
 
   // Italy
-  { id: 'it-rome', name: 'Central Italy', core: 'it', terrain: 'urban', tier: 'capital', city: { name: 'Rome', coord: [12.496, 41.903], size: 'capital' }, pop: 4300, coast: true,
+  { id: 'it-rome', name: 'Central Italy', land: { terrain: 'hills' }, core: 'it', terrain: 'urban', tier: 'capital', city: { name: 'Rome', coord: [12.496, 41.903], size: 'capital' }, pop: 4300, coast: true,
     towns: [['Perugia', 12.389, 43.112], ['Ancona', 13.505, 43.602], ['Latina', 12.903, 41.467]] },
   { id: 'it-lombardy', name: 'Lombardy', core: 'it', terrain: 'plains', tier: 'industrial', city: { name: 'Milan', coord: [9.19, 45.464], size: 'major' }, pop: 4300,
     towns: [['Bergamo', 9.67, 45.698], ['Brescia', 10.211, 45.541], ['Como', 9.085, 45.808], ['Pavia', 9.159, 45.185]] },
@@ -75,7 +78,7 @@ export const ROWS: ProvinceRow[] = [
     towns: [['Catania', 15.087, 37.507], ['Cagliari', 9.11, 39.224], ['Messina', 15.554, 38.193], ['Sassari', 8.555, 40.726]] },
 
   // Spain
-  { id: 'es-madrid', name: 'Madrid & La Mancha', core: 'es', terrain: 'urban', tier: 'capital', city: { name: 'Madrid', coord: [-3.704, 40.417], size: 'capital' }, pop: 6700,
+  { id: 'es-madrid', name: 'Madrid & La Mancha', land: { name: 'La Mancha' }, core: 'es', terrain: 'urban', tier: 'capital', city: { name: 'Madrid', coord: [-3.704, 40.417], size: 'capital' }, pop: 6700,
     towns: [['Toledo', -4.027, 39.863], ['Guadalajara', -3.167, 40.633], ['Ciudad Real', -3.928, 38.985], ['Albacete', -1.856, 38.994]] },
   { id: 'es-catalonia', name: 'Catalonia & Aragon', core: 'es', terrain: 'hills', tier: 'industrial', city: { name: 'Barcelona', coord: [2.173, 41.385], size: 'major' }, pop: 5600, coast: true,
     towns: [['Zaragoza', -0.889, 41.649], ['Tarragona', 1.245, 41.119], ['Girona', 2.825, 41.979], ['Lleida', 0.62, 41.617]] },
@@ -105,7 +108,7 @@ export const ROWS: ProvinceRow[] = [
     towns: [['Białystok', 23.164, 53.133], ['Olsztyn', 20.49, 53.778], ['Zamość', 23.251, 50.723]] },
 
   // Hungary
-  { id: 'hu-budapest', name: 'Budapest & Pest', core: 'hu', terrain: 'urban', tier: 'capital', city: { name: 'Budapest', coord: [19.04, 47.498], size: 'capital' }, pop: 3000,
+  { id: 'hu-budapest', name: 'Budapest & Pest', land: { name: 'Pest' }, core: 'hu', terrain: 'urban', tier: 'capital', city: { name: 'Budapest', coord: [19.04, 47.498], size: 'capital' }, pop: 3000,
     towns: [['Vác', 19.133, 47.776], ['Gödöllő', 19.354, 47.597], ['Cegléd', 19.799, 47.172], ['Érd', 18.913, 47.391]] },
   { id: 'hu-north', name: 'Northern Hungary', core: 'hu', terrain: 'hills', tier: 'industrial', city: { name: 'Miskolc', coord: [20.784, 48.104], size: 'major' }, pop: 300,
     towns: [['Eger', 20.377, 47.903], ['Salgótarján', 19.803, 48.098], ['Ózd', 20.29, 48.218], ['Tokaj', 21.409, 48.117]] },
@@ -118,22 +121,54 @@ export const ROWS: ProvinceRow[] = [
   { id: 'hu-southwest', name: 'Southern Transdanubia', core: 'hu', terrain: 'hills', tier: 'town', city: { name: 'Pécs', coord: [18.233, 46.072], size: 'town' }, pop: 240,
     towns: [['Kaposvár', 17.797, 46.359], ['Szekszárd', 18.704, 46.348], ['Mohács', 18.683, 45.993], ['Siófok', 18.049, 46.905]] },
 
+  // Romania (major power)
+  { id: 'ro-bucharest', name: 'Bucharest & Muntenia', land: { name: 'Muntenia' }, core: 'ro', terrain: 'urban', tier: 'capital', city: { name: 'Bucharest', coord: [26.103, 44.427], size: 'capital' }, pop: 2200, oil: true,
+    towns: [['Ploiești', 26.014, 44.946], ['Pitești', 24.869, 44.856], ['Târgoviște', 25.459, 44.925], ['Giurgiu', 25.969, 43.904]] },
+  { id: 'ro-banat', name: 'Banat & Oltenia', core: 'ro', terrain: 'plains', tier: 'industrial', city: { name: 'Timișoara', coord: [21.208, 45.749], size: 'major' }, pop: 380,
+    towns: [['Reșița', 21.889, 45.3], ['Craiova', 23.795, 44.319], ['Arad', 21.312, 46.186], ['Hunedoara', 22.9, 45.75], ['Drobeta-Turnu Severin', 22.687, 44.652]] },
+  { id: 'ro-transylvania', name: 'Transylvania', core: 'ro', terrain: 'hills', tier: 'city', city: { name: 'Cluj-Napoca', coord: [23.594, 46.77], size: 'major' }, pop: 420,
+    towns: [['Brașov', 25.601, 45.658], ['Sibiu', 24.152, 45.792], ['Oradea', 21.919, 47.047], ['Târgu Mureș', 24.557, 46.545], ['Baia Mare', 23.58, 47.659]] },
+  { id: 'ro-moldavia', name: 'Moldavia', core: 'ro', terrain: 'hills', tier: 'city', city: { name: 'Iași', coord: [27.588, 47.159], size: 'major' }, pop: 380,
+    towns: [['Bacău', 26.913, 46.567], ['Suceava', 26.255, 47.651], ['Piatra Neamț', 26.381, 46.927], ['Botoșani', 26.666, 47.746]] },
+  { id: 'ro-dobruja', name: 'Dobruja & the Lower Danube', core: 'ro', terrain: 'plains', tier: 'town', city: { name: 'Constanța', coord: [28.634, 44.173], size: 'town' }, pop: 420, coast: true,
+    towns: [['Galați', 28.008, 45.435], ['Brăila', 27.957, 45.271], ['Tulcea', 28.79, 45.179], ['Buzău', 26.823, 45.152]] },
+
+  // Serbia (major power)
+  { id: 'rs-belgrade', name: 'Belgrade & Vojvodina', land: { name: 'Vojvodina' }, core: 'rs', terrain: 'urban', tier: 'capital', city: { name: 'Belgrade', coord: [20.457, 44.787], size: 'capital' }, pop: 1700,
+    towns: [['Novi Sad', 19.845, 45.267], ['Subotica', 19.665, 46.1], ['Zrenjanin', 20.389, 45.381], ['Pančevo', 20.64, 44.871]] },
+  { id: 'rs-sumadija', name: 'Šumadija & Western Serbia', core: 'rs', terrain: 'hills', tier: 'industrial', city: { name: 'Kragujevac', coord: [20.911, 44.012], size: 'major' }, pop: 180,
+    towns: [['Čačak', 20.349, 43.891], ['Kraljevo', 20.687, 43.725], ['Šabac', 19.69, 44.756], ['Užice', 19.84, 43.858]] },
+  { id: 'rs-south', name: 'Southern & Eastern Serbia', core: 'rs', terrain: 'mountains', tier: 'city', city: { name: 'Niš', coord: [21.896, 43.321], size: 'major' }, pop: 260,
+    towns: [['Leskovac', 21.946, 42.998], ['Smederevo', 20.93, 44.664], ['Zaječar', 22.274, 43.904], ['Vranje', 21.9, 42.551], ['Požarevac', 21.187, 44.62]] },
+
+  // Minor powers of the Danube and the Adriatic
+  { id: 'sk-bratislava', name: 'Western Slovakia', core: 'sk', terrain: 'plains', tier: 'capital', city: { name: 'Bratislava', coord: [17.107, 48.149], size: 'capital' }, pop: 660,
+    towns: [['Trnava', 17.585, 48.377], ['Nitra', 18.087, 48.307], ['Trenčín', 18.044, 48.894], ['Komárno', 18.128, 47.763]] },
+  { id: 'sk-kosice', name: 'Central & Eastern Slovakia', core: 'sk', terrain: 'mountains', tier: 'town', city: { name: 'Košice', coord: [21.258, 48.716], size: 'town' }, pop: 360,
+    towns: [['Prešov', 21.239, 48.998], ['Žilina', 18.74, 49.223], ['Banská Bystrica', 19.146, 48.736], ['Poprad', 20.297, 49.059]] },
+  { id: 'si-ljubljana', name: 'Slovenia', core: 'si', terrain: 'mountains', tier: 'capital', city: { name: 'Ljubljana', coord: [14.506, 46.056], size: 'capital' }, pop: 540, coast: true,
+    towns: [['Maribor', 15.646, 46.554], ['Celje', 15.262, 46.231], ['Koper', 13.73, 45.548], ['Kranj', 14.355, 46.239]] },
+  { id: 'hr-zagreb', name: 'Continental Croatia', core: 'hr', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Zagreb', coord: [15.978, 45.815], size: 'capital' }, pop: 1100,
+    towns: [['Osijek', 18.694, 45.554], ['Varaždin', 16.338, 46.304], ['Karlovac', 15.555, 45.487], ['Slavonski Brod', 18.016, 45.16]] },
+  { id: 'hr-dalmatia', name: 'Dalmatia & Istria', core: 'hr', terrain: 'mountains', tier: 'town', city: { name: 'Split', coord: [16.48, 43.548], size: 'town' }, pop: 350, coast: true,
+    towns: [['Rijeka', 14.442, 45.327], ['Zadar', 15.261, 44.129], ['Dubrovnik', 18.094, 42.65], ['Pula', 13.85, 44.868]] },
+
   // Minor powers: one province each, computer-controlled. Their cities keep the sizes they had as neutral
   // states, and the old border forts stand.
-  { id: 'be-brussels', name: 'Belgium & Luxembourg', core: 'be', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true, buildings: { fortifications: 1 },
+  { id: 'be-brussels', name: 'Belgium & Luxembourg', core: 'be', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100, coast: true,
     towns: [['Antwerp', 4.402, 51.219], ['Ghent', 3.725, 51.054], ['Liège', 5.58, 50.633], ['Luxembourg', 6.13, 49.611]] },
   { id: 'nl-amsterdam', name: 'Netherlands', article: 'the', core: 'nl', terrain: 'marsh', tier: 'capital', cityTier: 3, city: { name: 'Amsterdam', coord: [4.904, 52.368], size: 'capital' }, pop: 2500, coast: true, oil: true,
     towns: [['Rotterdam', 4.478, 51.924], ['The Hague', 4.3, 52.07], ['Utrecht', 5.121, 52.091], ['Eindhoven', 5.47, 51.441]] },
   { id: 'dk-copenhagen', name: 'Denmark', core: 'dk', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Copenhagen', coord: [12.576, 55.694], size: 'capital' }, pop: 2100, coast: true,
     towns: [['Aarhus', 10.204, 56.163], ['Odense', 10.388, 55.404], ['Aalborg', 9.922, 57.048]] },
-  { id: 'ch-bern', name: 'Switzerland', core: 'ch', terrain: 'mountains', tier: 'capital', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, pop: 420, buildings: { fortifications: 2 },
+  { id: 'ch-bern', name: 'Switzerland', core: 'ch', terrain: 'mountains', tier: 'capital', city: { name: 'Bern', coord: [7.447, 46.948], size: 'capital' }, pop: 420, buildings: { fortifications: 3 },
     towns: [['Zürich', 8.541, 47.377], ['Geneva', 6.143, 46.204], ['Basel', 7.588, 47.56], ['Lausanne', 6.633, 46.52]] },
   { id: 'at-vienna', name: 'Austria', core: 'at', terrain: 'mountains', tier: 'capital', cityTier: 3, city: { name: 'Vienna', coord: [16.374, 48.208], size: 'capital' }, pop: 2900, oil: true,
     towns: [['Graz', 15.439, 47.071], ['Linz', 14.286, 48.306], ['Salzburg', 13.055, 47.809], ['Innsbruck', 11.404, 47.269]] },
-  { id: 'cz-prague', name: 'Czechia', core: 'cz', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, pop: 2700, buildings: { fortifications: 1 },
+  { id: 'cz-prague', name: 'Czechia', core: 'cz', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Prague', coord: [14.438, 50.076], size: 'capital' }, pop: 2700,
     towns: [['Brno', 16.607, 49.195], ['Ostrava', 18.262, 49.835], ['Plzeň', 13.378, 49.738]] },
   { id: 'pt-lisbon', name: 'Portugal', core: 'pt', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, pop: 2900, coast: true,
     towns: [['Porto', -8.611, 41.15], ['Coimbra', -8.43, 40.205], ['Faro', -7.935, 37.019]] },
 ];
 
-export const PROVINCES = buildProvinces(ROWS, NATIONS);
+export const PROVINCES = buildProvinces(ROWS, NATIONS, LAND);

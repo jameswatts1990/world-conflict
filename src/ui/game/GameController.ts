@@ -2,8 +2,9 @@
 // drives the fixed-timestep GameLoop from requestAnimationFrame, and notifies
 // React subscribers. Pause, speed and autosave live here — they are client
 // concerns, not simulation rules.
+import { attachGameAudio } from '../../audio';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { GameLoop, Simulation, type Command, type CommandResult, type GameState, type NationId, type World } from '../../sim';
+import { GameLoop, Simulation, visibleProvinces, type Command, type CommandResult, type GameState, type NationId, type ProvinceId, type World } from '../../sim';
 import { saveToSlot } from './storage';
 
 const UI_NOTIFY_MS = 120;
@@ -12,6 +13,7 @@ const AUTOSAVE_MS = 120_000;
 const MAX_FRAME_MS = 250;
 
 type Listener = () => void;
+type CommandListener = (command: Command, result: CommandResult) => void;
 
 export class GameController {
   readonly sim: Simulation;
@@ -22,12 +24,15 @@ export class GameController {
 
   private listeners = new Set<Listener>();
   private frameListeners = new Set<Listener>();
+  private commandListeners = new Set<CommandListener>();
+  private detachAudio: (() => void) | null = null;
   private raf = 0;
   private lastFrame = 0;
   private lastNotify = 0;
   private dirty = false;
   private lastAutosave = 0;
   private running = false;
+  private sightCache: { state: GameState; tick: number; version: number; seen: ReadonlySet<ProvinceId> } | null = null;
 
   constructor(
     readonly world: World,
@@ -45,6 +50,15 @@ export class GameController {
     return this.sim.state;
   }
 
+  /** Provinces the player can see through the fog of war, worked out once per tick (orders can change it too). */
+  sight(): ReadonlySet<ProvinceId> {
+    const c = this.sightCache;
+    if (c && c.state === this.state && c.tick === this.state.tick && c.version === this.version) return c.seen;
+    const seen = visibleProvinces(this.state, this.world, this.human);
+    this.sightCache = { state: this.state, tick: this.state.tick, version: this.version, seen };
+    return seen;
+  }
+
   start(): void {
     if (this.running) return;
     this.running = true;
@@ -52,14 +66,18 @@ export class GameController {
     this.lastAutosave = this.lastFrame;
     this.raf = requestAnimationFrame(this.frame);
     document.addEventListener('visibilitychange', this.onVisibility);
+    this.detachAudio = attachGameAudio(this);
   }
 
   dispose(): void {
     this.running = false;
     cancelAnimationFrame(this.raf);
     document.removeEventListener('visibilitychange', this.onVisibility);
+    this.detachAudio?.();
+    this.detachAudio = null;
     this.listeners.clear();
     this.frameListeners.clear();
+    this.commandListeners.clear();
   }
 
   private frame = (now: number): void => {
@@ -104,9 +122,16 @@ export class GameController {
 
   getVersion = (): number => this.version;
 
+  /** Hears every command the player submits and its result (sound uses it). */
+  onCommand = (l: CommandListener): (() => void) => {
+    this.commandListeners.add(l);
+    return () => this.commandListeners.delete(l);
+  };
+
   submit(command: Command): CommandResult {
     const result = this.sim.submit(command);
     this.lastError = result.ok ? null : result.reason;
+    for (const l of this.commandListeners) l(command, result);
     this.notify();
     return result;
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, armyName, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
+import { applyCommand, armyName, captureTicks, durationText, nationName, ownerName, provinceName, scaledTicks, sentence } from '../src/sim';
 import { DIPLOMACY } from '../src/sim/config/rules';
 import { clearArmies, place, quietGame, richen, run, setWar, world } from './helpers';
 
@@ -10,8 +10,10 @@ describe('names in messages', () => {
     expect(nationName(world, 'uk')).toBe('the United Kingdom');
     expect(sentence(nationName(world, 'uk'))).toBe('The United Kingdom');
     expect(nationName(world, 'fr')).toBe('France');
-    expect(provinceName(world, 'uk-midlands')).toBe('the Midlands');
-    expect(provinceName(world, 'nl-amsterdam')).toBe('the Netherlands');
+    expect(provinceName(world, 'uk-midlands-land')).toBe('the Midlands');
+    expect(provinceName(world, 'nl-amsterdam-land')).toBe('the Netherlands');
+    // A city province is named after its city.
+    expect(provinceName(world, 'uk-midlands')).toBe('Birmingham');
     expect(nationName(world, 'nl')).toBe('the Netherlands');
     expect(ownerName(world, 'be', 'be-brussels')).toBe('Belgium & Luxembourg');
   });
@@ -31,26 +33,29 @@ describe('event wording', () => {
     expect(texts(state, 'war')).toContain('Germany declared war on the United Kingdom!');
     place(state, 'de', 'uk-london', { infantry: 3 });
     run(state, 60);
-    expect(texts(state, 'capture')).toContain('Germany captured London & the South East from the United Kingdom (objective, 3 VP).');
+    expect(texts(state, 'capture')).toContain('Germany captured London from the United Kingdom (objective, 3 VP).');
     clearArmies(state, 'uk-london');
     place(state, 'uk', 'uk-london', { infantry: 3 });
     run(state, 60);
-    expect(texts(state, 'capture')).toContain('The United Kingdom liberated London & the South East from Germany (objective, 3 VP).');
+    expect(texts(state, 'capture')).toContain('The United Kingdom liberated London from Germany (objective, 3 VP).');
   });
 
-  it('a one-province country is named once when it falls and when it is retaken', () => {
+  it('a one-city country is named once when its land falls and when it is retaken', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'nl');
-    // A second province keeps the Netherlands in the war after Amsterdam falls.
-    state.provinces['de-north'].owner = 'nl';
+    place(state, 'fr', 'nl-amsterdam-land', { infantry: 3 });
+    run(state, captureTicks(state, world, 'nl-amsterdam-land') + 1);
+    expect(texts(state, 'capture')).toEqual(['France captured the Netherlands.']);
     place(state, 'fr', 'nl-amsterdam', { infantry: 3 });
-    run(state, 40);
-    expect(texts(state, 'capture')).toEqual(['France captured the Netherlands (objective, 1 VP).']);
-    clearArmies(state, 'nl-amsterdam');
-    place(state, 'nl', 'nl-amsterdam', { infantry: 3 });
-    run(state, 40);
-    expect(texts(state, 'capture').at(-1)).toBe('The Netherlands drove France out (objective, 1 VP).');
+    run(state, captureTicks(state, world, 'nl-amsterdam') + 1);
+    expect(texts(state, 'capture').at(-1)).toBe('France captured Amsterdam from the Netherlands (objective, 1 VP).');
+    // A second province keeps the Netherlands in the war.
+    state.provinces['de-north'].owner = 'nl';
+    clearArmies(state, 'nl-amsterdam-land');
+    place(state, 'nl', 'nl-amsterdam-land', { infantry: 3 });
+    run(state, captureTicks(state, world, 'nl-amsterdam-land') + 1);
+    expect(texts(state, 'capture').at(-1)).toBe('The Netherlands drove France out.');
   });
 
   it('battles name the attacker first, and a battle stopped by peace has no winner', () => {
@@ -105,12 +110,12 @@ describe('event wording', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'nl');
-    // A shaken army breaks before it can be destroyed and, with nowhere to retreat, surrenders.
-    place(state, 'nl', 'nl-amsterdam', { infantry: 1 }).units[0].morale = 0.3;
+    place(state, 'nl', 'nl-amsterdam', { infantry: 1 });
     place(state, 'fr', 'nl-amsterdam', { infantry: 6, artillery: 2 });
     run(state, 200);
-    const lost = state.events.find((e) => e.kind === 'army-destroyed' || e.kind === 'surrender')!;
-    expect(lost.text).toBe('Encircled at Amsterdam, the Dutch 2nd Army surrendered to France — 1 unit lost.');
+    // The army fights to the last man.
+    const lost = state.events.find((e) => e.kind === 'army-destroyed')!;
+    expect(lost.text).toBe('The Netherlands lost the 3rd Army at Amsterdam.');
     expect(lost.subject).toBe('nl');
     const captured = state.events.find((e) => e.kind === 'capture')!;
     expect(captured.subject).toBe('nl');
@@ -132,7 +137,7 @@ describe('event wording', () => {
     state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
     applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
     applyCommand(state, world, { type: 'respondPeace', nation: 'de', from: 'fr', accept: true });
-    expect(texts(state, 'withdraw')).toEqual([`The ${armyName(world, army)} withdrew from Rhineland & Ruhr to Alsace-Lorraine & Champagne.`]);
+    expect(texts(state, 'withdraw')).toEqual([`The ${armyName(world, army)} withdrew from Essen to Alsace-Lorraine & Champagne.`]);
   });
 
   it('war and peace record who acted and who it concerns', () => {

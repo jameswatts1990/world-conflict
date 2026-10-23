@@ -9,6 +9,7 @@ import { currentModel } from '../names';
 import { canAfford, isArmyInTransit, recruitXp, researchSlots, researchSpeed, scaledTicks, unitMoraleCap } from '../queries';
 import { createArmy, createUnit } from '../state';
 import { NEUTRAL, type GameState, type NationId, type ProvinceId, type UnitType } from '../types';
+import { provinceName } from '../text';
 import type { World } from '../world';
 
 export function constructionSystem(state: GameState, world: World): void {
@@ -21,7 +22,7 @@ export function constructionSystem(state: GameState, world: World): void {
     p.buildings[job.building] = job.targetLevel;
     p.construction = null;
     const lvl = BUILDINGS[job.building].maxLevel > 1 ? ` (level ${job.targetLevel})` : '';
-    pushEvent(state, 'construction', `${BUILDINGS[job.building].name}${lvl} completed in ${world.provinces[id].city.name}.`, {
+    pushEvent(state, 'construction', `${BUILDINGS[job.building].name}${lvl} completed in ${provinceName(world, id)}.`, {
       nations: [p.owner],
       province: id,
       severity: 'good',
@@ -38,7 +39,7 @@ export function recruitmentSystem(state: GameState, world: World): void {
     if (job.remaining > 0) continue;
     p.recruitQueue.shift();
     spawnUnit(state, p.owner, id, job.unitType);
-    pushEvent(state, 'recruitment', `${currentModel(state, world, p.owner, job.unitType).name} ready in ${world.provinces[id].city.name}.`, {
+    pushEvent(state, 'recruitment', `${currentModel(state, world, p.owner, job.unitType).name} ready in ${provinceName(world, id)}.`, {
       nations: [p.owner],
       province: id,
       severity: 'good',

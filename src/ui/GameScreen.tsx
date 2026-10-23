@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
+import { concernsPlayer } from '../audio/cues';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
   armiesIn,
@@ -8,8 +9,9 @@ import {
   armyName,
   atWar,
   buildingSlots,
+  checkDeclareWar,
   eventsFor,
-  isRouted,
+  isArmyVisible,
   nationName,
   provinceName,
   scaledTicks,
@@ -18,6 +20,8 @@ import {
   type EventSeverity,
   type GameEvent,
   type GameState,
+  type MoveMode,
+  type NationId,
   type OwnerId,
   type ProvinceId,
   unitGen,
@@ -28,19 +32,20 @@ import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
 import { countOf, formatDuration } from './format';
 import { Icon, type IconName } from './icons';
-import { TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
+import { ORDER, TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
 import { useLayout, useTouch } from './layout';
 import { mapGeometry } from './map/geo';
 import { MapView, routePreview, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
 import { ConfirmDialog } from './panels/Common';
 import { HelpDialog, LoadDialog, OutcomeDialog, SaveDialog } from './panels/Dialogs';
-import { DiplomacyPanel } from './panels/DiplomacyPanel';
+import { DeclareWarDialog, DiplomacyPanel } from './panels/DiplomacyPanel';
 import { EventLog, eventIcon } from './panels/EventLog';
 import { Legend } from './panels/Legend';
 import { NavRail, type PanelId } from './panels/NavRail';
 import { ProvincePanel } from './panels/ProvincePanel';
 import { ResearchPanel } from './panels/ResearchPanel';
+import { SoundDialog } from './panels/SoundDialog';
 import { TopBar } from './panels/TopBar';
 import { Tutorial } from './panels/Tutorial';
 
@@ -80,10 +85,10 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
   const { state, world, human } = ctrl;
   switch (e.kind) {
     case 'war':
-      // War on us is bad news; our own declaration and other powers' wars are worth knowing.
-      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : 'info';
+      // War on us is bad news; our own declaration, and other powers' wars that concern us, are worth knowing.
+      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'peace':
-      return e.subject === human || e.actor === human ? 'good' : 'info';
+      return e.subject === human || e.actor === human ? 'good' : concernsPlayer(state, world, human, e) ? 'info' : null;
     case 'research':
     case 'shortage':
     case 'eliminated':
@@ -100,13 +105,12 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
       // Our own attacks are no surprise; an enemy attacking our land is.
       return e.province && state.provinces[e.province].owner === human ? 'bad' : null;
     case 'army-destroyed':
-    case 'rout':
     case 'peace-rejected':
-      // Our army lost or broken, or our offer turned down.
+      // Our army lost, or our offer turned down.
       return e.subject === human ? 'bad' : null;
-    case 'surrender':
-      // An encircled army gave up: ours, or one that surrendered to us.
-      return e.subject === human ? 'bad' : e.nations.includes(human) ? 'good' : null;
+    case 'rout':
+      // An enemy pulled out of a battle with us.
+      return e.subject !== human && e.nations.includes(human) ? 'good' : null;
     default:
       return null;
   }
@@ -131,9 +135,12 @@ export function GameScreen({
   const compact = layout !== 'desktop';
 
   // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
+  // The desktop opens on your capital's city, once the opening briefing (if any) is out of the way.
+  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact || showTutorial ? null : world.nations[human].capital);
+  const capitalShown = useRef(!showTutorial);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
-  const [moveMode, setMoveMode] = useState(false);
+  // The march order being given, while a destination is picked.
+  const [moveMode, setMoveMode] = useState<MoveMode | null>(null);
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [tutorial, setTutorial] = useState(showTutorial);
   const [focus, setFocus] = useState<{ province: ProvinceId; seq: number } | null>(null);
@@ -141,6 +148,8 @@ export function GameScreen({
   const [toast, setToast] = useState<string | null>(null);
   const [outcomeSeen, setOutcomeSeen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  /** An order into a nation we are at peace with, waiting on the player's answer to declaring war. */
+  const [warOrder, setWarOrder] = useState<{ target: NationId; to: ProvinceId; mode: MoveMode; armies: ArmyId[] } | null>(null);
   const [mapMode, setMapMode] = useState<MapMode>('political');
   const [legendOpen, setLegendOpen] = useState(false);
   // Small screens start with the reports closed: they open from the command bar.
@@ -153,6 +162,8 @@ export function GameScreen({
   const [mapHeight, setMapHeight] = useState(() => window.innerHeight);
   // Touch move mode: the destination tapped once, previewed until confirmed.
   const [moveTarget, setMoveTarget] = useState<ProvinceId | null>(null);
+  // Phone layouts: a city tapped on the map opens as a full-screen page.
+  const [cityPage, setCityPage] = useState<ProvinceId | null>(null);
   const lastEventId = useRef(state.nextEventId - 1);
   const dockRef = useRef<HTMLElement>(null);
   const mapWrapRef = useRef<HTMLDivElement>(null);
@@ -165,8 +176,9 @@ export function GameScreen({
     return () => ro.disconnect();
   }, []);
 
-  // Drop selections of armies that no longer exist.
-  const liveArmies = selectedArmies.filter((id) => state.armies[id]);
+  // Drop selections of armies that no longer exist, or that have gone into the fog of war.
+  const seen = ctrl.sight();
+  const liveArmies = selectedArmies.filter((id) => state.armies[id] && isArmyVisible(state.armies[id], human, seen));
   if (liveArmies.length !== selectedArmies.length) setSelectedArmies(liveArmies);
 
   // Raise alerts for important new events.
@@ -214,7 +226,35 @@ export function GameScreen({
         return [id];
       });
       setSelectedProvince(army.move?.leg ? army.move.leg.from : army.province);
-      setMoveMode(false);
+      setMoveMode(null);
+    },
+    [ctrl],
+  );
+
+  /** The next (or previous) of your armies, in the order they were raised: selected, and brought into view. */
+  const cycleArmy = useCallback(
+    (dir: 1 | -1) => {
+      const own = Object.values(ctrl.state.armies)
+        .filter((a) => a.owner === ctrl.human)
+        .sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+      if (!own.length) return;
+      const i = own.findIndex((a) => a.id === selectedArmies[0]);
+      const next = own[i < 0 ? (dir > 0 ? 0 : own.length - 1) : (i + dir + own.length) % own.length];
+      selectArmy(next.id, false);
+      setFocus((f) => ({ province: next.move?.leg ? next.move.leg.from : next.province, seq: (f?.seq ?? 0) + 1 }));
+    },
+    [ctrl, selectedArmies, selectArmy],
+  );
+
+  const issueMoves = useCallback(
+    (armies: ArmyId[], pid: ProvinceId, mode: MoveMode) => {
+      let lastError: string | null = null;
+      for (const id of armies) {
+        if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
+        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid, mode });
+        if (!r.ok) lastError = r.reason;
+      }
+      if (lastError) setToast(lastError);
     },
     [ctrl],
   );
@@ -222,23 +262,37 @@ export function GameScreen({
   const orderMove = useCallback(
     (pid: ProvinceId) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
-      let lastError: string | null = null;
-      for (const id of own) {
-        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid });
-        if (!r.ok) lastError = r.reason;
+      const owner = ctrl.state.provinces[pid].owner;
+      // A right-click without a chosen order attacks into foreign land and moves within our own.
+      const mode = moveMode ?? (owner === ctrl.human ? 'move' : 'attack');
+      setMoveMode(null);
+      // Marching on a nation we are at peace with asks to declare war first; the order follows the declaration.
+      if (own.length && owner !== ctrl.human && owner !== 'neutral' && !atWar(ctrl.state, ctrl.human, owner)) {
+        const check = checkDeclareWar(ctrl.state, ctrl.human, owner);
+        if (check.ok) setWarOrder({ target: owner, to: pid, mode, armies: own });
+        else setToast(`At peace with ${nationName(world, owner)}. ${check.reason}`);
+        return;
       }
-      if (lastError) setToast(lastError);
-      setMoveMode(false);
+      issueMoves(own, pid, mode);
     },
-    [ctrl, selectedArmies],
+    [ctrl, world, selectedArmies, moveMode, issueMoves],
   );
 
-  const selectProvince = useCallback((pid: ProvinceId | null) => {
-    setSelectedProvince(pid);
-    setSelectedArmies([]);
-    setMoveMode(false);
-    // Tapping the province already selected raises a peeking sheet too.
-    if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
+  const selectProvince = useCallback(
+    (pid: ProvinceId | null) => {
+      setSelectedProvince(pid);
+      setSelectedArmies([]);
+      setMoveMode(null);
+      // On a phone a city opens as a page of its own, with room for its choices; land keeps the sheet.
+      setCityPage(compact && pid && world.provinces[pid].city ? pid : null);
+      // Tapping the province already selected raises a peeking sheet too.
+      if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
+    },
+    [compact, world],
+  );
+  const closeCityPage = useCallback(() => {
+    setCityPage(null);
+    setSelectedProvince(null);
   }, []);
 
   // Moving: in portrait the sheet drops to peek so the map is free to pick a destination.
@@ -263,7 +317,8 @@ export function GameScreen({
       } else if (/^[1-9]$/.test(e.key) && Number(e.key) <= CLIENT_SPEEDS.length) {
         ctrl.setSpeed(CLIENT_SPEEDS[Number(e.key) - 1].multiplier);
       } else if (e.key === 'Escape') {
-        if (moveMode) setMoveMode(false);
+        if (moveMode) setMoveMode(null);
+        else if (cityPage) closeCityPage();
         else if (legendOpen) setLegendOpen(false);
         else {
           setSelectedArmies([]);
@@ -272,16 +327,27 @@ export function GameScreen({
       } else if (key === 'r') setPanel((p) => (p === 'research' ? null : 'research'));
       else if (key === 'd') setPanel((p) => (p === 'diplomacy' ? null : 'diplomacy'));
       else if (key === 'h' || e.key === '?') setPanel('help');
-      else if (key === 'm' && selectedArmies.length) setMoveMode((m) => !m);
+      else if ((key === 'm' || key === 'a' || key === 'p') && selectedArmies.length) {
+        const order: MoveMode = key === 'm' ? 'move' : key === 'a' ? 'attack' : 'patrol';
+        setMoveMode((m) => (m === order ? null : order));
+      } else if (key === 'g' && selectedArmies.length) {
+        // Hold position, or release it if every selected army already holds.
+        const own = selectedArmies.map((id) => ctrl.state.armies[id]).filter((a) => a?.owner === ctrl.human);
+        const hold = !own.every((a) => a.holding);
+        for (const a of own) ctrl.submit({ type: 'hold', nation: ctrl.human, armyId: a.id, hold });
+        setMoveMode(null);
+      }
       else if (key === 's' && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
-      } else if (key === 'l') setFeedOpen((o) => !o);
+      } else if (key === 'c' || e.key === 'Home') focusOn(world.nations[human].capital);
+      else if (e.key === '.' || e.key === ',') cycleArmy(e.key === '.' ? 1 : -1);
+      else if (key === 'l') setFeedOpen((o) => !o);
       else if (key === 'k') setLegendOpen((o) => !o);
       else if (key === 'v') setMapMode((m) => MAP_MODES[(MAP_MODES.findIndex(([id]) => id === m) + 1) % MAP_MODES.length][0]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [ctrl, moveMode, legendOpen, selectedArmies]);
+  }, [ctrl, moveMode, legendOpen, selectedArmies, focusOn, cycleArmy, world, human, cityPage, closeCityPage]);
 
   useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
   const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
@@ -295,7 +361,8 @@ export function GameScreen({
   const offers = state.outcome ? [] : state.peaceOffers.filter((o) => o.to === human);
   const offerTicks = scaledTicks(state, DIPLOMACY.peaceOfferExpirySeconds);
   const armySelected = selectedArmies.length > 0 && !!state.armies[selectedArmies[0]];
-  const dockOpen = armySelected || !!selectedProvince;
+  // The city page takes the dock's place while it is open.
+  const dockOpen = (armySelected || !!selectedProvince) && !cityPage;
   const outcome = state.outcome;
 
   // A new selection raises the portrait sheet to half, where an army's orders are in reach;
@@ -315,7 +382,7 @@ export function GameScreen({
   const clearSelection = () => {
     setSelectedArmies([]);
     setSelectedProvince(null);
-    setMoveMode(false);
+    setMoveMode(null);
   };
   const mover = armySelected && state.armies[selectedArmies[0]].owner === human ? state.armies[selectedArmies[0]] : null;
   const pendingRoute = moveMode && moveTarget && mover ? routePreview(state, world, human, mover, moveTarget) : null;
@@ -343,18 +410,23 @@ export function GameScreen({
             geo={geo}
             selectedProvince={selectedProvince}
             selectedArmies={selectedArmies}
-            moveMode={moveMode}
+            moveMode={moveMode !== null}
             focus={focus}
             mapMode={mapMode}
             insetRight={insetRight}
             insetBottom={insetBottom}
-            followSelection={compact}
             compact={compact}
             touch={touch}
             moveTarget={moveTarget}
             onPickTarget={setMoveTarget}
             onSelectProvince={selectProvince}
             onSelectArmy={selectArmy}
+            onBoxSelect={(ids) => {
+              const first = ctrl.state.armies[ids[0]];
+              setSelectedArmies(ids);
+              setSelectedProvince(first.move?.leg ? first.move.leg.from : first.province);
+              setMoveMode(null);
+            }}
             onOrderMove={orderMove}
             onHover={(pid, army) => setHover(pid ? { pid, army } : null)}
           />
@@ -398,7 +470,7 @@ export function GameScreen({
               {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="banner dev-banner">Development speed {ctrl.loop.speed}x</div>}
               {moveMode && !touch && (
                 <div className="banner hint-banner">
-                  <Icon name="target" size={16} /> Choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
+                  <Icon name="target" size={16} /> {ORDER[moveMode].hint}: choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
                 </div>
               )}
               {moveMode && touch && (
@@ -409,11 +481,11 @@ export function GameScreen({
                       <span>Tap a destination</span>
                     ) : pendingRoute?.blocked ? (
                       <span>
-                        {world.provinces[moveTarget].city.name} <span className="muted">· {pendingRoute.blocked}</span>
+                        {world.provinces[moveTarget].name} <span className="muted">· {pendingRoute.blocked}</span>
                       </span>
                     ) : (
                       <span>
-                        March to {world.provinces[moveTarget].city.name}
+                        {ORDER[moveMode].hint} {world.provinces[moveTarget].name}
                         {pendingRoute && <span className="muted"> · {formatDuration(pendingRoute.ticks, state)}</span>}
                       </span>
                     )}
@@ -424,58 +496,66 @@ export function GameScreen({
                         Confirm
                       </button>
                     )}
-                    <button onClick={() => setMoveMode(false)}>Cancel</button>
+                    {moveTarget && pendingRoute?.warOn && (
+                      <button className="danger" onClick={() => orderMove(moveTarget)} data-testid="confirm-move">
+                        Declare war…
+                      </button>
+                    )}
+                    <button onClick={() => setMoveMode(null)}>Cancel</button>
                   </span>
                 </div>
               )}
             </div>
 
-            <div className="alert-stack">
-              {offers.map((o) => (
-                <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
-                  <Flag id={o.from} size={22} />
-                  <div className="alert-body">
-                    <div className="alert-title">Peace proposal</div>
-                    <div>
-                      <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
-                    </div>
-                    <div className="offer-timer" title="Time left to answer">
-                      <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
-                    </div>
-                    <div className="btn-row">
-                      <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
-                        Accept
-                      </button>
-                      <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
-                      <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+            {/* The results dialog is the last word: alerts wait behind it until it closes. */}
+            {!(outcome && !outcomeSeen) && (
+              <div className="alert-stack">
+                {offers.map((o) => (
+                  <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
+                    <Flag id={o.from} size={22} />
+                    <div className="alert-body">
+                      <div className="alert-title">Peace proposal</div>
+                      <div>
+                        <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
+                      </div>
+                      <div className="offer-timer" title="Time left to answer">
+                        <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
+                      </div>
+                      <div className="btn-row">
+                        <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
+                          Accept
+                        </button>
+                        <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
+                        <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {alerts.map(({ event: e, tone }) => (
-                <div
-                  key={e.id}
-                  className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
-                  onClick={() => e.province && focusOn(e.province)}
-                  title={e.province ? 'Show on the map' : undefined}
-                >
-                  <span className="alert-icon">
-                    <Icon name={eventIcon(e)} size={18} />
-                  </span>
-                  <div className="alert-body">{e.text}</div>
-                  <button
-                    className="icon-btn"
-                    aria-label="Dismiss"
-                    onClick={(ev) => {
-                      ev.stopPropagation();
-                      setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
-                    }}
+                ))}
+                {alerts.map(({ event: e, tone }) => (
+                  <div
+                    key={e.id}
+                    className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
+                    onClick={() => e.province && focusOn(e.province)}
+                    title={e.province ? 'Show on the map' : undefined}
                   >
-                    <Icon name="close" size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
+                    <span className="alert-icon">
+                      <Icon name={eventIcon(e)} size={18} />
+                    </span>
+                    <div className="alert-body">{e.text}</div>
+                    <button
+                      className="icon-btn"
+                      aria-label="Dismiss"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
+                      }}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <EventLog
@@ -513,20 +593,41 @@ export function GameScreen({
                   onSelectArmies={setSelectedArmies}
                   onClose={() => {
                     setSelectedArmies([]);
-                    setMoveMode(false);
+                    setMoveMode(null);
                   }}
                 />
               )}
               {selectedProvince && (
                 <ProvincePanel
+                  key={selectedProvince}
                   ctrl={ctrl}
                   pid={selectedProvince}
                   selectedArmies={selectedArmies}
                   onSelectArmy={selectArmy}
+                  onSelectProvince={selectProvince}
                   onClose={() => setSelectedProvince(null)}
+                  compact={compact}
                 />
               )}
             </aside>
+          )}
+          {cityPage && (
+            <div className="city-page" data-testid="city-page">
+              <ProvincePanel
+                key={cityPage}
+                ctrl={ctrl}
+                pid={cityPage}
+                selectedArmies={selectedArmies}
+                onSelectArmy={(id, additive) => {
+                  setCityPage(null);
+                  selectArmy(id, additive);
+                }}
+                onSelectProvince={selectProvince}
+                onClose={closeCityPage}
+                compact
+                page
+              />
+            </div>
           )}
         </div>
       </div>
@@ -543,6 +644,7 @@ export function GameScreen({
         />
       )}
       {panel === 'save' && <SaveDialog ctrl={ctrl} onClose={() => setPanel(null)} />}
+      {panel === 'sound' && <SoundDialog touch={touch} onClose={() => setPanel(null)} />}
       {panel === 'load' && <LoadDialog world={world} scenarioId={world.scenario.id} onLoad={onLoad} onClose={() => setPanel(null)} />}
       {panel === 'help' && (
         <HelpDialog
@@ -562,10 +664,28 @@ export function GameScreen({
           nationName={nationName(world, human)}
           limitMinutes={state.settings.timeLimitTicks / TICKS_PER_MINUTE / state.settings.durationScale}
           input={{ touch, compact }}
-          onClose={() => setTutorial(false)}
+          onClose={() => {
+            setTutorial(false);
+            if (!capitalShown.current && !compact) setSelectedProvince((p) => p ?? world.nations[human].capital);
+            capitalShown.current = true;
+          }}
         />
       )}
       {outcome && !outcomeSeen && <OutcomeDialog ctrl={ctrl} onMenu={onExit} onClose={() => setOutcomeSeen(true)} />}
+      {warOrder && (
+        <DeclareWarDialog
+          ctrl={ctrl}
+          target={warOrder.target}
+          order={`${warOrder.armies.length === 1 ? 'Your army then marches' : 'Your armies then march'} on ${world.provinces[warOrder.to].name}.`}
+          onCancel={() => setWarOrder(null)}
+          onConfirm={() => {
+            const r = ctrl.submit({ type: 'declareWar', nation: human, target: warOrder.target });
+            if (r.ok) issueMoves(warOrder.armies, warOrder.to, warOrder.mode);
+            else setToast(r.reason);
+            setWarOrder(null);
+          }}
+        />
+      )}
       {confirmExit && (
         <ConfirmDialog title="Leave the campaign?" icon="exit" confirmLabel="Main menu" onCancel={() => setConfirmExit(false)} onConfirm={onExit}>
           <p>The campaign is autosaved: resume it any time with Load game on the main menu.</p>
@@ -678,18 +798,25 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const def = world.provinces[pid];
     const ps = state.provinces[pid];
     const owner = ps.owner;
+    // Under the fog of war only the map is known: who holds it and how big its city is.
+    const seen = ctrl.sight();
+    const known = seen.has(pid);
     // Units standing here by owner, yours first.
     const units = new Map<OwnerId, number>();
-    for (const a of armiesIn(state, pid).sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
+    for (const a of armiesIn(state, pid)
+      .filter((a) => isArmyVisible(a, human, seen))
+      .sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
       units.set(a.owner, (units.get(a.owner) ?? 0) + a.units.length);
     }
     const adjective = (o: OwnerId) => (o === 'neutral' ? (def.neutral?.adjective ?? 'neutral') : world.nations[o].adjective);
     const army = armyId ? state.armies[armyId] : undefined;
     const c = army ? composition(army) : null;
     // What the city's model shows, spelt out: its buildings, free slots and work in progress.
-    const built = BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0);
-    const job = ps.construction?.building ?? null;
-    const free = buildingSlots(state, pid) - slotsUsed(ps.buildings, job);
+    const built = known ? BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0) : [];
+    const job = known ? (ps.construction?.building ?? null) : null;
+    const free = known ? buildingSlots(state, world, pid) - slotsUsed(ps.buildings, job) : 0;
+    const battle = known && !!state.battles[pid];
+    const capture = known ? ps.capture : null;
     body = (
       <>
         {army && c && (
@@ -714,8 +841,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
                 {Math.round(c.strength * 100)}% strength · morale {Math.round(armyMorale(army) * 100)}
               </span>
             </div>
-            {isRouted(state, army) && <div className="hc-row bad">Routed: falling back</div>}
-            {army.move?.leg && !isRouted(state, army) && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
+            {army.move?.leg && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
             {!army.supplied && <div className="hc-row bad">Out of supply</div>}
           </div>
         )}
@@ -728,9 +854,15 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
           <span>
             <Icon name={def.terrain} size={13} /> {TERRAIN_LABEL[def.terrain]}
           </span>
-          <span>
-            <Icon name="city" size={13} /> {def.city.name} · {CITY.tierNames[ps.tier]}
-          </span>
+          {def.city ? (
+            <span>
+              <Icon name="city" size={13} /> {CITY.tierNames[ps.tier]}
+            </span>
+          ) : def.contains ? (
+            <span className="muted">
+              <Icon name="city" size={13} /> Around {world.provinces[def.contains].name}
+            </span>
+          ) : null}
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}
         </div>
         {(built.length > 0 || free > 0 || job) && (
@@ -744,14 +876,14 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
             {job && <span className="warn-text">Building {BUILDINGS[job].name}</span>}
           </div>
         )}
-        {owner !== 'neutral' && (
+        {owner !== 'neutral' && known && (
           <div className="hc-row">
             <span className={ps.morale >= 60 ? 'ok' : ps.morale < 35 ? 'bad' : 'warn-text'}>
               <Icon name="morale" size={13} /> Morale {Math.round(ps.morale)}
             </span>
           </div>
         )}
-        {(units.size > 0 || state.battles[pid] || ps.capture) && (
+        {(units.size > 0 || battle || capture) && (
           <div className="hc-row">
             {[...units].map(([o, n]) =>
               o === human ? (
@@ -764,12 +896,17 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
                 </span>
               ),
             )}
-            {state.battles[pid] && (
+            {battle && (
               <span className="bad">
                 <Icon name="swords" size={13} /> Battle
               </span>
             )}
-            {ps.capture && <span className="warn-text">Being captured</span>}
+            {capture && <span className="warn-text">Being captured</span>}
+          </div>
+        )}
+        {!known && (
+          <div className="hc-row hc-fog">
+            <Icon name="fog" size={13} /> Fog of war: no reports from here
           </div>
         )}
       </>

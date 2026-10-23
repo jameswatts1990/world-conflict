@@ -1,8 +1,12 @@
 node_modules
 dist
+dist-e2e
 *.tsbuildinfo
 # Raw Natural Earth downloads (large); regenerate with `npm run map:fetch`
 data-src/
 # Local verification output
 e2e-output/
 .vite
+
+# Balance runs (npm run balance, balance:units, balance:tune)
+balance-runs/

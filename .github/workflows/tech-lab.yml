@@ -1,0 +1,83 @@
+name: Tech lab
+
+# What each technology is worth, by experiment (docs/BALANCE.md): the same campaigns with and
+# without it handed to one nation. On demand only (Actions tab → Tech lab → Run workflow). The
+# technologies are split over four runners; a last job joins them and posts the report on the
+# run's summary page. All of them at 60 seeds takes about 40 minutes.
+on:
+  workflow_dispatch:
+    inputs:
+      games:
+        description: Campaigns per technology (more is surer and slower; 60 takes about 40 minutes)
+        default: '60'
+      techs:
+        description: Technology ids, comma-separated (blank for every technology)
+        default: ''
+      at:
+        description: Game minute at which the technology is handed over
+        default: '20'
+      set:
+        description: Config overrides, space-separated (TECH_BY_ID.staffCollege.seconds=600)
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    env:
+      GAMES: ${{ inputs.games }}
+      TECHS: ${{ inputs.techs }}
+      AT: ${{ inputs.at }}
+      SET: ${{ inputs.set }}
+      SHARD: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Play this shard's technologies
+        run: |
+          args=(--games "$GAMES" --at "$AT" --shard "$SHARD/4" --quiet --out "balance-runs/techs-$SHARD")
+          if [ -n "$TECHS" ]; then args+=(--techs "$TECHS"); fi
+          for s in $SET; do args+=(--set "$s"); done
+          npm run balance:techs -- "${args[@]}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: techs-shard-${{ matrix.shard }}
+          path: balance-runs/techs-${{ matrix.shard }}/
+
+  report:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: techs-shard-*
+          path: shards
+      - name: Join the shards
+        run: |
+          npm run balance:techs -- merge shards/techs-shard-* --out balance-runs/techs --quiet
+          cat balance-runs/techs/techs.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tech-lab
+          path: balance-runs/techs/

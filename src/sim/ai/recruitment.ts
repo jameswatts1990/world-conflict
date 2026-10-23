@@ -7,24 +7,24 @@ import { UNITS } from '../config/units';
 import { checkRecruit } from '../commands';
 import { isUnitUnlocked, recruitCost, unitPower } from '../queries';
 import { UNIT_TYPES, type ProvinceId, type UnitType } from '../types';
+import { landOf } from '../world';
 import { affordableWithReserve, issue, type Ctx } from './context';
 import { mountainFront } from './economy';
 
-const DOCTRINE_MIX: Record<'armour' | 'infantry' | 'artillery', Partial<Record<UnitType, number>>> = {
-  armour: { infantry: 0.3, motorised: 0.1, cavalry: 0.04, armouredCar: 0.05, artillery: 0.14, antiTank: 0.05, lightTank: 0.1, tank: 0.16, heavyTank: 0.03, tankDestroyer: 0.03 },
-  infantry: { infantry: 0.42, stormtroopers: 0.1, mountain: 0.03, cavalry: 0.05, artillery: 0.18, antiTank: 0.07, tank: 0.1, lightTank: 0.03, motorised: 0.02 },
-  artillery: { infantry: 0.4, stormtroopers: 0.04, cavalry: 0.04, artillery: 0.22, heavyArtillery: 0.1, antiTank: 0.08, tank: 0.08, tankDestroyer: 0.04 },
-};
-
 function desiredMix(ctx: Ctx): Map<UnitType, number> {
-  const base = { ...DOCTRINE_MIX[ctx.mem.doctrine] };
+  const base = { ...AI.doctrineMix[ctx.mem.doctrine] };
   const bump = (t: UnitType, v: number) => (base[t] = (base[t] ?? 0) + v);
   bump('antiTank', ctx.enemyArmour * 0.25);
   bump('tankDestroyer', ctx.enemyArmour * 0.1);
   bump('mountain', mountainFront(ctx) * 0.2);
+  // Forts across the front, in the land or in the city behind it.
   let forts = 0;
   for (const pid of ctx.frontier) {
-    for (const n of ctx.world.neighbors[pid]) if ((ctx.state.provinces[n.id].buildings.fortifications ?? 0) >= 2 && !ctx.ownedSet.has(n.id)) forts++;
+    for (const n of ctx.world.neighbors[pid]) {
+      for (const site of [n.id, ctx.world.provinces[n.id].contains]) {
+        if (site && (ctx.state.provinces[site].buildings.fortifications ?? 0) >= 2 && !ctx.ownedSet.has(site)) forts++;
+      }
+    }
   }
   if (forts > 0) bump('heavyArtillery', 0.06);
   // Only what can be raised; fold the rest back into line infantry.
@@ -42,13 +42,17 @@ function desiredMix(ctx: Ctx): Map<UnitType, number> {
   return mix;
 }
 
-/** Sites ordered by usefulness: threatened and frontier provinces first. */
+/** Cities ordered by usefulness: threatened ones and those whose land meets the enemy first. */
 function recruitSites(ctx: Ctx): ProvinceId[] {
-  return [...ctx.owned].sort((a, b) => {
-    const sa = (ctx.threat.get(a) ?? 0) + (ctx.frontier.has(a) ? 50 : 0);
-    const sb = (ctx.threat.get(b) ?? 0) + (ctx.frontier.has(b) ? 50 : 0);
-    return sb - sa || (a < b ? -1 : 1);
-  });
+  const urgency = (pid: ProvinceId) => {
+    const land = landOf(ctx.world, pid);
+    return (ctx.threat.get(pid) ?? 0) + (ctx.threat.get(land) ?? 0) + (ctx.frontier.has(pid) || ctx.frontier.has(land) ? 50 : 0);
+  };
+  return ctx.owned
+    .filter((pid) => ctx.world.provinces[pid].city)
+    .map((pid) => ({ pid, u: urgency(pid) }))
+    .sort((a, b) => b.u - a.u || (a.pid < b.pid ? -1 : 1))
+    .map((s) => s.pid);
 }
 
 export function handleRecruitment(ctx: Ctx): void {
@@ -65,9 +69,11 @@ export function handleRecruitment(ctx: Ctx): void {
     }
   }
   // Army size is bounded by what the treasury and the territory can sustain.
-  const share = (AI.upkeepShare + 0.3 * ctx.mem.aggression) * (ctx.enemies.length > 0 ? 1.25 : 1);
+  const share = (AI.upkeepShare + AI.upkeepPerAggression * ctx.mem.aggression) * (ctx.enemies.length > 0 ? AI.warUpkeep : 1) * ctx.level.armySize;
   const budget = ctx.eco.income.money * share;
-  const cap = ctx.owned.length * AI.unitsPerProvince + AI.unitsFlat[world.nations[me].power] + ctx.eco.income.money / AI.unitsPerIncome;
+  const cap =
+    (ctx.ownedCities * AI.unitsPerProvince + AI.unitsFlat[world.nations[me].power] + ctx.eco.income.money / AI.unitsPerIncome) *
+    ctx.level.armySize;
   const rich = state.nations[me].resources.money > 3000;
   let upkeep = ctx.eco.upkeep.money + queuedUpkeep;
 

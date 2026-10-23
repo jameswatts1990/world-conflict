@@ -23,11 +23,17 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - run: npm run typecheck
       - run: npm test
+      # The balance tools (docs/BALANCE.md) on a few short campaigns and battles, so they keep up with the simulation.
+      - run: npm run balance -- --games 4 --minutes 10 --quiet
+      - run: npm run balance:units -- --levels ww1 --units cavalry --seeds 2 --quiet
+      - run: npm run balance:techs -- --techs staffCollege --games 2 --minutes 25 --quiet
       - run: npm run build
+      # The same build with the window.__game handle the browser checks read the game through.
+      - run: npm run build:e2e
       # The runner's Microsoft apt source can fail apt-get update (403, "no longer signed").
       # Chromium's system packages come from the Ubuntu archive, so leave that source out.
       - run: grep -rl packages.microsoft.com /etc/apt/sources.list.d/ | xargs -r sudo rm -f
-      # Browser playthrough of the full gameplay loop against the production build.
+      # Browser playthrough of the full gameplay loop against that test build.
       - run: npx playwright install --with-deps chromium
       - run: npm run e2e
       # The phone layouts, driven by touch: upright, then on its side.

@@ -2,9 +2,10 @@
 import { CITY } from '../../sim/config/buildings';
 import { hasNeutrals, type BuildingCategory, type NationId, type OwnerId, type UnitType, type World } from '../../sim';
 import { CounterArt, citySprite, plinthColor } from '../art/adapters';
+import { vivid } from '../color';
 import { Flag } from '../flags';
 import { Icon } from '../icons';
-import { TIER_COLORS, moraleRamp, type MapMode } from '../map/MapView';
+import { TIER_COLORS, VpMarker, moraleRamp, type MapMode } from '../map/MapView';
 
 const STAR = 'M0,-6 L1.8,-1.9 L6,-1.9 L2.6,0.8 L3.8,5 L0,2.5 L-3.8,5 L-2.6,0.8 L-6,-1.9 L-1.8,-1.9 Z';
 
@@ -102,6 +103,23 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </div>
       )}
       <div className="lg-grid">
+        <Sample>
+          <rect x={-14} y={-7} width={28} height={14} rx={2} fill={vivid(world.nations[human].color, 0.6)} fillOpacity={0.55} className="lg-home-glow" />
+          <rect x={-14} y={-7} width={28} height={14} rx={2} fill="none" className="lg-home" />
+        </Sample>
+        Your land, outlined in white
+        <Sample>
+          <line x1={-15} y1={0} x2={15} y2={0} className="lg-line front-glow" />
+          <line x1={-15} y1={0} x2={15} y2={0} className="lg-line front" />
+        </Sample>
+        The front: your border with a power at war with you
+        <Sample>
+          <rect x={-14} y={-7} width={28} height={14} rx={2} className="lg-band-fill" />
+          <rect x={-12} y={-5} width={24} height={10} rx={1} fill="none" stroke={world.scenario.nations.find((n) => n.id !== human)!.color} strokeWidth={3.5} />
+          <rect x={-14} y={-7} width={28} height={14} rx={2} fill="none" className="lg-border" />
+        </Sample>
+        Another power: its colour runs along the inside of its border
+        <span className="lg-swatch fog" /> Fog of war: what your provinces and armies cannot see; armies there are hidden
         {hasNeutrals(world) && (
           <>
             <span className="lg-swatch neutral" /> Neutral state (may be invaded)
@@ -117,8 +135,7 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         Capital city
         <Sample>
           <g className="vp-badge-map">
-            <circle r={6} />
-            <text y={3.2}>2</text>
+            <VpMarker vp={2} />
           </g>
         </Sample>
         Objective worth victory points
@@ -150,10 +167,6 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
         </Sample>
         Strength (top) and morale (bottom)
         <Sample>
-          <path d="M-3,8 L-3,-8 L7,-5 L-3,-2" className="routed-flag" />
-        </Sample>
-        Routed army falling back
-        <Sample>
           <g className="army-badge warn">
             <circle r={6} />
             <text y={3.2}>!</text>
@@ -166,6 +179,10 @@ export function Legend({ world, human, mode, onClose }: { world: World; human: N
           </g>
         </Sample>
         Battle in progress
+        <Sample>
+          <line x1={-15} y1={0} x2={15} y2={0} className="front-line other" />
+        </Sample>
+        Front between two other powers at war
         <Sample>
           <line x1={-15} y1={0} x2={15} y2={0} className="lg-line pass" />
         </Sample>

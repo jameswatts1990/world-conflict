@@ -116,7 +116,9 @@ export type Effect =
   | { kind: 'healing'; mult: number }
   /** Scales the penalty for attacking straight off a sea crossing. */
   | { kind: 'amphibious'; mult: number }
-  | { kind: 'movement'; mult: number };
+  | { kind: 'movement'; mult: number }
+  /** Fog of war: see everything your allies (powers at war with a common enemy) see. */
+  | { kind: 'alliedSight' };
 
 // ---------------------------------------------------------------------------
 // Static scenario definition (never mutated during play)
@@ -124,7 +126,7 @@ export type Effect =
 
 export interface CityDef {
   name: string;
-  /** [longitude, latitude] — also the province's movement anchor. */
+  /** [longitude, latitude] — also the city province's movement anchor. */
   coord: [number, number];
   size: 'capital' | 'major' | 'town';
 }
@@ -144,8 +146,14 @@ export interface NeutralStateDef {
   article?: Article;
 }
 
+/**
+ * A province is either a city, drawn tight round it, or the land round a city (or, in time, land with no
+ * city at all). Cities hold the population, buildings, output and objectives; the land between them is
+ * where armies march and fronts run, and can take infrastructure (forts, depots, railways, batteries).
+ */
 export interface ProvinceDef {
   id: ProvinceId;
+  /** A city province is named after its city. */
   name: string;
   article?: Article;
   /** Nation whose core territory this is; null for neutral minor states. */
@@ -153,14 +161,21 @@ export interface ProvinceDef {
   /** The neutral state this province belongs to (neutral provinces only). */
   neutral?: NeutralStateDef;
   terrain: Terrain;
-  city: CityDef;
-  /** Starting city tier. */
+  /** The city, for a city province; land has none. */
+  city?: CityDef;
+  /** [longitude, latitude]: where armies stand and roads meet (the city, or a point inside the land). */
+  anchor: [number, number];
+  /** For a city: the province round it, its only neighbour. */
+  within?: ProvinceId;
+  /** For land: the city province inside it. */
+  contains?: ProvinceId;
+  /** Starting city tier (1 for land, which has no city to grow). */
   tier: CityTier;
-  /** Urban population of the principal city in thousands (display and growth). */
+  /** Urban population of the city in thousands (display, growth and national morale); 0 for land. */
   population: number;
-  /** Smaller towns drawn on the map at close zoom (no gameplay effect). */
+  /** Smaller towns drawn on the land at close zoom (no gameplay effect). */
   towns: TownDef[];
-  /** Has a sea coast (skyline art; coastal batteries also need a sea crossing). */
+  /** Has a sea coast (a city: skyline art and its port; land: sea crossings land on it). */
   coastal: boolean;
   /** Base output per minute (Standard speed) before buildings and research. */
   production: Resources;
@@ -214,8 +229,8 @@ export interface BlocDef {
 
 /**
  * How much of a power a nation is (see config/powers.ts): it sets the nation's output, starting
- * army and buildings, objective values and size. Great and major powers are playable; minor
- * powers are always computer-controlled.
+ * army and buildings, objective values and size. Great and major powers are playable and contend
+ * for victory; minor powers are always computer-controlled, never start a war and never win.
  */
 export type PowerTier = 'great' | 'major' | 'minor';
 export const POWER_TIERS: readonly PowerTier[] = ['great', 'major', 'minor'];
@@ -273,7 +288,7 @@ export interface Unit {
   type: UnitType;
   /** Fraction of full strength, 0..1. Max HP comes from config + research. */
   strength: number;
-  /** Fighting spirit, 0..1. Broken armies rout. */
+  /** Fighting spirit, 0..1. Low morale blunts firepower; armies never break. */
   morale: number;
   /** Combat experience; ranks Green, Regular, Veteran, Elite. */
   xp: number;
@@ -288,11 +303,22 @@ export interface MoveLeg {
   duration: number;
 }
 
+/**
+ * How an army carries out a march order:
+ * - move: straight to the destination, stopping only where enemy armies bar the way;
+ * - attack: also halts to capture every hostile province on the route;
+ * - patrol: marches back and forth between two provinces, fighting and capturing like attack.
+ */
+export type MoveMode = 'move' | 'attack' | 'patrol';
+
 export interface ArmyMove {
   /** Remaining destinations in order; path[0] is the current/next leg target. */
   path: ProvinceId[];
   /** Non-null while travelling between two provinces. */
   leg: MoveLeg | null;
+  mode: MoveMode;
+  /** Patrol ends; the army turns for the other end each time it reaches one. */
+  patrol?: [ProvinceId, ProvinceId];
 }
 
 export interface Army {
@@ -309,8 +335,10 @@ export interface Army {
   unsuppliedTicks: number;
   /** How the army reached its current province (sea landings fight at a penalty). */
   arrivedVia: ConnectionKind | null;
-  /** A routed army cannot take orders until this tick. */
-  routedUntil: number;
+  /** Withdraw from a battle on its own (paying the price of a withdrawal) once morale falls below MORALE.autoRetreatAt. */
+  autoRetreat: boolean;
+  /** Holding position: halted where it is and never withdrawing on its own, until given a march order. */
+  holding: boolean;
 }
 
 export interface ConstructionJob {
@@ -388,7 +416,22 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /** Neighbouring provinces this AI covets in this campaign, drawn from the seed (absent in older saves). */
+  claims?: ProvinceId[];
+  /** How it opens the campaign, drawn from the seed (absent in older saves, which open with 'strike'). */
+  opening?: AiOpening;
+  /** On several fronts, the enemy it concentrates on while holding the others. */
+  focus?: NationId | null;
+  /**
+   * Fog of war: the share of armour among each nation's units, as far as this AI has seen
+   * them (a running estimate, so tanks that drop out of sight are not forgotten at once).
+   * Absent until it first sees foreign troops, and in older saves.
+   */
+  armourSeen?: Record<NationId, number>;
 }
+
+/** strike: war as soon as it may; expand: minor powers (or neutral states) first; build: a longer peace to build up. */
+export type AiOpening = 'strike' | 'expand' | 'build';
 
 export interface NationState {
   id: NationId;
@@ -402,7 +445,7 @@ export interface NationState {
   /** Home-front morale 0..100 (population-weighted core province morale). */
   morale: number;
   ai: AiMemory | null;
-  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; armiesSurrendered: number };
+  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; retreats: number };
 }
 
 export interface PeaceOffer {
@@ -451,12 +494,16 @@ export interface GameOutcome {
   scores: ScoreLine[];
 }
 
+export type AiDifficulty = 'easy' | 'normal';
+
 export interface GameSettings {
   speed: 'standard' | 'slow';
   /** Multiplier applied to every duration (1 for Standard). */
   durationScale: number;
   timeLimitTicks: number;
   humanNation: NationId | null;
+  /** How well the computer opponents play (absent in older saves, which play at normal). */
+  difficulty?: AiDifficulty;
 }
 
 export interface GameState {
@@ -479,4 +526,12 @@ export interface GameState {
   nextEventId: number;
   victory: { leader: NationId | null; holdSince: number | null };
   outcome: GameOutcome | null;
+  /** The race over time for the results screen, sampled every few minutes (absent in older saves). */
+  history?: HistorySample[];
+}
+
+/** One sample of the race: each nation's score, objective VP and provinces held. */
+export interface HistorySample {
+  tick: number;
+  nations: Record<NationId, [score: number, vp: number, provinces: number]>;
 }

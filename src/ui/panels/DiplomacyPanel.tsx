@@ -1,30 +1,61 @@
 import { useState } from 'react';
 import { POWERS } from '../../sim/config/powers';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
-import { BLOCS, checkDeclareWar, hasNeutrals, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
+import {
+  BLOCS,
+  areAllies,
+  checkDeclareWar,
+  checkOfferPeace,
+  commonEnemies,
+  computeScores,
+  hasNeutrals,
+  heldVp,
+  nationEra,
+  nationName,
+  nationPower,
+  ownersBorder,
+  sentence,
+  sharesAlliedSight,
+  vpToWin,
+  type NationId,
+} from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { formatDuration, proseDuration } from '../format';
+import { formatDuration, listText, proseDuration } from '../format';
 import { Icon } from '../icons';
 import { ConfirmDialog, Modal } from './Common';
 
 export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameController; onClose: () => void; onFocus: (pid: string) => void }) {
   const { state, world, human } = ctrl;
   const [confirmWar, setConfirmWar] = useState<NationId | null>(null);
+  const [allMinors, setAllMinors] = useState(false);
   const scores = computeScores(state, world);
+  // Minor powers are many: those at war with you, bordering you or sending an offer are listed, the rest on request.
+  const listed = (n: NationId) =>
+    allMinors ||
+    world.nations[n].power !== 'minor' ||
+    n === human ||
+    state.nations[human].relations[n]?.status === 'war' ||
+    state.peaceOffers.some((o) => o.from === n && o.to === human) ||
+    ownersBorder(state, world, n, human);
+  const folded = scores.filter((s) => !listed(s.nation)).length;
   const need = vpToWin(world);
   const leader = state.victory.leader;
   const maxPower = Math.max(1, ...scores.map((s) => nationPower(state, s.nation)));
-  const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
+  const liaison = sharesAlliedSight(state, human);
   return (
     <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} size="wide">
-      <p className="intro">
-        All powers start at peace. Declaring war opens each side&apos;s territory to the other&apos;s armies. Peace can be offered after{' '}
-        {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
-        wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
-        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
-        {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations: invading one means declaring war on it.'}
-      </p>
+      <details className="intro-details">
+        <summary>How diplomacy works</summary>
+        <p className="intro">
+          All powers start at peace. Declaring war opens each side&apos;s territory to the other&apos;s armies. Peace can be offered after{' '}
+          {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
+          wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
+          sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
+          {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations that never win: invading one means declaring war on it, and their fortified capitals take a real army to crack.'}{' '}
+          Powers fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
+        </p>
+      </details>
       {/* A table on the desktop; one card per nation on small screens (the cells are named for that). */}
       <table className="dip-table dip-relations">
         <thead>
@@ -40,7 +71,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           </tr>
         </thead>
         <tbody>
-          {scores.map((s) => {
+          {scores.filter((s) => listed(s.nation)).map((s) => {
             const def = world.nations[s.nation];
             const n = state.nations[s.nation];
             const me = s.nation === human;
@@ -74,6 +105,19 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                   ) : rel.status === 'war' ? (
                     <span className="rel-pill war">
                       <Icon name="swords" size={12} /> War
+                    </span>
+                  ) : areAllies(state, human, s.nation) ? (
+                    <span>
+                      <span
+                        className="rel-pill ally"
+                        title={`Fighting ${listText(commonEnemies(state, human, s.nation).map((e) => nationName(world, e)))} alongside you`}
+                        data-ally={s.nation}
+                      >
+                        <Icon name="flag" size={12} /> Ally
+                      </span>
+                      <span className={`ally-intel${liaison ? ' on' : ''}`}>
+                        <Icon name="eye" size={11} /> {liaison ? 'You share its sight' : 'Liaison Officers share its sight'}
+                      </span>
                     </span>
                   ) : (
                     <span className="rel-pill peace">
@@ -132,11 +176,20 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
               </tr>
             );
           })}
+          {(folded > 0 || allMinors) && (
+            <tr className="dip-more">
+              <td colSpan={8}>
+                <button onClick={() => setAllMinors((a) => !a)} data-testid="toggle-minors">
+                  {allMinors ? 'Show only the minor powers that concern you' : `Show ${folded} more minor power${folded === 1 ? '' : 's'}, at peace and not on your borders`}
+                </button>
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       <p className="intro small">
-        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perProvince} × provinces + {VICTORY.score.perTech} × technologies. The highest score wins when
-        the campaign time limit is reached.
+        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perCity} × cities + {VICTORY.score.perLand} × other provinces + {VICTORY.score.perTech} ×
+        technologies. The highest score wins when the campaign time limit is reached.
       </p>
 
       <h4>
@@ -159,7 +212,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             <li key={id}>
               <button className={`objective-chip${owner === human ? ' mine' : ''}`} onClick={() => onFocus(id)} title={`${world.provinces[id].name}: show on map`}>
                 <span className="obj-vp">{world.provinces[id].objectiveVp}</span>
-                <span className="obj-name">{world.provinces[id].city.name}</span>
+                <span className="obj-name">{world.provinces[id].name}</span>
                 <OwnerFlag world={world} owner={owner} province={id} size={12} />
               </button>
             </li>
@@ -168,28 +221,45 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
       </ul>
 
       {confirmWar && (
-        <ConfirmDialog
-          title={`War with ${nationName(world, confirmWar)}?`}
-          icon="swords"
-          confirmLabel="Declare war"
-          danger
+        <DeclareWarDialog
+          ctrl={ctrl}
+          target={confirmWar}
           onCancel={() => setConfirmWar(null)}
           onConfirm={() => {
             ctrl.submit({ type: 'declareWar', nation: human, target: confirmWar });
             setConfirmWar(null);
           }}
-        >
-          <p>
-            Your armies may then enter {world.nations[confirmWar].adjective} territory, and theirs may enter yours. Peace cannot be offered for the first{' '}
-            {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)}.
-          </p>
-          {wars.length > 0 && (
-            <p className="warn-text">
-              You are already at war with {wars.map((id) => nationName(world, id)).join(' and ')}.
-            </p>
-          )}
-        </ConfirmDialog>
+        />
       )}
     </Modal>
+  );
+}
+
+/** Asks before declaring war on `target`, from the diplomacy table or from an attack order into its territory. */
+export function DeclareWarDialog({
+  ctrl,
+  target,
+  order,
+  onConfirm,
+  onCancel,
+}: {
+  ctrl: GameController;
+  target: NationId;
+  /** What happens once war is declared, when an order is waiting on it ("Your army then marches on Lisbon."). */
+  order?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const { state, world, human } = ctrl;
+  const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
+  return (
+    <ConfirmDialog title={`War with ${nationName(world, target)}?`} icon="swords" confirmLabel="Declare war" danger onCancel={onCancel} onConfirm={onConfirm}>
+      <p>
+        Declaring war lets your armies enter {world.nations[target].adjective} territory, and theirs enter yours. Peace cannot be offered for the first{' '}
+        {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)}.
+      </p>
+      {order && <p>{order}</p>}
+      {wars.length > 0 && <p className="warn-text">You are already at war with {wars.map((id) => nationName(world, id)).join(' and ')}.</p>}
+    </ConfirmDialog>
   );
 }

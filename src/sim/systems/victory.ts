@@ -1,7 +1,8 @@
 // Elimination, objective victory and the campaign time limit.
 import { VICTORY } from '../config/rules';
 import { pushEvent } from '../events';
-import { computeScores, heldVp, provincesOwnedBy, scaledTicks, vpToWin } from '../queries';
+import { historySystem } from './history';
+import { computeScores, heldVp, isContender, provincesOwnedBy, scaledTicks, vpToWin } from '../queries';
 import { durationText, nationName, sentence } from '../text';
 import type { GameState, NationId, OutcomeReason } from '../types';
 import type { World } from '../world';
@@ -9,6 +10,7 @@ import type { World } from '../world';
 function finish(state: GameState, world: World, winner: NationId | null, reason: OutcomeReason): void {
   const scores = computeScores(state, world);
   state.outcome = { winner, reason, tick: state.tick, scores };
+  historySystem(state, world);
   const name = winner ? sentence(nationName(world, winner)) : 'Nobody';
   const human = state.settings.humanNation;
   const why: Record<OutcomeReason, string> = {
@@ -38,14 +40,16 @@ export function victorySystem(state: GameState, world: World): void {
     pushEvent(state, 'eliminated', `${sentence(nationName(world, id))} has been eliminated.`, { severity: 'bad' });
   }
 
+  // Only great and major powers can win: minor powers are there to be conquered.
+  const contenders = world.nationIds.filter((id) => !state.nations[id].eliminated && isContender(world, id));
+  const topScorer = () => computeScores(state, world).find((s) => contenders.includes(s.nation))?.nation ?? null;
   const human = state.settings.humanNation;
   if (human && state.nations[human].eliminated) {
-    finish(state, world, computeScores(state, world)[0]?.nation ?? null, 'humanEliminated');
+    finish(state, world, topScorer(), 'humanEliminated');
     return;
   }
-  const alive = world.nationIds.filter((id) => !state.nations[id].eliminated);
-  if (alive.length === 1) {
-    finish(state, world, alive[0], 'lastStanding');
+  if (contenders.length <= 1) {
+    finish(state, world, contenders[0] ?? null, 'lastStanding');
     return;
   }
 
@@ -53,7 +57,7 @@ export function victorySystem(state: GameState, world: World): void {
   const need = vpToWin(world);
   let leader: NationId | null = null;
   let best = 0;
-  for (const id of alive) {
+  for (const id of contenders) {
     const vp = heldVp(state, world, id);
     if (vp > best) {
       best = vp;
@@ -82,6 +86,6 @@ export function victorySystem(state: GameState, world: World): void {
   }
 
   if (state.tick >= state.settings.timeLimitTicks) {
-    finish(state, world, computeScores(state, world)[0]?.nation ?? null, 'timeLimit');
+    finish(state, world, topScorer(), 'timeLimit');
   }
 }

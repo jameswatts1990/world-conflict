@@ -1,23 +1,20 @@
 // Research and construction for computer opponents. Research follows the
 // AI's doctrine and answers what the enemy fields; construction plans each
 // city's limited slots around growth, industry, recruitment and morale.
+import { AI } from '../config/ai';
 import { BUILDINGS, CITY, slotsUsed } from '../config/buildings';
 import { TECHS, type TechConfig } from '../config/research';
 import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
 import { random } from '../rng';
-import type { BuildingType, ProvinceId, TechBranch } from '../types';
+import type { BuildingType, ProvinceId } from '../types';
+import { landOf } from '../world';
+import { alliesOf } from '../visibility';
 import { affordableWithReserve, issue, type Ctx } from './context';
-
-const DOCTRINE_BRANCHES: Record<'armour' | 'infantry' | 'artillery', Partial<Record<TechBranch, number>>> = {
-  armour: { armour: 4, logistics: 1.5, industry: 1 },
-  infantry: { infantry: 4, society: 1.5, logistics: 1 },
-  artillery: { artillery: 4, logistics: 1.5, infantry: 1 },
-};
 
 function techScore(ctx: Ctx, t: TechConfig): number {
   let score = 10 - t.col * 1.1 + random(ctx.state) * 2;
-  score += DOCTRINE_BRANCHES[ctx.mem.doctrine][t.branch] ?? 0;
+  score += AI.doctrineResearch[ctx.mem.doctrine][t.branch] ?? 0;
   if (t.branch === 'industry') score += ctx.mem.economyBias * 4;
   for (const e of t.effects) {
     if (e.kind === 'unitModel') score += 3;
@@ -31,6 +28,8 @@ function techScore(ctx: Ctx, t: TechConfig): number {
     }
     if (e.kind === 'morale' && ctx.state.nations[ctx.me].morale < 55) score += 3;
     if (e.kind === 'fortification' && ctx.enemies.length > 0) score += 1;
+    // Allies' sight is worth most with allies to share it.
+    if (e.kind === 'alliedSight') score += alliesOf(ctx.state, ctx.world, ctx.me).length > 0 ? 3 : -1;
   }
   return score;
 }
@@ -83,8 +82,10 @@ export function handleConstruction(ctx: Ctx): void {
     const def = world.provinces[pid];
     const core = def.core === me;
     const outputFactor = (core ? 1 : 0.6) * (p.morale / 70);
-    const freeSlots = buildingSlots(state, pid) - slotsUsed(p.buildings, null);
+    const freeSlots = buildingSlots(state, world, pid) - slotsUsed(p.buildings, null);
     const frontier = ctx.frontier.has(pid);
+    // A city whose land meets the enemy is on the front too.
+    const front = frontier || ctx.frontier.has(landOf(world, pid));
     const threat = ctx.threat.get(pid) ?? 0;
     const presence = ctx.presence.get(pid) ?? 0;
     const lvl = (b: BuildingType) => p.buildings[b] ?? 0;
@@ -97,17 +98,17 @@ export function handleConstruction(ctx: Ctx): void {
 
     add('industry', ((def.production.money * 0.3 + def.production.materials * 0.6) * outputFactor * (1 + ctx.mem.economyBias)) / (1 + lvl('industry') * 0.6));
     add('market', (def.production.money * 0.3 * outputFactor * (1 + ctx.mem.economyBias)) / (1 + lvl('market')));
-    add('powerPlant', 9 + world.neighbors[pid].filter((n) => ctx.ownedSet.has(n.id)).length * 2);
+    add('powerPlant', 9 + world.nearbyCities[pid].filter((c) => ctx.ownedSet.has(c)).length * 2);
     add('housing', p.tier < 4 ? (core ? 9 : 4) + (CITY.slots[p.tier + 1] - CITY.slots[p.tier]) * 2 - lvl('housing') * 2 : 0);
     if (count(ctx, 'university') < 3) add('university', 18 - count(ctx, 'university') * 3);
-    if (count(ctx, 'barracks') < 2 + Math.floor(ctx.owned.length / 4)) add('barracks', 13 + (frontier ? 5 : 0));
+    if (count(ctx, 'barracks') < 2 + Math.floor(ctx.ownedCities / 4)) add('barracks', 13 + (front ? 5 : 0));
     if (count(ctx, 'academy') < 1 && (isUnitUnlocked(state, me, 'stormtroopers') || ctx.mem.doctrine === 'infantry')) add('academy', 11);
     if (count(ctx, 'armsWorks') < 2) add('armsWorks', 12 + (ctx.mem.doctrine === 'artillery' ? 3 : 0));
     if (count(ctx, 'motorPool') < 1 && (isUnitUnlocked(state, me, 'motorised') || isUnitUnlocked(state, me, 'armouredCar'))) add('motorPool', 11);
     if (count(ctx, 'tankWorks') < (ctx.mem.doctrine === 'armour' ? 2 : 1) && ctx.eco.income.fuel > 4) add('tankWorks', 15);
     if (def.oil && lvl('refinery') < 2) add('refinery', 18 - lvl('refinery') * 6);
     else if (!def.oil && ctx.eco.net.fuel < 3 && count(ctx, 'refinery') < 3) add('refinery', 10);
-    if (frontier && atWar) add('hospital', 8);
+    if (front && atWar) add('hospital', 8);
     if (nationMorale < 55 && count(ctx, 'propaganda') < 3) add('propaganda', 16 - count(ctx, 'propaganda') * 3);
     if (!core && p.morale < 55) add('garrisonHq', 15);
     if (!p.supplied && !p.buildings.supplyDepot) add('supplyDepot', 30);

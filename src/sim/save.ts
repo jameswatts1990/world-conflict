@@ -3,6 +3,7 @@
 // where the server owns the clock). Older saves are upgraded on load; a save
 // from a newer version is refused rather than misread.
 import { pushEvent } from './events';
+import { LAND_SUFFIX, landId } from './scenario/build';
 import { SCHEMA_VERSION, createInitialState, newId, nextSerial } from './state';
 import { nationName, sentence } from './text';
 import type { GameState, NationId, UnitType } from './types';
@@ -23,12 +24,58 @@ export function serializeGame(state: GameState, label: string, now = new Date())
   return JSON.stringify(file);
 }
 
+const isLandId = (id: string) => id.endsWith(LAND_SUFFIX);
+
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
   // 3: rates are derived by the UI, so nations no longer store lastRates. Job prices and
   // the peace retry delay are optional fields that older saves simply lack.
   2: (state) => {
     for (const n of Object.values(state.nations)) delete (n as unknown as Record<string, unknown>).lastRates;
+  },
+  // 4: armies no longer rout or surrender; the scoreboard counts ordered withdrawals instead.
+  3: (state) => {
+    for (const a of Object.values(state.armies)) delete (a as unknown as Record<string, unknown>).routedUntil;
+    for (const n of Object.values(state.nations)) {
+      const stats = n.stats as typeof n.stats & { armiesSurrendered?: number };
+      delete stats.armiesSurrendered;
+      stats.retreats = 0;
+    }
+  },
+  // 5: march orders carry a mode (older ones all captured along the way); armies gain the
+  // automatic-withdrawal and hold-position options, both off.
+  4: (state) => {
+    for (const a of Object.values(state.armies)) {
+      if (a.move) a.move.mode = 'attack';
+      a.autoRetreat = false;
+      a.holding = false;
+    }
+  },
+  // 6: every city became a province of its own, keeping its id, inside a new province for the land
+  // round it. The land goes to whoever held the old province, in the same mood. Armies stay in the
+  // city; marches stop where they are, since the roads they planned now pass through the land.
+  5: (state) => {
+    if (Object.keys(state.provinces).some(isLandId)) return;
+    for (const [id, p] of Object.entries(state.provinces)) {
+      const land = landId(id);
+      state.provinces[land] = {
+        id: land,
+        owner: p.owner,
+        buildings: {},
+        construction: null,
+        recruitQueue: [],
+        capture: null,
+        supplied: p.supplied,
+        ownerSince: p.ownerSince,
+        morale: p.morale,
+        tier: 1,
+        growth: 0,
+      };
+    }
+    for (const a of Object.values(state.armies)) {
+      a.move = null;
+      a.arrivedVia = null;
+    }
   },
 };
 

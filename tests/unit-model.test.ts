@@ -3,7 +3,7 @@ import { UNITS } from '../src/sim/config/units';
 import { UNIT_GENS, type UnitType } from '../src/sim';
 import { ART_NATIONS, resolveArtGen } from '../src/ui/art/types';
 import { UNIT_HEADINGS, buildUnitModel, headingFor, headingVector } from '../src/ui/art/UnitModel';
-import { citySpots, roadEnds, type Offset } from '../src/ui/map/armyLayout';
+import { citySpots, coversPlate, roadEnds, type Offset } from '../src/ui/map/armyLayout';
 
 const TYPES = Object.keys(UNITS) as UnitType[];
 
@@ -85,6 +85,17 @@ describe('3D army layout', () => {
           expect(Math.hypot((x - sx) / (2.1 * room), (y - sy) / (1.5 * room)), `spots ${i} of ${hx}x${hy}/${room}`).toBeGreaterThanOrEqual(0.999);
         }
       });
+    }
+  });
+
+  it('keeps the name plate under the city clear of every army and its badge', () => {
+    for (const [[hx, hy], room] of cases) {
+      // A long name (Amsterdam) hanging just in front of the built-up area.
+      const plate = { half: 60, top: hy + 4, bottom: hy + 19 };
+      const spots = citySpots([hx, hy], room, 16, plate);
+      expect(spots).toHaveLength(16);
+      for (const spot of spots) expect(coversPlate(spot, room, plate), `${spot} of ${hx}x${hy}/${room}`).toBe(false);
+      for (let n = 1; n < 16; n++) expect(citySpots([hx, hy], room, n + 1, plate).slice(0, n)).toEqual(citySpots([hx, hy], room, n, plate));
     }
   });
 

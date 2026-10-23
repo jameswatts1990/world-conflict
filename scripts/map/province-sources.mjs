@@ -73,6 +73,25 @@ export const PROVINCE_SOURCES = [
   { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
   { id: 'hu-southwest', country: 'HUN', regions: ['Southern Transdanubia'] },
 
+  // Romania (admin-1 units are counties; matched by name, grouped by historical region)
+  { id: 'ro-bucharest', country: 'ROU', names: ['Bucharest', 'Ilfov', 'Prahova', 'Dâmbovita', 'Arges', 'Giurgiu', 'Teleorman', 'Calarasi', 'Ialomita'] },
+  { id: 'ro-banat', country: 'ROU', names: ['Timis', 'Arad', 'Caras-Severin', 'Hunedoara', 'Dolj', 'Gorj', 'Mehedinti', 'Olt', 'Vâlcea'] },
+  { id: 'ro-transylvania', country: 'ROU', names: ['Alba', 'Brasov', 'Covasna', 'Harghita', 'Mures', 'Sibiu', 'Bihor', 'Bistrita-Nasaud', 'Cluj', 'Maramures', 'Satu Mare', 'Salaj'] },
+  { id: 'ro-moldavia', country: 'ROU', names: ['Bacau', 'Botosani', 'Iasi', 'Neamt', 'Suceava', 'Vaslui'] },
+  { id: 'ro-dobruja', country: 'ROU', names: ['Braila', 'Buzau', 'Constanta', 'Galati', 'Tulcea', 'Vrancea'] },
+
+  // Serbia (admin-1 units are districts; Kosovo is a separate country in Natural Earth)
+  { id: 'rs-belgrade', country: 'SRB', names: ['Grad Beograd', 'Severno-Backi', 'Zapadno-Backi', 'Južno-Backi', 'Severno-Banatski', 'Srednje-Banatski', 'Južno-Banatski', 'Sremski'] },
+  { id: 'rs-sumadija', country: 'SRB', names: ['Šumadijski', 'Kolubarski', 'Macvanski', 'Zlatiborski', 'Moravicki', 'Raški', 'Pomoravski'] },
+  { id: 'rs-south', country: 'SRB', names: ['Podunavski', 'Branicevski', 'Borski', 'Zajecarski', 'Nišavski', 'Pirotski', 'Toplicki', 'Jablanicki', 'Pcinjski'] },
+
+  // Minor powers of the Danube and the Adriatic
+  { id: 'sk-bratislava', country: 'SVK', names: ['Bratislavský', 'Trnavský', 'Trenciansky', 'Nitriansky'] },
+  { id: 'sk-kosice', country: 'SVK', names: ['Žilinský', 'Banskobystrický', 'Prešov', 'Košický'] },
+  { id: 'si-ljubljana', country: 'SVN', whole: true },
+  { id: 'hr-zagreb', country: 'HRV', names: ['Grad Zagreb', 'Zagrebacka', 'Krapinsko-Zagorska', 'Varaždinska', 'Medimurska', 'Koprivničko-Križevačka', 'Bjelovarsko-bilogorska', 'Viroviticko-Podravska', 'Osjecko-Baranjska', 'Vukovarsko-Srijemska', 'Brodsko-Posavska', 'Sisacko-Moslavacka', 'Karlovacka'] },
+  { id: 'hr-dalmatia', country: 'HRV', names: ['Istarska', 'Primorsko-Goranska', 'Licko-Senjska', 'Zadarska', 'Šibensko-Kninska', 'Splitsko-Dalmatinska', 'Dubrovacko-Neretvanska'] },
+
   // Minor powers (one province each; Belgium and Luxembourg share one)
   { id: 'be-brussels', country: 'BEL', whole: true },
   { id: 'be-brussels', country: 'LUX', whole: true },

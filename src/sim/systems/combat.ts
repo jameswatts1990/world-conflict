@@ -1,8 +1,9 @@
 // Battle resolution. Hostile armies stationed in the same province fight in
 // rounds. The province owner's armies use defence values; everyone else uses
-// attack values. Fire wears down both strength and morale: an army whose
-// morale breaks routs to a friendly neighbour, or surrenders if it has
-// nowhere to go. Runs every INTERVALS.combatRound ticks.
+// attack values. Fire wears down both strength and morale; low morale blunts an
+// army's firepower but never breaks it. Armies fight to the death unless their
+// owner orders them out, and a withdrawal under fire costs every unit a set
+// share of its strength. Runs every INTERVALS.combatRound ticks.
 import { BUILDING_EFFECTS } from '../config/buildings';
 import { ECONOMY, MORALE, SUPPLY } from '../config/rules';
 import { ARMY_RULES, UNITS, VETERANCY, usesFuel } from '../config/units';
@@ -13,19 +14,18 @@ import {
   armyMorale,
   armyPower,
   fortificationReduction,
+  homeSoilMult,
   hostileArmiesIn,
   isArmyInTransit,
-  scaledTicks,
   techEffects,
   unitStats,
   veterancyRank,
 } from '../queries';
 import { random } from '../rng';
-import { ownerName, sentence } from '../text';
+import { ownerName, provinceName, sentence } from '../text';
 import { NEUTRAL, type Army, type BattleState, type GameState, type NationId, type OwnerId, type ProvinceId, type Unit } from '../types';
 import { connectionBetween, type World } from '../world';
-import { legTicks } from './movement';
-import { shockNation } from './civic';
+import { startLeg } from './movement';
 
 interface Target {
   army: Army;
@@ -113,7 +113,7 @@ function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Ar
   // Attackers first, the defending province owner last: "Germany vs France".
   const defender = state.provinces[pid].owner;
   const names = [...owners.filter((o) => o !== defender), ...owners.filter((o) => o === defender)].map((o) => ownerName(world, o, pid));
-  pushEvent(state, 'battle', `Battle of ${world.provinces[pid].city.name}: ${names.join(' vs ')}.`, {
+  pushEvent(state, 'battle', `Battle of ${provinceName(world, pid)}: ${names.join(' vs ')}.`, {
     nations: involvedNations(owners),
     province: pid,
     severity: 'combat',
@@ -130,7 +130,7 @@ function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: A
   delete state.battles[pid];
   if (!battle) return;
   const winners = [...new Set(survivors.map((a) => a.owner))].filter((o) => battle.owners.includes(o));
-  const city = world.provinces[pid].city.name;
+  const city = provinceName(world, pid);
   // A side is beaten if it is gone and still at war with the victors. If peace sent it home
   // (or nobody is gone), the fighting simply stopped and nobody earns a victory.
   const beaten = battle.owners.some((o) => !winners.includes(o) && winners.some((w) => areHostile(state, o, w)));
@@ -190,7 +190,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
     if (targets.length === 0) continue;
     const role = province.owner === army.owner ? 'defence' : 'attack';
-    const armyMult = armyCombatMultiplier(state, army, pid);
+    const armyMult = armyCombatMultiplier(state, army, pid) * homeSoilMult(state, world, army.owner, pid);
     const fuelShort = army.owner !== NEUTRAL && state.nations[army.owner].shortages.fuel;
     const ignore = fortIgnore(army);
 
@@ -229,7 +229,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     const drain = MORALE.roundDrain * ratio;
     const before = army.units.length;
     const gain = VETERANCY.perRound * xpGainMult(state, army.owner);
-    const dugIn = army.owner === province.owner ? MORALE.defenderResilience : 1;
+    const dugIn = (army.owner === province.owner ? MORALE.defenderResilience : 1) * homeSoilMult(state, world, army.owner, pid);
     for (const u of army.units) {
       const res = unitStats(state, army.owner, u.type).resilience * VETERANCY.resilience[veterancyRank(u.xp)] * dugIn;
       u.strength -= hpDamage.get(u.id) ?? 0;
@@ -247,7 +247,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
     if (army.units.length === 0) {
       delete state.armies[army.id];
-      pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost the ${armyName(world, army, pid)} at ${world.provinces[pid].city.name}.`, {
+      pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost the ${armyName(world, army, pid)} at ${provinceName(world, pid)}.`, {
         nations: involvedNations([army.owner, ...hostileOwners]),
         province: pid,
         subject: army.owner,
@@ -256,15 +256,19 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
   }
 
-  // Broken armies flee or surrender once all fire has landed.
+  // Armies set to fall back withdraw on their own once their morale is spent, at the
+  // usual price; with nowhere to go, or holding position, they fight on.
   for (const army of armies) {
-    if (!state.armies[army.id] || armyMorale(army) >= MORALE.routThreshold) continue;
-    if (hostileArmiesIn(state, pid, army.owner).length === 0) continue;
-    routArmy(state, world, army, pid);
+    if (!state.armies[army.id] || !army.autoRetreat || army.holding || army.move?.leg) continue;
+    if (armyMorale(army) >= MORALE.autoRetreatAt || hostileArmiesIn(state, pid, army.owner).length === 0) continue;
+    const to = retreatTarget(state, world, army, pid);
+    if (!to) continue;
+    army.move = { path: [to], leg: null, mode: 'move' };
+    if (startLeg(state, world, army)) withdrawArmy(state, world, army, pid);
   }
 }
 
-/** Where a broken army can flee: an adjacent province of its own with no enemy army in it. */
+/** Where an army can withdraw to: an adjacent province of its own with no enemy army in it. */
 export function retreatTarget(state: GameState, world: World, army: Army, from: ProvinceId): ProvinceId | null {
   if (army.owner === NEUTRAL) return null;
   let best: { id: ProvinceId; score: number } | null = null;
@@ -281,55 +285,40 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
   return best?.id ?? null;
 }
 
-/** A broken army flees to a friendly neighbour, losing stragglers; with nowhere to go it surrenders. */
-export function routArmy(state: GameState, world: World, army: Army, pid: ProvinceId): void {
-  const target = retreatTarget(state, world, army, pid);
-  if (!target) {
-    surrenderArmy(state, world, army, pid);
+/**
+ * An army ordered out of a battle pulls back under fire: every unit loses a set
+ * share of its strength (halved with recon screening the withdrawal), and units
+ * too weak to get away are left behind. Call once the army has started its leg.
+ */
+export function withdrawArmy(state: GameState, world: World, army: Army, pid: ProvinceId): void {
+  const enemies = hostileArmiesIn(state, pid, army.owner);
+  if (enemies.length === 0) return;
+  const recon = army.units.some((u) => UNITS[u.type].recon);
+  const loss = MORALE.retreatLoss * (recon ? 0.5 : 1);
+  const before = army.units.length;
+  for (const u of army.units) {
+    u.strength -= loss;
+    u.morale = Math.max(0, u.morale - MORALE.retreatMoraleShock);
+  }
+  army.units = army.units.filter((u) => u.strength > 0.001);
+  const lost = before - army.units.length;
+  const enemyOwners = [...new Set(enemies.map((a) => a.owner))];
+  if (army.owner !== NEUTRAL) {
+    state.nations[army.owner].stats.unitsLost += lost;
+    state.nations[army.owner].stats.retreats += 1;
+  }
+  if (lost > 0 && enemyOwners.length === 1 && enemyOwners[0] !== NEUTRAL) state.nations[enemyOwners[0]].stats.unitsDestroyed += lost;
+  const city = provinceName(world, pid);
+  const name = armyName(world, army, pid);
+  const dest = army.move?.leg?.to;
+  const conn = dest ? connectionBetween(world, pid, dest) : null;
+  const to = dest ? ` to ${provinceName(world, dest)}${conn?.kind === 'strait' ? ' by sea' : ''}` : '';
+  const left = lost > 0 ? `, leaving ${lost} unit${lost === 1 ? '' : 's'} behind` : '';
+  const opts = { nations: involvedNations([army.owner, ...enemyOwners]), province: pid, subject: army.owner, severity: 'combat' as const };
+  if (army.units.length === 0) {
+    delete state.armies[army.id];
+    pushEvent(state, 'army-destroyed', `The ${name} was cut down trying to withdraw from ${city}.`, opts);
     return;
   }
-  const recon = army.units.some((u) => UNITS[u.type].recon);
-  const loss = MORALE.routLosses * (recon ? 0.5 : 1);
-  for (const u of army.units) u.strength = Math.max(0.02, u.strength * (1 - loss));
-  const duration = legTicks(state, world, army, pid, target);
-  army.move = { path: [target], leg: { from: pid, to: target, elapsed: 0, duration } };
-  army.routedUntil = state.tick + scaledTicks(state, MORALE.routedSeconds);
-  army.arrivedVia = null;
-  const conn = connectionBetween(world, pid, target);
-  pushEvent(
-    state,
-    'rout',
-    `The ${armyName(world, army, pid)} broke at ${world.provinces[pid].city.name} and fell back to ${world.provinces[target].city.name}${conn?.kind === 'strait' ? ' by sea' : ''}.`,
-    {
-      nations: involvedNations([army.owner, ...hostileArmiesIn(state, pid, army.owner).map((a) => a.owner)]),
-      province: pid,
-      subject: army.owner,
-      severity: 'combat',
-    },
-  );
-}
-
-export function surrenderArmy(state: GameState, world: World, army: Army, pid: ProvinceId): void {
-  const captors = hostileArmiesIn(state, pid, army.owner);
-  const n = army.units.length;
-  delete state.armies[army.id];
-  const captorPower = new Map<OwnerId, number>();
-  for (const a of captors) captorPower.set(a.owner, (captorPower.get(a.owner) ?? 0) + armyPower(state, a));
-  let captor: OwnerId | null = null;
-  for (const [o, p] of captorPower) if (captor === null || p > captorPower.get(captor)!) captor = o;
-  if (army.owner !== NEUTRAL) {
-    state.nations[army.owner].stats.unitsLost += n;
-    state.nations[army.owner].stats.armiesSurrendered += 1;
-    shockNation(state, world, army.owner, MORALE.surrenderShock);
-  }
-  if (captor && captor !== NEUTRAL) state.nations[captor].stats.unitsDestroyed += n;
-  // A neutral garrison has no retreat to be cut off from: it is simply overwhelmed.
-  const who = army.owner === NEUTRAL ? armyName(world, army, pid) : `${world.nations[army.owner].adjective} ${armyName(world, army, pid)}`;
-  const how = army.owner === NEUTRAL ? 'Overwhelmed' : 'Encircled';
-  pushEvent(
-    state,
-    'surrender',
-    `${how} at ${world.provinces[pid].city.name}, the ${who} surrendered${captor ? ` to ${ownerName(world, captor, pid)}` : ''} — ${n} unit${n === 1 ? '' : 's'} lost.`,
-    { nations: involvedNations([army.owner, ...captors.map((a) => a.owner)]), province: pid, subject: army.owner, severity: 'combat' },
-  );
+  pushEvent(state, 'rout', `The ${name} withdrew from the Battle of ${city}${to} under fire${left}.`, opts);
 }

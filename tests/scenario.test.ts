@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { geoContains } from 'd3-geo';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
-import { feature } from 'topojson-client';
+import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
 import { UNITS } from '../src/sim/config/units';
@@ -38,12 +38,24 @@ describe('scenario data', () => {
     const covered: string[] = [];
     for (const id of world.provinceIds) {
       const def = world.provinces[id];
-      for (const t of [def.city, ...def.towns]) {
+      for (const t of [...(def.city ? [def.city] : []), ...def.towns]) {
         const under = countries.find((c) => geoContains(c, t.coord));
         if (under) covered.push(`${t.name} (${under.properties.iso})`);
       }
     }
     expect(covered).toEqual([]);
+  });
+
+  it('every shared border has a land or mountain link, and every such link a shared border', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const geoms = topo.objects.provinces.geometries as { properties: { pid: string } }[];
+    const key = (a: string, b: string) => [a, b].sort().join(' — ');
+    const borders = new Set<string>();
+    neighbors(geoms as never).forEach((list, i) => list.forEach((j) => borders.add(key(geoms[i].properties.pid, geoms[j].properties.pid))));
+    const links = new Set(world.scenario.connections.filter((c) => c.kind !== 'strait').map((c) => key(c.a, c.b)));
+    // scripts/map/check-borders.ts prints the same report while you work.
+    expect([...borders].filter((k) => !links.has(k)), 'borders without a link').toEqual([]);
+    expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {
@@ -54,16 +66,21 @@ describe('scenario data', () => {
       for (const n of world.neighbors[cur]) if (!seen.has(n.id)) (seen.add(n.id), queue.push(n.id));
     }
     expect(seen.size).toBe(world.provinceIds.length);
-    // Straits exist for islands (e.g. Britain) — they are explicit, not derived from shapes.
-    expect(world.neighbors['uk-london'].some((n) => n.id === 'fr-nord' && n.kind === 'strait')).toBe(true);
+    // Straits exist for islands (e.g. Britain) — they are explicit, not derived from shapes. They land on the
+    // land round the cities, and every city is reached only through its own land.
+    expect(world.neighbors['uk-london-land'].some((n) => n.id === 'fr-nord-land' && n.kind === 'strait')).toBe(true);
+    for (const id of world.cityIds) expect(world.neighbors[id].map((n) => n.id)).toEqual([world.provinces[id].within]);
   });
 
   it('every nation matches its power tier: output, starting army, objectives and size', () => {
     for (const id of world.nationIds) {
       const power = POWERS[world.nations[id].power];
       const provs = world.scenario.provinces.filter((p) => p.core === id);
-      expect(provs.length, `${id} provinces`).toBeGreaterThanOrEqual(power.provinces[0]);
-      expect(provs.length, `${id} provinces`).toBeLessThanOrEqual(power.provinces[1]);
+      const cities = provs.filter((p) => p.city);
+      expect(cities.length, `${id} cities`).toBeGreaterThanOrEqual(power.provinces[0]);
+      expect(cities.length, `${id} cities`).toBeLessThanOrEqual(power.provinces[1]);
+      // Every city stands in land of its own, which produces nothing yet.
+      expect(provs.length).toBe(cities.length * 2);
       for (const k of ['money', 'materials', 'manpower'] as const) {
         expect(provs.reduce((s, p) => s + p.production[k], 0), `${id} ${k}`).toBeCloseTo(power.output[k], -1);
       }
@@ -75,9 +92,9 @@ describe('scenario data', () => {
       expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
       if (world.nations[id].power === 'great') {
         // Same city ladder (one Metropolis, one Large City) and one oil field.
-        expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
-        expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
-        expect(provs.filter((p) => p.oil)).toHaveLength(1);
+        expect(cities.filter((p) => p.tier === 4)).toHaveLength(1);
+        expect(cities.filter((p) => p.tier === 3)).toHaveLength(1);
+        expect(cities.filter((p) => p.oil)).toHaveLength(1);
       }
     }
   });

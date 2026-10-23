@@ -4,6 +4,7 @@ import { MOVEMENT } from '../config/rules';
 import { UNITS } from '../config/units';
 import { pushEvent } from '../events';
 import { armyName } from '../names';
+import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import type { Army, GameState, ProvinceId, UnitType } from '../types';
 import { provinceName } from '../text';
@@ -37,15 +38,18 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
     if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
   }
   const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
-  return Math.max(scaledTicks(state, MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
+  const gate = world.provinces[from].within === to || world.provinces[to].within === from;
+  return Math.max(scaledTicks(state, gate ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**
- * An army waiting at a node holds position while it is fighting or while it
- * is capturing the hostile province it stands in; it then continues its path.
+ * An army waiting at a node holds position while it is fighting or, unless it
+ * is only moving, while it is capturing the hostile province it stands in; it
+ * then continues its path.
  */
 export function mustHold(state: GameState, army: Army): boolean {
   if (hostileArmiesIn(state, army.province, army.owner).length > 0) return true;
+  if (army.move?.mode === 'move') return false;
   const owner = state.provinces[army.province].owner;
   return owner !== army.owner && areHostile(state, army.owner, owner);
 }
@@ -76,7 +80,7 @@ export function movementSystem(state: GameState, world: World): void {
     const army = state.armies[id];
     if (!army?.move) continue;
     if (!army.move.leg) {
-      if (army.move.path.length === 0) {
+      if (army.move.path.length === 0 && !turnPatrol(state, world, army)) {
         army.move = null;
         continue;
       }
@@ -101,6 +105,17 @@ export function movementSystem(state: GameState, world: World): void {
     army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
-    if (army.move.path.length === 0) army.move = null;
+    if (army.move.path.length === 0 && !army.move.patrol) army.move = null;
   }
+}
+
+/** A patrol at the end of its beat turns for the other end; false once no route is left. */
+function turnPatrol(state: GameState, world: World, army: Army): boolean {
+  const ends = army.move?.patrol;
+  if (!ends) return false;
+  const next = army.province === ends[1] ? ends[0] : ends[1];
+  const route = next === army.province ? null : findPath(state, world, army, army.province, next);
+  if (!route) return false;
+  army.move!.path = route.path;
+  return true;
 }

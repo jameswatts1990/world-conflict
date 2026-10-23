@@ -6,6 +6,7 @@ import { Flag } from '../flags';
 import { formatClock } from '../format';
 import { Icon } from '../icons';
 import { Modal } from './Common';
+import { RaceChart } from './RaceChart';
 import { CONTROLS, TOUCH_CONTROLS } from './Tutorial';
 
 function savedAt(iso: string): string {
@@ -195,6 +196,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
             </div>
           </div>
         </div>
+        <RaceChart state={state} world={world} human={human} />
         <table className="dip-table outcome-table">
           <thead>
             <tr>
@@ -206,7 +208,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
               <th className="num" title="Provinces captured during the campaign">Captured</th>
               <th className="num" title="Enemy units destroyed">Destroyed</th>
               <th className="num" title="Own units lost">Lost</th>
-              <th className="num" title="Own armies that surrendered when encircled">Surrendered</th>
+              <th className="num" title="Times own armies were ordered out of a battle">Retreats</th>
               <th className="num">Score</th>
             </tr>
           </thead>
@@ -227,7 +229,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
                   <td className="num">{stats.provincesCaptured}</td>
                   <td className="num">{stats.unitsDestroyed}</td>
                   <td className="num">{stats.unitsLost}</td>
-                  <td className="num">{stats.armiesSurrendered}</td>
+                  <td className="num">{stats.retreats}</td>
                   <td className="num score">{s.score}</td>
                 </tr>
               );

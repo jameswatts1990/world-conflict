@@ -1,7 +1,9 @@
-// Explicit movement connections. Land links were seeded from shared borders in
-// the map data and then curated by hand; straits are sea crossings for land
-// units (no naval combat in this milestone). This list is authoritative for
-// movement — the map shapes are never consulted for adjacency at runtime.
+// Explicit movement connections between rows. Land links were seeded from shared
+// borders in the map data and then curated by hand; straits are sea crossings for
+// land units (no naval combat in this milestone). Each one joins the two rows'
+// lands; every city is joined only to the land round it (buildConnections in
+// ../build.ts). This list is authoritative for movement — the map shapes are
+// never consulted for adjacency at runtime.
 import type { ConnectionDef } from '../../types';
 
 const land = (a: string, b: string): ConnectionDef => ({ a, b, kind: 'land' });
@@ -21,6 +23,8 @@ export const CONNECTIONS: ConnectionDef[] = [
   strait('uk-london', 'fr-normandy', 'English Channel'),
   strait('uk-london', 'be-brussels', 'North Sea crossing'),
   strait('uk-north', 'nl-amsterdam', 'North Sea crossing'),
+  strait('uk-north', 'de-north', 'North Sea crossing'),
+  strait('uk-west', 'es-galicia', 'Bay of Biscay crossing'),
 
   // France
   land('fr-paris', 'fr-nord'),
@@ -52,6 +56,7 @@ export const CONNECTIONS: ConnectionDef[] = [
   mountain('fr-aquitaine', 'es-catalonia', 'Central Pyrenees'),
   land('fr-aquitaine', 'es-north'),
   strait('fr-midi', 'it-islands', 'Strait of Bonifacio'),
+  strait('es-catalonia', 'it-islands', 'Western Mediterranean crossing'),
 
   // Germany
   land('de-berlin', 'de-north'),
@@ -127,7 +132,7 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('pl-lesser', 'pl-east'),
   mountain('pl-silesia', 'cz-prague', 'Sudetes'),
 
-  // Hungary (its other modern neighbours lie outside the theatre)
+  // Hungary
   land('hu-budapest', 'hu-north'),
   land('hu-budapest', 'hu-east'),
   land('hu-budapest', 'hu-south'),
@@ -138,6 +143,53 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('hu-south', 'hu-southwest'),
   land('hu-west', 'hu-southwest'),
   land('hu-west', 'at-vienna'),
+
+  // Romania
+  land('ro-bucharest', 'ro-banat'),
+  land('ro-bucharest', 'ro-dobruja'),
+  mountain('ro-bucharest', 'ro-transylvania', 'Predeal Pass'),
+  land('ro-banat', 'ro-transylvania'),
+  land('ro-dobruja', 'ro-moldavia'),
+  mountain('ro-dobruja', 'ro-transylvania', 'Buzău Pass'),
+  mountain('ro-moldavia', 'ro-transylvania', 'Eastern Carpathians'),
+  land('ro-transylvania', 'hu-east'),
+  land('ro-transylvania', 'hu-south'),
+  land('ro-banat', 'hu-south'),
+  land('ro-banat', 'rs-belgrade'),
+  mountain('ro-banat', 'rs-south', 'Iron Gates'),
+
+  // Serbia
+  land('rs-belgrade', 'rs-sumadija'),
+  land('rs-belgrade', 'rs-south'),
+  land('rs-sumadija', 'rs-south'),
+  land('rs-belgrade', 'hu-south'),
+  land('rs-belgrade', 'hr-zagreb'),
+
+  // Croatia
+  mountain('hr-zagreb', 'hr-dalmatia', 'Velebit'),
+  land('hr-zagreb', 'si-ljubljana'),
+  land('hr-dalmatia', 'si-ljubljana'),
+  land('hr-zagreb', 'hu-west'),
+  land('hr-zagreb', 'hu-southwest'),
+  land('hr-zagreb', 'hu-south'),
+  strait('hr-dalmatia', 'it-rome', 'Adriatic crossing'),
+
+  // Slovenia
+  mountain('si-ljubljana', 'it-venetia', 'Isonzo'),
+  land('si-ljubljana', 'at-vienna'),
+  land('si-ljubljana', 'hu-west'),
+
+  // Slovakia
+  land('sk-bratislava', 'sk-kosice'),
+  land('sk-bratislava', 'at-vienna'),
+  land('sk-bratislava', 'cz-prague'),
+  land('sk-bratislava', 'hu-west'),
+  land('sk-bratislava', 'hu-budapest'),
+  land('sk-bratislava', 'hu-north'),
+  land('sk-kosice', 'hu-north'),
+  mountain('sk-kosice', 'cz-prague', 'Jablunkov Pass'),
+  mountain('sk-kosice', 'pl-silesia', 'Beskids'),
+  mountain('sk-kosice', 'pl-lesser', 'Tatras'),
 
   // Between the minor powers
   land('be-brussels', 'nl-amsterdam'),

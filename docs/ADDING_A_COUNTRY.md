@@ -19,14 +19,16 @@ the starting buildings and army.
 | --- | --- | --- | --- | --- | --- | --- |
 | `great` | Yes | 260 / 140 / 70 | 13: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, field 5 INF + 1 CAV | Capital 3, heartland 2 | Metropolis | 6–9 |
 | `major` | Yes | 150 / 80 / 40 | 8: capital 2 INF + 1 ART, heartland 2 INF, field 2 INF + 1 CAV | Capital 2, heartland 1 | Large City | 3–5 |
-| `minor` | No: always computer-controlled | 70 / 35 / 20 | 4: capital 3 INF, field 1 INF | Capital 1 | City | 1–2 |
+| `minor` | No: always computer-controlled, never wins | 70 / 35 / 20 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | 1–2 |
 
-The smaller tiers spend the same share of income on army upkeep at the start as a great power (about a sixth).
-Europe has seven great powers and seven one-province minor powers (the former neutral states). Minor powers are
-real nations: they have an economy, research, recruit, make war and peace, and the AI plays them. Players can't
-pick them on the nation picker. The AI keeps a minor to a garrison of about five units (`unitsFlat` in
-`config/ai.ts`): a focused seven-unit attack takes its capital, while six defenders that refill repel it most of
-the time.
+Major powers spend the same share of income on army upkeep at the start as a great power (about a sixth); minor
+powers spend about a quarter. Europe has seven great powers, two major powers (Romania and Serbia) and ten minor
+powers. Minor powers are real nations: they have an economy, research, recruit, defend themselves and make peace,
+and the AI plays them. They never start a war and never win (only great and major powers count for victory), and
+players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
+seven or eight behind the capital's forts (`unitsFlat` in `config/ai.ts`), so an eight-unit probe fails and taking
+one costs twelve to fourteen units with artillery about half their strength. A row's own `buildings` replace the
+tier's: Switzerland's says `fortifications: 3`.
 
 **Field units** go where the province rows put them (`garrison`). If a nation's rows place none, they are dealt
 out one at a time over its border provinces first, then its other provinces, then its capital. The original six
@@ -46,7 +48,8 @@ The UI gives each bloc a look of its own: uniform and vehicle colours, headgear,
 
 A nation names its bloc and overrides only what it wants to make its own. The original six override almost
 everything (their identities are unchanged). Hungary overrides six designs (Toldi, Turán, Zrínyi, Csaba, Tas and
-its hussars) and one formation name, and takes the rest from `central`. A new country can override nothing.
+its hussars) and one formation name, and takes the rest from `central`. A new country can override nothing, as
+Romania and Serbia do.
 
 Two nations in one bloc still look different on the map: army counters keep the owner's colour, the 3D army
 models fly the nation's flag, and the bloc insignia on their units is drawn in the nation's own colour.
@@ -65,20 +68,25 @@ source data offers first:
 
 ```bash
 npm run map:fetch    # once; downloads ~40 MB into data-src/ (not committed)
-node -e 'const j=require("./data-src/ne_10m_admin_1_states_provinces.geojson");
+node -e 'const j=JSON.parse(require("fs").readFileSync("data-src/ne_10m_admin_1_states_provinces.geojson","utf8"));
   for (const f of j.features) if (f.properties.adm0_a3==="HUN") console.log(f.properties.name, "|", f.properties.region)'
 ```
 
-Hungary's units carry a `region` (its seven statistical regions), so each rule is one line. A one-province
-minor power takes its whole country:
+Hungary's units carry a `region` (its seven statistical regions), so each rule is one line. Where the units have
+no useful region (Romania's counties, Serbia's districts), list them by `names`. A one-province minor power takes
+its whole country:
 
 ```js
 { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
-{ id: 'si-ljubljana', country: 'SVN', whole: true },   // a one-province minor power (an example, not in the game)
+{ id: 'ro-moldavia', country: 'ROU', names: ['Bacau', 'Botosani', 'Iasi', 'Neamt', 'Suceava', 'Vaslui'] },
+{ id: 'si-ljubljana', country: 'SVN', whole: true },   // a one-province minor power
 ```
 
 Then `npm run map:build`. It fails if a rule matches nothing, and it tags every province with its country so the
-UI knows which countries the theatre covers. No list needs updating by hand.
+UI knows which countries the theatre covers. No list needs updating by hand. Its second step
+(`scripts/map/city-provinces.ts`, which runs on the committed `scripts/map/base.topo.json` without the raw data)
+cuts each row's city out of its province and writes `src/sim/scenario/europe/land.ts`; it needs the row (step 2)
+to exist, so run it again once the rows are in.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
@@ -87,7 +95,9 @@ opening zoom. Merging two regions fixed it. The tiers' province ranges keep smal
 ### 2. Province rows ★ — `src/sim/scenario/europe/provinces.ts`
 
 One row per province: name, terrain, role, principal city with coordinates, population, two to five towns, and
-optionally `oil`. The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
+optionally `oil`. Each row becomes two provinces: the city, drawn tight round it and keyed by the row's id, and the
+land round it, keyed `<id>-land` and named after the row (`land: { name, article, terrain }` overrides that, as for
+the countryside round a capital). The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
 `capital`, and great and major powers one `industrial` heartland. Roles only set relative weights: output is
 scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
 
@@ -98,17 +108,25 @@ directly.
 ### 3. Connections ★ — `src/sim/scenario/europe/connections.ts`
 
 Internal links, plus links to whatever the country borders in the theatre: `land`, `mountain` (with a pass
-name), or `strait` for sea crossings. Hungary's only theatre neighbour is Austria. Its other neighbours
-(Slovakia, Romania, Serbia, Croatia, Slovenia) are not in the game yet, so Budapest's only road out runs
-through Vienna.
+name), or `strait` for sea crossings. They are written between rows and join the rows' lands; every city is linked
+to its own land automatically. Every pair of provinces that share a border needs a land or mountain link,
+and every land or mountain link a shared border; a scenario test enforces both. While you work, list what is
+missing:
+
+```bash
+npx vite-node scripts/map/check-borders.ts ro rs   # only pairs involving these countries
+```
+
+Give a border its real character: Romania's Banat meets southern Serbia along the Danube gorge at the Iron Gates,
+so that link is a `mountain` pass, not open `land`.
 
 ### 4. The nation ★ — `src/sim/scenario/europe/nations.ts`
 
 ```ts
 {
   id: 'hu', name: 'Hungary', adjective: 'Hungarian', color: '#b0476d', capital: 'hu-budapest', power: 'great', bloc: 'central',
-  trait: 'One gateway',                                          // optional; the menu shows the bloc name without it
-  blurb: 'Landlocked behind Austria. The only road out runs through Vienna, and it is the only road in.', // optional
+  trait: 'Danube crossroads',                                    // optional; the menu shows the bloc name without it
+  blurb: 'The heart of the Danube basin. Six neighbours and none of them a great power: room to grow, and a front on every side.', // optional
 },
 ```
 
@@ -131,14 +149,21 @@ That is the whole of the required work: the starting setup is generated (`setup.
 
 ```bash
 npm run typecheck && npm test   # scenario tests check shapes, towns, connectivity, the tier template and names
-npm run build && npm run e2e && npm run e2e:mobile
+npm run build:e2e && npm run e2e && npm run e2e:mobile
 node scripts/dev/screens.mjs e2e-output/screens hu map zoom:1   # look at the new country
 npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the bloc's art, if you added a bloc
+npm run balance -- --vs main   # 200 campaigns each, before and after: how the newcomer and its neighbours fare
 ```
 
-The scenario tests cover any number of nations. They check that every province has a shape, that no town falls
-outside the theatre, that the movement graph is connected, that every nation matches its tier (output, starting
-army, objective VP, capital size, province count), and that every unit has a name.
+The balance run ([BALANCE.md](BALANCE.md)) is the check the tests cannot make: whether the newcomer survives and wins
+about as often as the other nations of its tier, and what it does to its neighbours. It needs no changes for a new
+country: nations, tiers and content all come from the scenario.
+
+The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
+inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the
+simplified shapes), that every shared border has a link, that the movement graph is connected, that every nation
+matches its tier (output, starting army, objective VP, capital size, province count), and that every unit has a
+name.
 
 **Saves made before the country existed still load.** `joinNewcomers` (in `src/sim/save.ts`) adds it as it
 would start a new campaign: AI-controlled, at peace, at 1914 technology. Only a save from a redrawn map is

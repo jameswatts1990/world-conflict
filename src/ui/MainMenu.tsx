@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { POWERS } from '../sim/config/powers';
 import { VICTORY } from '../sim/config/rules';
 import { SPEED_PRESETS } from '../sim/config/timing';
-import { BLOCS, vpToWin, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
+import { BLOCS, vpToWin, type AiDifficulty, type GameSettings, type GameState, type NationId, type ProvinceId, type World } from '../sim';
 import { lighten, ownerColor } from './color';
 import { Flag } from './flags';
 import { hoursText, proseDuration } from './format';
@@ -69,12 +69,17 @@ const MenuBackdrop = memo(function MenuBackdrop({ world, geo, selected }: { worl
         );
       })}
       <path d={geo.provinceBorders} className="province-border" />
-      <path d={geo.nationBorders(startOwner)} className="nation-border" />
       <g clipPath="url(#menu-sel)">
-        <path d={outline} className="nation-glow wide" stroke={color} />
-        <path d={outline} className="nation-glow" stroke={lighten(color, 0.4)} />
+        <path d={outline} className="nation-band wide" stroke={color} />
+        <path d={outline} className="nation-band" stroke={lighten(color, 0.4)} />
       </g>
       <path d={geo.coastline} className="coastline" />
+      <path d={geo.nationBorders(startOwner)} className="nation-border-casing" />
+      <path d={geo.nationBorders(startOwner)} className="nation-border" />
+      {/* The chosen nation's land glows, as your own does in the campaign. */}
+      <path d={outline} className="home-glow wide" />
+      <path d={outline} className="home-glow" />
+      <path d={outline} className="home-line" />
     </svg>
   );
 });
@@ -85,12 +90,13 @@ export function MainMenu({
   onLoad,
 }: {
   world: World;
-  onStart: (nation: NationId, seed: number, speed: GameSettings['speed']) => void;
+  onStart: (nation: NationId, seed: number, speed: GameSettings['speed'], difficulty: AiDifficulty) => void;
   onLoad: (state: GameState) => void;
 }) {
   const geo = useMemo(() => mapGeometry(world), [world]);
   const [nation, setNation] = useState<NationId>('fr');
   const [speed, setSpeed] = useState<GameSettings['speed']>('standard');
+  const [difficulty, setDifficulty] = useState<AiDifficulty>('normal');
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [loading, setLoading] = useState(false);
   const def = world.nations[nation];
@@ -140,7 +146,7 @@ export function MainMenu({
             <div>
               <div className="mb-name">{def.name}</div>
               <div className="mb-cap">
-                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name} · {POWERS[def.power].name}
+                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].name} · {POWERS[def.power].name}
               </div>
             </div>
           </div>
@@ -166,39 +172,49 @@ export function MainMenu({
           </div>
         </div>
 
-        <div className="menu-options">
-          <label>
-            Campaign speed
-            <select value={speed} onChange={(e) => setSpeed(e.target.value as GameSettings['speed'])}>
-              {Object.entries(SPEED_PRESETS).map(([id, p]) => (
-                <option key={id} value={id} disabled={!p.available}>
-                  {p.label}
-                  {p.available ? '' : ' — needs the future server version'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
-            Campaign seed
-            <span className="seed-field">
-              <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
-              <button type="button" className="icon-btn" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))} title="New random seed" aria-label="New random seed">
-                <Icon name="dice" size={16} />
-              </button>
-            </span>
-          </label>
-        </div>
-        <p className="menu-victory">
-          <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
-          the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. {world.nationIds.length - 1} computer opponents control the other powers.
-        </p>
-        <div className="btn-row menu-actions">
-          <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">
-            <Icon name="play" size={16} /> Start campaign
-          </button>
-          <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">
-            <Icon name="load" size={16} /> Load game
-          </button>
+        {/* Speed, seed and the start buttons stay at the foot of the column, in view on any screen. */}
+        <div className="menu-start">
+          <div className="menu-options">
+            <label>
+              Campaign speed
+              <select value={speed} onChange={(e) => setSpeed(e.target.value as GameSettings['speed'])}>
+                {Object.entries(SPEED_PRESETS).map(([id, p]) => (
+                  <option key={id} value={id} disabled={!p.available}>
+                    {p.label}
+                    {p.available ? '' : ' — needs the future server version'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label title="Easy opponents react more slowly, field smaller armies, wait longer before starting wars and never gang up on you. Normal opponents punish weakness.">
+              Opponents
+              <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as AiDifficulty)} data-testid="difficulty">
+                <option value="easy">Easy</option>
+                <option value="normal">Normal</option>
+              </select>
+            </label>
+            <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
+              Campaign seed
+              <span className="seed-field">
+                <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
+                <button type="button" className="icon-btn" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))} title="New random seed" aria-label="New random seed">
+                  <Icon name="dice" size={16} />
+                </button>
+              </span>
+            </label>
+          </div>
+          <p className="menu-victory">
+            <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
+            the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. {world.nationIds.length - 1} computer opponents control the other powers.
+          </p>
+          <div className="btn-row menu-actions">
+            <button className="primary big" onClick={() => onStart(nation, seed, speed, difficulty)} data-testid="start-campaign">
+              <Icon name="play" size={16} /> Start campaign
+            </button>
+            <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">
+              <Icon name="load" size={16} /> Load game
+            </button>
+          </div>
         </div>
 
         <footer className="credits">
