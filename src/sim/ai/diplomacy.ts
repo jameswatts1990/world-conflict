@@ -37,12 +37,15 @@ export function runawayLeader(ctx: Ctx): NationId | null {
   return best?.id ?? null;
 }
 
-/** Enemy's home cities I hold (its land without them counting for less), a rough measure of who is winning a war. */
-function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId): number {
+/**
+ * Enemy's home cities I hold, with its land counting `landShare` of a city: a rough measure of who is winning a
+ * war. War aims count cities alone (AI.warAimLandShare), so land taken on the way does not end a war early.
+ */
+function occupiedCores(ctx: Ctx, holder: NationId, victim: NationId, landShare = AI.landShare): number {
   let held = 0;
   for (const id of ctx.world.provinceIds) {
     const def = ctx.world.provinces[id];
-    if (def.core === victim && ctx.state.provinces[id].owner === holder) held += def.city ? 1 : AI.landShare;
+    if (def.core === victim && ctx.state.provinces[id].owner === holder) held += def.city ? 1 : landShare;
   }
   return held;
 }
@@ -90,7 +93,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     const stopTheLeader = offer.from === leader;
     // A winner with its war aims in hand takes the gains: wars of opportunity are not wars of annihilation.
     const satisfied =
-      state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, offer.from) >= AI.warAimProvinces;
+      state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, offer.from, AI.warAimLandShare) >= AI.warAimProvinces;
     const accept = !stopTheLeader && (losing || lostCapital || morale < AI.acceptPeaceMorale || (weary && !winning) || satisfied);
     issue(ctx, { type: 'respondPeace', nation: me, from: offer.from, accept });
   }
@@ -111,7 +114,7 @@ export function handleDiplomacy(ctx: Ctx): void {
     // On two fronts, close the one that is going worse.
     const worstFront = ctx.enemies.length >= 2 && theirPower >= Math.max(...ctx.enemies.map((e) => nationPower(state, e))) && !winning;
     const aimsMet =
-      main === enemy && state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, enemy) >= AI.warAimProvinces;
+      main === enemy && state.tick - rel.since >= scaledTicks(state, AI.warAimSeconds) && occupiedCores(ctx, me, enemy, AI.warAimLandShare) >= AI.warAimProvinces;
     if (
       beaten ||
       morale < AI.offerPeaceMorale ||

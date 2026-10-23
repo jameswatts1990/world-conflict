@@ -123,6 +123,8 @@ export const MOVEMENT = {
 export const CAPTURE = {
   baseSeconds: 20,
   capitalMult: 1.5,
+  /** Open land, with no city to fight through, falls this much faster (forts still count in full). */
+  landMult: 0.5,
 };
 
 /** Fog of war: how far, in connections, a nation's provinces and armies see. */

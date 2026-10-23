@@ -334,7 +334,7 @@ export function captureTicks(state: GameState, world: World, province: ProvinceI
   const def = world.provinces[province];
   const p = state.provinces[province];
   const fort = p.buildings.fortifications ?? 0;
-  let seconds = CAPTURE.baseSeconds + fort * BUILDING_EFFECTS.fortCaptureSecondsPerLevel;
+  let seconds = CAPTURE.baseSeconds * (def.city ? 1 : CAPTURE.landMult) + fort * BUILDING_EFFECTS.fortCaptureSecondsPerLevel;
   seconds *= 1 + (p.tier - 1) * CITY.captureTimePerTier;
   if (def.city?.size === 'capital') seconds *= CAPTURE.capitalMult;
   if ((p.buildings.garrisonHq ?? 0) > 0) seconds *= BUILDING_EFFECTS.garrisonHqCapture;

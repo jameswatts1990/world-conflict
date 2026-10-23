@@ -246,9 +246,10 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.6 Capture and supply
 
-- An enemy army alone in a province captures it in 20 s, + 10 s per fort level, + 8% per city tier above Town,
-  × 1.5 for capitals, × 1.5 with an Occupation HQ; reconnaissance units make it 30% faster. An attack on a city
-  takes the land round it first; a city whose land is lost is cut off (unless it is a capital or has a depot).
+- An enemy army alone in a province captures it in 20 s (10 s for open land, which has no city to fight through),
+  + 10 s per fort level, + 8% per city tier above Town, × 1.5 for capitals, × 1.5 with an Occupation HQ;
+  reconnaissance units make it 30% faster. An attack on a city takes the land round it first; a city whose land is
+  lost is cut off (unless it is a capital or has a depot).
 - A province is **in supply** if connected through its owner's territory to a hub (capital or Supply Depot).
   An army is supplied there or within one connection of it (Supply Corps research +1; railway junctions +1).
 - Unsupplied armies fight at 75% and do not recover; after 120 s they lose strength and morale.
@@ -353,9 +354,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   period they start wars of opportunity against weaker or distracted neighbours, preferring ones whose objectives
   border their land, and avoid a second front. **Any power within 3 VP of an objective victory becomes everyone's
   target.** An AI accepts peace when it is actually losing (ground, capital or morale) and closes the worse of two
-  fronts first. Its wars have limited aims: once it holds two of the enemy's home cities (its home land without them
-  counting half) and the war is 10 minutes old, it accepts peace even while winning (against a power about to win,
-  it fights on). The same count decides who is winning a war.
+  fronts first. Its wars have limited aims: once it holds two of the enemy's home cities (land taken on the way does
+  not count) and the war is 10 minutes old, it accepts peace even while winning (against a power about to win, it
+  fights on). Who is winning a war is weighed on the home cities each side holds, the land round them counting half.
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
   sagging).
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
