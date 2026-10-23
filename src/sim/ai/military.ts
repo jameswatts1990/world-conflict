@@ -8,7 +8,7 @@
 //   5. anything left moves up to the front.
 import { AI } from '../config/ai';
 import { MORALE } from '../config/rules';
-import { armyMorale, armyPower, canEnterProvince, fortificationReduction, hostileArmiesIn } from '../queries';
+import { areHostile, armyMorale, armyPower, canEnterProvince, fortificationReduction, hostileArmiesIn } from '../queries';
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
@@ -205,6 +205,14 @@ export function handleMilitary(ctx: Ctx): void {
       // Resting at home still counts as a garrison where it stands.
       committed.add(army.id);
     }
+  }
+
+  // Armies occupying hostile land stay until the capture completes; otherwise
+  // the steps below pull them away long before the province falls.
+  for (const army of idleArmies(ctx)) {
+    if (committed.has(army.id)) continue;
+    const owner = state.provinces[army.province].owner;
+    if (owner !== me && areHostile(state, me, owner)) committed.add(army.id);
   }
 
   // 3. Offence first: the best defence against the army next door is often to
