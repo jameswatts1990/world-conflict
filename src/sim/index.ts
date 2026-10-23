@@ -13,7 +13,7 @@ export * from './names';
 export * from './blocs';
 export * from './text';
 export * from './visibility';
-export { findPath } from './pathfinding';
+export { findPath, marchTicksLeft, planMarch, type MarchPlan } from './pathfinding';
 export { legTicks } from './systems/movement';
 export { suppliedProvinces, inSupplyRange } from './systems/supply';
 export { provinceMoraleTarget, cityGrowthPerMinute, type MoraleFactor } from './systems/civic';

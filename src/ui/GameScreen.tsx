@@ -35,7 +35,7 @@ import { Icon, type IconName } from './icons';
 import { ORDER, TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
 import { useLayout, useTouch } from './layout';
 import { mapGeometry } from './map/geo';
-import { MapView, routePreview, type MapMode } from './map/MapView';
+import { MapView, routePreview, targetName, type MapMode, type MarchTarget } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
 import { ConfirmDialog } from './panels/Common';
 import { HelpDialog, LoadDialog, OutcomeDialog, SaveDialog } from './panels/Dialogs';
@@ -149,7 +149,7 @@ export function GameScreen({
   const [outcomeSeen, setOutcomeSeen] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   /** An order into a nation we are at peace with, waiting on the player's answer to declaring war. */
-  const [warOrder, setWarOrder] = useState<{ target: NationId; to: ProvinceId; mode: MoveMode; armies: ArmyId[] } | null>(null);
+  const [warOrder, setWarOrder] = useState<{ target: NationId; to: MarchTarget; mode: MoveMode; armies: ArmyId[] } | null>(null);
   const [mapMode, setMapMode] = useState<MapMode>('political');
   const [legendOpen, setLegendOpen] = useState(false);
   // Small screens start with the reports closed: they open from the command bar.
@@ -161,7 +161,7 @@ export function GameScreen({
   const [sheet, setSheet] = useState<SheetSnap>('peek');
   const [mapHeight, setMapHeight] = useState(() => window.innerHeight);
   // Touch move mode: the destination tapped once, previewed until confirmed.
-  const [moveTarget, setMoveTarget] = useState<ProvinceId | null>(null);
+  const [moveTarget, setMoveTarget] = useState<MarchTarget | null>(null);
   const lastEventId = useRef(state.nextEventId - 1);
   const dockRef = useRef<HTMLElement>(null);
   const mapWrapRef = useRef<HTMLDivElement>(null);
@@ -174,10 +174,21 @@ export function GameScreen({
     return () => ro.disconnect();
   }, []);
 
-  // Drop selections of armies that no longer exist, or that have gone into the fog of war.
+  // Drop selections of armies that no longer exist, or that have gone into the fog of war. An army of
+  // yours that merged into another (arriving where it stood) hands the selection on to that one.
   const seen = ctrl.sight();
+  const selectedUnits = useRef(new Map<ArmyId, string[]>());
   const liveArmies = selectedArmies.filter((id) => state.armies[id] && isArmyVisible(state.armies[id], human, seen));
-  if (liveArmies.length !== selectedArmies.length) setSelectedArmies(liveArmies);
+  if (liveArmies.length !== selectedArmies.length) {
+    const own = Object.values(state.armies).filter((a) => a.owner === human);
+    const heirs = selectedArmies
+      .filter((id) => !state.armies[id])
+      .map((id) => own.find((a) => a.units.some((u) => selectedUnits.current.get(id)?.includes(u.id)))?.id)
+      .filter((id): id is ArmyId => !!id);
+    setSelectedArmies([...new Set([...liveArmies, ...heirs])]);
+    if (heirs.length && !liveArmies.length) setSelectedProvince(state.armies[heirs[0]].province);
+  }
+  selectedUnits.current = new Map(liveArmies.map((id) => [id, state.armies[id].units.map((u) => u.id)]));
 
   // Raise alerts for important new events.
   useEffect(() => {
@@ -223,7 +234,7 @@ export function GameScreen({
         }
         return [id];
       });
-      setSelectedProvince(army.move?.leg ? army.move.leg.from : army.province);
+      setSelectedProvince(army.province);
       setMoveMode(null);
     },
     [ctrl],
@@ -239,17 +250,19 @@ export function GameScreen({
       const i = own.findIndex((a) => a.id === selectedArmies[0]);
       const next = own[i < 0 ? (dir > 0 ? 0 : own.length - 1) : (i + dir + own.length) % own.length];
       selectArmy(next.id, false);
-      setFocus((f) => ({ province: next.move?.leg ? next.move.leg.from : next.province, seq: (f?.seq ?? 0) + 1 }));
+      setFocus((f) => ({ province: next.province, seq: (f?.seq ?? 0) + 1 }));
     },
     [ctrl, selectedArmies, selectArmy],
   );
 
   const issueMoves = useCallback(
-    (armies: ArmyId[], pid: ProvinceId, mode: MoveMode) => {
+    (armies: ArmyId[], to: MarchTarget, mode: MoveMode) => {
       let lastError: string | null = null;
       for (const id of armies) {
         if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
-        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid, mode });
+        // Patrols march between cities: one sent to a spot on a road patrols to the city on its side.
+        const road = mode === 'patrol' ? undefined : to.road;
+        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: to.province, road, mode });
         if (!r.ok) lastError = r.reason;
       }
       if (lastError) setToast(lastError);
@@ -258,20 +271,20 @@ export function GameScreen({
   );
 
   const orderMove = useCallback(
-    (pid: ProvinceId) => {
+    (to: MarchTarget) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
-      const owner = ctrl.state.provinces[pid].owner;
+      const owner = ctrl.state.provinces[to.province].owner;
       // A right-click without a chosen order attacks into foreign land and moves within our own.
       const mode = moveMode ?? (owner === ctrl.human ? 'move' : 'attack');
       setMoveMode(null);
       // Marching on a nation we are at peace with asks to declare war first; the order follows the declaration.
       if (own.length && owner !== ctrl.human && owner !== 'neutral' && !atWar(ctrl.state, ctrl.human, owner)) {
         const check = checkDeclareWar(ctrl.state, ctrl.human, owner);
-        if (check.ok) setWarOrder({ target: owner, to: pid, mode, armies: own });
+        if (check.ok) setWarOrder({ target: owner, to, mode, armies: own });
         else setToast(`At peace with ${nationName(world, owner)}. ${check.reason}`);
         return;
       }
-      issueMoves(own, pid, mode);
+      issueMoves(own, to, mode);
     },
     [ctrl, world, selectedArmies, moveMode, issueMoves],
   );
@@ -412,7 +425,7 @@ export function GameScreen({
             onBoxSelect={(ids) => {
               const first = ctrl.state.armies[ids[0]];
               setSelectedArmies(ids);
-              setSelectedProvince(first.move?.leg ? first.move.leg.from : first.province);
+              setSelectedProvince(first.province);
               setMoveMode(null);
             }}
             onOrderMove={orderMove}
@@ -458,7 +471,7 @@ export function GameScreen({
               {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="banner dev-banner">Development speed {ctrl.loop.speed}x</div>}
               {moveMode && !touch && (
                 <div className="banner hint-banner">
-                  <Icon name="target" size={16} /> {ORDER[moveMode].hint}: choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
+                  <Icon name="target" size={16} /> {ORDER[moveMode].hint}: choose a destination — click a province, a spot on a road or an enemy army <span className="muted">(Esc to cancel)</span>
                 </div>
               )}
               {moveMode && touch && (
@@ -469,11 +482,11 @@ export function GameScreen({
                       <span>Tap a destination</span>
                     ) : pendingRoute?.blocked ? (
                       <span>
-                        {world.provinces[moveTarget].city.name} <span className="muted">· {pendingRoute.blocked}</span>
+                        {targetName(world, moveTarget)} <span className="muted">· {pendingRoute.blocked}</span>
                       </span>
                     ) : (
                       <span>
-                        {ORDER[moveMode].hint} {world.provinces[moveTarget].city.name}
+                        {ORDER[moveMode].hint} {targetName(world, moveTarget)}
                         {pendingRoute && <span className="muted"> · {formatDuration(pendingRoute.ticks, state)}</span>}
                       </span>
                     )}
@@ -643,7 +656,7 @@ export function GameScreen({
         <DeclareWarDialog
           ctrl={ctrl}
           target={warOrder.target}
-          order={`${warOrder.armies.length === 1 ? 'Your army then marches' : 'Your armies then march'} on ${world.provinces[warOrder.to].city.name}.`}
+          order={`${warOrder.armies.length === 1 ? 'Your army then marches' : 'Your armies then march'} on ${targetName(world, warOrder.to)}.`}
           onCancel={() => setWarOrder(null)}
           onConfirm={() => {
             const r = ctrl.submit({ type: 'declareWar', nation: human, target: warOrder.target });
@@ -809,6 +822,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
               </span>
             </div>
             {army.move?.leg && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
+            {army.road && !army.move?.leg && <div className="hc-row">On the road to {world.provinces[army.road.toward].city.name}</div>}
             {!army.supplied && <div className="hc-row bad">Out of supply</div>}
           </div>
         )}

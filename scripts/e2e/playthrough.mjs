@@ -162,13 +162,19 @@ try {
     if (!path || path.at(-1) !== 'es-castile') throw new Error('move order not accepted');
   }
   step('ordered the Catalan and northern armies to Castile & León', { armies: others.length });
+  // Armies that reach a city where another of yours stands merge into it: follow them by their formations.
+  const formationsOf = (ids) => state(`(s) => ${JSON.stringify(ids)}.flatMap((id) => s.armies[id].units.map((u) => u.id))`);
+  const standIn = (pid, units) =>
+    `(s) => ${JSON.stringify(units)}.every((u) => Object.values(s.armies).some((a) => a.province === '${pid}' && !a.move && a.units.some((x) => x.id === u)))`;
+  const madridUnits = await formationsOf([madridArmy]);
+  const otherUnits = await formationsOf(others);
 
   // 6. Run at DEV speed until the army arrives and the timers complete.
   await setSpeed(20);
   await setPaused(false);
-  await waitUntil(`(s) => s.armies['${madridArmy}'].province === 'es-castile' && !s.armies['${madridArmy}'].move`, 30000, 'army arrival');
+  await waitUntil(standIn('es-castile', madridUnits), 30000, 'army arrival');
   step('army arrived in Castile & León');
-  await waitUntil(`(s) => ${JSON.stringify(others)}.every((id) => s.armies[id].province === 'es-castile' && !s.armies[id].move)`, 60000, 'Catalan and northern armies');
+  await waitUntil(standIn('es-castile', otherUnits), 60000, 'Catalan and northern armies');
   step('the Catalan and northern armies arrived');
   await waitUntil((s) => (s.provinces['es-madrid'].buildings.industry ?? 0) >= 2, 30000, 'Industrial Works L2');
   step('Industrial Works level 2 completed (production improved)', {
@@ -196,19 +202,21 @@ try {
   let r = await armyPoint(recruits);
   await page.mouse.click(r.x, r.y);
   await page.waitForSelector(`[data-testid="army-panel"][data-army="${recruits}"]`);
+  const recruitUnits = await formationsOf([recruits]);
   r = await provincePoint('es-castile');
   await page.mouse.click(r.x, r.y, { button: 'right' });
   await setPaused(false);
-  await waitUntil(`(s) => s.armies['${recruits}'].province === 'es-castile' && !s.armies['${recruits}'].move`, 30000, 'recruits arrival');
+  await waitUntil(standIn('es-castile', recruitUnits), 30000, 'recruits arrival');
   step('recruits marched to Castile & León');
 
-  // 7. Merge in Castile & León and attack Portugal (a minor power): the order asks to declare war first.
+  // 7. The armies merged as they arrived in Castile & León; attack Portugal (a minor power): the order asks to declare war first.
   await setPaused(true);
-  p = await armyPoint(madridArmy);
-  await page.mouse.click(p.x, p.y);
-  await page.click('text=Merge here');
   const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'es-castile'));
-  if (merged.length !== 1) throw new Error('merge failed');
+  if (merged.length !== 1) throw new Error(`armies did not merge on arrival: ${merged.length} in Castile & León`);
+  const host = merged[0].id;
+  p = await armyPoint(host);
+  await page.mouse.click(p.x, p.y);
+  await page.waitForSelector(`[data-testid="army-panel"][data-army="${host}"]`);
   const portugal = await provincePoint('pt-lisbon');
   await page.click('[data-testid="move-mode"]');
   await page.mouse.click(portugal.x, portugal.y);
@@ -216,9 +224,9 @@ try {
   if ((await state((s) => s.nations.es.relations.pt.status)) !== 'peace') throw new Error('war declared without asking');
   await page.click('[data-testid="confirm"]');
   if ((await state((s) => s.nations.es.relations.pt.status)) !== 'war') throw new Error('war on Portugal not declared');
-  const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), madridArmy);
+  const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), host);
   if (target !== 'pt-lisbon') throw new Error('attack order not accepted');
-  step('merged armies, ordered the invasion of Portugal and declared war when asked', { castileArmyMerged: castileArmy, units: merged[0].units.length });
+  step('armies merged on arrival; ordered the invasion of Portugal and declared war when asked', { mergedInto: host, castileArmy, units: merged[0].units.length });
   await setPaused(false);
   await waitUntil((s) => Object.keys(s.battles).includes('pt-lisbon'), 30000, 'battle start');
   await page.waitForTimeout(400);

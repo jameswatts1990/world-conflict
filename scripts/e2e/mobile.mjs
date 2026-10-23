@@ -259,7 +259,13 @@ try {
   //    pause from the top bar, resume from the Paused banner.
   await page.evaluate(() => window.__game.setSpeed(20));
   await page.tap('[data-testid="pause"]');
-  await waitUntil(`(s) => s.armies['${army}'].province === 'es-castile' && !s.armies['${army}'].move`, 30000, 'army arrival');
+  // It merges into the army standing in Castile & León when it arrives: follow its formations.
+  const units = await state(`(s) => s.armies['${army}'].units.map((u) => u.id)`);
+  await waitUntil(
+    `(s) => ${JSON.stringify(units)}.every((u) => Object.values(s.armies).some((a) => a.province === 'es-castile' && !a.move && a.units.some((x) => x.id === u)))`,
+    30000,
+    'army arrival',
+  );
   await page.tap('[data-testid="pause"]');
   await page.tap('[data-testid="paused-banner"]');
   if (await page.evaluate(() => window.__game.loop.paused)) throw new Error('tapping the Paused banner did not resume');

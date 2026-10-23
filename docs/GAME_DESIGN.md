@@ -224,8 +224,21 @@ Specialities are optional: a nation without one shows its bloc instead.
   and the destination until stopped, fighting and capturing like Attack. **Hold position** halts the army after
   its current leg and keeps it there, never withdrawing on its own, until it is given a new march order or
   released. Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves
-  immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and **disband** (half the
-  manpower returns; not in battle) are available while stationary.
+  immediately, even from a battle (a withdrawal under fire, see §7); given on the march, the army goes on to the
+  next city or turns back to the last one, whichever reaches the destination sooner. Split, merge and **disband**
+  (half the manpower returns; not in battle) are available while stationary.
+- **Halting on a road.** A march can end at any spot on a road over land (not a sea crossing), not only in a city:
+  the army stops there and stands in the province whose part of the road it is (the map draws the border where the
+  straight road between the two cities crosses it). There it is in that province for every rule (it fights, captures,
+  is supplied and watches from there) but stands apart from the city: recruits gather in the city, merging needs
+  armies at the same spot, and marching on along the road takes only the rest of the leg; any other march first walks
+  back to its own city. A broken army on a road falls back only along it, onward (back through the city would lead
+  into the fighting). Stopping or holding an army whose march was to end on the leg it is on stops it at that spot.
+  Patrols run between cities.
+- **Merging on arrival.** An army of yours that ends its march in a city where another of your armies stands idle
+  joins it (not one passing through, holding or halting on a road): the army standing there keeps its orders and
+  options, the merged army the senior (lowest-numbered) name, and the field reports say so. Computer opponents gather
+  their own armies with merge orders when they think, up to a size.
 - Each army has a **Fall back when broken** option, off by default: when its strength-weighted morale drops below
   **25%** in battle it withdraws on its own to the best friendly neighbouring province, paying the usual price of a
   withdrawal under fire. With nowhere to go, or while holding position, it fights on. A split army keeps its
@@ -304,7 +317,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
   nation's land (which asks first). After peace there is a 5-minute truce.
 - Peace can be offered after 3 minutes of war, and offers expire after 90 s. After an offer is rejected or ignored, the
   side that made it waits 4 minutes before proposing again (this also keeps the AI from flooding the player with
-  offers). Peace is status quo: borders freeze and trespassing armies withdraw.
+  offers). Peace is status quo: borders freeze and trespassing armies withdraw home, those marching through the other
+  side's land included; an army setting out from its own land into the other side's is turned back at the border.
 - The AI accepts peace when weaker (power below 85% of the enemy's), demoralised (national morale below 40), war-weary
   (25 min) or after losing its capital. It offers peace when beaten (power below 60% of the enemy's with its own core
   occupied) or demoralised (morale below 32), and now and then once war-weary.
@@ -449,12 +463,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
   formations, and strength and morale bars; Your armies have a white rim, armies of
   nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
-  Armies standing in one province fill rows of two above its city, yours first, so a crowded province grows a short
-  pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
+  Armies standing in one city (or at one spot on a road) fill rows of two above it, yours first, so a crowded province
+  grows a short pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
   standing), then the selection, so a click lands on what you most likely meant. Marching routes are animated dashed
-  lines with arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy
-  army previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At
-  peace with France: declare war to enter"); right-clicking an enemy army attacks it. An order into the land of a
+  lines with arrowheads, ending at the spot where a march halts on a road. Battles show a pulsing explosion. With your
+  army selected, pointing at a province, a spot on a road or an enemy army previews the route, highlights the
+  provinces on it and shows the arrival time (or why there is no route: "At peace with France: declare war to
+  enter"); right-clicking an enemy army attacks it. The roads over land take the pointer while one of your armies is
+  selected: the road nearest the pointer counts (roads into one city run close together), and pointing at a city on
+  it means the city itself. An order into the land of a
   nation you are at peace with asks first whether to declare war on it (the same dialog as in Diplomacy): confirming
   declares war and gives the order, cancelling gives neither; during a truce the order is refused with the time left.
   On touch screens the move banner offers **Declare war…** in place of Confirm. The army panel's **Move**, **Attack** and **Patrol**
@@ -466,9 +483,11 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   horsemen with lances or sabres, field, heavy and anti-tank guns with their crews, armoured cars, and tanks from the
   Mark IV, A7V and Renault FT to the sloped tanks of 1940. Each stands on a ring in the owner's colour (white-rimmed
   for yours, red for enemies at war with you, a running dashed ring for the selection) under a badge with its flag,
-  number of formations, strength and morale. Armies in a province take spots around its city's built-up area, yours
-  first: beside it, then its corners, then wider rings, each clear of the others and of the name plate, and an army
-  keeps its spot when others arrive. They face the viewer, or the fighting when there is a battle. Marching armies
+  number of formations, strength and morale. Armies in a city take spots on the edge of its built-up area (its
+  buildings and old town; empty plots are open ground), yours first: beside it, on the side with more room from the
+  cities nearby (Paris's garrison stands east of the city, away from Rouen), then its corners, then wider rings, each
+  clear of the others and of the name plate, and an army keeps its spot when others arrive. An army halted on a road
+  stands where the order put it, clear of either city, looking on down the road. They face the viewer, or the fighting when there is a battle. Marching armies
   walk from the edge of one city to the edge of the next (abreast when several share a road), facing the way they go,
   foot and horse bobbing; armies crossing the sea sail in a troopship with its wake. Arriving, leaving or making
   room, an army walks to its new spot rather than jumping, and a model behind a city stands on its streets but under

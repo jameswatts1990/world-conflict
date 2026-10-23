@@ -8,7 +8,7 @@ import { ARMY_RULES, UNITS } from './config/units';
 import { pushEvent } from './events';
 import { refund, spend } from './ledger';
 import { armyName } from './names';
-import { findPath } from './pathfinding';
+import { planMarch } from './pathfinding';
 import {
   atWar,
   buildingSlots,
@@ -30,13 +30,16 @@ import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
-import type { ArmyId, BuildingType, GameState, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import type { Army, ArmyId, ArmyMove, BuildingType, GameState, MoveMode, NationId, ProvinceId, RoadSpot, TechId, UnitId, UnitType } from './types';
 import { durationText, nationName, sentence } from './text';
-import type { World } from './world';
+import { connectionBetween, type World } from './world';
 
 export type Command =
-  /** `mode` defaults to attack: halt to capture every hostile province on the way. */
-  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId; mode?: MoveMode }
+  /**
+   * `mode` defaults to attack: halt to capture every hostile province on the way. With `road`, the
+   * march ends on the road out of `to`'s city towards a neighbour, rather than in the city.
+   */
+  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId; road?: RoadSpot | null; mode?: MoveMode }
   | { type: 'setAutoRetreat'; nation: NationId; armyId: ArmyId; autoRetreat: boolean }
   /** Hold position: halt after the current leg and stay, never withdrawing on its own; `hold: false` releases it. */
   | { type: 'hold'; nation: NationId; armyId: ArmyId; hold: boolean }
@@ -74,21 +77,51 @@ function checkActor(state: GameState, nation: NationId): CommandResult {
 // Validators (exported for the UI and AI)
 // ---------------------------------------------------------------------------
 
-export function checkMove(state: GameState, world: World, nation: NationId, armyId: ArmyId, to: ProvinceId): CommandResult {
+export function checkMove(
+  state: GameState,
+  world: World,
+  nation: NationId,
+  armyId: ArmyId,
+  to: ProvinceId,
+  road?: RoadSpot | null,
+  mode?: MoveMode,
+): CommandResult {
   const actor = checkActor(state, nation);
   if (!actor.ok) return actor;
   const army = state.armies[armyId];
   if (!army || army.owner !== nation) return fail('Not your army.');
   if (!world.provinces[to]) return fail('Unknown province.');
-  const from = army.move?.leg ? army.move.leg.to : army.province;
-  if (to === from && !army.move?.leg) return fail('The army is already there.');
-  if (army.move?.leg && to === army.move.leg.from) return OK; // reversing
+  if (road) {
+    const conn = connectionBetween(world, to, road.toward);
+    if (!conn || conn.kind === 'strait') return fail('Armies halt only on roads over land.');
+    if (!(road.at > 0 && road.at < 1)) return fail('That is not a point on the road.');
+    if (mode === 'patrol') return fail('Patrols march between cities.');
+  }
+  if (!army.move?.leg && army.province === to && sameSpot(army.road, road)) return fail('The army is already there.');
+  // Back to where it stands (or set out from) is always open.
   const p = state.provinces[to];
-  if (p.owner !== nation && !(p.owner === 'neutral' || atWar(state, nation, p.owner))) {
+  if (to !== army.province && p.owner !== nation && !(p.owner === 'neutral' || atWar(state, nation, p.owner))) {
     return fail(`You are at peace with ${nationName(world, p.owner)}. Declare war first.`);
   }
-  if (to !== from && !findPath(state, world, army, from, to)) return fail('No route: blocked by territory you may not enter.');
+  if (!planMarch(state, world, army, to, road)) return fail('No route: blocked by territory you may not enter.');
   return OK;
+}
+
+/** Two places on the roads out of one city: the same spot (both in the city itself when absent)? */
+function sameSpot(a: RoadSpot | null | undefined, b: RoadSpot | null | undefined): boolean {
+  return !a || !b ? !a && !b : a.toward === b.toward && a.at === b.at;
+}
+
+/** Do two armies stand together: in the same city, or at the same spot on a road? */
+export function standTogether(a: Army, b: Army): boolean {
+  return !isArmyInTransit(a) && !isArmyInTransit(b) && a.province === b.province && sameSpot(a.road, b.road);
+}
+
+/** Stopping: the army finishes the leg it is on (or stops where its march was to end on it) and goes no further. */
+function stopAfterLeg(move: ArmyMove): ArmyMove | null {
+  if (!move.leg) return null;
+  const halt = move.path.length === 1 ? move.halt : undefined;
+  return { path: [move.leg.to], leg: move.leg, mode: move.mode, ...(halt ? { halt } : {}) };
 }
 
 export function checkRecruit(
@@ -232,30 +265,23 @@ export function checkOfferPeace(state: GameState, world: World, nation: NationId
 export function applyCommand(state: GameState, world: World, cmd: Command): CommandResult {
   switch (cmd.type) {
     case 'move': {
-      const check = checkMove(state, world, cmd.nation, cmd.armyId, cmd.to);
+      const mode = cmd.mode ?? 'attack';
+      const check = checkMove(state, world, cmd.nation, cmd.armyId, cmd.to, cmd.road, mode);
       if (!check.ok) return check;
       const army = state.armies[cmd.armyId];
-      const mode = cmd.mode ?? 'attack';
+      // Mid-march it goes on or turns back, whichever is quicker; from a road, the same.
+      const plan = planMarch(state, world, army, cmd.to, cmd.road)!;
+      const standing = !army.move?.leg;
       army.holding = false;
-      const leg = army.move?.leg;
-      if (leg) {
-        if (cmd.to === leg.from) {
-          // Turn around mid-march.
-          army.province = leg.to;
-          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
-          if (mode === 'patrol') army.move.patrol = [leg.to, leg.from];
-          return OK;
-        }
-        const rest = cmd.to === leg.to ? [] : findPath(state, world, army, leg.to, cmd.to)!.path;
-        army.move = { path: [leg.to, ...rest], leg, mode };
-        if (mode === 'patrol') army.move.patrol = [leg.to, cmd.to];
-        return OK;
-      }
-      const route = findPath(state, world, army, army.province, cmd.to)!;
-      army.move = { path: route.path, leg: null, mode };
-      if (mode === 'patrol') army.move.patrol = [army.province, cmd.to];
+      army.move = { path: plan.path, leg: plan.leg, mode };
+      if (plan.halt) army.move.halt = plan.halt;
+      if (mode === 'patrol') army.move.patrol = [plan.start === cmd.to && plan.leg ? plan.leg.from : plan.start, cmd.to];
+      if (!standing) return OK;
       // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
-      if (startLeg(state, world, army)) withdrawArmy(state, world, army, army.province);
+      let departed = !!plan.leg;
+      if (departed) delete army.road;
+      else departed = startLeg(state, world, army);
+      if (departed) withdrawArmy(state, world, army, army.province);
       return OK;
     }
     case 'stop': {
@@ -264,7 +290,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (!army.move) return fail('The army is not moving.');
-      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      army.move = stopAfterLeg(army.move);
       return OK;
     }
     case 'hold': {
@@ -273,7 +299,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       army.holding = cmd.hold;
-      if (cmd.hold && army.move) army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      if (cmd.hold && army.move) army.move = stopAfterLeg(army.move);
       return OK;
     }
     case 'setAutoRetreat': {
@@ -297,6 +323,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       }
       army.units = army.units.filter((u) => !ids.has(u.id));
       const created = createArmy(state, cmd.nation, army.province, moving);
+      if (army.road) created.road = { ...army.road };
       created.supplied = army.supplied;
       created.arrivedVia = army.arrivedVia;
       created.autoRetreat = army.autoRetreat;
@@ -309,8 +336,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const armies = cmd.armyIds.map((id) => state.armies[id]);
       if (armies.length < 2 || armies.some((a) => !a || a.owner !== cmd.nation)) return fail('Select at least two of your armies.');
       if (new Set(cmd.armyIds).size !== cmd.armyIds.length) return fail('Duplicate army.');
-      if (armies.some((a) => isArmyInTransit(a) || a.province !== armies[0].province)) {
-        return fail('Armies must be stationed in the same province.');
+      if (armies.some((a) => !standTogether(a, armies[0]))) {
+        return fail('Armies must stand together: in the same city, or at the same spot on a road.');
       }
       const [first, ...rest] = armies;
       for (const a of rest) {

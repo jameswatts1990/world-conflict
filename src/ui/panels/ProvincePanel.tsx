@@ -711,7 +711,10 @@ function ArmiesTab({
                   title={`${countOf(a.units.length, 'formation')} · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
                 >
                   <OwnerFlag world={world} owner={a.owner} province={a.province} size={13} />
-                  <span className="ar-name">{name}</span>
+                  <span className="ar-name">
+                    {name}
+                    {a.road && <span className="muted small"> · road to {world.provinces[a.road.toward].city.name}</span>}
+                  </span>
                   <CompositionIcons world={world} state={state} army={a} size={20} />
                   <span className="ar-bars">
                     <span className="ar-str">

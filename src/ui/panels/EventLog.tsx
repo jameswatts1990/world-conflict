@@ -25,6 +25,7 @@ const KIND_ICON: Record<string, IconName> = {
   rout: 'warning',
   surrender: 'flag',
   disband: 'exit',
+  merge: 'merge',
   demolish: 'factory',
   'city-growth': 'city',
   'peace-offer': 'flag',

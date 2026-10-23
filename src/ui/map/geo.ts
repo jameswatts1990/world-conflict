@@ -7,7 +7,7 @@ import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Polygon
 import { feature, merge, mesh } from 'topojson-client';
 import type { GeometryCollection, MultiPolygon as TopoMultiPolygon, Polygon as TopoPolygon, Topology } from 'topojson-specification';
 import mapJson from '../../assets/map/map.topo.json';
-import type { OwnerId, ProvinceId, World } from '../../sim';
+import type { OwnerId, ProvinceId, RoadSpot, World } from '../../sim';
 
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 820;
@@ -66,6 +66,26 @@ export interface MapGeometry {
   reach: Record<ProvinceId, number[] | null>;
   /** For a coastal province: the point of its sea coast nearest the city, and the direction out to sea. */
   ports: Record<ProvinceId, { x: number; y: number; facing: number } | null>;
+  /**
+   * For each road over land (`a|b`, both ways round): how far from city `a` towards city `b` the
+   * straight line between them crosses their border (0..1).
+   */
+  borderAt: Record<string, number>;
+  /** The side of each city where its first army stands: -1 left, 1 right, whichever has more room from the cities nearby. */
+  campSide: Record<ProvinceId, -1 | 1>;
+}
+
+/** Where a fraction `f` of the way from city `a` to city `b` lies: in which province, and where on the road out of its city. */
+export function roadSpotAt(geo: MapGeometry, a: ProvinceId, b: ProvinceId, f: number): { province: ProvinceId; road: RoadSpot } {
+  const border = geo.borderAt[`${a}|${b}`] ?? 0.5;
+  return f < border ? { province: a, road: { toward: b, at: f } } : { province: b, road: { toward: a, at: 1 - f } };
+}
+
+/** A spot on a road, in map units. */
+export function roadPoint(geo: MapGeometry, province: ProvinceId, road: RoadSpot): [number, number] {
+  const [x1, y1] = geo.anchors[province];
+  const [x2, y2] = geo.anchors[road.toward];
+  return [x1 + (x2 - x1) * road.at, y1 + (y2 - y1) * road.at];
 }
 
 /** How far `reach` looks from a city, in map units, and in how many directions. */
@@ -276,6 +296,39 @@ export function buildMapGeometry(world: World): MapGeometry {
   }
   const cities = cityGeometry(world, anchors, segmentsOf(outline, project), coasts);
 
+  // Where each road over land passes from one province into the other: halfway between where it
+  // leaves the first city's province and where it enters the second's (the same point when it runs
+  // straight across their border; a road can cut across a corner of a third province).
+  const outlines: Record<ProvinceId, Segment[]> = {};
+  for (const id of world.provinceIds) outlines[id] = segmentsOf(mesh(topo, geoms, (g, h) => pidOf(g) === id || pidOf(h) === id), project);
+  /** How far from city `a` towards city `b` the road leaves `a`'s province (an anchor just offshore enters it first). */
+  const exit = (a: ProvinceId, b: ProvinceId): number => {
+    const [[ax, ay], [bx, by]] = [anchors[a], anchors[b]];
+    const hits = crossings(outlines[a], ax, ay, bx - ax, by - ay).filter((t) => t < 1);
+    return (insideTest(outlines[a])(ax, ay) ? hits[0] : hits[1]) ?? 0.5;
+  };
+  const borderAt: Record<string, number> = {};
+  for (const c of world.scenario.connections) {
+    if (c.kind === 'strait') continue;
+    const t = Math.min(0.95, Math.max(0.05, (exit(c.a, c.b) + 1 - exit(c.b, c.a)) / 2));
+    borderAt[`${c.a}|${c.b}`] = t;
+    borderAt[`${c.b}|${c.a}`] = 1 - t;
+  }
+
+  // Armies stand beside their city, on the side away from the cities crowding it (Rouen sits just left of Paris).
+  const campSide: Record<ProvinceId, -1 | 1> = {};
+  for (const id of world.provinceIds) {
+    const [ax, ay] = anchors[id];
+    let lean = 0;
+    for (const other of world.provinceIds) {
+      if (other === id) continue;
+      const [dx, dy] = [anchors[other][0] - ax, anchors[other][1] - ay];
+      // Cities off to the side count, those well above or below hardly.
+      if (Math.abs(dy) < Math.abs(dx) * 1.5) lean += Math.sign(dx) / (dx * dx + dy * dy || 1);
+    }
+    campSide[id] = lean > 0 ? -1 : 1;
+  }
+
   const worldBounds = path.bounds({ type: 'Sphere' }) as [[number, number], [number, number]];
   // Mercator is unbounded at the poles; clamp to the inhabited latitudes we draw.
   const north = projection([0, 84])![1];
@@ -299,6 +352,8 @@ export function buildMapGeometry(world: World): MapGeometry {
     provinceBorders,
     worldBounds,
     ...cities,
+    borderAt,
+    campSide,
     nationBorders: (ownerOf) =>
       path(
         mesh(topo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),

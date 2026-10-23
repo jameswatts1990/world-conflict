@@ -136,6 +136,7 @@ export function withdrawArmy(state: GameState, world: World, army: Army): void {
     return;
   }
   army.province = target;
+  delete army.road;
   army.move = null;
   pushEvent(state, 'withdraw', `The ${armyName(world, army)} withdrew from ${provinceName(world, start)} to ${provinceName(world, target)}.`, {
     nations,

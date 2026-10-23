@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { MORALE, SUPPLY } from '../../sim/config/rules';
 import { UNITS } from '../../sim/config/units';
 import {
-  armiesIn,
   armyMorale,
   armyName,
   armySpeedKmPerTick,
   currentModel,
-  findPath,
   formationName,
   hostileArmiesIn,
+  marchTicksLeft,
   provinceName,
   rankName,
   scaledTicks,
+  standTogether,
   unitGen,
   unitStats,
   veterancyRank,
@@ -71,7 +71,8 @@ export function ArmyPanel({
 
   let status: string;
   let statusIcon: IconName;
-  const here = provinceName(world, army.province);
+  // On a road it stands out of town, still in the province whose part of the road it is.
+  const here = army.road && !leg ? `${provinceName(world, army.province)}, on the road to ${world.provinces[army.road.toward].city.name}` : provinceName(world, army.province);
   if (army.holding && !leg) {
     status = hostiles.length > 0 ? `Holding ${here} under attack` : `Holding position in ${here}`;
     statusIcon = 'lock';
@@ -93,12 +94,13 @@ export function ArmyPanel({
     statusIcon = 'shield';
   }
 
-  let eta: number | null = null;
-  if (army.move && dest) {
-    const from = leg ? leg.to : army.province;
-    const rest = from === dest ? 0 : (findPath(state, world, army, from, dest)?.ticks ?? 0);
-    eta = (leg ? leg.duration - leg.elapsed : 0) + rest;
-  }
+  const eta = army.move && dest ? marchTicksLeft(state, world, army) : null;
+  const halt = army.move?.halt;
+  const destName = halt
+    ? `${world.provinces[halt.province].city.name}–${world.provinces[halt.toward].city.name} road`
+    : dest
+      ? world.provinces[dest].name
+      : '';
 
   const selectedOwn = armyIds.map((id) => state.armies[id]).filter((a) => a && a.owner === human);
   const setRetreat = (on: boolean) => {
@@ -108,7 +110,8 @@ export function ArmyPanel({
     for (const a of selectedOwn) ctrl.submit({ type: 'hold', nation: human, armyId: a.id, hold });
   };
 
-  const sameProvinceOwn = armiesIn(state, army.province).filter((a) => a.owner === human);
+  // Armies of yours standing with this one: in its city, or at its spot on a road.
+  const sameProvinceOwn = Object.values(state.armies).filter((a) => a.owner === human && standTogether(a, army));
   const grace = scaledTicks(state, SUPPLY.attritionGraceSeconds);
 
   const split = () => {
@@ -192,7 +195,7 @@ export function ArmyPanel({
             {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
             <div className="march-meta">
               <span>
-                <Icon name="target" size={13} /> {world.provinces[dest].name}
+                <Icon name="target" size={13} /> {destName}
               </span>
               {eta !== null && (
                 <span>
@@ -269,7 +272,7 @@ export function ArmyPanel({
                 const ids = [...sameProvinceOwn].sort((a, b) => a.serial - b.serial).map((a) => a.id);
                 if (ctrl.submit({ type: 'merge', nation: human, armyIds: ids }).ok) onSelectArmies([ids[0]]);
               }}
-              title="Merge all your armies in this province into the senior one"
+              title={army.road ? 'Merge all your armies at this spot on the road into the senior one' : 'Merge all your armies in this city into the senior one'}
             >
               <Icon name="merge" size={18} />
               <span>Merge here</span>

@@ -53,7 +53,12 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
   replays and the determinism tests depend on it.
 - Everything a player or AI does goes through the validated commands in `src/sim/commands.ts`.
 - New state fields are optional with a sensible default when absent, so older saves still load; otherwise add a
-  migration in `src/sim/save.ts`.
+  migration in `src/sim/save.ts`. Clear an optional field with `delete` rather than writing `null` over an absent
+  one: a field that appears changes the state hash even when play is identical.
+- An army's `province` is where it stands; on a leg, where it last stood (the leg's `from`, or its `to` when it is
+  walking back to its city or has turned round). An army with `road` set stands on a road out of that province's city
+  and counts as in the province for every rule. Plan marches with `planMarch` (it starts from a city, a road or
+  mid-leg); `findPath` is city to city.
 
 ## How the computer opponents should behave
 
