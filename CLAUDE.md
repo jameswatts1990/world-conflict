@@ -20,6 +20,20 @@ Guidance for Claude Code working in this repository.
 - `src/ui`: rendering and input.
 - `tests/`: Vitest suite; `tests/helpers.ts` has `quietGame` (no AI), `aiGame`, `place`, `run`, `setWar`.
 
+## Balance lab (docs/BALANCE.md)
+
+- `npm run balance` plays all-AI campaigns in parallel and reports on balance, pace and content use; `--vs main`
+  compares with another commit on the same seeds and `--set PATH=VALUE` tries a config value. `npm run balance:units`
+  prices units in staged battles; `npm run balance:tune` searches AI settings for the design goals in
+  `scripts/balance/goals.ts`. Runs land in `balance-runs/` (ignored by git).
+- After changing rules, AI or content, run `npm run balance -- --vs main` (and `npm run balance:units -- --vs main`
+  for unit changes) and put what moved in the pull request.
+- Every number the AI weighs belongs in `src/sim/config/ai.ts`, not inline in `ai/*.ts`, so `--set` and the tuner can
+  reach it. A new unit type needs a share in `AI.doctrineMix`, a new building a rule in `handleConstruction`; the
+  reports flag content the AI never uses.
+- The tools in `scripts/balance/` must not import `src/sim` statically (type imports are fine): they load whichever
+  copy of the simulation a run asks for, which is how `--vs` plays other commits.
+
 ## Debugging AI behaviour
 
 - `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,

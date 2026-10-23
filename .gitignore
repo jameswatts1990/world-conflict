@@ -7,3 +7,6 @@ data-src/
 # Local verification output
 e2e-output/
 .vite
+
+# Balance runs (npm run balance, balance:units, balance:tune)
+balance-runs/

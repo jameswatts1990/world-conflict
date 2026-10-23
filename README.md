@@ -50,6 +50,7 @@ What is in it (Milestone 2, Depth):
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
 - Adding a country: [docs/ADDING_A_COUNTRY.md](docs/ADDING_A_COUNTRY.md) (blocs, the checklist, what to streamline next)
+- Balance lab: [docs/BALANCE.md](docs/BALANCE.md) (headless campaigns, the unit lab, training the AI; what to run when content is added)
 - Map data and licence: [docs/ATTRIBUTION.md](docs/ATTRIBUTION.md)
 
 ## Run it
@@ -70,7 +71,9 @@ Other scripts:
 | `npm test` | Simulation test suite (Vitest, ~15 s), including randomised invariant checks |
 | `npm run typecheck` | TypeScript project check |
 | `npm run sim:campaign -- <seed> <minutes>` | Headless all-AI campaign for balance tuning |
-| `npx vite-node scripts/dev/batch.ts <seeds> <minutes>` | Several headless campaigns, summarised (withdrawals, captures, wars, research pace) |
+| `npm run balance` | Hundreds of all-AI campaigns in parallel, reported: who wins and who is knocked out, pace, AI personalities, how the AI uses every unit and building, red flags. `--vs main` compares with another commit on the same seeds, `--set PATH=VALUE` tries a config change ([docs/BALANCE.md](docs/BALANCE.md)) |
+| `npm run balance:units` | The unit lab: staged battles between armies of equal cost, showing what each unit type is worth for its price by technology level, ground and role |
+| `npm run balance:tune` | Trains the AI: searches its settings (`src/sim/config/ai.ts`) for those that best meet the design goals, then checks the proposal on fresh campaigns |
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
@@ -79,8 +82,10 @@ Other scripts:
 | `npm run e2e` | Scripted browser playthrough against the test build (`npm run build:e2e` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
 | `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build:e2e` first; about 20 seconds): upright, then turned on its side |
 
-The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and both browser playthroughs on
-every push and pull request.
+The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, a short check of the balance tools, the
+build and both browser playthroughs on every push and pull request. The Balance workflow (`.github/workflows/balance.yml`)
+plays 400 campaigns and the unit lab every night, on demand, and on pull requests labelled `balance` (against their base
+branch), and posts the reports on the run's summary page.
 
 ## Deploy to GitHub Pages
 
@@ -197,9 +202,10 @@ tests/              Simulation tests
 
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
-- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  every campaign ends on objectives (8 of 8, after 68–137 minutes), and the AI conquers nearly every minor power
-  along the way, most between minutes 10 and 40. Serbia is nearly always conquered, and France in most runs.
+- Balance has only been tuned with headless AI-vs-AI campaigns (the balance lab, [docs/BALANCE.md](docs/BALANCE.md));
+  human playtesting is still needed. Over 200 such campaigns, 72% end on objectives, after 117 minutes (median), and
+  the AI conquers nearly every minor power along the way, most of them by minute 30. France lasts only a quarter of
+  them and Serbia under a fifth, and infantry-heavy AIs win more than twice as often as armoured ones.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

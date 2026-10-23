@@ -1,0 +1,154 @@
+import { resolve } from 'node:path';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { EUROPE_SCENARIO, Simulation, buildWorld, createInitialState, heldVp, UNIT_TYPES } from '../src/sim';
+import { compareTests, renderComparison } from '../scripts/balance/compare';
+import { armyAround, labGrounds, REFERENCE, runLabCell, techLevels } from '../scripts/balance/lab';
+import { applyOverrides, parseOverride } from '../scripts/balance/overrides';
+import { playGame, type GameRecord } from '../scripts/balance/record';
+import { renderReport } from '../scripts/balance/report';
+import { balanceWorld, catalogue, loadSim, type Sim } from '../scripts/balance/sim';
+import { knobPosition, knobValue, type Knob } from '../scripts/balance/space';
+import { meanDiffP, median, meanOf, qValues, quantile, rateDiffP, wilsonHalfWidth } from '../scripts/balance/stats';
+import { describeSeeds, summarise, type Summary } from '../scripts/balance/summary';
+
+describe('balance statistics', () => {
+  it('gives rates an honest margin of error', () => {
+    expect(wilsonHalfWidth({ k: 50, n: 100 })).toBeCloseTo(0.096, 2);
+    expect(wilsonHalfWidth({ k: 25, n: 400 })).toBeLessThan(0.03);
+  });
+
+  it('tells a real difference from chance', () => {
+    expect(rateDiffP({ k: 20, n: 100 }, { k: 20, n: 100 })).toBeCloseTo(1, 5);
+    expect(rateDiffP({ k: 10, n: 200 }, { k: 40, n: 200 })).toBeLessThan(0.001);
+    expect(meanDiffP(meanOf([1, 2, 3, 4, 5]), meanOf([1, 2, 3, 4, 5]))).toBeCloseTo(1, 5);
+    expect(meanDiffP(meanOf(Array.from({ length: 50 }, (_, i) => i % 5)), meanOf(Array.from({ length: 50 }, (_, i) => 3 + (i % 5))))).toBeLessThan(0.001);
+  });
+
+  it('corrects p-values for testing many numbers at once', () => {
+    const q = qValues([0.01, 0.04, 0.03, 0.5]);
+    expect(q[0]).toBeCloseTo(0.04, 5);
+    expect(q[3]).toBeCloseTo(0.5, 5);
+    for (let i = 0; i < q.length; i++) expect(q[i]).toBeGreaterThanOrEqual([0.01, 0.04, 0.03, 0.5][i]);
+  });
+
+  it('takes quantiles and describes seed ranges', () => {
+    expect(median([5, 1, 3])).toBe(3);
+    expect(quantile([0, 10], 0.25)).toBe(2.5);
+    expect(describeSeeds([3, 1, 2])).toBe('1–3');
+    expect(describeSeeds([1, 5])).toBe('1, 5');
+  });
+});
+
+describe('balance config overrides', () => {
+  const config = () => ({ AI: { attackRatio: 1.15, unitsFlat: { great: 8, minor: 0 }, doctrines: ['armour'] }, UNITS: { tank: { cost: { money: 320 } } } });
+
+  it('reads PATH=VALUE as JSON, or a bare word as a string', () => {
+    expect(parseOverride('AI.attackRatio=1.3')).toEqual({ path: 'AI.attackRatio', value: 1.3 });
+    expect(parseOverride('AI.doctrines=["infantry"]')).toEqual({ path: 'AI.doctrines', value: ['infantry'] });
+    expect(parseOverride('X.name=infantry')).toEqual({ path: 'X.name', value: 'infantry' });
+    expect(() => parseOverride('AI.attackRatio')).toThrow(/PATH=VALUE/);
+  });
+
+  it('sets nested values in place', () => {
+    const c = config();
+    applyOverrides(c, [parseOverride('AI.unitsFlat.minor=3'), parseOverride('UNITS.tank.cost.money=280')]);
+    expect(c.AI.unitsFlat.minor).toBe(3);
+    expect(c.UNITS.tank.cost.money).toBe(280);
+  });
+
+  it('refuses typos and values of the wrong kind', () => {
+    expect(() => applyOverrides(config(), [parseOverride('AI.atackRatio=1.3')])).toThrow(/Unknown config path/);
+    expect(() => applyOverrides(config(), [parseOverride('Ai.attackRatio=1.3')])).toThrow(/should start with one of AI, UNITS/);
+    expect(() => applyOverrides(config(), [parseOverride('AI.attackRatio=high')])).toThrow(/cannot be set/);
+    expect(() => applyOverrides(config(), [parseOverride('AI.doctrines=3')])).toThrow(/cannot be set/);
+  });
+});
+
+describe('balance tuning knobs', () => {
+  it('maps positions to values and back, by ratio for log knobs', () => {
+    const linear: Knob = { path: 'AI.attackRatio', min: 1, max: 2 };
+    const ratio: Knob = { path: 'AI.warChance', min: 0.01, max: 0.04, log: true };
+    const whole: Knob = { path: 'AI.pileOnWars', min: 1, max: 3, integer: true };
+    expect(knobValue(linear, 0.5)).toBeCloseTo(1.5);
+    expect(knobPosition(linear, 1.5)).toBeCloseTo(0.5);
+    expect(knobValue(ratio, 0.5)).toBeCloseTo(0.02);
+    expect(knobPosition(ratio, 0.02)).toBeCloseTo(0.5);
+    expect(knobValue(whole, 0.6)).toBe(2);
+    expect(knobValue(linear, 2)).toBe(2);
+  });
+});
+
+describe('balance runs', () => {
+  let sim: Sim;
+  let records: GameRecord[];
+  let summary: Summary;
+
+  beforeAll(async () => {
+    sim = await loadSim(resolve('src/sim'), []);
+    const world = balanceWorld(sim);
+    records = [3, 4].map((seed) => playGame(sim, world, seed, 8));
+    const meta = {
+      label: 'test',
+      commit: 'test',
+      overrides: [],
+      seeds: describeSeeds([3, 4]),
+      maxMinutes: 8,
+      startedAt: new Date(0).toISOString(),
+      wallSeconds: 1,
+      workers: 1,
+      catalogue: catalogue(sim, world),
+    };
+    summary = summarise(records, meta);
+  });
+
+  it('records a campaign without changing it', () => {
+    const world = buildWorld(EUROPE_SCENARIO);
+    const plain = new Simulation(world, createInitialState(world, { seed: 3, humanNation: null }));
+    plain.run(8 * 60);
+    const rec = records[0];
+    expect(rec.minutes).toBe(8);
+    for (const id of world.nationIds) {
+      expect(rec.series.vp[id]).toHaveLength(8);
+      expect(rec.series.vp[id][7]).toBe(plain.state.nations[id].eliminated ? 0 : heldVp(plain.state, world, id));
+      expect(rec.series.provinces[id][7]).toBe(world.provinceIds.filter((p) => plain.state.provinces[p].owner === id).length);
+    }
+    expect(rec.activity.eventsMissed).toBe(0);
+  });
+
+  it('plays the same campaign the same way every time', () => {
+    const again = playGame(sim, balanceWorld(sim), 3, 8);
+    expect({ ...again, wallMs: 0 }).toEqual({ ...records[0], wallMs: 0 });
+  });
+
+  it('summarises every nation and unit type the scenario defines', () => {
+    expect(summary.nations.map((n) => n.id)).toEqual(sim.api.EUROPE_SCENARIO.nations.map((n) => n.id));
+    expect(summary.units.map((u) => u.id)).toEqual([...UNIT_TYPES]);
+    expect(summary.flags.map((f) => f.id)).toEqual(expect.arrayContaining(['run:small', 'run:capped']));
+    expect(Number.isFinite(summary.fun.total)).toBe(true);
+    expect(renderReport(summary)).toContain('## Nations');
+  });
+
+  it('compares a run with itself without finding changes', () => {
+    expect(compareTests(summary, summary).every((t) => t.p > 0.99)).toBe(true);
+    expect(renderComparison(summary, summary)).toContain('None: nothing moved');
+  });
+
+  it('stages unit-lab battles at every technology level', () => {
+    const levels = techLevels(sim);
+    expect(levels.map((l) => l.id)).toEqual(['ww1', 'interwar', 'ww2']);
+    expect(levels[0].units).not.toContain('antiTank');
+    expect(levels[2].units).toEqual([...UNIT_TYPES]);
+    expect(labGrounds(balanceWorld(sim))).toContain('fortified');
+    const settings = { budget: 8, seeds: 2, upkeepMinutes: 30 };
+    const cell = { kind: 'index' as const, level: 'ww1', unit: REFERENCE, ground: 'plains', role: 'attack' as const };
+    const result = runLabCell(sim, cell, settings);
+    expect(result.armyCost).toBe(8);
+    expect(result.value).toBeGreaterThan(1);
+    expect(runLabCell(sim, cell, settings)).toEqual(result);
+    expect(armyAround({ infantry: 1 }, REFERENCE, 8)).toEqual([[REFERENCE, 8]]);
+    expect(armyAround({ infantry: 1, tank: 3 }, 'tank', 12)).toEqual([
+      ['tank', 2],
+      ['infantry', 6],
+    ]);
+  });
+});

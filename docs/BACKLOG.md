@@ -95,14 +95,16 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ### 2.6 Balance and presentation
 
-- [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
+- [x] Headless campaign sweeps across seeds (since replaced by the balance lab, M3)
 - [x] Campaigns that sometimes end by objectives: all 8 AI-vs-AI test campaigns now end on objectives (68–137 min)
 - [x] Minor powers cost an investment and never win: fortified capitals (level 2, Switzerland 3) and six starting
       divisions topped up to seven or eight. An eight-unit probe fails; twelve to fourteen units with artillery take
       a capital and lose 40–60% of their strength. Minor powers never start wars (they used to start two to four a
       game, mostly on each other) and only great and major powers count for victory
 - [ ] Minor powers still fall to the AI between minutes 10 and 40 in most campaigns (by minute 20: 43 of 80, down
-      from 65): make the AI weigh the cost of a fortress against other targets
+      from 65): make the AI weigh the cost of a fortress against other targets. Over 200 campaigns in the balance lab,
+      47% are still standing at minute 20, 13% at 30 and 5% at 40; `AI.minorTargetWeight` now sets the AI's appetite
+      for them, ready for the tuner
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -112,11 +114,28 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
+- [x] Balance lab ([BALANCE.md](BALANCE.md)): `npm run balance` plays hundreds of all-AI campaigns in parallel and
+      reports on nations, pace, AI personalities and how the AI uses every unit, building and technology, with red
+      flags; `--vs <ref>` compares two commits on the same seeds and `--set PATH=VALUE` tries any config value.
+      `npm run balance:units` prices every unit in staged battles; `npm run balance:tune` searches the AI's settings
+      for the design goals. Every number the AI weighs now lives in `config/ai.ts`. CI runs it nightly and on pull
+      requests labelled `balance`
+- [ ] Balance lab, next: a random stream for AI decisions apart from combat, and personalities fixed per seat (quieter
+      comparisons; seats that pass between a human and the AI); per-nation AI profiles (difficulty levels, a caretaker
+      for absent players) ranked by tournament; recorded human games (seed, version, every command including the AI's)
+      run through the same reports; a read-only combat hook for damage by unit type
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
 - [ ] France is the weakest great power in AI campaigns (mean rank 6.3 of 7, conquered in 6 of 8 runs); Germany
-      comes next (4.5, conquered in 2)
+      comes next (4.5, conquered in 2). Over 200 campaigns in the balance lab: France, which borders four great powers,
+      lasts 25% of them and is out within the first hour in 51%; Serbia lasts 18% (out within the hour in 76%); in all,
+      24% of playable seats are out within an hour, which in multiplayer is a player with nothing to do
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
+- [ ] Line infantry is the best buy at every technology level: in the unit lab an army of it beats every other army of
+      the same cost, and battle tanks give about 0.56× their price (fuel is scarce). AIs with the infantry doctrine win
+      18% of campaigns, armour 7% and artillery 9%. Armour-doctrine great powers field 7% vehicles against a 47% target
+      (and 20% cavalry against 4%): only a third of them ever build a Tank Works. Make armour pay its way (price, fuel,
+      or the AI's Tank Works and refinery plans)
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
