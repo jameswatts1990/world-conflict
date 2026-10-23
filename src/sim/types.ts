@@ -319,6 +319,8 @@ export interface ArmyMove {
   mode: MoveMode;
   /** Patrol ends; the army turns for the other end each time it reaches one. */
   patrol?: [ProvinceId, ProvinceId];
+  /** Halted mid-march (Stop or Hold): walking back to the province it set out from, where it stops. */
+  halting?: boolean;
 }
 
 export interface Army {

@@ -30,7 +30,7 @@ import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
-import type { ArmyId, BuildingType, GameState, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import type { Army, ArmyId, BuildingType, GameState, MoveLeg, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
 import { durationText, nationName, provinceName, sentence } from './text';
 import type { World } from './world';
 
@@ -243,9 +243,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (leg) {
         if (cmd.to === leg.from) {
           // Turn around mid-march.
-          army.province = leg.to;
-          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
-          if (mode === 'patrol') army.move.patrol = [leg.to, leg.from];
+          turnBack(army, leg, mode);
+          if (mode === 'patrol') army.move!.patrol = [leg.to, leg.from];
           return OK;
         }
         const rest = cmd.to === leg.to ? [] : findPath(state, world, army, leg.to, cmd.to)!.path;
@@ -266,7 +265,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (!army.move) return fail('The army is not moving.');
-      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      if (army.move.halting) return fail('The army is already turning back.');
+      halt(army);
       return OK;
     }
     case 'hold': {
@@ -275,7 +275,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       army.holding = cmd.hold;
-      if (cmd.hold && army.move) army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      if (cmd.hold && army.move) halt(army);
       return OK;
     }
     case 'setAutoRetreat': {
@@ -482,6 +482,22 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       }
       return OK;
     }
+  }
+}
+
+/** Turns a marching army round mid-leg: it walks back to the province it set out from, as far as it has come. */
+function turnBack(army: Army, leg: MoveLeg, mode: MoveMode): void {
+  army.province = leg.to;
+  army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
+}
+
+/** Stop and Hold halt an army at once: one on the road turns back to the province it set out from. */
+function halt(army: Army): void {
+  const leg = army.move?.leg;
+  if (!leg || leg.elapsed === 0) army.move = null;
+  else if (!army.move!.halting) {
+    turnBack(army, leg, 'move');
+    army.move!.halting = true;
   }
 }
 

@@ -1527,6 +1527,23 @@ function ArmyBadge({
 // Minimap
 // ---------------------------------------------------------------------------
 
+/** The overview map stays hidden until its button opens it; this browser remembers the choice. */
+const OVERVIEW_KEY = 'world-conflict:overview-map';
+function overviewShown(): boolean {
+  try {
+    return window.localStorage.getItem(OVERVIEW_KEY) === 'shown';
+  } catch {
+    return false;
+  }
+}
+function rememberOverview(shown: boolean): void {
+  try {
+    window.localStorage.setItem(OVERVIEW_KEY, shown ? 'shown' : 'hidden');
+  } catch {
+    // Storage unavailable: the choice lasts until the page closes.
+  }
+}
+
 const MiniMapBase = memo(function MiniMapBase({
   geo,
   world,
@@ -1702,6 +1719,7 @@ export function MapView(props: MapViewProps) {
   const [glow, setGlow] = useState<TerrainTexture | null>(null);
   const [clouds, setClouds] = useState<TerrainTexture | null>(null);
   const [armyBack, setArmyBack] = useState<SVGGElement | null>(null);
+  const [overview, setOverview] = useState(overviewShown);
 
   useEffect(() => {
     let live = true;
@@ -2173,9 +2191,24 @@ export function MapView(props: MapViewProps) {
           <button onClick={zoomFit} title="Show the whole theatre" aria-label="Fit theatre">
             <Icon name="fit" />
           </button>
+          {!props.compact && !props.touch && (
+            <button
+              className={`overview-toggle${overview ? ' active' : ''}`}
+              onClick={() => {
+                setOverview(!overview);
+                rememberOverview(!overview);
+              }}
+              title={overview ? 'Hide the overview map' : 'Show the overview map'}
+              aria-label="Overview map"
+              aria-pressed={overview}
+              data-testid="overview-toggle"
+            >
+              <Icon name="overview" />
+            </button>
+          )}
         </div>
         {/* Phones and touch screens pan with a finger: the overview would only take room. */}
-        {!props.compact && !props.touch && (
+        {overview && !props.compact && !props.touch && (
           <MiniMap
             geo={geo}
             world={world}

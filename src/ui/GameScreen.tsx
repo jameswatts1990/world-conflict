@@ -338,7 +338,10 @@ export function GameScreen({
         setMoveMode(null);
       }
       else if (key === 's' && selectedArmies.length) {
-        for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
+        for (const id of selectedArmies) {
+          const move = ctrl.state.armies[id]?.move;
+          if (move && !move.halting) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
+        }
       } else if (key === 'c' || e.key === 'Home') focusOn(world.nations[human].capital);
       else if (e.key === '.' || e.key === ',') cycleArmy(e.key === '.' ? 1 : -1);
       else if (key === 'l') setFeedOpen((o) => !o);
@@ -591,10 +594,8 @@ export function GameScreen({
                   moveMode={moveMode}
                   onMoveMode={setMoveMode}
                   onSelectArmies={setSelectedArmies}
-                  onClose={() => {
-                    setSelectedArmies([]);
-                    setMoveMode(null);
-                  }}
+                  // Closing the army goes back to the map, not to the city it stands in.
+                  onClose={clearSelection}
                 />
               )}
               {selectedProvince && (

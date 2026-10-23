@@ -75,16 +75,26 @@ describe('movement legality', () => {
     expect(perKmStrait).toBeGreaterThan(perKmLand * 1.5);
   });
 
-  it('stop finishes the current leg; reversing returns to the origin', () => {
+  it('stop turns a marching army back to where it set out; reversing returns to the origin', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris-land', { infantry: 1 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-west-land' }); // via Normandy or Centre
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-nord-land' }); // one leg
     run(state, 5);
-    const firstHop = state.armies[army.id].move!.leg!.to;
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(true);
+    expect(army.move!.leg!.to).toBe('fr-paris-land');
+    // Stopping again does not turn it round once more.
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(false);
+    expect(army.move!.leg!.to).toBe('fr-paris-land');
+    run(state, 5);
+    expect(army.province).toBe('fr-paris-land');
+    expect(army.move).toBeNull();
+
+    // Stopped as it sets off, it never leaves.
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-west-land' });
     applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id });
-    run(state, 600);
-    expect(state.armies[army.id].province).toBe(firstHop);
+    expect(army.province).toBe('fr-paris-land');
+    expect(army.move).toBeNull();
 
     const back = place(state, 'fr', 'fr-paris-land', { infantry: 1 });
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: back.id, to: 'fr-nord-land' });
@@ -143,19 +153,18 @@ describe('movement legality', () => {
     expect(state.armies[army.id].move).toBeNull();
   });
 
-  it('hold position halts a march after the current leg and stays until a new order', () => {
+  it('hold position halts a march at once and stays until a new order', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris-land', { infantry: 2 });
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east-land', mode: 'patrol' });
     run(state, 5);
-    const next = army.move!.leg!.to;
     expect(applyCommand(state, world, { type: 'hold', nation: 'fr', armyId: army.id, hold: true }).ok).toBe(true);
     run(state, 1500);
-    expect(army.province).toBe(next);
+    expect(army.province).toBe('fr-paris-land');
     expect(army.move).toBeNull();
     expect(army.holding).toBe(true);
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-paris-land', mode: 'move' });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east-land', mode: 'move' });
     expect(army.holding).toBe(false);
   });
 });

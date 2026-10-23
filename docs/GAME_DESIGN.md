@@ -234,11 +234,16 @@ Specialities are optional: a nation without one shows its bloc instead.
   enemy army bars the way, and takes the destination itself (provinces passed through stay the enemy's, so the
   army may march itself out of supply). **Attack** also holds to capture each hostile province on the route, then
   continues (the computer's orders are all attacks). **Patrol** marches back and forth between the army's position
-  and the destination until stopped, fighting and capturing like Attack. **Hold position** halts the army after
-  its current leg and keeps it there, never withdrawing on its own, until it is given a new march order or
-  released. Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves
+  and the destination until stopped, fighting and capturing like Attack. **Stop** halts the army at once: one on
+  the road turns back to the province it set out from, taking as long as it has marched (stopping it again does not
+  turn it round once more). **Hold position** halts it the same way and keeps it there, never withdrawing on its
+  own, until it is given a new march order or released. Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves
   immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and **disband** (half the
-  manpower returns; not in battle) are available while stationary.
+  manpower returns; not in battle) are available while stationary. Split takes the ticked formations into a new
+  army or, with none ticked, every other formation of each kind, so both halves keep the army's mix. With several
+  armies selected, every order applies to all of them: Split halves each one, Merge joins those standing in the same
+  province (each group into its senior army), and Disband stands down every one that is not marching or in battle;
+  ticking formations needs a single army.
 - Each army has a **Fall back when broken** option, off by default: when its strength-weighted morale drops below
   **25%** in battle it withdraws on its own to the best friendly neighbouring province, paying the usual price of a
   withdrawal under fire. With nowhere to go, or while holding position, it fights on. A split army keeps its
@@ -515,7 +520,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A
   left command rail opens Research, Diplomacy, field reports, save/load, help and sound, with badges for an idle
   research slot, wars and peace offers. The selected army and province open as floating cards in a full-height dock on
-  the right; the overview map and zoom buttons sit beside it (in the corner when nothing is selected). Field reports
+  the right; the zoom buttons sit beside it (in the corner when nothing is selected), with a button that opens the
+  overview map, hidden by default (the browser remembers the choice). Closing the army card returns to the map. Field reports
   (the event log) sit bottom left; alerts pop up top left (below any banner) for wars, peace, research, eliminations,
   shortages, objective captures, provinces you win or lose, enemy attacks on your territory, armies you lose, enemy
   withdrawals, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
