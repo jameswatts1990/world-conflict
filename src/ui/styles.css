@@ -5422,7 +5422,7 @@ body {
 }
 .compact .dip-relations tr {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto auto auto;
+  grid-template-columns: auto auto minmax(min-content, 1fr) auto auto auto;
   grid-template-areas:
     'nation nation nation nation actions actions'
     'rel era power prov vp score';
@@ -5445,8 +5445,21 @@ body {
 .compact .dip-relations .dc-era {
   grid-area: era;
 }
+/* The pill stays in the figures row; its notes (shared sight, a truce) take a line of their own across the card,
+   which would otherwise squeeze military power until it ran into Prov. */
 .compact .dip-relations .dc-rel {
+  display: contents;
+}
+.compact .dip-relations .dc-rel > * {
   grid-area: rel;
+}
+.compact .dip-relations .rel-pill {
+  white-space: nowrap;
+}
+.compact .dip-relations .dc-rel > .ally-intel,
+.compact .dip-relations .dc-rel > .truce {
+  grid-area: auto / 1 / auto / -1;
+  margin-top: 0;
 }
 .compact .dip-relations .dc-power {
   grid-area: power;
@@ -5454,9 +5467,11 @@ body {
   align-items: center;
   min-width: 0;
 }
+/* The bar gives way first: beside a long pill on a narrow phone it can shrink to nothing, leaving the figure. */
 .compact .dip-relations .power-bar {
   flex: 1;
-  min-width: 24px;
+  width: auto;
+  min-width: 0;
   max-width: 220px;
   margin-right: 6px;
 }
