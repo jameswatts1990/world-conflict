@@ -8,7 +8,7 @@ const minutes = Number(process.argv[3] ?? 60);
 const windowTicks = Number(process.argv[4] ?? 4) * 60;
 const examples = Number(process.argv[5] ?? 6);
 const world = buildWorld(EUROPE_SCENARIO);
-const city = (pid: string) => world.provinces[pid].city.name;
+const city = (pid: string) => world.provinces[pid].name;
 const clock = (tick: number) => `${Math.floor(tick / 60)}:${String(tick % 60).padStart(2, '0')}`;
 
 const byReason: Record<string, number> = {};

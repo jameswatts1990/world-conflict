@@ -146,7 +146,7 @@ export function MainMenu({
             <div>
               <div className="mb-name">{def.name}</div>
               <div className="mb-cap">
-                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].city.name} · {POWERS[def.power].name}
+                <Icon name="star" size={12} /> Capital: {world.provinces[def.capital].name} · {POWERS[def.power].name}
               </div>
             </div>
           </div>

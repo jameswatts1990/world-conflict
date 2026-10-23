@@ -3,6 +3,7 @@
 // where the server owns the clock). Older saves are upgraded on load; a save
 // from a newer version is refused rather than misread.
 import { pushEvent } from './events';
+import { LAND_SUFFIX, landId } from './scenario/build';
 import { SCHEMA_VERSION, createInitialState, newId, nextSerial } from './state';
 import { nationName, sentence } from './text';
 import type { GameState, NationId, UnitType } from './types';
@@ -22,6 +23,8 @@ export function serializeGame(state: GameState, label: string, now = new Date())
   const file: SaveFile = { format: SAVE_FORMAT, schemaVersion: SCHEMA_VERSION, savedAt: now.toISOString(), label, state };
   return JSON.stringify(file);
 }
+
+const isLandId = (id: string) => id.endsWith(LAND_SUFFIX);
 
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
@@ -46,6 +49,32 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
       if (a.move) a.move.mode = 'attack';
       a.autoRetreat = false;
       a.holding = false;
+    }
+  },
+  // 6: every city became a province of its own, keeping its id, inside a new province for the land
+  // round it. The land goes to whoever held the old province, in the same mood. Armies stay in the
+  // city; marches stop where they are, since the roads they planned now pass through the land.
+  5: (state) => {
+    if (Object.keys(state.provinces).some(isLandId)) return;
+    for (const [id, p] of Object.entries(state.provinces)) {
+      const land = landId(id);
+      state.provinces[land] = {
+        id: land,
+        owner: p.owner,
+        buildings: {},
+        construction: null,
+        recruitQueue: [],
+        capture: null,
+        supplied: p.supplied,
+        ownerSince: p.ownerSince,
+        morale: p.morale,
+        tier: 1,
+        growth: 0,
+      };
+    }
+    for (const a of Object.values(state.armies)) {
+      a.move = null;
+      a.arrivedVia = null;
     }
   },
 };

@@ -125,8 +125,14 @@ export const AI = {
   worstFrontPeaceChance: 0.1,
   /** Accept peace after this long at war regardless (war weariness). */
   warWearinessSeconds: 1500,
-  /** A winning AI settles once it holds this many of the enemy's core provinces, and the war is this old. */
+  /**
+   * A winning AI settles once it holds this many of the enemy's home cities, and the war is this old; home land
+   * without its city counts as `warAimLandShare` of a city there, and as `landShare` wherever the AI weighs who is
+   * winning a war.
+   */
   warAimProvinces: 2,
+  warAimLandShare: 0,
+  landShare: 0.5,
   warAimSeconds: 600,
   /** Choosing the main enemy on several fronts: weight of each of my home provinces it holds, of each of my claims it
    * holds, and how much better another enemy must look to replace the current one. */
@@ -142,8 +148,8 @@ export const AI = {
   /** Reserve kept back when spending (fraction of income per minute). */
   reserveMinutes: 0.5,
   /**
-   * Army size cap: units per owned province, a flat reserve by power tier, and one unit per this much
-   * money income a minute. A one-province minor power keeps a garrison of about seven behind its forts,
+   * Army size cap: units per owned city, a flat reserve by power tier, and one unit per this much
+   * money income a minute. A one-city minor power keeps a garrison of about seven behind its forts,
    * not a field army.
    */
   unitsPerProvince: 3,
@@ -198,9 +204,9 @@ export const AI = {
   /**
    * What a province is worth as a target: a base, points per objective VP, one point per this much money and
    * materials output a minute, its city tier, and bonuses for a capital, a lost core province, and defenders
-   * with no (or one) way out.
+   * with no (or one) way out. Land is also worth this share of what the city in its middle is worth.
    */
-  targetValue: { base: 5, perVp: 7, outputPer: 10, capital: 8, reclaimCore: 14, trapped: 10, oneEscape: 3 },
+  targetValue: { base: 5, perVp: 7, outputPer: 10, capital: 8, reclaimCore: 14, trapped: 10, oneEscape: 3, cityBehind: 0.5 },
   /** Massing for an offensive stops once this multiple of the strength needed is on its way. */
   massingMargin: 1.15,
   /** Research priority each doctrine adds to the tech branches. */

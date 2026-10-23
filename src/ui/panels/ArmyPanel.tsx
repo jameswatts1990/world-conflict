@@ -18,6 +18,7 @@ import {
   veterancyRank,
   type ArmyId,
   type MoveMode,
+  type UnitType,
 } from '../../sim';
 import { UnitIconArt } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
@@ -27,6 +28,7 @@ import { countOf, formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
 import { ORDER, composition, ownerShortName } from '../labels';
 import { MoraleMeter, Progress, Section, moraleClass } from './Common';
+import { UnitInfo } from './UnitInfo';
 
 /** Rank chevrons: none for Green, one to three for Regular to Elite. */
 export function RankChevrons({ xp }: { xp: number }) {
@@ -57,6 +59,8 @@ export function ArmyPanel({
   const { state, world, human } = ctrl;
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [confirmDisband, setConfirmDisband] = useState(false);
+  // A unit type whose details are open.
+  const [info, setInfo] = useState<UnitType | null>(null);
   const army = state.armies[armyIds[0]];
   if (!army) return null;
   const own = army.owner === human;
@@ -189,7 +193,7 @@ export function ArmyPanel({
 
         {army.move && dest && (
           <div className="march-box">
-            {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].city.name}`} tone="blue" />}
+            {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].name}`} tone="blue" />}
             <div className="march-meta">
               <span>
                 <Icon name="target" size={13} /> {world.provinces[dest].name}
@@ -329,13 +333,13 @@ export function ArmyPanel({
                   ) : (
                     <span />
                   )}
-                  <span className="unit-icon unit-plate">
+                  <button className="unit-icon unit-plate unit-info-btn" onClick={() => setInfo(u.type)} title={`${UNITS[u.type].name}: what it does, its strengths and weaknesses`} data-unit-info={u.type}>
                     <UnitIconArt world={world} type={u.type} gen={unitGen(state, army.owner, u.type)} nation={army.owner} width={32} />
-                  </span>
+                  </button>
                   <span className="unit-text">
-                    <span className="unit-name" title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>
+                    <button className="unit-name unit-info-btn" onClick={() => setInfo(u.type)} title={`${UNITS[u.type].name}: ${UNITS[u.type].description}`}>
                       {name} <RankChevrons xp={u.xp} />
-                    </span>
+                    </button>
                     <span className="unit-model">
                       {model.name} · {model.detail}
                     </span>
@@ -358,6 +362,7 @@ export function ArmyPanel({
           </ul>
         </Section>
       </div>
+      {info && <UnitInfo ctrl={ctrl} type={info} nation={army.owner} onClose={() => setInfo(null)} />}
     </section>
   );
 }

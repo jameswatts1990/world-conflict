@@ -1,7 +1,8 @@
 // Builds the simplified, locally bundled map asset from Natural Earth sources.
 //
 //   npm run map:fetch   # once: downloads raw Natural Earth GeoJSON into data-src/
-//   npm run map:build   # writes src/assets/map/map.topo.json
+//   npm run map:build   # writes scripts/map/base.topo.json, then city-provinces.ts cuts each
+//                       # city out of its province into src/assets/map/map.topo.json
 //
 // Output is one TopoJSON file with two objects: `provinces` (the playable theatre,
 // each tagged with its country's code) and `countries` (world context). Both come from the same 10m admin-1 source and
@@ -154,8 +155,9 @@ async function buildMap() {
 
 await mkdir(outDir, { recursive: true });
 const map = await buildMap();
-await writeFile(join(outDir, 'map.topo.json'), map);
+// The provinces whole: scripts/map/city-provinces.ts cuts the cities out of them for the game.
+await writeFile(join(root, 'scripts', 'map', 'base.topo.json'), map);
 // Older builds wrote the theatre and the world as two files on different grids.
 await rm(join(outDir, 'theatre.topo.json'), { force: true });
 await rm(join(outDir, 'world.topo.json'), { force: true });
-console.log(`wrote map.topo.json (${(map.length / 1024).toFixed(0)} KB)`);
+console.log(`wrote scripts/map/base.topo.json (${(map.length / 1024).toFixed(0)} KB)`);
