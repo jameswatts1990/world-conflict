@@ -194,8 +194,12 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       city names and the names of provinces without a city; secondary towns are unnamed dots
 - [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
       entrenchments; and provinces with no city at all where the map needs them
-- [ ] Rebalance after the city split (see the pull request's balance run): how fast cities fall once their land is
-      lost, and whether the AI defends cities as well as it holds the land
+- [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal
+      penalty is unchanged (4.31), but fewer campaigns end on objectives (19% instead of 32%), Poland wins 33%
+      instead of 26% (not yet significant, p 0.10), Hungary lasts 71% of campaigns instead of 83%, and minor
+      powers stand longer (33% at 60 minutes instead of 21%). Look at how fast cities fall once their land is lost,
+      whether the AI defends cities as well as it holds the land, and the simulation's cost (38 s of CPU per
+      campaign instead of 26)
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
 - [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
