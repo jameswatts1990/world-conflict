@@ -1,0 +1,126 @@
+{
+  "cues": {
+    "ui.click": [
+      "ui-click-1",
+      "ui-click-2",
+      "ui-click-3"
+    ],
+    "ui.tab": [
+      "ui-tab"
+    ],
+    "ui.error": [
+      "ui-error"
+    ],
+    "ui.open": [
+      "ui-open"
+    ],
+    "army.select": [
+      "army-select-1",
+      "army-select-2"
+    ],
+    "army.order": [
+      "army-order"
+    ],
+    "report": [
+      "report-1",
+      "report-2"
+    ],
+    "report.bad": [
+      "report-bad"
+    ],
+    "war": [
+      "war"
+    ],
+    "peace": [
+      "peace"
+    ],
+    "research": [
+      "research"
+    ],
+    "construction": [
+      "construction"
+    ],
+    "recruitment": [
+      "recruitment"
+    ],
+    "capture.won": [
+      "capture-won"
+    ],
+    "capture.lost": [
+      "capture-lost"
+    ],
+    "battle": [
+      "battle"
+    ],
+    "rout": [
+      "rout"
+    ],
+    "campaign.start": [
+      "campaign-start"
+    ],
+    "victory": [
+      "victory"
+    ],
+    "defeat": [
+      "defeat"
+    ]
+  },
+  "battleLoop": "battle-loop",
+  "music": [
+    {
+      "file": "music-menu-mars",
+      "title": "Holst, \"Mars, the Bringer of War\" (The Planets)",
+      "menu": true
+    },
+    {
+      "file": "music-venus",
+      "title": "Holst, \"Venus, the Bringer of Peace\" (The Planets)"
+    },
+    {
+      "file": "music-uk-colonel-bogey",
+      "title": "Alford, \"Colonel Bogey\" march",
+      "nations": [
+        "uk"
+      ]
+    },
+    {
+      "file": "music-fr-pere-la-victoire",
+      "title": "Ganne, \"Le Père la Victoire\" march",
+      "nations": [
+        "fr"
+      ]
+    },
+    {
+      "file": "music-de-alte-kameraden",
+      "title": "Teike, \"Alte Kameraden\" march",
+      "nations": [
+        "de"
+      ]
+    },
+    {
+      "file": "music-it-aida",
+      "title": "Verdi, Triumphal March from \"Aida\"",
+      "nations": [
+        "it"
+      ]
+    },
+    {
+      "file": "music-es-sevilla",
+      "title": "Albéniz, \"Sevilla\" (Suite española)",
+      "nations": [
+        "es"
+      ]
+    },
+    {
+      "file": "music-pl-polonaise",
+      "title": "Chopin, Polonaise in A major, Op. 40 No. 1 \"Military\"",
+      "nations": [
+        "pl"
+      ]
+    },
+    {
+      "file": "music-granada",
+      "title": "Albéniz, \"Granada\" (Suite española)"
+    }
+  ]
+}

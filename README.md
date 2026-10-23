@@ -45,6 +45,8 @@ What is in it (Milestone 2, Depth):
 - **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
   manage morale, fight wars on several fronts one enemy at a time and gang up on a power close to victory, each with
   its own claims and opening so that every campaign plays differently.
+- **Sound and period music**: bugle calls, field reports and distant artillery as the war unfolds, and public-domain
+  recordings from 1917–1923 (Holst conducting *Mars*, a march or dance for each nation).
 
 - Design: [docs/GAME_DESIGN.md](docs/GAME_DESIGN.md) (living document)
 - Roadmap: [docs/BACKLOG.md](docs/BACKLOG.md)
@@ -76,8 +78,10 @@ Other scripts:
 | `node scripts/dev/screens.mjs <outDir> <nation> <steps…>` | Screenshots of the running game for visual review (add `--phone` or `--phone-landscape` for a touch screen) |
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
-| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
-| `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build` first; about 20 seconds): upright, then turned on its side |
+| `npm run audio:fetch && npm run audio:build` | Re-download the recordings in `scripts/audio/sources.mjs` and rebuild the bundled sound (needs FFmpeg) |
+| `npm run build:e2e` | The production build plus the `window.__game` handle the browser checks drive the game through (in `dist-e2e/`; the dev server has it too, the published build does not) |
+| `npm run e2e` | Scripted browser playthrough against the test build (`npm run build:e2e` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
+| `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build:e2e` first; about 20 seconds): upright, then turned on its side |
 
 The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and both browser playthroughs on
 every push and pull request.
@@ -96,14 +100,19 @@ One-time setup: in the repository's **Settings → Pages**, set **Source** to **
 | --- | --- |
 | Left-click province | Open its city: skyline, morale, growth, building slots, recruitment, forces present, routes |
 | Left-click army (its model or counter) | Select army (Shift-click adds more of your armies) |
+| **Shift**-drag | Select every army of yours inside the box |
+| **,** / **.** | Previous / next of your armies |
 | Right-click province or enemy army | March the selected armies there (or press **M** / the **Move** button, then left-click) |
 | **S** | Stop the selected armies after their current leg |
 | Drag / mouse wheel | Pan / zoom |
+| Arrow keys | Pan the map (with **Shift**, further) |
+| **C** / **Home** | Jump to your capital |
 | **Space** | Pause / resume |
 | **1–6** | Speed 1x, 2x, then **DEV** 5x / 20x / 60x / 200x (orange; development and testing only) |
 | **R** / **D** / **L** | Research tree / Diplomacy & objectives / toggle field reports |
 | **V** | Cycle map view: political, terrain, supply, morale, city size |
 | **K** | Show or hide the map key |
+| **N** | Mute or unmute sound and music (remembered); **Sound** on the left rail sets the volumes |
 | **H** or **?** | Controls and briefing |
 | **Esc** | Close the open dialog, cancel move mode, then clear the selection |
 
@@ -181,8 +190,10 @@ src/sim/            Framework-free simulation (could run on a server unchanged)
 src/ui/             React interface: map (SVG + d3-geo/d3-zoom, baked relief texture), HUD panels, dialogs
   art/              Hand-drawn SVG unit art, insignia, procedural city skylines, 3D city and army models (a
                     small isometric renderer in iso3d.ts, streets in cityGround.ts), building and branch icons
+src/audio/          Sound: Web Audio engine, event-to-cue mapping, page-wide interface sounds; files/ holds the
+                    processed recordings (built from scripts/audio/sources.mjs)
 src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and world in one topology (shapes only)
-scripts/            Map pipeline, headless campaigns, browser playthrough, screenshot and art sheets
+scripts/            Map and audio pipelines, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
 

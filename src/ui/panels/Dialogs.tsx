@@ -6,6 +6,7 @@ import { Flag } from '../flags';
 import { formatClock } from '../format';
 import { Icon } from '../icons';
 import { Modal } from './Common';
+import { RaceChart } from './RaceChart';
 import { CONTROLS, TOUCH_CONTROLS } from './Tutorial';
 
 function savedAt(iso: string): string {
@@ -195,6 +196,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
             </div>
           </div>
         </div>
+        <RaceChart state={state} world={world} human={human} />
         <table className="dip-table outcome-table">
           <thead>
             <tr>

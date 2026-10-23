@@ -9,7 +9,8 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
 - Keep docs in step with behaviour changes: `docs/GAME_DESIGN.md` is the living design document (rules, numbers,
   AI behaviour), `docs/BACKLOG.md` the roadmap, and this file the working notes for Claude.
 - Before pushing, run `npm run typecheck` and `npm test` (about 20 s). CI also runs the build and the browser
-  playthroughs (`npm run e2e`, `npm run e2e:mobile`).
+  playthroughs (`npm run e2e`, `npm run e2e:mobile`) against `npm run build:e2e`: the playthroughs read the game
+  through `window.__game`, which only the dev server and that test build expose, never the published build.
 
 ## Layout
 
@@ -22,8 +23,8 @@ document, keep it current); roadmap: `docs/BACKLOG.md`. British English througho
 
 ## Commands
 
-- `npm run typecheck`, `npm test` (Vitest, ~20 s), `npm run build`, then `npm run e2e` and `npm run e2e:mobile`
-  (browser playthroughs of the production build). CI runs them all on every push.
+- `npm run typecheck`, `npm test` (Vitest, ~20 s), `npm run build`, then `npm run build:e2e`, `npm run e2e` and
+  `npm run e2e:mobile` (browser playthroughs of the test build). CI runs them all on every push.
 - `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]`: AI behaviour report.
 - `npx vite-node scripts/dev/balance.ts <seeds> <minutes>`: how each power fares across many campaigns (parallel).
 - `npx vite-node scripts/dev/batch.ts <seeds> <minutes>`: headless campaign summaries (captures, wars, outcomes).

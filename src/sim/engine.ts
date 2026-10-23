@@ -8,6 +8,7 @@ import { scaledTicks } from './queries';
 import { civicSystem } from './systems/civic';
 import { combatSystem } from './systems/combat';
 import { economySystem } from './systems/economy';
+import { historySystem } from './systems/history';
 import { diplomacySystem } from './systems/diplomacy';
 import { movementSystem } from './systems/movement';
 import { constructionSystem, recruitmentSystem, researchSystem } from './systems/production';
@@ -32,6 +33,7 @@ export function stepState(state: GameState, world: World): void {
   captureSystem(state, world);
   if (every(INTERVALS.armyUpkeepStep)) armyConditionSystem(state, world);
   if (every(INTERVALS.civicUpdate)) civicSystem(state, world);
+  if (every(INTERVALS.historySample)) historySystem(state, world);
   diplomacySystem(state, world);
   for (const id of world.nationIds) {
     if (state.nations[id].controller === 'ai') runAi(state, world, id);

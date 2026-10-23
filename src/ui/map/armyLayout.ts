@@ -5,6 +5,22 @@
 
 export type Offset = [number, number];
 
+/** A city's name plate, relative to the middle of its built-up area: half its width, and its top and bottom edges. */
+export interface PlateBox {
+  half: number;
+  top: number;
+  bottom: number;
+}
+
+/**
+ * How far an army reaches from its ground point, in rooms: across, and above it (its figures and the
+ * flag badge over them; the badge alone is about BADGE_PX tall), and below it (its ring).
+ */
+const REACH_X = 1;
+const REACH_UP = 1.5;
+const BADGE_PX = 24;
+const REACH_DOWN = 0.5;
+
 /**
  * Directions (degrees on screen, y down) tried for each spot, in order: beside the
  * city, its front corners, its back corners, then behind it. Straight below is left
@@ -25,24 +41,34 @@ const spotCache = new Map<string, Offset[]>();
 /**
  * The first `n` spots around a city whose built-up area reaches `half` pixels
  * (across, and up and down the screen) from its middle, for armies taking `room`
- * pixels each. Spots fill rings round the city, each one clear of it and of the
- * spots before it; adding an army never moves the others (spot i depends only on i).
+ * pixels each. Spots fill rings round the city, each one clear of it, of its name
+ * plate (figures and badge alike) and of the spots before it; adding an army never
+ * moves the others (spot i depends only on i).
  */
-export function citySpots(half: Offset, room: number, n: number): Offset[] {
+export function citySpots(half: Offset, room: number, n: number, plate?: PlateBox): Offset[] {
   const [hx, hy] = half.map((h) => Math.round(h * 2) / 2);
-  const key = `${hx}|${hy}|${Math.round(room * 4)}`;
+  const box = plate && { half: Math.round(plate.half), top: Math.round(plate.top), bottom: Math.round(plate.bottom) };
+  const key = `${hx}|${hy}|${Math.round(room * 4)}|${box ? `${box.half},${box.top},${box.bottom}` : ''}`;
   let spots = spotCache.get(key);
   if (!spots || spots.length < n) {
-    spots = layoutSpots(hx, hy, Math.round(room * 4) / 4, Math.max(n, 12));
+    spots = layoutSpots(hx, hy, Math.round(room * 4) / 4, Math.max(n, 12), box);
     spotCache.set(key, spots);
     if (spotCache.size > 400) spotCache.delete(spotCache.keys().next().value!);
   }
   return spots.slice(0, n);
 }
 
-function layoutSpots(hx: number, hy: number, room: number, n: number): Offset[] {
+/** Whether an army standing at (x, y) would cover any of the plate. */
+export function coversPlate([x, y]: Offset, room: number, plate: PlateBox): boolean {
+  const reachX = Math.max(REACH_X * room, BADGE_PX * 0.7);
+  return Math.abs(x) < plate.half + reachX && y - REACH_UP * room - BADGE_PX < plate.bottom && y + REACH_DOWN * room > plate.top;
+}
+
+function layoutSpots(hx: number, hy: number, room: number, n: number, plate?: PlateBox): Offset[] {
   const spots: Offset[] = [];
-  const clear = ([x, y]: Offset) => spots.every(([sx, sy]) => Math.hypot((x - sx) / (CLEAR_X * room), (y - sy) / (CLEAR_Y * room)) >= 1);
+  const clear = (spot: Offset) =>
+    !(plate && coversPlate(spot, room, plate)) &&
+    spots.every(([sx, sy]) => Math.hypot((spot[0] - sx) / (CLEAR_X * room), (spot[1] - sy) / (CLEAR_Y * room)) >= 1);
   let ring = 0;
   for (; ring < RINGS && spots.length < n; ring++) {
     const rx = hx + room * (1.15 + 2 * ring);

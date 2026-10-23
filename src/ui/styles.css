@@ -218,6 +218,39 @@ kbd {
   position: absolute;
   inset: 0;
 }
+/* A province changing hands: a flash of the new owner's colour that fades out. */
+.capture-flash {
+  fill: var(--flash);
+  fill-opacity: 0;
+  stroke: #fff;
+  stroke-opacity: 0;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  animation: capture-flash 1.6s ease-out forwards;
+}
+@keyframes capture-flash {
+  0% {
+    fill-opacity: 0.6;
+    stroke-opacity: 0.9;
+  }
+  100% {
+    fill-opacity: 0;
+    stroke-opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .capture-flash {
+    animation-duration: 0.01s;
+  }
+}
+.select-box {
+  position: absolute;
+  z-index: 2;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: rgba(240, 166, 58, 0.12);
+  pointer-events: none;
+}
 
 /* ---------------------------------------------------------------- Top bar */
 .topbar {
@@ -732,6 +765,17 @@ kbd {
   stroke-width: 1.2;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+}
+.front-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.front-line.other {
+  stroke: rgba(232, 120, 90, 0.6);
+  stroke-width: 1.8;
+  stroke-dasharray: 2 4;
 }
 .coastline {
   fill: none;
@@ -1264,6 +1308,13 @@ kbd {
   gap: 8px;
   width: 340px;
 }
+/* Alerts start below any banner (paused, choose a destination), which would otherwise sit across them. */
+.layout-desktop .map-notices:has(.banner-stack > .banner) .alert-stack {
+  top: 104px;
+}
+.layout-desktop .map-notices:has(.banner-stack > .banner + .banner) .alert-stack {
+  top: 144px;
+}
 .alert-card {
   display: flex;
   align-items: flex-start;
@@ -1708,7 +1759,7 @@ kbd {
   position: absolute;
   top: 12px;
   right: 12px;
-  bottom: 202px;
+  bottom: 12px;
   z-index: 3;
   display: flex;
   flex-direction: column;
@@ -1717,6 +1768,25 @@ kbd {
   overflow-y: auto;
   scrollbar-gutter: stable;
   padding-right: 2px;
+}
+/* The open dock runs the full height, so a city's buildings and recruits are in reach on a laptop screen;
+   the overview map and zoom step aside to its left (and the overview map gives way where that is narrow). */
+.layout-desktop .map-wrap.dock-open .map-nav {
+  right: var(--dock);
+}
+@media (max-width: 1250px) {
+  .layout-desktop .map-wrap.dock-open .minimap {
+    display: none;
+  }
+}
+/* A short screen keeps the skyline's rooftops, not its sky. */
+@media (max-height: 860px) {
+  .layout-desktop .city-scene-wrap {
+    display: flex;
+    align-items: flex-end;
+    height: 92px;
+    overflow: hidden;
+  }
 }
 .panel {
   flex-shrink: 0;
@@ -2794,6 +2864,201 @@ kbd {
 .modal.narrow {
   width: min(460px, 94vw);
 }
+
+/* ---------------------------------------------------------------- Results: the race over the campaign */
+.race {
+  display: grid;
+  /* The plot measures its own width: the track must not grow to the drawing inside it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+.race-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.race-title {
+  font: 600 13px var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.race .segmented {
+  box-shadow: none;
+}
+.race .segmented button {
+  padding: 3px 9px;
+  font-size: 12.5px;
+}
+.race-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.race-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.race-plot {
+  position: relative;
+  outline-offset: 2px;
+}
+.race-plot svg {
+  display: block;
+}
+.race-grid {
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+.race-axis {
+  font: 500 11px var(--font-ui);
+  fill: var(--muted);
+}
+.race-other {
+  fill: none;
+  stroke: rgba(160, 172, 184, 0.3);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.race-casing {
+  fill: none;
+  stroke: #121a23;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.race-end {
+  stroke: #121a23;
+  stroke-width: 2;
+}
+.race-end-label {
+  font: 600 12px var(--font-ui);
+  fill: var(--text);
+}
+.race-end-value {
+  font-weight: 500;
+  fill: var(--muted);
+}
+.race-cross {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1;
+}
+.race-tip {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 7px 9px;
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.race-tip-time {
+  font: 600 11px var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.race-tip-row {
+  display: grid;
+  grid-template-columns: 12px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+.race-tip-row strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.race-tip-row.me span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------- Sound */
+.sound-panel {
+  display: grid;
+  gap: 12px;
+}
+.sound-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sound-switch input {
+  width: 16px;
+  height: 16px;
+}
+.sound-switch .muted {
+  font-size: 12.5px;
+  font-weight: 400;
+}
+.sound-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+.sound-row input[type='range'] {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  background: none;
+  border: none;
+}
+.sound-row.off {
+  opacity: 0.45;
+}
+.sound-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--accent);
+}
+.np-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13.5px;
+}
+.np-label {
+  font: 600 11px/1.4 var(--font-display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.now-playing button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
 .confirm-text p {
   margin: 0 0 8px;
   font-size: 14px;
@@ -3015,8 +3280,22 @@ button.chip.queued:hover {
 .tree-era:nth-child(even) {
   background: rgba(255, 255, 255, 0.018);
 }
+.tree-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  background: #0d141b;
+}
+.tree-era-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding-bottom: 8px;
+  background: linear-gradient(#0d141b 72%, rgba(13, 20, 27, 0));
+}
 .tree-era-title {
-  margin-top: 8px;
+  padding-top: 8px;
   padding-left: 10px;
   font: 700 15px var(--font-display);
   letter-spacing: 0.12em;
@@ -3038,15 +3317,26 @@ button.chip.queued:hover {
 .tree-branch-label {
   position: sticky;
   left: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  /* A frozen column: technologies scroll under the branch names, which stay over the era headers too. */
+  z-index: 4;
+  box-sizing: border-box;
+  height: 100%;
+  background: linear-gradient(90deg, #0d141b 88%, rgba(13, 20, 27, 0));
+  display: inline-block;
   width: 150px;
   padding: 8px 10px;
   font: 600 13.5px var(--font-display);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-2);
+}
+/* The name stays in view, under the era headers, while any of its branch is on screen. */
+.tbl-name {
+  position: sticky;
+  top: 62px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .tree-edges {
   position: absolute;
@@ -3068,6 +3358,27 @@ button.chip.queued:hover {
 .tree-edge.lit {
   stroke: var(--accent);
   stroke-width: 3;
+}
+/* From another branch: faint until it is researched or traced. */
+.tree-edge.cross:not(.lit):not(.done) {
+  stroke-dasharray: 3 5;
+  stroke-opacity: 0.5;
+}
+.layout-desktop .tree-scroll {
+  cursor: grab;
+}
+.tree-scroll.panning {
+  cursor: grabbing;
+  user-select: none;
+}
+.era-jump {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.era-jump .chip {
+  cursor: pointer;
 }
 .tree-node {
   position: absolute;
@@ -3662,6 +3973,40 @@ button.chip.queued:hover {
   margin-top: 10px;
   font-size: 12px;
 }
+/* Diplomacy: the rules fold away, the column headings stay in view, and remote minor powers wait behind a row. */
+.intro-details {
+  margin: 0 0 10px;
+}
+.intro-details summary {
+  width: fit-content;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+.intro-details[open] summary {
+  margin-bottom: 6px;
+}
+.dip-relations thead th {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  background: #141d26;
+}
+.dip-more td {
+  padding: 8px 4px;
+}
+.dip-more button {
+  width: 100%;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text-2);
+  background: transparent;
+  border: 1px dashed var(--line-2);
+}
+.dip-more button:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
 .objective-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -4121,7 +4466,7 @@ button.chip.queued:hover {
 }
 .menu-options {
   display: grid;
-  grid-template-columns: 1.4fr 1fr;
+  grid-template-columns: 1.3fr 0.9fr 1.1fr;
   gap: 12px;
   margin: 14px 0 6px;
 }
@@ -4200,6 +4545,95 @@ button.chip.queued:hover {
   .menu-column {
     width: 100%;
     padding: 20px 16px;
+  }
+}
+/* The start controls stay at the foot of the column; the nations and briefing scroll above them. */
+.menu-start {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: 10px;
+  /* The column's bottom padding lives here, or text would scroll past under the buttons. */
+  padding-bottom: 22px;
+  background: linear-gradient(rgba(7, 13, 20, 0), #070d14 14px);
+}
+.menu-column {
+  padding-bottom: 0;
+}
+/* Wide screens: a wider column with the nations three abreast. */
+@media (min-width: 1200px) {
+  .menu-column {
+    width: 600px;
+  }
+  .menu-map {
+    left: 440px;
+    width: calc(100% - 440px);
+  }
+  .menu-shade {
+    background:
+      linear-gradient(90deg, #070d14 0%, rgba(7, 13, 20, 0.97) 460px, rgba(7, 13, 20, 0.55) 640px, rgba(7, 13, 20, 0.05) 78%),
+      radial-gradient(ellipse at 70% 50%, transparent 50%, rgba(3, 7, 11, 0.6) 100%);
+  }
+  .nation-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .nc-text strong {
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+}
+/* Desktop: the credits sit in the map's corner, under the nation's name, not in the column. */
+@media (min-width: 901px) and (min-height: 521px) {
+  .credits {
+    position: fixed;
+    right: 48px;
+    bottom: 14px;
+    z-index: 2;
+    max-width: 480px;
+    margin: 0;
+    padding: 6px 10px;
+    text-align: right;
+    background: rgba(7, 13, 20, 0.72);
+    border-radius: 6px;
+  }
+  .menu-nation-label {
+    bottom: 76px;
+  }
+}
+/* Short desktop screens: tighter spacing so the choice and the start button share the screen. */
+@media (min-width: 901px) and (max-height: 860px) {
+  .menu-column {
+    padding-top: 22px;
+  }
+  .menu-start {
+    padding-bottom: 14px;
+  }
+  .brand-mark {
+    width: 46px;
+    height: 46px;
+  }
+  .brand h1 {
+    font-size: 38px;
+  }
+  .menu-h2 {
+    margin: 16px 0 8px;
+  }
+  .nation-card {
+    padding: 6px 10px;
+  }
+  .menu-brief {
+    margin-top: 10px;
+    padding: 10px 12px;
+  }
+  .menu-brief p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.42;
+  }
+  .menu-options {
+    margin: 6px 0 4px;
   }
 }
 
@@ -5100,6 +5534,9 @@ body {
   .menu-column {
     padding-top: max(20px, env(safe-area-inset-top));
     padding-left: max(16px, env(safe-area-inset-left));
+  }
+  .menu-start,
+  .credits {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
