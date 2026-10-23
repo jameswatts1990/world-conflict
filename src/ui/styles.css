@@ -2834,6 +2834,125 @@ kbd {
   width: min(460px, 94vw);
 }
 
+/* ---------------------------------------------------------------- Results: the race over the campaign */
+.race {
+  display: grid;
+  /* The plot measures its own width: the track must not grow to the drawing inside it. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+.race-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+.race-title {
+  font: 600 13px var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.race .segmented {
+  box-shadow: none;
+}
+.race .segmented button {
+  padding: 3px 9px;
+  font-size: 12.5px;
+}
+.race-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.race-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.race-plot {
+  position: relative;
+  outline-offset: 2px;
+}
+.race-plot svg {
+  display: block;
+}
+.race-grid {
+  stroke: rgba(255, 255, 255, 0.07);
+  stroke-width: 1;
+}
+.race-axis {
+  font: 500 11px var(--font-ui);
+  fill: var(--muted);
+}
+.race-other {
+  fill: none;
+  stroke: rgba(160, 172, 184, 0.3);
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+.race-casing {
+  fill: none;
+  stroke: #121a23;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.race-end {
+  stroke: #121a23;
+  stroke-width: 2;
+}
+.race-end-label {
+  font: 600 12px var(--font-ui);
+  fill: var(--text);
+}
+.race-end-value {
+  font-weight: 500;
+  fill: var(--muted);
+}
+.race-cross {
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 1;
+}
+.race-tip {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  min-width: 170px;
+  padding: 7px 9px;
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.race-tip-time {
+  font: 600 11px var(--font-display);
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.race-tip-row {
+  display: grid;
+  grid-template-columns: 12px 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+}
+.race-tip-row strong {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.race-tip-row.me span {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* ---------------------------------------------------------------- Sound */
 .sound-panel {
   display: grid;

@@ -500,4 +500,12 @@ export interface GameState {
   nextEventId: number;
   victory: { leader: NationId | null; holdSince: number | null };
   outcome: GameOutcome | null;
+  /** The race over time for the results screen, sampled every few minutes (absent in older saves). */
+  history?: HistorySample[];
+}
+
+/** One sample of the race: each nation's score, objective VP and provinces held. */
+export interface HistorySample {
+  tick: number;
+  nations: Record<NationId, [score: number, vp: number, provinces: number]>;
 }

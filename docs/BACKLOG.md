@@ -217,6 +217,7 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
 - [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
+- [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
 - [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
 - [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
 - [ ] Eastern-bloc nations east of Poland and Romania

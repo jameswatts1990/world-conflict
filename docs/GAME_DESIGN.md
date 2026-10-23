@@ -449,11 +449,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
   and orders (move, stop, split, merge, disband). Merging keeps the senior (lowest-numbered) army's name.
 - **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and
-  queue. Diplomacy shows flags, relation pills, national specialities and morale, military power bars, objective chips
-  and answers to incoming peace offers. Declaring war and leaving the campaign ask for confirmation, and Escape closes
-  the innermost window first. The opening tutorial is a Chief of Staff briefing. The results screen ranks the powers
-  with their provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner
-  brings it back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
+  queue; buttons jump to each era, era titles and branch names stay pinned while it scrolls, dragging pans it, and
+  prerequisites from another branch are drawn faintly until researched or traced. Diplomacy shows flags, relation
+  pills, national specialities and morale, military power bars, objective chips and answers to incoming peace offers.
+  Sound holds mute, overall / music / effects volumes and the piece playing now. Declaring war and leaving the campaign
+  ask for confirmation, and Escape closes the innermost window first. The opening tutorial is a Chief of Staff
+  briefing. The results screen charts the race over the campaign (score, objective VP or provinces, sampled every
+  2 minutes: your line and the winner's in colour, the other powers in grey) and ranks the powers with their
+  provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner brings it
+  back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
   neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched at run time.
