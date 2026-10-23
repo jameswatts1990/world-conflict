@@ -1,8 +1,10 @@
-// National identity: every nation fields its own named equipment and numbers
-// its formations in its own language. Designs follow each nation's real
-// 1914–1942 equipment where it existed; a few later or unbuilt projects fill
-// gaps in this alternate history (marked "project" in the detail line).
-import type { NationIdentity, NationSpeciality, UnitGen, UnitType } from '../../types';
+// National identity, laid over each nation's bloc (see src/sim/blocs.ts). The
+// original six field their own named equipment and number their formations in
+// their own language, so they override nearly everything; a newer nation
+// overrides only a few signature designs, or nothing at all. Designs follow
+// each nation's real 1914–1942 equipment where it existed; a few later or
+// unbuilt projects fill gaps in this alternate history (marked "project").
+import type { NationIdentityOverrides, NationSpeciality, UnitGen, UnitType } from '../../types';
 
 type Names = Partial<Record<UnitType, Partial<Record<UnitGen, { name: string; detail: string }>>>>;
 const n = (name: string, detail: string) => ({ name, detail });
@@ -94,12 +96,12 @@ const FR: Names = {
   },
   armouredCar: {
     interwar: n('White-Laffly AMD', '37 mm gun and MG'),
-    ww2: n('Panhard 178', '25 mm gun, eight-cylinder engine'),
+    ww2: n('Panhard 178', '25 mm gun, four-wheel drive'),
   },
   artillery: {
     ww1: n('Canon de 75 mle 1897', 'The famous "soixante-quinze"'),
     interwar: n('75 mle 1897/33', 'Modernised on pneumatic tyres'),
-    ww2: n('105 mm mle 1935 B', 'Schneider howitzer'),
+    ww2: n('105 mm mle 1935 B', 'Bourges arsenal howitzer'),
   },
   heavyArtillery: {
     ww1: n('Mortier de 220 mm', 'Schneider siege mortar'),
@@ -361,13 +363,28 @@ const PL: Names = {
     ww2: n('10TP', 'Fast tank, 37 mm (project)'),
   },
   heavyTank: {
-    interwar: n('PZInż 160', 'Amphibious heavy carrier (project)'),
+    interwar: n('20TP', '20-ton breakthrough tank (project)'),
     ww2: n('25TP', '75 mm breakthrough tank (project)'),
   },
   tankDestroyer: { ww2: n('TKD Niszczyciel', '47 mm self-propelled gun') },
 };
 
-export const IDENTITIES: Record<string, NationIdentity> = {
+// Hungary takes the Central bloc's equipment and names, apart from its hussars
+// and the armour it built for itself.
+const HU: Names = {
+  cavalry: {
+    ww1: n('Honvéd Hussars', 'Sabres, carbines and the frogged dolman'),
+    interwar: n('Huszárok', 'Light horse of the Honvédség'),
+    ww2: n('Hussar Division', 'Horsed brigades with Toldi tanks'),
+  },
+  armouredCar: { ww2: n('Csaba', '20 mm gun, four-wheel drive') },
+  lightTank: { ww2: n('Toldi', 'Licence-built L-60, 20 mm gun') },
+  tank: { ww2: n('Turán', '40 mm, on a Škoda design') },
+  heavyTank: { ww2: n('Tas', '75 mm breakthrough tank (project)') },
+  tankDestroyer: { ww2: n('Zrínyi', 'Assault gun on the Turán chassis') },
+};
+
+export const IDENTITIES: Record<string, NationIdentityOverrides> = {
   uk: {
     units: UK,
     army: '{ord} Army',
@@ -482,11 +499,12 @@ export const IDENTITIES: Record<string, NationIdentity> = {
       tankDestroyer: '{n}. Dywizjon Niszczycieli Czołgów',
     },
   },
+  hu: { units: HU, formations: { cavalry: '{ord} Hussar Regiment' } },
 };
 
 // Each nation has one small, flavourful edge. They are deliberately modest so
 // the starting balance holds.
-export const SPECIALITIES: Record<string, NationSpeciality> = {
+export const SPECIALITIES: Record<string, NationSpeciality | undefined> = {
   uk: {
     name: 'Combined Operations',
     description: 'An island nation that knows the sea: no penalty for attacking straight off a sea crossing.',
@@ -510,7 +528,7 @@ export const SPECIALITIES: Record<string, NationSpeciality> = {
   },
   it: {
     name: 'Alpini',
-    description: 'The finest mountain soldiers in Europe: mountain troops +20% attack and defence and 20% cheaper.',
+    description: 'The finest mountain soldiers in Europe: mountain troops +20% attack and defence, and cost 20% less money.',
     effects: [
       { kind: 'unitStat', units: ['mountain'], stat: 'attack', mult: 1.2 },
       { kind: 'unitStat', units: ['mountain'], stat: 'defence', mult: 1.2 },
@@ -533,6 +551,31 @@ export const SPECIALITIES: Record<string, NationSpeciality> = {
       { kind: 'unitStat', units: ['cavalry'], stat: 'attack', mult: 1.25 },
       { kind: 'unitStat', units: ['cavalry'], stat: 'speed', mult: 1.1 },
       { kind: 'unitStat', units: ['cavalry'], stat: 'resilience', mult: 1.15 },
+    ],
+  },
+  ro: {
+    name: 'Ploiești',
+    description: "Europe's own oil field: refineries produce 25% more fuel and cost 20% less to build.",
+    effects: [
+      { kind: 'refinery', mult: 1.25 },
+      { kind: 'constructionCost', mult: 0.8, building: 'refinery' },
+    ],
+  },
+  rs: {
+    name: 'Kolubara',
+    description: 'The army that would not break: infantry +15% morale resilience and +10% defence.',
+    effects: [
+      { kind: 'unitStat', units: ['infantry'], stat: 'resilience', mult: 1.15 },
+      { kind: 'unitStat', units: ['infantry'], stat: 'defence', mult: 1.1 },
+    ],
+  },
+  hu: {
+    name: 'Huszárok',
+    description: 'The original hussars: cavalry and armoured cars +15% attack and 10% faster, and cavalry are always raised as Regulars.',
+    effects: [
+      { kind: 'unitStat', units: ['cavalry', 'armouredCar'], stat: 'attack', mult: 1.15 },
+      { kind: 'unitStat', units: ['cavalry', 'armouredCar'], stat: 'speed', mult: 1.1 },
+      { kind: 'startXp', units: ['cavalry'], xp: 1 },
     ],
   },
 };

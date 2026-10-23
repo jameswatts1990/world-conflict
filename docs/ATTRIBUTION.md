@@ -4,8 +4,8 @@
 
 Made with **Natural Earth**. Free vector and raster map data @ [naturalearthdata.com](https://www.naturalearthdata.com/).
 
-- `ne_10m_admin_1_states_provinces` (v5.1.2): province shapes, built by merging admin-1 units into game provinces
-- `ne_50m_admin_0_countries` (v5.1.2): world context outside the playable theatre
+- `ne_10m_admin_1_states_provinces` (v5.1.2): province shapes, built by merging admin-1 units into game provinces,
+  and the world context outside the playable theatre, built by merging the remaining units into countries
 
 Natural Earth data is in the **public domain**
 ([terms of use](https://www.naturalearthdata.com/about/terms-of-use/)). The source repository is
@@ -13,13 +13,16 @@ Natural Earth data is in the **public domain**
 
 ### How the bundled files were produced
 
-1. `npm run map:fetch` downloads the GeoJSON files listed above into `data-src/` (git-ignored).
+1. `npm run map:fetch` downloads the GeoJSON file listed above into `data-src/` (git-ignored).
 2. `npm run map:build` (`scripts/map/build-map.mjs`, using [mapshaper](https://github.com/mbloch/mapshaper),
    MPL-2.0, as a build-time tool only):
-   - assigns each admin-1 unit to a game province using `scripts/map/province-sources.mjs`
-   - dissolves units into provinces, drops islets under 120 km², simplifies to 7% of vertices, cleans topology
-   - writes `src/assets/map/theatre.topo.json` (50 provinces) and `src/assets/map/world.topo.json`
-     (countries, Antarctica removed, simplified to 12%)
+   - assigns each admin-1 unit to a game province using `scripts/map/province-sources.mjs`; every other unit (and
+     any unit of a theatre country that no province claims, such as overseas territories) goes to its country
+   - simplifies each unit by its distance from the theatre (about 3 km detail in and around it, coarser further
+     away; distant islets are dropped), then dissolves units into provinces and countries, drops islets under
+     120 km² and cleans topology; Antarctica is removed
+   - writes `src/assets/map/map.topo.json` with two objects, `provinces` (50) and `countries`, in one topology, so
+     every coast and border the two share is the same line
 
 Shapes are simplified for a strategy map. Borders are modern borders as published by Natural Earth. Province
 groupings, names and all gameplay data are original to this project.
@@ -41,5 +44,7 @@ Build and test: Vite, Vitest, TypeScript, mapshaper, Playwright.
 ## Artwork
 
 All icons, unit silhouettes and the advisor portrait are original inline SVG. National flags are simplified
-drawings of the public national flags of the nations and neutral states in the scenario. The map's relief texture is
-generated procedurally in the browser from each province's terrain type; it is not elevation data.
+drawings of the public national flags of the nations in the scenario. The map's relief texture is
+generated procedurally in the browser from each province's terrain type; it is not elevation data. The 3D city
+models on the map are built in code from simple solids and drawn as SVG by a small renderer in `src/ui/art/iso3d.ts`;
+no generated or downloaded 3D assets are used.

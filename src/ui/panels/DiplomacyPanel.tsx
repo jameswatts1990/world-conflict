@@ -1,9 +1,26 @@
 import { useState } from 'react';
+import { POWERS } from '../../sim/config/powers';
 import { DIPLOMACY, VICTORY } from '../../sim/config/rules';
-import { checkDeclareWar, checkOfferPeace, computeScores, heldVp, nationEra, nationName, nationPower, sentence, vpToWin, type NationId } from '../../sim';
+import {
+  BLOCS,
+  areAllies,
+  checkDeclareWar,
+  checkOfferPeace,
+  commonEnemies,
+  computeScores,
+  hasNeutrals,
+  heldVp,
+  nationEra,
+  nationName,
+  nationPower,
+  sentence,
+  sharesAlliedSight,
+  vpToWin,
+  type NationId,
+} from '../../sim';
 import { OwnerFlag, Flag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { formatDuration, proseDuration } from '../format';
+import { formatDuration, listText, proseDuration } from '../format';
 import { Icon } from '../icons';
 import { ConfirmDialog, Modal } from './Common';
 
@@ -15,15 +32,19 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
   const leader = state.victory.leader;
   const maxPower = Math.max(1, ...scores.map((s) => nationPower(state, s.nation)));
   const wars = world.nationIds.filter((id) => state.nations[human].relations[id]?.status === 'war');
+  const liaison = sharesAlliedSight(state, human);
   return (
     <Modal title="Diplomacy & Objectives" icon="diplomacy" subtitle="Relations, military power and the race for victory points" onClose={onClose} size="wide">
       <p className="intro">
         All powers start at peace. Declaring war opens each side&apos;s territory to the other&apos;s armies. Peace can be offered after{' '}
         {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
         wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
-        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}. Neutral states may be invaded at any time.
+        sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
+        {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations that never win: invading one means declaring war on it, and their fortified capitals take a real army to crack.'}{' '}
+        Powers fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
       </p>
-      <table className="dip-table">
+      {/* A table on the desktop; one card per nation on small screens (the cells are named for that). */}
+      <table className="dip-table dip-relations">
         <thead>
           <tr>
             <th>Nation</th>
@@ -50,20 +71,20 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
             const outgoing = state.peaceOffers.some((o) => o.from === human && o.to === s.nation);
             return (
               <tr key={s.nation} className={`${me ? 'me' : ''}${n.eliminated ? ' eliminated' : ''}`} data-nation={s.nation}>
-                <td>
+                <td className="dc-nation">
                   <span className="dip-nation">
                     <Flag id={s.nation} size={20} />
                     <span>
                       <strong>{def.name}</strong>
                       {me && <span className="you-tag">You</span>}
-                      <span className="dip-sub" title={def.speciality.description}>
-                        {def.speciality.name} · morale {Math.round(n.morale)}
+                      <span className="dip-sub" title={def.speciality?.description ?? `${BLOCS[def.bloc].name}: ${BLOCS[def.bloc].description}`}>
+                        {def.speciality?.name ?? POWERS[def.power].name} · morale {Math.round(n.morale)}
                       </span>
                     </span>
                   </span>
                 </td>
-                <td>{n.eliminated ? '—' : <span className="era-pill">{nationEra(state, s.nation)}</span>}</td>
-                <td>
+                <td className="dc-era">{n.eliminated ? '—' : <span className="era-pill">{nationEra(state, s.nation)}</span>}</td>
+                <td className="dc-rel">
                   {me ? (
                     <span className="muted">—</span>
                   ) : n.eliminated ? (
@@ -72,6 +93,19 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <span className="rel-pill war">
                       <Icon name="swords" size={12} /> War
                     </span>
+                  ) : areAllies(state, human, s.nation) ? (
+                    <span>
+                      <span
+                        className="rel-pill ally"
+                        title={`Fighting ${listText(commonEnemies(state, human, s.nation).map((e) => nationName(world, e)))} alongside you`}
+                        data-ally={s.nation}
+                      >
+                        <Icon name="flag" size={12} /> Ally
+                      </span>
+                      <span className={`ally-intel${liaison ? ' on' : ''}`}>
+                        <Icon name="eye" size={11} /> {liaison ? 'You share its sight' : 'Liaison Officers share its sight'}
+                      </span>
+                    </span>
                   ) : (
                     <span className="rel-pill peace">
                       <Icon name="flag" size={12} /> Peace
@@ -79,15 +113,21 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                   )}
                   {!me && truce ? <span className="muted truce"> truce {formatDuration(rel.truceUntil - state.tick, state)}</span> : null}
                 </td>
-                <td>
+                <td className="dc-power">
                   <span className="power-bar" title={`Military power ${Math.round(power)}`}>
                     <span style={{ width: `${(power / maxPower) * 100}%`, background: def.color }} />
                   </span>
                   <span className="power-val">{Math.round(power)}</span>
                 </td>
-                <td className="num">{s.provinces}</td>
-                <td className="num">{s.vp}</td>
-                <td className="num score">{s.score}</td>
+                <td className="num dc-prov" data-label="Prov.">
+                  {s.provinces}
+                </td>
+                <td className="num dc-vp" data-label="VP">
+                  {s.vp}
+                </td>
+                <td className="num score dc-score" data-label="Score">
+                  {s.score}
+                </td>
                 <td className="actions">
                   {!me && !n.eliminated && rel.status === 'peace' && (
                     <button

@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { CITY } from '../sim/config/buildings';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
+import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../sim/config/buildings';
 import { DIPLOMACY } from '../sim/config/rules';
 import { CLIENT_SPEEDS, TICKS_PER_MINUTE } from '../sim/config/timing';
 import {
   armiesIn,
   armyMorale,
   armyName,
+  atWar,
+  buildingSlots,
   eventsFor,
-  isRouted,
+  isArmyVisible,
   nationName,
   provinceName,
   scaledTicks,
@@ -16,17 +18,21 @@ import {
   type EventSeverity,
   type GameEvent,
   type GameState,
+  type MoveMode,
+  type OwnerId,
   type ProvinceId,
   unitGen,
 } from '../sim';
-import { UnitIconArt } from './art/adapters';
+import { BuildingGlyphArt, UnitIconArt, plinthColor } from './art/adapters';
+import { lighten } from './color';
 import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
-import { formatDuration } from './format';
+import { countOf, formatDuration } from './format';
 import { Icon, type IconName } from './icons';
-import { TERRAIN_LABEL, composition, ownerLabel } from './labels';
+import { ORDER, TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
+import { useLayout, useTouch } from './layout';
 import { mapGeometry } from './map/geo';
-import { MapView, type MapMode } from './map/MapView';
+import { MapView, routePreview, type MapMode } from './map/MapView';
 import { ArmyPanel } from './panels/ArmyPanel';
 import { ConfirmDialog } from './panels/Common';
 import { HelpDialog, LoadDialog, OutcomeDialog, SaveDialog } from './panels/Dialogs';
@@ -41,6 +47,16 @@ import { Tutorial } from './panels/Tutorial';
 
 /** Width the floating selection dock covers on the right of the map (dock + margins). */
 const DOCK_INSET = 396;
+/** Width of the landscape layout's side sheet, min(340px, 46vw) in styles.css, with its margin. */
+const sideSheetInset = () => Math.min(340, window.innerWidth * 0.46) + 8;
+
+/** Resting heights of the portrait layout's bottom sheet. */
+type SheetSnap = 'peek' | 'half' | 'full';
+/** Peek shows the selection's title, status and close button. */
+const SHEET_PEEK = 132;
+function sheetHeights(mapHeight: number): Record<SheetSnap, number> {
+  return { peek: SHEET_PEEK, half: Math.max(SHEET_PEEK, Math.round(mapHeight * 0.5)), full: Math.max(SHEET_PEEK, mapHeight - 6) };
+}
 /** How long an alert stays up while the game runs; alerts wait while it is paused. */
 const ALERT_MS = 8000;
 const ALERT_STEP_MS = 250;
@@ -65,7 +81,10 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
   const { state, world, human } = ctrl;
   switch (e.kind) {
     case 'war':
+      // War on us is bad news; our own declaration and other powers' wars are worth knowing.
+      return e.subject === human ? 'bad' : e.actor === human ? 'combat' : 'info';
     case 'peace':
+      return e.subject === human || e.actor === human ? 'good' : 'info';
     case 'research':
     case 'shortage':
     case 'eliminated':
@@ -82,13 +101,12 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
       // Our own attacks are no surprise; an enemy attacking our land is.
       return e.province && state.provinces[e.province].owner === human ? 'bad' : null;
     case 'army-destroyed':
-    case 'rout':
     case 'peace-rejected':
-      // Our army lost or broken, or our offer turned down.
+      // Our army lost, or our offer turned down.
       return e.subject === human ? 'bad' : null;
-    case 'surrender':
-      // An encircled army gave up: ours, or one that surrendered to us.
-      return e.subject === human ? 'bad' : e.nations.includes(human) ? 'good' : null;
+    case 'rout':
+      // An enemy pulled out of a battle with us.
+      return e.subject !== human && e.nations.includes(human) ? 'good' : null;
     default:
       return null;
   }
@@ -108,10 +126,15 @@ export function GameScreen({
   useSyncExternalStore(ctrl.subscribe, ctrl.getVersion);
   const { state, world, human } = ctrl;
   const geo = useMemo(() => mapGeometry(world), [world]);
+  const layout = useLayout();
+  const touch = useTouch();
+  const compact = layout !== 'desktop';
 
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(world.nations[human].capital);
+  // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
+  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
-  const [moveMode, setMoveMode] = useState(false);
+  // The march order being given, while a destination is picked.
+  const [moveMode, setMoveMode] = useState<MoveMode | null>(null);
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [tutorial, setTutorial] = useState(showTutorial);
   const [focus, setFocus] = useState<{ province: ProvinceId; seq: number } | null>(null);
@@ -121,13 +144,31 @@ export function GameScreen({
   const [confirmExit, setConfirmExit] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('political');
   const [legendOpen, setLegendOpen] = useState(false);
-  const [feedOpen, setFeedOpen] = useState(true);
+  // Small screens start with the reports closed: they open from the command bar.
+  const [feedOpen, setFeedOpen] = useState(!compact);
+  // The last event seen in the reports; opening or closing them marks everything read.
+  const [reportsSeen, setReportsSeen] = useState(state.nextEventId - 1);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  // Portrait layout: how far the selection's bottom sheet is pulled up.
+  const [sheet, setSheet] = useState<SheetSnap>('peek');
+  const [mapHeight, setMapHeight] = useState(() => window.innerHeight);
+  // Touch move mode: the destination tapped once, previewed until confirmed.
+  const [moveTarget, setMoveTarget] = useState<ProvinceId | null>(null);
   const lastEventId = useRef(state.nextEventId - 1);
   const dockRef = useRef<HTMLElement>(null);
+  const mapWrapRef = useRef<HTMLDivElement>(null);
 
-  // Drop selections of armies that no longer exist.
-  const liveArmies = selectedArmies.filter((id) => state.armies[id]);
+  useEffect(() => {
+    const el = mapWrapRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setMapHeight(el.clientHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Drop selections of armies that no longer exist, or that have gone into the fog of war.
+  const seen = ctrl.sight();
+  const liveArmies = selectedArmies.filter((id) => state.armies[id] && isArmyVisible(state.armies[id], human, seen));
   if (liveArmies.length !== selectedArmies.length) setSelectedArmies(liveArmies);
 
   // Raise alerts for important new events.
@@ -175,7 +216,7 @@ export function GameScreen({
         return [id];
       });
       setSelectedProvince(army.move?.leg ? army.move.leg.from : army.province);
-      setMoveMode(false);
+      setMoveMode(null);
     },
     [ctrl],
   );
@@ -183,22 +224,32 @@ export function GameScreen({
   const orderMove = useCallback(
     (pid: ProvinceId) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
+      // A right-click without a chosen order attacks into foreign land and moves within our own.
+      const mode = moveMode ?? (ctrl.state.provinces[pid].owner === ctrl.human ? 'move' : 'attack');
       let lastError: string | null = null;
       for (const id of own) {
-        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid });
+        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid, mode });
         if (!r.ok) lastError = r.reason;
       }
       if (lastError) setToast(lastError);
-      setMoveMode(false);
+      setMoveMode(null);
     },
-    [ctrl, selectedArmies],
+    [ctrl, selectedArmies, moveMode],
   );
 
   const selectProvince = useCallback((pid: ProvinceId | null) => {
     setSelectedProvince(pid);
     setSelectedArmies([]);
-    setMoveMode(false);
+    setMoveMode(null);
+    // Tapping the province already selected raises a peeking sheet too.
+    if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
   }, []);
+
+  // Moving: in portrait the sheet drops to peek so the map is free to pick a destination.
+  useEffect(() => {
+    if (moveMode && layout === 'portrait') setSheet('peek');
+    if (!moveMode) setMoveTarget(null);
+  }, [moveMode, layout]);
 
   const exitToMenu = useCallback(() => (ctrl.state.outcome ? onExit() : setConfirmExit(true)), [ctrl, onExit]);
 
@@ -216,7 +267,7 @@ export function GameScreen({
       } else if (/^[1-9]$/.test(e.key) && Number(e.key) <= CLIENT_SPEEDS.length) {
         ctrl.setSpeed(CLIENT_SPEEDS[Number(e.key) - 1].multiplier);
       } else if (e.key === 'Escape') {
-        if (moveMode) setMoveMode(false);
+        if (moveMode) setMoveMode(null);
         else if (legendOpen) setLegendOpen(false);
         else {
           setSelectedArmies([]);
@@ -225,7 +276,16 @@ export function GameScreen({
       } else if (key === 'r') setPanel((p) => (p === 'research' ? null : 'research'));
       else if (key === 'd') setPanel((p) => (p === 'diplomacy' ? null : 'diplomacy'));
       else if (key === 'h' || e.key === '?') setPanel('help');
-      else if (key === 'm' && selectedArmies.length) setMoveMode((m) => !m);
+      else if ((key === 'm' || key === 'a' || key === 'p') && selectedArmies.length) {
+        const order: MoveMode = key === 'm' ? 'move' : key === 'a' ? 'attack' : 'patrol';
+        setMoveMode((m) => (m === order ? null : order));
+      } else if (key === 'g' && selectedArmies.length) {
+        // Hold position, or release it if every selected army already holds.
+        const own = selectedArmies.map((id) => ctrl.state.armies[id]).filter((a) => a?.owner === ctrl.human);
+        const hold = !own.every((a) => a.holding);
+        for (const a of own) ctrl.submit({ type: 'hold', nation: ctrl.human, armyId: a.id, hold });
+        setMoveMode(null);
+      }
       else if (key === 's' && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
       } else if (key === 'l') setFeedOpen((o) => !o);
@@ -235,6 +295,9 @@ export function GameScreen({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [ctrl, moveMode, legendOpen, selectedArmies]);
+
+  useEffect(() => setReportsSeen(ctrl.state.nextEventId - 1), [ctrl, feedOpen]);
+  const unreadReports = compact && !feedOpen ? eventsFor(state, human).filter((e) => e.id > reportsSeen).length : 0;
 
   useEffect(() => {
     if (!toast) return;
@@ -248,27 +311,61 @@ export function GameScreen({
   const dockOpen = armySelected || !!selectedProvince;
   const outcome = state.outcome;
 
+  // A new selection raises the portrait sheet to half, where an army's orders are in reach;
+  // a taller sheet keeps its height.
+  const selectionKey = `${selectedArmies[0] ?? ''}|${selectedProvince ?? ''}`;
+  const lastSelection = useRef(selectionKey);
+  useEffect(() => {
+    if (selectionKey === lastSelection.current) return;
+    lastSelection.current = selectionKey;
+    if (dockOpen) setSheet((s) => (s === 'peek' ? 'half' : s));
+  }, [selectionKey, dockOpen]);
+
+  const heights = sheetHeights(mapHeight);
+  const portraitSheet = layout === 'portrait' && dockOpen;
+  const insetRight = layout === 'desktop' ? DOCK_INSET : layout === 'landscape' && dockOpen ? sideSheetInset() : 0;
+  const insetBottom = portraitSheet ? heights[sheet] : 0;
+  const clearSelection = () => {
+    setSelectedArmies([]);
+    setSelectedProvince(null);
+    setMoveMode(null);
+  };
+  const mover = armySelected && state.armies[selectedArmies[0]].owner === human ? state.armies[selectedArmies[0]] : null;
+  const pendingRoute = moveMode && moveTarget && mover ? routePreview(state, world, human, mover, moveTarget) : null;
+
   return (
-    <div className="game-screen">
+    <div className={`game-screen layout-${layout}${compact ? ' compact' : ''}${touch ? ' touch' : ''}`}>
       <TopBar ctrl={ctrl} onOpen={(p) => setPanel(p)} />
       <div className="game-body">
         <NavRail
           ctrl={ctrl}
           active={panel}
           feedOpen={feedOpen}
+          unreadReports={unreadReports}
+          compact={compact}
           onToggleFeed={() => setFeedOpen((o) => !o)}
           onOpen={(p) => (p === 'menu' ? exitToMenu() : setPanel(p))}
         />
-        <div className="map-wrap">
+        <div
+          className={`map-wrap${dockOpen ? ' dock-open' : ''}`}
+          ref={mapWrapRef}
+          style={{ '--inset-bottom': `${insetBottom}px` } as React.CSSProperties}
+        >
           <MapView
             ctrl={ctrl}
             geo={geo}
             selectedProvince={selectedProvince}
             selectedArmies={selectedArmies}
-            moveMode={moveMode}
+            moveMode={moveMode !== null}
             focus={focus}
             mapMode={mapMode}
-            insetRight={DOCK_INSET}
+            insetRight={insetRight}
+            insetBottom={insetBottom}
+            followSelection={compact}
+            compact={compact}
+            touch={touch}
+            moveTarget={moveTarget}
+            onPickTarget={setMoveTarget}
             onSelectProvince={selectProvince}
             onSelectArmy={selectArmy}
             onOrderMove={orderMove}
@@ -291,79 +388,120 @@ export function GameScreen({
           </div>
           {legendOpen && <Legend world={world} human={human} mode={mapMode} onClose={() => setLegendOpen(false)} />}
 
-          <div className="banner-stack">
-            {outcome && outcomeSeen && (
-              <div className="banner outcome-banner-bar">
-                <Icon name="star" size={16} /> Campaign over
-                <span className="muted">— {outcome.winner ? `${nationName(world, outcome.winner)} wins` : 'no winner'}</span>
-                <button className="primary" onClick={() => setOutcomeSeen(false)}>
-                  Results
+          {/* It follows the pointer over its parent, the map's frame. */}
+          {!touch && <HoverCard ctrl={ctrl} pid={hover?.pid ?? null} armyId={hover?.army} />}
+
+          {/* Banners and alerts: placed apart on the desktop, one column on small screens. */}
+          <div className="map-notices">
+            <div className="banner-stack">
+              {outcome && outcomeSeen && (
+                <div className="banner outcome-banner-bar">
+                  <Icon name="star" size={16} /> Campaign over
+                  <span className="muted">— {outcome.winner ? `${nationName(world, outcome.winner)} wins` : 'no winner'}</span>
+                  <button className="primary" onClick={() => setOutcomeSeen(false)}>
+                    Results
+                  </button>
+                </div>
+              )}
+              {ctrl.loop.paused && !outcome && (
+                <button className="banner paused-banner" onClick={() => ctrl.togglePause()} data-testid="paused-banner">
+                  <Icon name="pause" size={16} /> Paused <span className="muted">— {touch ? 'tap to resume' : 'press Space to resume'}</span>
                 </button>
-              </div>
-            )}
-            {ctrl.loop.paused && !outcome && (
-              <div className="banner paused-banner">
-                <Icon name="pause" size={16} /> Paused <span className="muted">— press Space to resume</span>
-              </div>
-            )}
-            {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="banner dev-banner">Development speed {ctrl.loop.speed}x</div>}
-            {moveMode && (
-              <div className="banner hint-banner">
-                <Icon name="target" size={16} /> Choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
-              </div>
-            )}
-          </div>
+              )}
+              {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="banner dev-banner">Development speed {ctrl.loop.speed}x</div>}
+              {moveMode && !touch && (
+                <div className="banner hint-banner">
+                  <Icon name="target" size={16} /> {ORDER[moveMode].hint}: choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
+                </div>
+              )}
+              {moveMode && touch && (
+                <div className="banner hint-banner move-confirm" data-testid="move-confirm">
+                  <span className="mc-text">
+                    <Icon name="target" size={16} />
+                    {!moveTarget ? (
+                      <span>Tap a destination</span>
+                    ) : pendingRoute?.blocked ? (
+                      <span>
+                        {world.provinces[moveTarget].city.name} <span className="muted">· {pendingRoute.blocked}</span>
+                      </span>
+                    ) : (
+                      <span>
+                        {ORDER[moveMode].hint} {world.provinces[moveTarget].city.name}
+                        {pendingRoute && <span className="muted"> · {formatDuration(pendingRoute.ticks, state)}</span>}
+                      </span>
+                    )}
+                  </span>
+                  <span className="mc-actions">
+                    {moveTarget && !pendingRoute?.blocked && (
+                      <button className="primary" onClick={() => orderMove(moveTarget)} data-testid="confirm-move">
+                        Confirm
+                      </button>
+                    )}
+                    <button onClick={() => setMoveMode(null)}>Cancel</button>
+                  </span>
+                </div>
+              )}
+            </div>
 
-          <HoverCard ctrl={ctrl} pid={hover?.pid ?? null} armyId={hover?.army} />
-
-          <div className="alert-stack">
-            {offers.map((o) => (
-              <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
-                <Flag id={o.from} size={22} />
-                <div className="alert-body">
-                  <div className="alert-title">Peace proposal</div>
-                  <div>
-                    <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
-                  </div>
-                  <div className="offer-timer" title="Time left to answer">
-                    <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
-                  </div>
-                  <div className="btn-row">
-                    <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
-                      Accept
-                    </button>
-                    <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
-                    <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+            <div className="alert-stack">
+              {offers.map((o) => (
+                <div key={`offer-${o.from}`} className="alert-card offer" data-testid="peace-offer">
+                  <Flag id={o.from} size={22} />
+                  <div className="alert-body">
+                    <div className="alert-title">Peace proposal</div>
+                    <div>
+                      <strong>{sentence(nationName(world, o.from))}</strong> offers peace on current borders.
+                    </div>
+                    <div className="offer-timer" title="Time left to answer">
+                      <span style={{ width: `${Math.max(0, (o.expiresAt - state.tick) / offerTicks) * 100}%` }} />
+                    </div>
+                    <div className="btn-row">
+                      <button className="primary" onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: true })}>
+                        Accept
+                      </button>
+                      <button onClick={() => ctrl.submit({ type: 'respondPeace', nation: human, from: o.from, accept: false })}>Reject</button>
+                      <span className="muted offer-left">{formatDuration(o.expiresAt - state.tick, state)} to answer</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {alerts.map(({ event: e, tone }) => (
-              <div
-                key={e.id}
-                className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
-                onClick={() => e.province && focusOn(e.province)}
-                title={e.province ? 'Show on the map' : undefined}
-              >
-                <span className="alert-icon">
-                  <Icon name={eventIcon(e)} size={18} />
-                </span>
-                <div className="alert-body">{e.text}</div>
-                <button
-                  className="icon-btn"
-                  aria-label="Dismiss"
-                  onClick={(ev) => {
-                    ev.stopPropagation();
-                    setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
-                  }}
+              ))}
+              {alerts.map(({ event: e, tone }) => (
+                <div
+                  key={e.id}
+                  className={`alert-card sev-${tone}${e.province ? ' clickable' : ''}`}
+                  onClick={() => e.province && focusOn(e.province)}
+                  title={e.province ? 'Show on the map' : undefined}
                 >
-                  <Icon name="close" size={14} />
-                </button>
-              </div>
-            ))}
+                  <span className="alert-icon">
+                    <Icon name={eventIcon(e)} size={18} />
+                  </span>
+                  <div className="alert-body">{e.text}</div>
+                  <button
+                    className="icon-btn"
+                    aria-label="Dismiss"
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      setAlerts((cur) => cur.filter((a) => a.event.id !== e.id));
+                    }}
+                  >
+                    <Icon name="close" size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <EventLog ctrl={ctrl} open={feedOpen} onToggle={() => setFeedOpen((o) => !o)} onFocus={focusOn} />
+          <EventLog
+            ctrl={ctrl}
+            open={feedOpen}
+            compact={compact}
+            onToggle={() => setFeedOpen((o) => !o)}
+            onFocus={(pid) => {
+              focusOn(pid);
+              // Small screens: the report gives way to the province it points at.
+              if (compact) setFeedOpen(false);
+            }}
+          />
           {toast && (
             <div className="toast" role="alert">
               <Icon name="warning" size={16} /> {toast}
@@ -371,7 +509,13 @@ export function GameScreen({
           )}
 
           {dockOpen && (
-            <aside className="selection-dock" ref={dockRef}>
+            <aside
+              className={`selection-dock${portraitSheet ? ' sheet' : ''}`}
+              ref={dockRef}
+              data-sheet={portraitSheet ? sheet : undefined}
+              style={portraitSheet ? { height: heights[sheet] } : undefined}
+            >
+              {portraitSheet && <SheetHandle dock={dockRef} snap={sheet} heights={heights} onSnap={setSheet} onDismiss={clearSelection} />}
               {armySelected && (
                 <ArmyPanel
                   key={selectedArmies[0]}
@@ -382,7 +526,7 @@ export function GameScreen({
                   onSelectArmies={setSelectedArmies}
                   onClose={() => {
                     setSelectedArmies([]);
-                    setMoveMode(false);
+                    setMoveMode(null);
                   }}
                 />
               )}
@@ -415,6 +559,7 @@ export function GameScreen({
       {panel === 'load' && <LoadDialog world={world} scenarioId={world.scenario.id} onLoad={onLoad} onClose={() => setPanel(null)} />}
       {panel === 'help' && (
         <HelpDialog
+          touch={touch}
           onClose={() => setPanel(null)}
           onReplayBriefing={() => {
             // The briefing says the game is paused: make it so.
@@ -429,6 +574,7 @@ export function GameScreen({
           world={world}
           nationName={nationName(world, human)}
           limitMinutes={state.settings.timeLimitTicks / TICKS_PER_MINUTE / state.settings.durationScale}
+          input={{ touch, compact }}
           onClose={() => setTutorial(false)}
         />
       )}
@@ -438,6 +584,83 @@ export function GameScreen({
           <p>The campaign is autosaved: resume it any time with Load game on the main menu.</p>
         </ConfirmDialog>
       )}
+    </div>
+  );
+}
+
+/**
+ * Grip of the portrait layout's bottom sheet. Drag it to resize the sheet (it settles on
+ * the nearest of peek, half and full) or down past peek to close it; tap it to toggle
+ * between half and full.
+ */
+function SheetHandle({
+  dock,
+  snap,
+  heights,
+  onSnap,
+  onDismiss,
+}: {
+  dock: RefObject<HTMLElement | null>;
+  snap: SheetSnap;
+  heights: Record<SheetSnap, number>;
+  onSnap: (s: SheetSnap) => void;
+  onDismiss: () => void;
+}) {
+  const drag = useRef<{ y: number; h: number; moved: boolean } | null>(null);
+  const toggle = () => onSnap(snap === 'half' ? 'full' : 'half');
+  const end = (e: React.PointerEvent, cancelled: boolean) => {
+    const d = drag.current;
+    const el = dock.current;
+    drag.current = null;
+    if (!d || !el) return;
+    el.classList.remove('dragging');
+    if (cancelled || !d.moved) {
+      el.style.height = `${heights[snap]}px`;
+      if (!cancelled) toggle();
+      return;
+    }
+    const h = d.h - (e.clientY - d.y);
+    if (h < heights.peek * 0.7) {
+      onDismiss();
+      return;
+    }
+    const best = (['peek', 'half', 'full'] as SheetSnap[]).reduce((a, b) => (Math.abs(heights[b] - h) < Math.abs(heights[a] - h) ? b : a));
+    // The rendered height only changes with the snap: set it here in case the snap does not.
+    el.style.height = `${heights[best]}px`;
+    onSnap(best);
+  };
+  return (
+    <div
+      className="sheet-handle"
+      role="button"
+      tabIndex={0}
+      aria-label={snap === 'full' ? 'Shrink the panel' : 'Expand the panel'}
+      data-testid="sheet-handle"
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      }}
+      onPointerDown={(e) => {
+        const el = dock.current;
+        if (!el) return;
+        drag.current = { y: e.clientY, h: el.offsetHeight, moved: false };
+        e.currentTarget.setPointerCapture(e.pointerId);
+        el.classList.add('dragging');
+      }}
+      onPointerMove={(e) => {
+        const d = drag.current;
+        const el = dock.current;
+        if (!d || !el) return;
+        const dy = e.clientY - d.y;
+        if (Math.abs(dy) > 6) d.moved = true;
+        if (d.moved) el.style.height = `${Math.max(48, Math.min(heights.full, d.h - dy))}px`;
+      }}
+      onPointerUp={(e) => end(e, false)}
+      onPointerCancel={(e) => end(e, true)}
+    >
+      <span className="sheet-grip" />
     </div>
   );
 }
@@ -468,11 +691,25 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const def = world.provinces[pid];
     const ps = state.provinces[pid];
     const owner = ps.owner;
-    const armies = armiesIn(state, pid);
-    const ownUnits = armies.filter((a) => a.owner === human).reduce((n, a) => n + a.units.length, 0);
-    const otherUnits = armies.filter((a) => a.owner !== human).reduce((n, a) => n + a.units.length, 0);
+    // Under the fog of war only the map is known: who holds it and how big its city is.
+    const seen = ctrl.sight();
+    const known = seen.has(pid);
+    // Units standing here by owner, yours first.
+    const units = new Map<OwnerId, number>();
+    for (const a of armiesIn(state, pid)
+      .filter((a) => isArmyVisible(a, human, seen))
+      .sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
+      units.set(a.owner, (units.get(a.owner) ?? 0) + a.units.length);
+    }
+    const adjective = (o: OwnerId) => (o === 'neutral' ? (def.neutral?.adjective ?? 'neutral') : world.nations[o].adjective);
     const army = armyId ? state.armies[armyId] : undefined;
     const c = army ? composition(army) : null;
+    // What the city's model shows, spelt out: its buildings, free slots and work in progress.
+    const built = known ? BUILDING_ORDER.filter((b) => (ps.buildings[b] ?? 0) > 0) : [];
+    const job = known ? (ps.construction?.building ?? null) : null;
+    const free = known ? buildingSlots(state, pid) - slotsUsed(ps.buildings, job) : 0;
+    const battle = known && !!state.battles[pid];
+    const capture = known ? ps.capture : null;
     body = (
       <>
         {army && c && (
@@ -488,7 +725,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
               {c.types.slice(0, 4).map(([t, n]) => (
                 <span key={t}>
                   <span className="unit-plate">
-                    <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={20} />
+                    <UnitIconArt world={world} type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={20} />
                   </span>{' '}
                   {n}
                 </span>
@@ -497,14 +734,13 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
                 {Math.round(c.strength * 100)}% strength · morale {Math.round(armyMorale(army) * 100)}
               </span>
             </div>
-            {isRouted(state, army) && <div className="hc-row bad">Routed: falling back</div>}
-            {army.move?.leg && !isRouted(state, army) && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
+            {army.move?.leg && <div className="hc-row">Marching to {provinceName(world, army.move.leg.to)}</div>}
             {!army.supplied && <div className="hc-row bad">Out of supply</div>}
           </div>
         )}
         <div className="hc-head">
           <OwnerFlag world={world} owner={owner} province={pid} size={14} />
-          <span className="hc-owner">{ownerLabel(world, owner, pid)}</span>
+          <span className="hc-owner">{owner === 'neutral' && ownerShortName(world, owner, pid) === def.name ? 'Neutral state' : ownerLabel(world, owner, pid)}</span>
         </div>
         <div className="hc-name">{def.name}</div>
         <div className="hc-row">
@@ -516,23 +752,48 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
           </span>
           {def.objectiveVp ? <span className="hc-vp">★ {def.objectiveVp} VP</span> : null}
         </div>
-        {owner !== 'neutral' && (
+        {(built.length > 0 || free > 0 || job) && (
+          <div className="hc-row hc-buildings">
+            {built.map((b) => (
+              <span key={b} style={{ color: lighten(plinthColor(BUILDINGS[b].category), 0.35) }}>
+                <BuildingGlyphArt kind={b} size={14} />
+              </span>
+            ))}
+            {free > 0 && <span className="hc-free">{countOf(free, 'free slot')}</span>}
+            {job && <span className="warn-text">Building {BUILDINGS[job].name}</span>}
+          </div>
+        )}
+        {owner !== 'neutral' && known && (
           <div className="hc-row">
             <span className={ps.morale >= 60 ? 'ok' : ps.morale < 35 ? 'bad' : 'warn-text'}>
               <Icon name="morale" size={13} /> Morale {Math.round(ps.morale)}
             </span>
           </div>
         )}
-        {(ownUnits > 0 || otherUnits > 0 || state.battles[pid] || ps.capture) && (
+        {(units.size > 0 || battle || capture) && (
           <div className="hc-row">
-            {ownUnits > 0 && <span className="ok">{ownUnits} of your units</span>}
-            {otherUnits > 0 && <span className={owner === human ? 'bad' : ''}>{otherUnits} foreign units</span>}
-            {state.battles[pid] && (
+            {[...units].map(([o, n]) =>
+              o === human ? (
+                <span key={o} className="ok">
+                  {n} of your units
+                </span>
+              ) : (
+                <span key={o} className={o !== 'neutral' && atWar(state, human, o) ? 'bad' : ''}>
+                  {countOf(n, `${adjective(o)} unit`)}
+                </span>
+              ),
+            )}
+            {battle && (
               <span className="bad">
                 <Icon name="swords" size={13} /> Battle
               </span>
             )}
-            {ps.capture && <span className="warn-text">Being captured</span>}
+            {capture && <span className="warn-text">Being captured</span>}
+          </div>
+        )}
+        {!known && (
+          <div className="hc-row hc-fog">
+            <Icon name="fog" size={13} /> Fog of war: no reports from here
           </div>
         )}
       </>

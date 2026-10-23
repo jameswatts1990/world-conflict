@@ -9,7 +9,6 @@ import { join } from 'node:path';
 const BASE = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2';
 const FILES = [
   ['geojson/ne_10m_admin_1_states_provinces.geojson', 'ne_10m_admin_1_states_provinces.geojson'],
-  ['geojson/ne_50m_admin_0_countries.geojson', 'ne_50m_admin_0_countries.geojson'],
   ['LICENSE.md', 'NATURAL_EARTH_LICENSE.md'],
 ];
 

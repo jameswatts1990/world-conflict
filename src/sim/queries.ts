@@ -1,6 +1,7 @@
 // Pure read-only helpers shared by systems, commands, the AI and the UI.
 import { BUILDINGS, BUILDING_EFFECTS, CITY } from './config/buildings';
 import { BUILDING_UNLOCKED_BY, ERA_RULES, RESEARCH_RULES, TECH_BY_ID, UNIT_UNLOCKED_BY } from './config/research';
+import { POWERS } from './config/powers';
 import { CAPTURE, ECONOMY, MORALE, VICTORY } from './config/rules';
 import { TICKS_PER_MINUTE } from './config/timing';
 import { ARMY_RULES, UNITS, VETERANCY, baseGen, usesFuel, type CombatValues } from './config/units';
@@ -10,7 +11,6 @@ import {
   UNIT_GENS,
   type Army,
   type BuildingType,
-  type CityTier,
   type Effect,
   type Era,
   type GameState,
@@ -93,6 +93,22 @@ export function nationEra(state: GameState, nation: NationId): Era {
 
 export function researchSlots(state: GameState, nation: NationId): number {
   return RESEARCH_RULES.baseSlots + techEffects(state, nation).filter((e) => e.kind === 'researchSlot').length;
+}
+
+/**
+ * The queued project that starts next when a slot is free (the first whose prerequisites
+ * are done), with what the treasury still lacks for it: the queue waits for funds in order.
+ */
+export function nextQueuedResearch(state: GameState, nation: NationId): { tech: TechId; shortfall: PartialResources } | null {
+  const n = state.nations[nation];
+  const tech = n.research.queue.find((t) => TECH_BY_ID[t]?.requires.every((r) => n.research.completed.includes(r)));
+  if (!tech) return null;
+  const shortfall: PartialResources = {};
+  for (const k of RESOURCE_KEYS) {
+    const need = TECH_BY_ID[tech].cost[k] ?? 0;
+    if (n.resources[k] + 1e-9 < need) shortfall[k] = need - n.resources[k];
+  }
+  return { tech, shortfall };
 }
 
 /** Research progress per tick (1 = nominal). Universities and research add speed. */
@@ -279,10 +295,6 @@ export function isArmyInTransit(army: Army): boolean {
   return army.move?.leg != null;
 }
 
-export function isRouted(state: GameState, army: Army): boolean {
-  return army.routedUntil > state.tick;
-}
-
 // ---------------------------------------------------------------------------
 // Diplomacy & movement legality
 // ---------------------------------------------------------------------------
@@ -348,10 +360,6 @@ export function cityPopulation(state: GameState, world: World, province: Provinc
   const next = CITY.growthToNext[p.tier];
   const progress = Number.isFinite(next) ? p.growth / next : 0;
   return def.population * scale * (1 + 0.15 * progress);
-}
-
-export function cityTierName(tier: CityTier): string {
-  return CITY.tierNames[tier];
 }
 
 // ---------------------------------------------------------------------------
@@ -490,6 +498,11 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     .map((l, i) => ({ l, i }))
     .sort((x, y) => y.l.score - x.l.score || y.l.vp - x.l.vp || y.l.provinces - x.l.provinces || x.i - y.i)
     .map((x) => x.l);
+}
+
+/** Great and major powers contend for victory; minor powers can be conquered but never win. */
+export function isContender(world: World, nation: NationId): boolean {
+  return POWERS[world.nations[nation].power].playable;
 }
 
 export function provincesOwnedBy(state: GameState, world: World, owner: OwnerId): ProvinceId[] {

@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
 import { BUILDING_UNLOCKED_BY, TECH_BY_ID, UNIT_UNLOCKED_BY } from '../../sim/config/research';
-import { ECONOMY, MORALE } from '../../sim/config/rules';
+import { ECONOMY, SIGHT } from '../../sim/config/rules';
 import { UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
 import {
   RESOURCE_KEYS,
+  alliesOf,
   armiesIn,
   armyMorale,
   armyName,
@@ -21,6 +22,7 @@ import {
   homeSoilMult,
   constructionTicks,
   currentModel,
+  isArmyVisible,
   isUnitUnlocked,
   nationName,
   provinceMoraleTarget,
@@ -28,6 +30,7 @@ import {
   recruitCost,
   recruitTicks,
   sentence,
+  sharesAlliedSight,
   unitGen,
   unitStats,
   type Army,
@@ -41,12 +44,13 @@ import {
   type Resources,
   type UnitClass,
   type UnitType,
+  type World,
 } from '../../sim';
 import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
-import { fmtPopulation, fmtRate, formatDuration } from '../format';
+import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
 import { Cost, MoraleMeter, Progress, Section } from './Common';
@@ -103,8 +107,8 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
             {ownerShortName(world, s.owner, pid)}
             <span className="bs-role muted"> · {s.owner === defender ? 'defending' : 'attacking'}</span>
           </span>
-          <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; below ${Math.round(MORALE.routThreshold * 100)}% an army breaks`}>
-            {s.c.count} units · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
+          <span className="bs-units" title={`Average morale ${Math.round(s.morale * 100)}%; low morale blunts firepower`}>
+            {countOf(s.c.count, 'unit')} · {Math.round((s.power / total) * 100)}% · morale {Math.round(s.morale * 100)}
           </span>
           <span className="ar-bars">
             <span className="ar-str" title={`${Math.round(s.c.strength * 100)}% average strength`}>
@@ -147,7 +151,10 @@ export function ProvincePanel({
   const owner = ps.owner;
   const mine = owner === human;
   const color = ownerColor(world, owner);
-  const armies = armiesIn(state, pid);
+  // Under the fog of war only the map is known: who holds it, its city and its ground.
+  const seen = ctrl.sight();
+  const known = seen.has(pid);
+  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
   const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
   const nationalCapital = def.city.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
@@ -159,7 +166,7 @@ export function ProvincePanel({
         <div className="hero-top">
           <OwnerFlag world={world} owner={owner} province={pid} size={16} />
           <span className="hero-owner">
-            {def.name} · {ownerLabel(world, owner, pid)}
+            {ownerShortName(world, owner, pid) === def.name ? ownerLabel(world, owner, pid) : `${def.name} · ${ownerLabel(world, owner, pid)}`}
           </span>
           <button className="icon-btn close-btn" onClick={onClose} aria-label="Close province panel">
             <Icon name="close" size={16} />
@@ -178,7 +185,7 @@ export function ProvincePanel({
             <Icon name="city" size={13} /> {fmtPopulation(cityPopulation(state, world, pid))}
           </span>
           {def.objectiveVp ? <strong className="chip gold vp-badge">★ {def.objectiveVp} VP objective</strong> : null}
-          {owner !== 'neutral' && (
+          {owner !== 'neutral' && known && (
             <span className={`chip ${ps.supplied ? 'ok' : 'bad'}`} title={ps.supplied ? 'Connected to a supply hub' : 'Cut off from supply hubs'}>
               <Icon name="supply" size={13} /> {ps.supplied ? 'Supplied' : 'Cut off'}
             </span>
@@ -208,12 +215,12 @@ export function ProvincePanel({
           seed={pid}
           tier={ps.tier}
           capital={capital || nationalCapital}
-          buildings={ps.buildings}
-          construction={ps.construction?.building ?? null}
+          buildings={known ? ps.buildings : {}}
+          construction={known ? (ps.construction?.building ?? null) : null}
           terrain={def.terrain}
           coastal={def.coastal}
           nationColor={owner === 'neutral' ? undefined : color}
-          battle={!!state.battles[pid]}
+          battle={known && !!state.battles[pid]}
           width={354}
         />
       </div>
@@ -233,8 +240,8 @@ export function ProvincePanel({
       </nav>
 
       <div className="panel-body">
-        {state.battles[pid] && <BattleBox ctrl={ctrl} pid={pid} />}
-        {ps.capture && (
+        {known && state.battles[pid] && <BattleBox ctrl={ctrl} pid={pid} />}
+        {known && ps.capture && (
           <div className="capture-box">
             <span>
               <Icon name="target" size={14} /> {sentence(nationName(world, ps.capture.by))} capturing
@@ -243,11 +250,36 @@ export function ProvincePanel({
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />
           </div>
         )}
-        {activeTab === 'city' && <CityTab ctrl={ctrl} pid={pid} />}
+        {activeTab === 'city' && (known ? <CityTab ctrl={ctrl} pid={pid} /> : <FogNote ctrl={ctrl} />)}
         {activeTab === 'recruit' && <RecruitTab ctrl={ctrl} pid={pid} />}
         {activeTab === 'armies' && <ArmiesTab ctrl={ctrl} pid={pid} selectedArmies={selectedArmies} onSelectArmy={onSelectArmy} />}
       </div>
     </section>
+  );
+}
+
+/** A province under the fog of war shows this instead of its city: what is hidden, and how to see it. */
+function FogNote({ ctrl }: { ctrl: GameController }) {
+  const { state, world, human } = ctrl;
+  const allies = alliesOf(state, world, human).map((a) => world.nations[a].name);
+  const reach = (n: number) => (n === 1 ? 'the provinces next to them' : `${n} provinces out`);
+  return (
+    <div className="fog-note" data-testid="fog-note">
+      <div className="fog-title">
+        <Icon name="fog" size={15} /> Under the fog of war
+      </div>
+      <p className="muted small">
+        No reports come from here: its armies, battles, buildings and morale are hidden. Your provinces watch {reach(SIGHT.province)}, armies{' '}
+        {reach(SIGHT.army)}, and armies with reconnaissance units (cavalry, armoured cars) {reach(SIGHT.recon)}.
+      </p>
+      <p className="muted small">
+        {sharesAlliedSight(state, human)
+          ? allies.length
+            ? `Your liaison officers share what ${listText(allies)} can see, and none of them can see here either.`
+            : 'Your liaison officers will share what your allies see once you fight a common enemy.'
+          : 'Research Liaison Officers to see what your allies (powers fighting a common enemy) see.'}
+      </p>
+    </div>
   );
 }
 
@@ -361,6 +393,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 
       {mine && (
         <Section title="Build" icon="plus">
+          {ps.construction && <p className="muted small build-note">One project at a time: new orders open when the current work is done.</p>}
           {(['economy', 'military', 'civic', 'infrastructure'] as BuildingCategory[]).map((cat) => {
             const rows = BUILDING_ORDER.filter((b) => BUILDINGS[b].category === cat).filter((b) => {
               const cfg = BUILDINGS[b];
@@ -399,6 +432,9 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
   const locked = !!lockedBy && !state.nations[human].research.completed.includes(lockedBy);
   const nextLevel = level + 1;
   const demolishable = level > 0 && cfg.category !== 'infrastructure';
+  // Why it cannot be ordered here (the city's one-job-at-a-time rule is explained once, above the list).
+  const fullCity = cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, pid);
+  const why = locked || maxed || rules.ok ? null : fullCity ? 'No free slot' : rules.reason.replace(/\.$/, '');
   return (
     <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}`}>
       <span className="bld-icon">
@@ -419,6 +455,7 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
             <span className="muted">Not built</span>
           )}
         </span>
+        {why && <span className="bld-why">{why}</span>}
       </span>
       {locked ? null : maxed ? (
         <span className="b-action">
@@ -516,7 +553,7 @@ function RecruitTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
             {ps.recruitQueue.map((j, i) => (
               <li key={i}>
                 <span className="unit-plate">
-                  <UnitIconArt type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
+                  <UnitIconArt world={world} type={j.unitType} gen={unitGen(state, human, j.unitType)} nation={human} width={18} />
                 </span>
                 <span className="q-name" title={currentModel(state, world, human, j.unitType).name}>
                   {currentModel(state, world, human, j.unitType).name}
@@ -580,7 +617,7 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
   const time = formatDuration(recruitTicks(state, human, type), state);
   return (
     <div className={`recruit-card${check.ok ? '' : ' disabled'}${missing.length ? ' locked' : ''}`} data-unit-card={type}>
-      <UnitPicture type={type} gen={gen} nation={human} width={104} />
+      <UnitPicture world={world} type={type} gen={gen} nation={human} width={104} />
       <div className="uc-body">
         <div className="uc-name" title={model.detail}>
           {model.name}
@@ -624,14 +661,14 @@ function RecruitCard({ ctrl, pid, type }: { ctrl: GameController; pid: ProvinceI
 }
 
 /** Up to four unit-type icons with counts. */
-export function CompositionIcons({ state, army, size = 22 }: { state: GameState; army: Army; size?: number }) {
+export function CompositionIcons({ world, state, army, size = 22 }: { world: World; state: GameState; army: Army; size?: number }) {
   const c = composition(army);
   return (
     <span className="ar-comp">
       {c.types.slice(0, 4).map(([t, n]) => (
         <span key={t} title={UNITS[t].name}>
           <span className="unit-plate">
-            <UnitIconArt type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={size} />
+            <UnitIconArt world={world} type={t} gen={unitGen(state, army.owner, t)} nation={army.owner} width={size} />
           </span>
           {n}
         </span>
@@ -652,11 +689,13 @@ function ArmiesTab({
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
 }) {
   const { state, world, human } = ctrl;
-  const armies = armiesIn(state, pid);
+  const seen = ctrl.sight();
+  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
   return (
     <>
+      {!seen.has(pid) && <p className="muted small fog-text">Under the fog of war: armies here cannot be seen.</p>}
       <Section title="Forces present" icon="swords" extra={armies.length ? armies.length : undefined}>
-        {armies.length === 0 && <div className="muted empty">No armies in this province</div>}
+        {armies.length === 0 && <div className="muted empty">{seen.has(pid) ? 'No armies in this province' : 'None in sight'}</div>}
         <ul className="army-list">
           {armies.map((a) => {
             const name = a.owner === 'neutral' ? armyName(world, a, pid) : armyName(world, a);
@@ -668,11 +707,11 @@ function ArmiesTab({
                   className={`army-row${selectedArmies.includes(a.id) ? ' selected' : ''}${a.owner === human ? ' own' : ''}`}
                   onClick={(e) => onSelectArmy(a.id, e.shiftKey)}
                   data-army-row={a.id}
-                  title={`${a.units.length} formations · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
+                  title={`${countOf(a.units.length, 'formation')} · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
                 >
                   <OwnerFlag world={world} owner={a.owner} province={a.province} size={13} />
                   <span className="ar-name">{name}</span>
-                  <CompositionIcons state={state} army={a} size={20} />
+                  <CompositionIcons world={world} state={state} army={a} size={20} />
                   <span className="ar-bars">
                     <span className="ar-str">
                       <span style={{ width: `${c.strength * 100}%`, background: strengthColor(c.strength) }} />

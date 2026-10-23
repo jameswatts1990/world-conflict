@@ -3,6 +3,8 @@ import { BUILDING_EFFECTS } from '../config/buildings';
 import { MOVEMENT } from '../config/rules';
 import { UNITS } from '../config/units';
 import { pushEvent } from '../events';
+import { armyName } from '../names';
+import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import type { Army, GameState, ProvinceId, UnitType } from '../types';
 import { provinceName } from '../text';
@@ -40,11 +42,13 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
 }
 
 /**
- * An army waiting at a node holds position while it is fighting or while it
- * is capturing the hostile province it stands in; it then continues its path.
+ * An army waiting at a node holds position while it is fighting or, unless it
+ * is only moving, while it is capturing the hostile province it stands in; it
+ * then continues its path.
  */
 export function mustHold(state: GameState, army: Army): boolean {
   if (hostileArmiesIn(state, army.province, army.owner).length > 0) return true;
+  if (army.move?.mode === 'move') return false;
   const owner = state.provinces[army.province].owner;
   return owner !== army.owner && areHostile(state, army.owner, owner);
 }
@@ -59,7 +63,7 @@ export function startLeg(state: GameState, world: World, army: Army): boolean {
   const next = move.path[0];
   if (!connectionBetween(world, army.province, next) || !canEnterProvince(state, army.owner, next)) {
     army.move = null;
-    pushEvent(state, 'move', `An army halted: the route to ${provinceName(world, next)} is closed.`, {
+    pushEvent(state, 'move', `The ${armyName(world, army)} halted: the route to ${provinceName(world, next)} is closed.`, {
       nations: army.owner === 'neutral' ? [] : [army.owner],
       province: army.province,
     });
@@ -75,7 +79,7 @@ export function movementSystem(state: GameState, world: World): void {
     const army = state.armies[id];
     if (!army?.move) continue;
     if (!army.move.leg) {
-      if (army.move.path.length === 0) {
+      if (army.move.path.length === 0 && !turnPatrol(state, world, army)) {
         army.move = null;
         continue;
       }
@@ -91,7 +95,7 @@ export function movementSystem(state: GameState, world: World): void {
     if (!canEnterProvince(state, army.owner, leg.to)) {
       // Diplomacy changed mid-march (e.g. peace signed): turn back.
       army.move = null;
-      pushEvent(state, 'move', `An army was refused entry to ${provinceName(world, leg.to)} and turned back.`, {
+      pushEvent(state, 'move', `The ${armyName(world, army)} was refused entry to ${provinceName(world, leg.to)} and turned back.`, {
         nations: army.owner === 'neutral' ? [] : [army.owner],
         province: leg.from,
       });
@@ -100,6 +104,17 @@ export function movementSystem(state: GameState, world: World): void {
     army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
-    if (army.move.path.length === 0) army.move = null;
+    if (army.move.path.length === 0 && !army.move.patrol) army.move = null;
   }
+}
+
+/** A patrol at the end of its beat turns for the other end; false once no route is left. */
+function turnPatrol(state: GameState, world: World, army: Army): boolean {
+  const ends = army.move?.patrol;
+  if (!ends) return false;
+  const next = army.province === ends[1] ? ends[0] : ends[1];
+  const route = next === army.province ? null : findPath(state, world, army, army.province, next);
+  if (!route) return false;
+  army.move!.path = route.path;
+  return true;
 }

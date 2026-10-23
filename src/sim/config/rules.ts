@@ -32,14 +32,14 @@ export const MORALE = {
   roundDrain: 0.012,
   /** Morale lost by the rest of an army each time one of its units is destroyed. */
   lossShock: 0.03,
-  /** Firepower at zero morale (scales linearly to 1 at full morale). */
+  /** Firepower at zero morale (scales linearly to 1 at full morale). Armies never break: they fight to the death. */
   firepowerFloor: 0.5,
-  /** An army whose strength-weighted morale falls below this routs. */
-  routThreshold: 0.25,
-  /** Strength lost by every unit of a routing army (halved with recon). */
-  routLosses: 0.08,
-  /** A routed army cannot take orders for this long. */
-  routedSeconds: 30,
+  /** Strength (absolute) lost by every unit of an army ordered out of a battle (halved with recon); units it kills are left behind. */
+  retreatLoss: 0.15,
+  /** Morale lost by every unit of an army withdrawing under fire. */
+  retreatMoraleShock: 0.1,
+  /** An army set to fall back withdraws on its own when its strength-weighted morale drops below this. */
+  autoRetreatAt: 0.25,
   /** Neutral garrisons defend their homeland stubbornly. */
   neutralResilience: 1.4,
   /** Morale regained per army upkeep step out of combat. */
@@ -90,7 +90,6 @@ export const MORALE = {
   capitalLostShock: -15,
   declareWarShock: -3,
   rallyShock: 2,
-  surrenderShock: -3,
 };
 
 export const SUPPLY = {
@@ -121,6 +120,16 @@ export const MOVEMENT = {
 export const CAPTURE = {
   baseSeconds: 20,
   capitalMult: 1.5,
+};
+
+/** Fog of war: how far, in connections, a nation's provinces and armies see. */
+export const SIGHT = {
+  /** Every province a nation holds watches itself and its neighbours. */
+  province: 1,
+  /** So does every army, from the province it stands in or marches from. */
+  army: 1,
+  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far. */
+  recon: 2,
 };
 
 export const DIPLOMACY = {

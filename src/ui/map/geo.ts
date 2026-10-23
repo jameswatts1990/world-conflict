@@ -1,21 +1,24 @@
 // Map geometry for rendering only. Shapes come from bundled Natural Earth
-// TopoJSON; gameplay adjacency lives in the simulation's scenario data.
+// TopoJSON; gameplay adjacency lives in the simulation's scenario data. The
+// provinces and the world around them share one topology, so their coasts and
+// borders are the same lines.
 import { geoArea, geoGraticule, geoMercator, geoPath } from 'd3-geo';
-import type { Feature, FeatureCollection, MultiPolygon, Polygon } from 'geojson';
-import { feature, mesh } from 'topojson-client';
-import type { GeometryCollection, Topology } from 'topojson-specification';
-import theatreJson from '../../assets/map/theatre.topo.json';
-import worldJson from '../../assets/map/world.topo.json';
+import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Polygon, Position } from 'geojson';
+import { feature, merge, mesh } from 'topojson-client';
+import type { GeometryCollection, MultiPolygon as TopoMultiPolygon, Polygon as TopoPolygon, Topology } from 'topojson-specification';
+import mapJson from '../../assets/map/map.topo.json';
 import type { OwnerId, ProvinceId, World } from '../../sim';
 
 export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 820;
 
-const theatreTopo = theatreJson as unknown as Topology<{ provinces: GeometryCollection<{ pid: string }> }>;
-const worldTopo = worldJson as unknown as Topology<{ countries: GeometryCollection<{ iso: string; name: string }> }>;
+const topo = mapJson as unknown as Topology<{
+  provinces: GeometryCollection<{ pid: string; iso: string }>;
+  countries: GeometryCollection<{ iso: string; name: string }>;
+}>;
 
 /** Countries that are (partly) represented by playable provinces. */
-export const THEATRE_ISO = new Set(['GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'POL', 'BEL', 'LUX', 'NLD', 'CHE', 'AUT', 'CZE', 'DNK', 'PRT']);
+export const THEATRE_ISO = new Set(topo.objects.provinces.geometries.map((g) => (g.properties as { iso: string }).iso));
 
 export interface CountryShape {
   iso: string;
@@ -34,15 +37,141 @@ export interface MapGeometry {
   /** Projected area of each province, in map units² (for label weighting). */
   provinceArea: Record<ProvinceId, number>;
   provinceBounds: Record<ProvinceId, [[number, number], [number, number]]>;
+  /** Bounds of each province's whole shape, islands included (provinceBounds keeps to its largest part). */
+  shapeBounds: Record<ProvinceId, [[number, number], [number, number]]>;
   /** Bounding box of the playable theatre, in map units. */
   theatreBounds: [[number, number], [number, number]];
   coastline: string;
+  /** All the theatre's land as one shape, without the borders inside it (cheap to clip with). */
+  land: string;
   graticule: string;
   provinceBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
+  /**
+   * The province borders that pass a test, as one path: `b` is the province on the other
+   * side, or null for the coast and the edge of the theatre.
+   */
+  arcs: (test: (a: ProvinceId, b: ProvinceId | null) => boolean) => string;
+  /** The provinces that pass a test as one shape, without the borders between them. */
+  union: (test: (pid: ProvinceId) => boolean) => string;
+  /** Screen directions (radians) from each city towards its neighbours over land: the roads out of town. */
+  roads: Record<ProvinceId, number[]>;
+  /**
+   * How far the theatre's land reaches from each city, in map units, in REACH_DIRECTIONS
+   * directions clockwise from east (at most REACH_CAP); null where it reaches that far all round.
+   */
+  reach: Record<ProvinceId, number[] | null>;
+  /** For a coastal province: the point of its sea coast nearest the city, and the direction out to sea. */
+  ports: Record<ProvinceId, { x: number; y: number; facing: number } | null>;
+}
+
+/** How far `reach` looks from a city, in map units, and in how many directions. */
+export const REACH_CAP = 40;
+const REACH_DIRECTIONS = 16;
+
+type Pt = [number, number];
+type Segment = [number, number, number, number];
+
+function segmentsOf(lines: MultiLineString, project: (p: Position) => Pt): Segment[] {
+  const out: Segment[] = [];
+  for (const line of lines.coordinates) {
+    const pts = line.map(project);
+    for (let i = 0; i + 1 < pts.length; i++) out.push([...pts[i], ...pts[i + 1]]);
+  }
+  return out;
+}
+
+/** Distances along the ray from (x, y) in direction (dx, dy) at which it crosses the segments, nearest first. */
+function crossings(segments: Segment[], x: number, y: number, dx: number, dy: number): number[] {
+  const out: number[] = [];
+  for (const [x1, y1, x2, y2] of segments) {
+    const [ex, ey] = [x2 - x1, y2 - y1];
+    const den = dx * ey - dy * ex;
+    if (Math.abs(den) < 1e-12) continue;
+    const t = ((x1 - x) * ey - (y1 - y) * ex) / den;
+    const u = ((x1 - x) * dy - (y1 - y) * dx) / den;
+    if (t > 0 && u >= 0 && u < 1) out.push(t);
+  }
+  return out.sort((a, b) => a - b);
+}
+
+/** Is a point inside the outline? Even-odd count of crossings to its right, with segments indexed by the rows they span. */
+function insideTest(segments: Segment[]): (x: number, y: number) => boolean {
+  const rows = new Map<number, Segment[]>();
+  for (const seg of segments)
+    for (let r = Math.floor(Math.min(seg[1], seg[3])); r <= Math.floor(Math.max(seg[1], seg[3])); r++) {
+      if (!rows.has(r)) rows.set(r, []);
+      rows.get(r)!.push(seg);
+    }
+  return (x, y) => {
+    let inside = false;
+    for (const [x1, y1, x2, y2] of rows.get(Math.floor(y)) ?? [])
+      if (y1 > y !== y2 > y && x < ((x2 - x1) * (y - y1)) / (y2 - y1) + x1) inside = !inside;
+    return inside;
+  };
+}
+
+/** Segments within `d` of a point. */
+const near = (segments: Segment[], x: number, y: number, d: number) =>
+  segments.filter(([x1, y1, x2, y2]) => Math.min(x1, x2) < x + d && Math.max(x1, x2) > x - d && Math.min(y1, y2) < y + d && Math.max(y1, y2) > y - d);
+
+/**
+ * What the cities' models need of the map around them: which way the roads leave
+ * town, where the land ends, and where the port goes.
+ */
+function cityGeometry(
+  world: World,
+  anchors: Record<ProvinceId, Pt>,
+  outline: Segment[],
+  coasts: Record<ProvinceId, Segment[]>,
+): Pick<MapGeometry, 'roads' | 'reach' | 'ports'> {
+  const land = insideTest(outline);
+  const roads: MapGeometry['roads'] = {};
+  const reach: MapGeometry['reach'] = {};
+  const ports: MapGeometry['ports'] = {};
+  for (const id of world.provinceIds) {
+    const [ax, ay] = anchors[id];
+    roads[id] = world.neighbors[id]
+      .filter((n) => n.kind !== 'strait')
+      .map((n) => Math.round(Math.atan2(anchors[n.id][1] - ay, anchors[n.id][0] - ax) * 1000) / 1000);
+
+    // Where the land ends along each ray: the first crossing of the theatre's outline (the second if the
+    // simplified coast leaves the city just offshore).
+    const local = near(outline, ax, ay, REACH_CAP);
+    const ashore = land(ax, ay);
+    const rays = Array.from({ length: REACH_DIRECTIONS }, (_, i) => {
+      const a = (i / REACH_DIRECTIONS) * Math.PI * 2;
+      const hits = crossings(local, ax, ay, Math.cos(a), Math.sin(a));
+      const end = ashore ? hits[0] : hits[0] !== undefined && hits[0] < 1.5 ? hits[1] : 0;
+      return Math.min(REACH_CAP, end ?? REACH_CAP);
+    });
+    reach[id] = rays.every((r) => r >= REACH_CAP) ? null : rays.map((r) => Math.round(r * 10) / 10);
+
+    // The port: the nearest point of the province's own sea coast, facing the open water round it
+    // (land outside the theatre counts as water here; no port lies that close to it).
+    ports[id] = null;
+    if (!world.provinces[id].coastal || !coasts[id].length) continue;
+    let best = Infinity;
+    let [px, py] = [ax, ay];
+    for (const [x1, y1, x2, y2] of coasts[id]) {
+      const [ex, ey] = [x2 - x1, y2 - y1];
+      const t = Math.max(0, Math.min(1, ((ax - x1) * ex + (ay - y1) * ey) / (ex * ex + ey * ey || 1)));
+      const [qx, qy] = [x1 + ex * t, y1 + ey * t];
+      const d = Math.hypot(qx - ax, qy - ay);
+      if (d < best) [best, px, py] = [d, qx, qy];
+    }
+    let [sx, sy] = [0, 0];
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      if (!land(px + Math.cos(a) * 2.5, py + Math.sin(a) * 2.5)) [sx, sy] = [sx + Math.cos(a), sy + Math.sin(a)];
+    }
+    const facing = Math.round((sx || sy ? Math.atan2(sy, sx) : Math.atan2(py - ay, px - ax)) * 1000) / 1000;
+    ports[id] = { x: px, y: py, facing };
+  }
+  return { roads, reach, ports };
 }
 
 function largestPolygon(f: Feature<Polygon | MultiPolygon>): Feature<Polygon> {
@@ -77,8 +206,8 @@ export function mapGeometry(world: World): MapGeometry {
 }
 
 export function buildMapGeometry(world: World): MapGeometry {
-  const provinces = feature(theatreTopo, theatreTopo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
-  const countries = feature(worldTopo, worldTopo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
+  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string; iso: string }>;
+  const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
   const projection = geoMercator().fitExtent(
     [
@@ -93,11 +222,13 @@ export function buildMapGeometry(world: World): MapGeometry {
   const labelPoints: Record<ProvinceId, [number, number]> = {};
   const provinceArea: Record<ProvinceId, number> = {};
   const provinceBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
+  const shapeBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
   provinces.features.forEach((f) => {
     provincePaths[f.properties.pid] = path(f) ?? '';
     labelPoints[f.properties.pid] = path.centroid(largestPolygon(f));
     provinceArea[f.properties.pid] = path.area(f);
     provinceBounds[f.properties.pid] = path.bounds(largestPolygon(f)) as [[number, number], [number, number]];
+    shapeBounds[f.properties.pid] = path.bounds(f) as [[number, number], [number, number]];
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
@@ -117,9 +248,11 @@ export function buildMapGeometry(world: World): MapGeometry {
     bounds: path.bounds(f) as [[number, number], [number, number]],
   }));
 
-  const geoms = theatreTopo.objects.provinces;
-  const coastline = path(mesh(theatreTopo, geoms, (a, b) => a === b)) ?? '';
-  const provinceBorders = path(mesh(theatreTopo, geoms, (a, b) => a !== b)) ?? '';
+  const geoms = topo.objects.provinces;
+  const outline = mesh(topo, geoms, (a, b) => a === b);
+  const coastline = path(outline) ?? '';
+  const land = path(merge(topo, geoms.geometries as (TopoPolygon | TopoMultiPolygon)[])) ?? '';
+  const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b)) ?? '';
   const graticule =
     path(
       geoGraticule()
@@ -130,6 +263,18 @@ export function buildMapGeometry(world: World): MapGeometry {
         .step([5, 5])(),
     ) ?? '';
   const theatreBounds = path.bounds(provinces) as [[number, number], [number, number]];
+
+  // The theatre's outline and sea coasts, projected, for the cities' roads, reach and ports.
+  const project = (p: Position) => projection(p as [number, number]) as Pt;
+  // The sea coast: arcs that only one shape, province or country, uses.
+  const everything = { type: 'GeometryCollection', geometries: [...geoms.geometries, ...topo.objects.countries.geometries] } as GeometryCollection;
+  const coasts: Record<ProvinceId, Segment[]> = {};
+  for (const id of world.provinceIds) {
+    coasts[id] = world.provinces[id].coastal
+      ? segmentsOf(mesh(topo, everything, (a, b) => a === b && (a.properties as { pid?: string } | undefined)?.pid === id), project)
+      : [];
+  }
+  const cities = cityGeometry(world, anchors, segmentsOf(outline, project), coasts);
 
   const worldBounds = path.bounds({ type: 'Sphere' }) as [[number, number], [number, number]];
   // Mercator is unbounded at the poles; clamp to the inhabited latitudes we draw.
@@ -146,21 +291,29 @@ export function buildMapGeometry(world: World): MapGeometry {
     countries: countryShapes,
     provinceArea,
     provinceBounds,
+    shapeBounds,
     theatreBounds,
     coastline,
+    land,
     graticule,
     provinceBorders,
     worldBounds,
+    ...cities,
     nationBorders: (ownerOf) =>
       path(
-        mesh(theatreTopo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
+        mesh(topo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
       ) ?? '',
     ownerOutline: (owner, ownerOf) =>
       path(
-        mesh(theatreTopo, geoms, (a, b) => {
+        mesh(topo, geoms, (a, b) => {
           const inA = ownerOf(pidOf(a)) === owner;
           return a === b ? inA : inA !== (ownerOf(pidOf(b)) === owner);
         }),
       ) ?? '',
+    arcs: (test) => path(mesh(topo, geoms, (a, b) => test(pidOf(a), a === b ? null : pidOf(b)))) ?? '',
+    union: (test) => {
+      const parts = geoms.geometries.filter((g) => test(pidOf(g))) as (TopoPolygon | TopoMultiPolygon)[];
+      return parts.length ? (path(merge(topo, parts)) ?? '') : '';
+    },
   };
 }

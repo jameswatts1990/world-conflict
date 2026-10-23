@@ -10,11 +10,11 @@ export const GROUND = 53;
 
 /** Small national badge in the card's top-left corner for units without a hull to paint it on. */
 export function CornerBadge({ ctx }: { ctx: Ctx }) {
-  return <InsigniaMark nation={ctx.nation} cx={7} cy={7} r={4.2} ow={0.7} />;
+  return <InsigniaMark nation={ctx.nation} accent={ctx.accent} cx={7} cy={7} r={4.2} ow={0.7} />;
 }
 
 function hmgStyle(ctx: Ctx): HmgStyle {
-  switch (ctx.nation) {
+  switch (ctx.pattern) {
     case 'de':
       return 'mg08';
     case 'it':
@@ -28,7 +28,7 @@ function hmgStyle(ctx: Ctx): HmgStyle {
 
 function lmgStyle(ctx: Ctx): LmgStyle {
   const late = ctx.gen === 'ww2';
-  switch (ctx.nation) {
+  switch (ctx.pattern) {
     case 'uk':
       return late ? 'bren' : 'lewis';
     case 'fr':
@@ -43,7 +43,7 @@ function lmgStyle(ctx: Ctx): LmgStyle {
 }
 
 function grenade(ctx: Ctx): HandItem {
-  return ctx.nation === 'de' ? 'stickGrenade' : 'eggGrenade';
+  return ctx.pattern === 'de' ? 'stickGrenade' : 'eggGrenade';
 }
 
 /** Figure scale for foot units: big enough to read on a 96 px card. */
@@ -76,7 +76,7 @@ export function drawInfantry(ctx: Ctx): ReactElement {
 
 export function drawStormtroopers(ctx: Ctx): ReactElement {
   const { ow } = ctx;
-  const arditi = ctx.nation === 'it';
+  const arditi = ctx.pattern === 'it';
   const kit = arditi ? { ...(ctx.gen === 'ww1' ? withHeadgear(ctx, 'fez') : ctx.kit), flash: '#151515' } : ctx.kit;
   const back = dimKit(kit, 0.1);
   const ww2 = ctx.gen === 'ww2';
@@ -144,9 +144,9 @@ export function drawMountain(ctx: Ctx): ReactElement {
   const { ow } = ctx;
   let kit = ctx.kit;
   let edelweiss = false;
-  if (ctx.nation === 'it') kit = withHeadgear(ctx, 'alpini');
-  else if (ctx.nation === 'fr') kit = withHeadgear(ctx, 'beret');
-  else if (ctx.nation === 'de' && ctx.gen !== 'ww1') {
+  if (ctx.pattern === 'it') kit = withHeadgear(ctx, 'alpini');
+  else if (ctx.pattern === 'fr') kit = withHeadgear(ctx, 'beret');
+  else if (ctx.pattern === 'de' && ctx.gen !== 'ww1') {
     kit = withHeadgear(ctx, 'bergmutze');
     edelweiss = true;
   }

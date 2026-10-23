@@ -1,31 +1,9 @@
 // Monochrome building glyphs (20x20, currentColor) and the coloured slot tiles built from them.
-// Same bold silhouette style as the placeholder icons in ../icons.tsx.
 import { useId } from 'react';
 import type { ReactElement } from 'react';
-import type { ArtBuilding } from './CitySkyline';
+import { BUILDING_CATEGORY, type ArtBuilding, type BuildingCategory } from './types';
 
-export type BuildingCategory = 'economy' | 'military' | 'civic' | 'infrastructure';
-
-export const BUILDING_CATEGORY: Record<ArtBuilding, BuildingCategory> = {
-  industry: 'economy',
-  market: 'economy',
-  powerPlant: 'economy',
-  refinery: 'economy',
-  housing: 'economy',
-  university: 'economy',
-  barracks: 'military',
-  academy: 'military',
-  armsWorks: 'military',
-  motorPool: 'military',
-  tankWorks: 'military',
-  hospital: 'civic',
-  propaganda: 'civic',
-  garrisonHq: 'civic',
-  fortifications: 'infrastructure',
-  supplyDepot: 'infrastructure',
-  railway: 'infrastructure',
-  coastalBattery: 'infrastructure',
-};
+export { BUILDING_CATEGORY, type BuildingCategory } from './types';
 
 const GLYPHS: Record<ArtBuilding, ReactElement> = {
   // factory with a sawtooth roof and a chimney

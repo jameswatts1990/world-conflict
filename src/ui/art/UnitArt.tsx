@@ -8,42 +8,11 @@ import { drawAntiTank, drawArtillery, drawHeavyArtillery } from './gunsArt';
 import { ICONS } from './iconsArt';
 import { drawInfantry, drawMountain, drawStormtroopers } from './infantryArt';
 import { drawHeavyTank, drawLightTank, drawTank, drawTankDestroyer } from './tanksArt';
-import type { ArtGen, ArtNation, ArtUnitType } from './types';
+import { resolveArtGen, type ArtGen, type ArtNation, type ArtUnitType } from './types';
 import { drawArmouredCar, drawMotorised } from './vehiclesArt';
 
 export type { ArtGen, ArtNation, ArtUnitType, ArtVariant } from './types';
-export { ART_GENS, ART_NATIONS, ART_UNIT_TYPES } from './types';
-
-const GEN_ORDER: ArtGen[] = ['ww1', 'interwar', 'ww2'];
-
-/** Generations in which each unit type exists. */
-export const UNIT_GENS: Record<ArtUnitType, readonly ArtGen[]> = {
-  infantry: GEN_ORDER,
-  stormtroopers: GEN_ORDER,
-  mountain: GEN_ORDER,
-  motorised: ['interwar', 'ww2'],
-  cavalry: GEN_ORDER,
-  armouredCar: ['interwar', 'ww2'],
-  artillery: GEN_ORDER,
-  heavyArtillery: GEN_ORDER,
-  antiTank: ['interwar', 'ww2'],
-  lightTank: GEN_ORDER,
-  tank: GEN_ORDER,
-  heavyTank: ['interwar', 'ww2'],
-  tankDestroyer: ['ww2'],
-};
-
-/** The generation actually drawn: the requested one, or the nearest that exists. */
-export function resolveArtGen(type: ArtUnitType, gen: ArtGen): ArtGen {
-  const have = UNIT_GENS[type];
-  if (have.includes(gen)) return gen;
-  const want = GEN_ORDER.indexOf(gen);
-  let best = have[0];
-  for (const g of have) {
-    if (Math.abs(GEN_ORDER.indexOf(g) - want) < Math.abs(GEN_ORDER.indexOf(best) - want)) best = g;
-  }
-  return best;
-}
+export { ART_GENS, ART_NATIONS, ART_UNIT_TYPES, NATIONAL_STYLES, UNIT_GENS, resolveArtGen } from './types';
 
 type Draw = (ctx: Ctx) => ReactElement;
 
@@ -68,16 +37,18 @@ export interface UnitArtProps {
   type: ArtUnitType;
   gen: ArtGen;
   nation: ArtNation;
+  /** Insignia colour for the bloc styles (the owning nation's colour). */
+  accent?: string;
   width?: number;
   variant?: 'full' | 'icon';
   className?: string;
   title?: string;
 }
 
-export function UnitArt({ type, gen, nation, width, variant = 'full', className, title }: UnitArtProps): JSX.Element {
+export function UnitArt({ type, gen, nation, accent, width, variant = 'full', className, title }: UnitArtProps): JSX.Element {
   const icon = variant === 'icon';
   const drawGen = resolveArtGen(type, gen);
-  const ctx = makeCtx(nation, drawGen, icon);
+  const ctx = makeCtx(nation, drawGen, icon, accent);
   const vw = icon ? 40 : 96;
   const vh = icon ? 24 : 60;
   const w = width ?? vw;

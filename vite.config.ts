@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5173, host: true },
   preview: { port: 4173, host: true },
-  // The bundled map data (~150 KB) and the SVG unit and city art (~180 KB) live in the
+  // The bundled map data (~160 KB) and the SVG unit and city art (~210 KB) live in the
   // main chunk on purpose: no runtime fetches. Code-splitting is on the roadmap (M3).
   build: { chunkSizeWarningLimit: 950 },
   test: {

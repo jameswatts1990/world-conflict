@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { deserializeGame, nationName, sentence, type GameState, type World } from '../../sim';
+import { deserializeGame, englishOrdinal, nationName, sentence, type GameState, type World } from '../../sim';
 import { downloadSave, listSlots, loadFromSlot, saveToSlot, slotLabel, SLOTS, type SlotId } from '../game/storage';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
 import { formatClock } from '../format';
 import { Icon } from '../icons';
 import { Modal } from './Common';
-import { CONTROLS } from './Tutorial';
+import { CONTROLS, TOUCH_CONTROLS } from './Tutorial';
 
 function savedAt(iso: string): string {
   return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -137,12 +137,12 @@ export function LoadDialog({
   );
 }
 
-export function HelpDialog({ onReplayBriefing, onClose }: { onReplayBriefing: () => void; onClose: () => void }) {
+export function HelpDialog({ touch, onReplayBriefing, onClose }: { touch: boolean; onReplayBriefing: () => void; onClose: () => void }) {
   return (
-    <Modal title="Controls" icon="help" subtitle="Mouse and keyboard reference" onClose={onClose}>
+    <Modal title="Controls" icon="help" subtitle={touch ? 'Touch reference' : 'Mouse and keyboard reference'} onClose={onClose}>
       <table className="controls-table">
         <tbody>
-          {CONTROLS.map(([k, v]) => (
+          {(touch ? TOUCH_CONTROLS : CONTROLS).map(([k, v]) => (
             <tr key={k}>
               <th>
                 {k.split(' / ').map((part, i) => (
@@ -164,10 +164,6 @@ export function HelpDialog({ onReplayBriefing, onClose }: { onReplayBriefing: ()
       </div>
     </Modal>
   );
-}
-
-function ordinal(n: number): string {
-  return n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : `${n}th`;
 }
 
 export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController; onMenu: () => void; onClose: () => void }) {
@@ -193,7 +189,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
               {!won && rank > 0 && o.reason !== 'humanEliminated' && (
                 <span className="muted">
                   {' '}
-                  {sentence(nationName(world, human))} finished {ordinal(rank)} of {o.scores.length}.
+                  {sentence(nationName(world, human))} finished {englishOrdinal(rank)} of {o.scores.length}.
                 </span>
               )}
             </div>
@@ -210,7 +206,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
               <th className="num" title="Provinces captured during the campaign">Captured</th>
               <th className="num" title="Enemy units destroyed">Destroyed</th>
               <th className="num" title="Own units lost">Lost</th>
-              <th className="num" title="Own armies that surrendered when encircled">Surrendered</th>
+              <th className="num" title="Times own armies were ordered out of a battle">Retreats</th>
               <th className="num">Score</th>
             </tr>
           </thead>
@@ -231,7 +227,7 @@ export function OutcomeDialog({ ctrl, onMenu, onClose }: { ctrl: GameController;
                   <td className="num">{stats.provincesCaptured}</td>
                   <td className="num">{stats.unitsDestroyed}</td>
                   <td className="num">{stats.unitsLost}</td>
-                  <td className="num">{stats.armiesSurrendered}</td>
+                  <td className="num">{stats.retreats}</td>
                   <td className="num score">{s.score}</td>
                 </tr>
               );

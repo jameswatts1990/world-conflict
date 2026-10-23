@@ -130,7 +130,7 @@ export function armyConditionSystem(state: GameState, world: World): void {
       if (army.owner !== NEUTRAL) state.nations[army.owner].stats.unitsLost += before - army.units.length;
       if (army.units.length === 0) {
         delete state.armies[aid];
-        pushEvent(state, 'attrition', `A starving army in ${provinceName(world, army.province)} disintegrated.`, {
+        pushEvent(state, 'attrition', `Cut off from supply, the ${armyName(world, army)} disintegrated in ${provinceName(world, army.province)}.`, {
           nations: army.owner === NEUTRAL ? [] : [army.owner],
           province: army.province,
           severity: 'bad',

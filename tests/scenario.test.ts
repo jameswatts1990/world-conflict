@@ -1,19 +1,61 @@
 import { readFileSync } from 'node:fs';
+import { geoContains } from 'd3-geo';
+import type { Feature, MultiPolygon, Polygon } from 'geojson';
+import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
-import { NATION_OUTPUT_TARGET } from '../src/sim/scenario/europe/provinces';
+import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
+import { UNITS } from '../src/sim/config/units';
+import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { world } from './helpers';
 
 describe('scenario data', () => {
-  it('has six nations and 30–50 playable provinces', () => {
-    expect(world.nationIds).toHaveLength(6);
-    expect(world.provinceIds.length).toBeGreaterThanOrEqual(30);
-    expect(world.provinceIds.length).toBeLessThanOrEqual(50);
+  it('every nation has a core capital, a bloc and a name for every unit it can field', () => {
+    expect(world.nationIds.length).toBeGreaterThanOrEqual(2);
+    for (const id of world.nationIds) {
+      const def = world.nations[id];
+      expect(world.provinces[def.capital].core).toBe(id);
+      expect(BLOC_IDS).toContain(def.bloc);
+      for (const type of UNIT_TYPES) {
+        expect(def.identity.formations[type]).toMatch(/\{(n|ord|fr-f|fr-m)\}/);
+        for (const gen of UNIT_GENS) {
+          if (UNITS[type].models[gen]) expect(def.identity.units[type]?.[gen]?.name, `${id} ${type} ${gen}`).toBeTruthy();
+        }
+      }
+    }
   });
 
   it('every province has a shape and every shape has a province', () => {
-    const topo = JSON.parse(readFileSync('src/assets/map/theatre.topo.json', 'utf8'));
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
     const shapeIds = new Set<string>(topo.objects.provinces.geometries.map((g: { properties: { pid: string } }) => g.properties.pid));
     expect([...shapeIds].sort()).toEqual([...world.provinceIds].sort());
+  });
+
+  it('the world underlay shares the provinces\' coasts and never lies under the theatre', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    // One topology for both layers: shared coasts and borders are the very same arcs.
+    expect(Object.keys(topo.objects).sort()).toEqual(['countries', 'provinces']);
+    const countries = (feature(topo, topo.objects.countries) as unknown as { features: Feature<Polygon | MultiPolygon, { iso: string }>[] }).features;
+    const covered: string[] = [];
+    for (const id of world.provinceIds) {
+      const def = world.provinces[id];
+      for (const t of [def.city, ...def.towns]) {
+        const under = countries.find((c) => geoContains(c, t.coord));
+        if (under) covered.push(`${t.name} (${under.properties.iso})`);
+      }
+    }
+    expect(covered).toEqual([]);
+  });
+
+  it('every shared border has a land or mountain link, and every such link a shared border', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const geoms = topo.objects.provinces.geometries as { properties: { pid: string } }[];
+    const key = (a: string, b: string) => [a, b].sort().join(' — ');
+    const borders = new Set<string>();
+    neighbors(geoms as never).forEach((list, i) => list.forEach((j) => borders.add(key(geoms[i].properties.pid, geoms[j].properties.pid))));
+    const links = new Set(world.scenario.connections.filter((c) => c.kind !== 'strait').map((c) => key(c.a, c.b)));
+    // scripts/map/check-borders.ts prints the same report while you work.
+    expect([...borders].filter((k) => !links.has(k)), 'borders without a link').toEqual([]);
+    expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {
@@ -28,22 +70,27 @@ describe('scenario data', () => {
     expect(world.neighbors['uk-london'].some((n) => n.id === 'fr-nord' && n.kind === 'strait')).toBe(true);
   });
 
-  it('nations start with balanced output and the same army template', () => {
+  it('every nation matches its power tier: output, starting army, objectives and size', () => {
     for (const id of world.nationIds) {
+      const power = POWERS[world.nations[id].power];
       const provs = world.scenario.provinces.filter((p) => p.core === id);
-      const money = provs.reduce((s, p) => s + p.production.money, 0);
-      const materials = provs.reduce((s, p) => s + p.production.materials, 0);
-      expect(money).toBeCloseTo(NATION_OUTPUT_TARGET.money, -1);
-      expect(materials).toBeCloseTo(NATION_OUTPUT_TARGET.materials, -1);
-      const armies = world.scenario.startingArmies.filter((a) => a.owner === id);
-      const count = (t: 'infantry' | 'artillery' | 'cavalry') => armies.reduce((s, a) => s + (a.units[t] ?? 0), 0);
-      const total = armies.reduce((s, a) => s + Object.values(a.units).reduce((x, n) => x + (n ?? 0), 0), 0);
-      expect([total, count('infantry'), count('artillery'), count('cavalry')]).toEqual([13, 10, 2, 1]);
-      // Same city ladder: one Metropolis, one Large City.
-      expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
-      expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
-      expect(provs.filter((p) => p.oil)).toHaveLength(1);
-      expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(5);
+      expect(provs.length, `${id} provinces`).toBeGreaterThanOrEqual(power.provinces[0]);
+      expect(provs.length, `${id} provinces`).toBeLessThanOrEqual(power.provinces[1]);
+      for (const k of ['money', 'materials', 'manpower'] as const) {
+        expect(provs.reduce((s, p) => s + p.production[k], 0), `${id} ${k}`).toBeCloseTo(power.output[k], -1);
+      }
+      const units: Record<string, number> = {};
+      for (const a of world.scenario.startingArmies.filter((x) => x.owner === id)) {
+        for (const [t, n] of Object.entries(a.units)) units[t] = (units[t] ?? 0) + (n ?? 0);
+      }
+      expect(units, `${id} starting army`).toEqual(startingUnits(world.nations[id].power));
+      expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
+      if (world.nations[id].power === 'great') {
+        // Same city ladder (one Metropolis, one Large City) and one oil field.
+        expect(provs.filter((p) => p.tier === 4)).toHaveLength(1);
+        expect(provs.filter((p) => p.tier === 3)).toHaveLength(1);
+        expect(provs.filter((p) => p.oil)).toHaveLength(1);
+      }
     }
   });
 });

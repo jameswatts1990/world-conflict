@@ -1,10 +1,10 @@
 import { TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, VICTORY } from '../../sim/config/rules';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { RESOURCE_KEYS, heldVp, homeSoilMult, nationEconomy, nationEra, nationName, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
+import { RESOURCE_KEYS, heldVp, homeSoilMult, nationEconomy, nationEra, nationName, nextQueuedResearch, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
-import { fmt, fmtRate, formatClock, formatDuration, proseDuration } from '../format';
+import { costParts, fmt, fmtRate, formatClock, formatDuration, proseDuration, shortfallText } from '../format';
 import { Icon, RESOURCE_LABEL, ResourceIcon } from '../icons';
 import { moraleClass } from './Common';
 import type { PanelId } from './NavRail';
@@ -35,12 +35,13 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   const jobs = nation.research.active;
   const slots = researchSlots(state, human);
   const queued = nation.research.queue.length;
-  // Show the project closest to completion.
+  // Show the project closest to completion, or the queued one waiting for funds.
   const active = jobs.reduce<(typeof jobs)[number] | null>((best, j) => (!best || j.remaining < best.remaining ? j : best), null);
+  const over = !!state.outcome;
+  const waiting = active || over ? null : nextQueuedResearch(state, human);
   const idle = jobs.length < slots;
   const leader = state.victory.leader;
   const homeSoil = Math.round((homeSoilMult(state, world, human, def.capital) - 1) * 100);
-  const over = !!state.outcome;
 
   return (
     <header className="topbar" style={{ '--nation': def.color } as React.CSSProperties}>
@@ -111,6 +112,11 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
               {formatDuration(active.remaining, state)} left · {jobs.length}/{slots} slots{queued ? ` · +${queued} queued` : ''}
             </span>
           </span>
+        ) : waiting ? (
+          <span className="tb-research-text" title={costParts(waiting.shortfall).length ? `Needs another ${shortfallText(waiting.shortfall)}` : undefined}>
+            <span className="tb-research-name">{TECH_BY_ID[waiting.tech].name}</span>
+            <span className="tb-sub warn-text">{costParts(waiting.shortfall).length ? 'Queued · waiting for funds' : 'Queued · starting'}</span>
+          </span>
         ) : (
           <span className="tb-research-text">
             <span className="tb-research-name">No research</span>
@@ -166,7 +172,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
           <span className="pause-label">{ctrl.loop.paused ? 'Resume' : 'Pause'}</span>
         </button>
         {CLIENT_SPEEDS.map((s, i) => (
-          <span key={s.multiplier} className="speed-slot">
+          <span key={s.multiplier} className={`speed-slot${s.dev ? ' dev' : ''}`}>
             {s.dev && !CLIENT_SPEEDS[i - 1]?.dev && (
               <span className="dev-tag" title="Development speeds, for testing only">
                 Dev

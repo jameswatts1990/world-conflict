@@ -4,10 +4,9 @@
 import { createElement, useId, useMemo } from 'react';
 import type { JSX, ReactNode, SVGProps } from 'react';
 
-export type ArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
-  | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'
-  | 'fortifications' | 'supplyDepot' | 'railway' | 'coastalBattery';
-export type ArtTerrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
+import type { ArtBuilding, ArtTerrain } from './types';
+
+export type { ArtBuilding, ArtTerrain } from './types';
 
 export interface CitySkylineProps {
   /** Province id, e.g. 'uk-north'; drives deterministic variety. */
@@ -1411,7 +1410,7 @@ type LandmarkKind = 'parliament' | 'dome' | 'cathedral';
 
 function landmarkFor(seed: string): LandmarkKind {
   const prefix = seed.split('-')[0];
-  const byNation: Record<string, LandmarkKind> = { uk: 'parliament', fr: 'dome', it: 'dome', de: 'cathedral', es: 'cathedral', pl: 'cathedral' };
+  const byNation: Record<string, LandmarkKind> = { uk: 'parliament', fr: 'dome', it: 'dome', de: 'cathedral', es: 'cathedral', pl: 'cathedral', hu: 'parliament', ro: 'dome', rs: 'cathedral' };
   if (byNation[prefix]) return byNation[prefix];
   const kinds: LandmarkKind[] = ['parliament', 'dome', 'cathedral'];
   return kinds[hash32(seed) % 3];

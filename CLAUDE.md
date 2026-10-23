@@ -3,10 +3,27 @@
 Browser-based real-time grand strategy (WWI → WWII) on the European theatre. Design: `docs/GAME_DESIGN.md` (living
 document, keep it current); roadmap: `docs/BACKLOG.md`. British English throughout (behaviour, armour, defence).
 
+## Workflow
+
+- **Always open a pull request** for finished work: push the branch and open a PR without waiting to be asked.
+- Keep docs in step with behaviour changes: `docs/GAME_DESIGN.md` is the living design document (rules, numbers,
+  AI behaviour), `docs/BACKLOG.md` the roadmap, and this file the working notes for Claude.
+- Before pushing, run `npm run typecheck` and `npm test` (about 20 s). CI also runs the build and the browser
+  playthroughs (`npm run e2e`, `npm run e2e:mobile`).
+
+## Layout
+
+- `src/sim`: deterministic simulation, no DOM. Plain-JSON `GameState`; all randomness through the seeded RNG.
+  - `systems/`: per-tick rules (movement, combat, capture in `territory.ts`, supply, production …).
+  - `ai/`: computer opponents. They act only through the same validated commands as a human.
+  - `config/`: tuning numbers (`ai.ts`, `rules.ts`, `units.ts`, `buildings.ts`).
+- `src/ui`: rendering and input.
+- `tests/`: Vitest suite; `tests/helpers.ts` has `quietGame` (no AI), `aiGame`, `place`, `run`, `setWar`.
+
 ## Commands
 
-- `npm run typecheck`, `npm test` (Vitest, ~20 s), `npm run build`, then `npm run e2e` (browser playthrough of the
-  production build). CI runs all four on every push.
+- `npm run typecheck`, `npm test` (Vitest, ~20 s), `npm run build`, then `npm run e2e` and `npm run e2e:mobile`
+  (browser playthroughs of the production build). CI runs them all on every push.
 - `npx vite-node scripts/dev/ai-report.ts <seeds> <minutes> [--human fr] [--difficulty easy]`: AI behaviour report.
 - `npx vite-node scripts/dev/balance.ts <seeds> <minutes>`: how each power fares across many campaigns (parallel).
 - `npx vite-node scripts/dev/batch.ts <seeds> <minutes>`: headless campaign summaries (captures, wars, outcomes).
@@ -47,8 +64,8 @@ The AI should be **fun to play against**: strategic, readable, varied, and beata
   geography: Spain taking Portugal first is fine.
 - **Fair pressure.** It punishes weakness and passivity, and gangs up on a power about to win, but it should not
   dogpile a player who is still finding their feet. Grace periods give the opening to building up: no wars before
-  6 minutes (12 on Easy) and no invasions of neutral states before 10, longer for AIs that open by expanding or
-  building.
+  6 minutes (12 on Easy) and no wars on minor powers (the former neutral states) before 10, longer for AIs that
+  open by expanding or building. Minor powers defend themselves and make peace but never start a war or win.
 - **Balanced between the powers.** Positions may differ (an island is safe, a central power has many neighbours),
   but across many campaigns every power should have a real chance. Check `scripts/dev/balance.ts` before and after
   any change that could shift who wins. Fix imbalances with general mechanics (how the AI defends, when it makes
@@ -90,7 +107,20 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 - **Challenge**: when war comes to an idle player and when they fall (currently 7–13 and about 30 minutes at
   Normal, 13–27 and about 45 at Easy). An idle player should lose, just not at once.
 
-To diagnose, `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag
-any new move order in `src/sim/ai/military.ts` with a reason. Report balance shifts (game length, how fast players
-are overrun, how quickly neutrals fall) to the user rather than retuning silently, and recommend human playtests for
-anything about feel.
+Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather
+than retuning silently, and recommend human playtests for anything about feel.
+
+## Debugging AI behaviour
+
+- `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,
+  units, VP and wars every 10 minutes (`neutral:N` is always 0 in Europe: its former neutral states are minor powers).
+- The AI plays under the fog of war: it may read other nations' armies only through the context (`ctx.seen`,
+  `ctx.hostile`, `ctx.unseen`, `ctx.enemyArmour` in `ai/context.ts`) or with `isArmyVisible`, never straight from
+  `state.armies` or `hostileArmiesIn` on a province it cannot see. Military power totals (`nationPower`), ownership
+  and city tiers are public. `tests/ai.test.ts` checks that hidden armies stay hidden.
+- `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag any new move
+  order in `src/sim/ai/military.ts` with a reason.
+- The AI thinks every 8 s (14 on Easy: `thinkIntervalSeconds` in `AI_LEVELS`), but captures take 20 s or more. Any
+  step in `ai/military.ts` or `ai/recruitment.ts` that picks "free" or "rear" armies must skip armies holding a
+  province they are capturing (step 2 of `handleMilitary` commits them). `ctx.threat` and `ctx.frontier` cover only owned provinces, so an army abroad reads as
+  zero-threat and non-frontier.

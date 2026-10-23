@@ -15,9 +15,9 @@ import {
   canAfford,
   constructionCost,
   constructionTicks,
+  hostileArmiesIn,
   isArmyInTransit,
   isBuildingUnlocked,
-  isRouted,
   isUnitUnlocked,
   recruitCost,
   recruitTicks,
@@ -26,15 +26,20 @@ import {
   scaledTicks,
 } from './queries';
 import { createArmy } from './state';
+import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
-import type { ArmyId, BuildingType, GameState, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import type { ArmyId, BuildingType, GameState, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
 import { durationText, nationName, sentence } from './text';
 import type { World } from './world';
 
 export type Command =
-  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId }
+  /** `mode` defaults to attack: halt to capture every hostile province on the way. */
+  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId; mode?: MoveMode }
+  | { type: 'setAutoRetreat'; nation: NationId; armyId: ArmyId; autoRetreat: boolean }
+  /** Hold position: halt after the current leg and stay, never withdrawing on its own; `hold: false` releases it. */
+  | { type: 'hold'; nation: NationId; armyId: ArmyId; hold: boolean }
   | { type: 'stop'; nation: NationId; armyId: ArmyId }
   | { type: 'split'; nation: NationId; armyId: ArmyId; unitIds: UnitId[] }
   | { type: 'merge'; nation: NationId; armyIds: ArmyId[] }
@@ -65,10 +70,6 @@ function checkActor(state: GameState, nation: NationId): CommandResult {
   return OK;
 }
 
-function routedReason(state: GameState, routedUntil: number): string {
-  return `The army is routing and cannot take orders for ${Math.ceil((routedUntil - state.tick) / state.settings.durationScale)}s.`;
-}
-
 // ---------------------------------------------------------------------------
 // Validators (exported for the UI and AI)
 // ---------------------------------------------------------------------------
@@ -78,7 +79,6 @@ export function checkMove(state: GameState, world: World, nation: NationId, army
   if (!actor.ok) return actor;
   const army = state.armies[armyId];
   if (!army || army.owner !== nation) return fail('Not your army.');
-  if (isRouted(state, army)) return fail(routedReason(state, army.routedUntil));
   if (!world.provinces[to]) return fail('Unknown province.');
   const from = army.move?.leg ? army.move.leg.to : army.province;
   if (to === from && !army.move?.leg) return fail('The army is already there.');
@@ -112,7 +112,7 @@ export function checkRecruit(
   return OK;
 }
 
-/** Everything except affordability: can this building ever be built here right now? */
+/** Everything except affordability and the city's current job: could this building be ordered here? */
 export function checkBuildRules(
   state: GameState,
   world: World,
@@ -140,7 +140,6 @@ export function checkBuildRules(
   if (cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, province)) {
     return fail(`No free building slot (${CITY.tierNames[p.tier]}: ${buildingSlots(state, province)} slots). Grow the city or demolish something.`);
   }
-  if (p.construction) return fail('Already building here.');
   return OK;
 }
 
@@ -153,6 +152,7 @@ export function checkBuild(
 ): CommandResult {
   const rules = checkBuildRules(state, world, nation, province, building);
   if (!rules.ok) return rules;
+  if (state.provinces[province].construction) return fail('Already building here: one project at a time.');
   const level = (state.provinces[province].buildings[building] ?? 0) + 1;
   if (!canAfford(state.nations[nation].resources, constructionCost(state, nation, building, level))) return fail('Not enough resources.');
   return OK;
@@ -235,22 +235,27 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const check = checkMove(state, world, cmd.nation, cmd.armyId, cmd.to);
       if (!check.ok) return check;
       const army = state.armies[cmd.armyId];
+      const mode = cmd.mode ?? 'attack';
+      army.holding = false;
       const leg = army.move?.leg;
       if (leg) {
         if (cmd.to === leg.from) {
           // Turn around mid-march.
           army.province = leg.to;
-          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration } };
+          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
+          if (mode === 'patrol') army.move.patrol = [leg.to, leg.from];
           return OK;
         }
         const rest = cmd.to === leg.to ? [] : findPath(state, world, army, leg.to, cmd.to)!.path;
-        army.move = { path: [leg.to, ...rest], leg };
+        army.move = { path: [leg.to, ...rest], leg, mode };
+        if (mode === 'patrol') army.move.patrol = [leg.to, cmd.to];
         return OK;
       }
       const route = findPath(state, world, army, army.province, cmd.to)!;
-      army.move = { path: route.path, leg: null };
-      // An explicit order departs immediately, even from a battle (retreat).
-      startLeg(state, world, army);
+      army.move = { path: route.path, leg: null, mode };
+      if (mode === 'patrol') army.move.patrol = [army.province, cmd.to];
+      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
+      if (startLeg(state, world, army)) withdrawArmy(state, world, army, army.province);
       return OK;
     }
     case 'stop': {
@@ -258,9 +263,25 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (!actor.ok) return actor;
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
-      if (isRouted(state, army)) return fail(routedReason(state, army.routedUntil));
       if (!army.move) return fail('The army is not moving.');
-      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg } : null;
+      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      return OK;
+    }
+    case 'hold': {
+      const actor = checkActor(state, cmd.nation);
+      if (!actor.ok) return actor;
+      const army = state.armies[cmd.armyId];
+      if (!army || army.owner !== cmd.nation) return fail('Not your army.');
+      army.holding = cmd.hold;
+      if (cmd.hold && army.move) army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      return OK;
+    }
+    case 'setAutoRetreat': {
+      const actor = checkActor(state, cmd.nation);
+      if (!actor.ok) return actor;
+      const army = state.armies[cmd.armyId];
+      if (!army || army.owner !== cmd.nation) return fail('Not your army.');
+      army.autoRetreat = cmd.autoRetreat;
       return OK;
     }
     case 'split': {
@@ -278,7 +299,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const created = createArmy(state, cmd.nation, army.province, moving);
       created.supplied = army.supplied;
       created.arrivedVia = army.arrivedVia;
-      created.routedUntil = army.routedUntil;
+      created.autoRetreat = army.autoRetreat;
+      created.holding = army.holding;
       return OK;
     }
     case 'merge': {
@@ -293,7 +315,6 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const [first, ...rest] = armies;
       for (const a of rest) {
         first.units.push(...a.units);
-        first.routedUntil = Math.max(first.routedUntil, a.routedUntil);
         delete state.armies[a.id];
       }
       first.move = null;
@@ -305,6 +326,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (isArmyInTransit(army)) return fail('Cannot disband while marching.');
+      if (hostileArmiesIn(state, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
       const ids = cmd.unitIds ? new Set(cmd.unitIds) : null;
       const leaving = ids ? army.units.filter((u) => ids.has(u.id)) : army.units;
       if (leaving.length === 0 || (ids && leaving.length !== ids.size)) return fail('Select units of this army to disband.');
@@ -370,6 +392,9 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (p.construction?.building === cmd.building) return fail('Under construction.');
       const dependent = Object.keys(p.buildings).find((b) => BUILDINGS[b as BuildingType].requiresBuilding === cmd.building);
       if (dependent) return fail(`${BUILDINGS[dependent as BuildingType].name} depends on it.`);
+      if (p.construction && BUILDINGS[p.construction.building].requiresBuilding === cmd.building) {
+        return fail(`${BUILDINGS[p.construction.building].name}, under construction, depends on it.`);
+      }
       delete p.buildings[cmd.building];
       pushEvent(state, 'demolish', `${BUILDINGS[cmd.building].name} demolished in ${world.provinces[cmd.province].city.name}.`, {
         nations: [cmd.nation],

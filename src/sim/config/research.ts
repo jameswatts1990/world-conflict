@@ -174,7 +174,7 @@ export const TECHS: TechConfig[] = [
     branch: 'infantry',
     col: 7,
     row: 0,
-    description: 'Armies containing infantry, support guns and armour gain +20% attack.',
+    description: 'Armies that combine infantry, support guns and armour deal 20% more damage.',
     requires: ['squadFirepower', 'ww2Tanks'],
     ...tier(7),
     effects: [{ kind: 'combinedArms', mult: 1.2 }],
@@ -399,7 +399,7 @@ export const TECHS: TechConfig[] = [
     branch: 'armour',
     col: 7,
     row: 0,
-    description: 'Concentrated armour and lorried infantry exploit every gap: armour and motorised units +15% speed and +20% morale shock.',
+    description: 'Concentrated armour and lorried infantry exploit every gap: tanks and motorised infantry +15% speed and +20% morale shock.',
     requires: ['ww2Tanks', 'halfTracks'],
     ...tier(7, { fuel: 60 }),
     effects: [
@@ -695,6 +695,18 @@ export const TECHS: TechConfig[] = [
     requires: ['conscription'],
     ...tier(1),
     effects: [{ kind: 'xpGain', mult: 1.5 }],
+  },
+  {
+    id: 'liaisonOfficers',
+    name: 'Liaison Officers',
+    branch: 'society',
+    col: 2,
+    row: 1,
+    description:
+      'Officers posted to allied headquarters pool their reports: see everything your allies see through the fog of war. Allies are powers at peace with you and at war with a common enemy.',
+    requires: ['staffCollege'],
+    ...tier(2),
+    effects: [{ kind: 'alliedSight' }],
   },
   {
     id: 'radioBroadcasting',

@@ -2,6 +2,11 @@
 // start → improve production → recruit → research → move → capture →
 // save → reload → load → play on (DEV speed) to a win or loss.
 //
+// It plays Spain and invades Portugal, which borders only Spain, so no computer
+// opponent can race the player to the target however the real-time clock falls.
+// Portugal is a minor power with a fortified capital: Spain gathers most of its
+// army and raises more before it attacks.
+//
 //   npm run build && npm run e2e
 //
 // Uses Playwright's Chromium. Screenshots and a JSON summary go to e2e-output/.
@@ -90,97 +95,143 @@ async function setPaused(paused) {
 }
 
 try {
-  // 1. Start a campaign as France and read the tutorial.
+  // 1. Start a campaign as Spain and read the tutorial.
   await page.goto(URL);
   await shot('01-menu');
-  await page.click('[data-nation-card="fr"]');
+  await page.click('[data-nation-card="es"]');
   await page.fill('.menu-options input[type="number"]', '2024');
   await page.click('[data-testid="start-campaign"]');
   await page.waitForSelector('[data-testid="tutorial"]');
   await shot('02-tutorial');
   while (!(await page.$('[data-testid="tutorial-done"]'))) await page.click('.tutorial button.primary');
   await page.click('[data-testid="tutorial-done"]');
-  step('campaign started (France, seed 2024), tutorial completed');
+  step('campaign started (Spain, seed 2024), tutorial completed');
 
-  // 2. Improve production: upgrade Industrial Works in Paris.
-  const paris = await provincePoint('fr-paris');
-  await page.mouse.click(paris.x, paris.y);
-  await page.waitForSelector('[data-testid="province-panel"][data-province="fr-paris"]');
-  const money0 = await state((s) => s.nations.fr.resources.money);
+  // 2. Improve production: upgrade Industrial Works in Madrid.
+  const madrid = await provincePoint('es-madrid');
+  await page.mouse.click(madrid.x, madrid.y);
+  await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
+  const money0 = await state((s) => s.nations.es.resources.money);
   await page.click('[data-build="industry"]');
-  const construction = await state((s) => s.provinces['fr-paris'].construction);
+  const construction = await state((s) => s.provinces['es-madrid'].construction);
   if (!construction) throw new Error('construction did not start');
-  step('ordered Industrial Works level 2 in Paris', { moneyBefore: Math.round(money0), job: construction.building });
+  step('ordered Industrial Works level 2 in Madrid', { moneyBefore: Math.round(money0), job: construction.building });
 
-  // 3. Recruit infantry in Paris (Recruit tab of the city view).
+  // 3. Recruit infantry in Madrid (Recruit tab of the city view).
   await page.click('[data-tab="recruit"]');
   await page.click('[data-recruit="infantry"]');
-  const queue = await state((s) => s.provinces['fr-paris'].recruitQueue.length);
+  const queue = await state((s) => s.provinces['es-madrid'].recruitQueue.length);
   if (queue !== 1) throw new Error('recruitment did not queue');
-  step('queued infantry in Paris');
+  step('queued infantry in Madrid');
 
   // 4. Research an upgrade.
   await page.click('[data-testid="open-research"]');
   await page.click('[data-tech="industrialMobilisation"]');
-  const research = await state((s) => s.nations.fr.research.active.map((j) => j.tech));
+  const research = await state((s) => s.nations.es.research.active.map((j) => j.tech));
   if (!research.includes('industrialMobilisation')) throw new Error('research did not start');
   // Clicking a locked technology queues it with its missing prerequisites.
   await page.click('[data-tech="lightTanks"]');
-  const researchQueue = await state((s) => s.nations.fr.research.queue);
+  const researchQueue = await state((s) => s.nations.es.research.queue);
   if (researchQueue.join(',') !== 'landships,lightTanks') throw new Error(`research path not queued: ${researchQueue}`);
   await shot('03-research');
   await page.keyboard.press('Escape');
   step('started research: Industrial Mobilisation; queued Landships → Light Tanks');
 
-  // 5. Move the Paris army to Nord (select marker, right-click destination).
-  const parisArmy = await state((s) => Object.values(s.armies).find((a) => a.owner === 'fr' && a.province === 'fr-paris').id);
-  const nordArmy = await state((s) => Object.values(s.armies).find((a) => a.owner === 'fr' && a.province === 'fr-nord').id);
-  let p = await armyPoint(parisArmy);
+  // 5. Move the Madrid army to Castile & León (select marker, right-click destination).
+  const madridArmy = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
+  const castileArmy = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-castile').id);
+  let p = await armyPoint(madridArmy);
   await page.mouse.click(p.x, p.y);
-  await page.waitForSelector(`[data-testid="army-panel"][data-army="${parisArmy}"]`);
-  const nord = await provincePoint('fr-nord');
-  await page.mouse.click(nord.x, nord.y, { button: 'right' });
-  const order = await page.evaluate((id) => window.__game.state.armies[id].move?.path, parisArmy);
-  if (!order || order.at(-1) !== 'fr-nord') throw new Error('move order not accepted');
+  await page.waitForSelector(`[data-testid="army-panel"][data-army="${madridArmy}"]`);
+  const castile = await provincePoint('es-castile');
+  await page.mouse.click(castile.x, castile.y, { button: 'right' });
+  const order = await page.evaluate((id) => window.__game.state.armies[id].move?.path, madridArmy);
+  if (!order || order.at(-1) !== 'es-castile') throw new Error('move order not accepted');
   await shot('04-move-order');
-  step('ordered Paris army to Nord', { path: order });
+  step('ordered Madrid army to Castile & León', { path: order });
+  // The Catalan and northern armies join them.
+  const others = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && ['es-catalonia', 'es-north'].includes(a.province)).map((a) => a.id));
+  for (const id of others) {
+    p = await armyPoint(id);
+    await page.mouse.click(p.x, p.y);
+    await page.waitForSelector(`[data-testid="army-panel"][data-army="${id}"]`);
+    await page.mouse.click(castile.x, castile.y, { button: 'right' });
+    const path = await page.evaluate((id) => window.__game.state.armies[id].move?.path, id);
+    if (!path || path.at(-1) !== 'es-castile') throw new Error('move order not accepted');
+  }
+  step('ordered the Catalan and northern armies to Castile & León', { armies: others.length });
 
   // 6. Run at DEV speed until the army arrives and the timers complete.
   await setSpeed(20);
   await setPaused(false);
-  await waitUntil(`(s) => s.armies['${parisArmy}'].province === 'fr-nord' && !s.armies['${parisArmy}'].move`, 30000, 'army arrival');
-  step('army arrived in Nord');
-  await waitUntil((s) => (s.provinces['fr-paris'].buildings.industry ?? 0) >= 2, 30000, 'Industrial Works L2');
+  await waitUntil(`(s) => s.armies['${madridArmy}'].province === 'es-castile' && !s.armies['${madridArmy}'].move`, 30000, 'army arrival');
+  step('army arrived in Castile & León');
+  await waitUntil(`(s) => ${JSON.stringify(others)}.every((id) => s.armies[id].province === 'es-castile' && !s.armies[id].move)`, 60000, 'Catalan and northern armies');
+  step('the Catalan and northern armies arrived');
+  await waitUntil((s) => (s.provinces['es-madrid'].buildings.industry ?? 0) >= 2, 30000, 'Industrial Works L2');
   step('Industrial Works level 2 completed (production improved)', {
     rate: await page.textContent('[data-resource="money"] .tb-res-rate'),
   });
-  await waitUntil((s) => s.nations.fr.research.completed.includes('industrialMobilisation'), 40000, 'research');
+  await waitUntil((s) => s.nations.es.research.completed.includes('industrialMobilisation'), 40000, 'research');
   step('research completed: Industrial Mobilisation');
-  await waitUntil((s) => s.provinces['fr-paris'].recruitQueue.length === 0, 30000, 'recruitment');
-  step('infantry recruited');
-
-  // 7. Merge in Nord and invade neutral Belgium & Luxembourg.
+  await waitUntil((s) => s.provinces['es-madrid'].recruitQueue.length === 0, 30000, 'recruitment');
+  // With the new works paying out, raise more for Portugal's fortified capital: infantry and an artillery battery.
   await setPaused(true);
-  p = await armyPoint(parisArmy);
+  const madridPoint = await provincePoint('es-madrid');
+  await page.mouse.click(madridPoint.x, madridPoint.y);
+  await page.waitForSelector('[data-testid="province-panel"][data-province="es-madrid"]');
+  await page.click('[data-tab="recruit"]');
+  await page.click('[data-recruit="infantry"]');
+  await page.click('[data-recruit="artillery"]');
+  if ((await state((s) => s.provinces['es-madrid'].recruitQueue.length)) !== 2) throw new Error('second recruitment did not queue');
+  await setPaused(false);
+  await waitUntil((s) => s.provinces['es-madrid'].recruitQueue.length === 0, 30000, 'second recruitment');
+  step('infantry recruited, then more infantry and an artillery battery');
+
+  // The recruits joined up in Madrid after the army left: march them to Castile & León as well.
+  const recruits = await state((s) => Object.values(s.armies).find((a) => a.owner === 'es' && a.province === 'es-madrid').id);
+  await setPaused(true);
+  let r = await armyPoint(recruits);
+  await page.mouse.click(r.x, r.y);
+  await page.waitForSelector(`[data-testid="army-panel"][data-army="${recruits}"]`);
+  r = await provincePoint('es-castile');
+  await page.mouse.click(r.x, r.y, { button: 'right' });
+  await setPaused(false);
+  await waitUntil(`(s) => s.armies['${recruits}'].province === 'es-castile' && !s.armies['${recruits}'].move`, 30000, 'recruits arrival');
+  step('recruits marched to Castile & León');
+
+  // 7. Merge in Castile & León, declare war on Portugal (a minor power) and invade it.
+  await setPaused(true);
+  p = await armyPoint(madridArmy);
   await page.mouse.click(p.x, p.y);
   await page.click('text=Merge here');
-  const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'fr' && a.province === 'fr-nord').length);
-  if (merged !== 1) throw new Error('merge failed');
-  const benelux = await provincePoint('nt-benelux');
+  const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'es-castile'));
+  if (merged.length !== 1) throw new Error('merge failed');
+  await page.click('[data-testid="open-diplomacy"]');
+  await page.click('[data-declare-war="pt"]');
+  await page.click('[data-testid="confirm"]');
+  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'war') throw new Error('war on Portugal not declared');
+  await page.keyboard.press('Escape');
+  const portugal = await provincePoint('pt-lisbon');
   await page.click('[data-testid="move-mode"]');
-  await page.mouse.click(benelux.x, benelux.y);
-  const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), parisArmy);
-  if (target !== 'nt-benelux') throw new Error('attack order not accepted');
-  step('merged armies and ordered the invasion of Belgium & Luxembourg', { nordArmyMerged: nordArmy });
+  await page.mouse.click(portugal.x, portugal.y);
+  const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), madridArmy);
+  if (target !== 'pt-lisbon') throw new Error('attack order not accepted');
+  step('merged armies, declared war on Portugal and ordered the invasion', { castileArmyMerged: castileArmy, units: merged[0].units.length });
   await setPaused(false);
-  await waitUntil((s) => Object.keys(s.battles).includes('nt-benelux'), 30000, 'battle start');
+  await waitUntil((s) => Object.keys(s.battles).includes('pt-lisbon'), 30000, 'battle start');
   await page.waitForTimeout(400);
   await shot('05-battle');
-  step('battle started in Belgium');
-  await waitUntil((s) => s.provinces['nt-benelux'].owner === 'fr', 90000, 'capture of Belgium');
+  step('battle started in Portugal');
+  await waitUntil((s) => s.provinces['pt-lisbon'].owner === 'es', 90000, 'capture of Portugal');
   await setPaused(true);
   await shot('06-captured');
-  step('captured Belgium & Luxembourg', { tick: await state((s) => s.tick) });
+  // What the fortress cost: the invaders' remaining strength (100% = every division at full strength).
+  const strength = await state((s) => {
+    const units = Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'pt-lisbon').flatMap((a) => a.units);
+    return `${units.length} divisions at ${Math.round((100 * units.reduce((t, u) => t + u.strength, 0)) / units.length)}%`;
+  });
+  step('captured Portugal', { tick: await state((s) => s.tick), invaders: strength });
 
   // 8. Save to slot 1, reload the page, load the slot and compare state hashes.
   await page.click('[data-testid="open-save"]');

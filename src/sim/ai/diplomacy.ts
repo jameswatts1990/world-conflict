@@ -6,7 +6,7 @@
 // other fronts held, and peace offered on the main front once it is won.
 import { AI } from '../config/ai';
 import { DIPLOMACY } from '../config/rules';
-import { atWar, heldVp, scaledTicks, vpToWin } from '../queries';
+import { atWar, heldVp, isContender, scaledTicks, vpToWin } from '../queries';
 import { random } from '../rng';
 import { NEUTRAL, type NationId } from '../types';
 import { graceOver, issue, mainEnemy, nationPower, type Ctx } from './context';
@@ -28,7 +28,7 @@ export function runawayLeader(ctx: Ctx): NationId | null {
   const need = vpToWin(world);
   let best: { id: NationId; vp: number } | null = null;
   for (const id of world.nationIds) {
-    if (id === ctx.me || state.nations[id].eliminated) continue;
+    if (id === ctx.me || state.nations[id].eliminated || !isContender(world, id)) continue;
     const vp = heldVp(state, world, id);
     if (vp >= need - AI.leaderAlarmVp && (!best || vp > best.vp)) best = { id, vp };
   }
@@ -117,6 +117,8 @@ export function handleDiplomacy(ctx: Ctx): void {
     }
   }
 
+  // Minor powers defend themselves and make peace, but never start a war.
+  if (!isContender(world, me)) return;
   if (!graceOver(ctx, ctx.level.peaceGraceSeconds)) return;
 
   // A power about to win becomes everyone's target.
@@ -135,9 +137,15 @@ export function handleDiplomacy(ctx: Ctx): void {
   if (morale < 50) return;
   if (random(state) > (0.02 + ctx.mem.aggression * 0.05) * ctx.level.warAppetite) return;
   let best: { target: NationId; score: number; ratio: number } | null = null;
+  // Minor powers (the former neutral states) are left alone longer, so a player can take a neighbouring one first;
+  // an AI that opens by expanding goes for them before the great powers.
+  const opening = ctx.mem.opening ?? 'strike';
+  const minorsOpen = graceOver(ctx, AI.neutralGraceSeconds * AI.openings[opening].neutrals);
   for (const target of neighbourNations(ctx)) {
     if (atWar(state, me, target)) continue;
     if (state.tick < state.nations[me].relations[target].truceUntil) continue;
+    const minor = !isContender(world, target);
+    if (minor && !minorsOpen) continue;
     // A nation already fighting is distracted, but one fighting enough wars is not piled on.
     const wars = world.nationIds.filter((x) => atWar(state, target, x)).length;
     if (wars >= ctx.level.maxWarsOnTarget) continue;
@@ -150,7 +158,8 @@ export function handleDiplomacy(ctx: Ctx): void {
       if (world.neighbors[pid].some((n) => ctx.ownedSet.has(n.id))) prize += world.provinces[pid].objectiveVp ?? 0;
     }
     const claim = ctx.mem.claims?.some((pid) => state.provinces[pid].owner === target) ? AI.claimWarBonus : 0;
-    const score = ratio + prize * 0.08 + claim + (target === leader ? 0.5 : 0);
+    const expansion = minor && opening === 'expand' ? AI.expandMinorBonus : 0;
+    const score = ratio + prize * 0.08 + claim + expansion + (target === leader ? 0.5 : 0);
     if (!best || score > best.score) best = { target, score, ratio };
   }
   const needed = AI.warStrengthRatio + (0.5 - ctx.mem.aggression) * 0.5 + (ctx.enemies.length > 0 ? 0.6 : 0);

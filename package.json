@@ -14,7 +14,8 @@
     "sim:campaign": "vite-node scripts/headless-campaign.ts",
     "map:fetch": "node scripts/map/fetch-natural-earth.mjs",
     "map:build": "node scripts/map/build-map.mjs",
-    "e2e": "node scripts/e2e/playthrough.mjs"
+    "e2e": "node scripts/e2e/playthrough.mjs",
+    "e2e:mobile": "node scripts/e2e/mobile.mjs"
   },
   "dependencies": {
     "@fontsource/barlow": "^5.3.0",
