@@ -1,15 +1,16 @@
 // Fog of war: what each nation can see. Every province a nation holds and every
 // army it fields watch their own province and the ones next to it (an army with
 // reconnaissance units sees further over open land; mountains and narrow seas are
-// seen across but not beyond, wide seas not at all), and a nation that has researched Liaison
-// Officers also sees everything its allies see. Sight is worked out from the
-// state whenever it is asked for and never stored, so it cannot go stale and
-// saves are unchanged. Computer opponents do not use it yet: they see the map.
+// seen across but not beyond, wide seas not at all), seeing a land means seeing
+// its city, and a nation that has researched Liaison Officers also sees
+// everything its allies see. Sight is worked out from the state whenever it is
+// asked for and never stored, so it cannot go stale and saves are unchanged.
+// Computer opponents do not use it yet: they see the map.
 import { SIGHT } from './config/rules';
 import { UNITS } from './config/units';
 import { atWar, techEffects } from './queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type OwnerId, type ProvinceId } from './types';
-import type { World } from './world';
+import { landOf, type World } from './world';
 
 /** Two powers at peace with each other and at war with a common enemy fight as allies. */
 export function areAllies(state: GameState, a: OwnerId, b: OwnerId): boolean {
@@ -67,12 +68,28 @@ function watch(world: World, from: ProvinceId, range: number, seen: Set<Province
   for (const pid of left.keys()) seen.add(pid);
 }
 
-/** What a nation sees with its own eyes: around everything it holds and wherever its armies are. */
+/**
+ * What a nation sees with its own eyes: around everything it holds and wherever its armies are. Sight is
+ * reckoned over the land: a city looks out from the land round it, and whoever sees a stretch of land sees
+ * into the city in its middle too.
+ */
 export function ownSight(state: GameState, world: World, nation: NationId): Set<ProvinceId> {
   const seen = new Set<ProvinceId>();
-  for (const id of world.provinceIds) if (state.provinces[id].owner === nation) watch(world, id, SIGHT.province, seen);
+  for (const id of world.provinceIds) {
+    if (state.provinces[id].owner !== nation) continue;
+    seen.add(id);
+    watch(world, landOf(world, id), SIGHT.province, seen);
+  }
   // A marching army watches from the province it set out from (its range covers where it is heading).
-  for (const army of Object.values(state.armies)) if (army.owner === nation) watch(world, army.province, armySight(army), seen);
+  for (const army of Object.values(state.armies)) {
+    if (army.owner !== nation) continue;
+    seen.add(army.province);
+    watch(world, landOf(world, army.province), armySight(army), seen);
+  }
+  for (const pid of [...seen]) {
+    const city = world.provinces[pid].contains;
+    if (city) seen.add(city);
+  }
   return seen;
 }
 

@@ -181,6 +181,25 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
       top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
 - [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
+- [x] Phones, third pass (playtest feedback): a tapped city opens as a full-screen page without the skyline;
+      selecting never moves the map; the recruit tab offers only researched units, keeps its training queue in a
+      strip of fixed height so repeated recruiting never moves the buttons, and a tapped unit shows its role,
+      numbers, strengths, weaknesses and national bonus; panning no longer redraws the map's layers on every frame
+      (on an emulated phone at a quarter of the CPU, script time while dragging fell from 8.3 s to 1.8 s)
+- [ ] Panning, next: the browser still repaints the whole map on every frame of a drag; measure on real phones
+      (`scripts/dev/pan-perf.mjs` emulates one) before moving the picture as a composited layer
+- [x] Cities are provinces of their own, drawn tight round each city inside the land round it, which keeps the
+      region's name (138 provinces in all). Cities hold the output, buildings, recruitment and objectives; the land
+      is where armies march and fronts run, takes infrastructure, and cuts its city off when lost. Map labels show
+      city names and the names of provinces without a city; secondary towns are unnamed dots
+- [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
+      entrenchments; and provinces with no city at all where the map needs them
+- [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal
+      penalty is unchanged (4.31), but fewer campaigns end on objectives (19% instead of 32%), Poland wins 33%
+      instead of 26% (not yet significant, p 0.10), Hungary lasts 71% of campaigns instead of 83%, and minor
+      powers stand longer (33% at 60 minutes instead of 21%). Look at how fast cities fall once their land is lost,
+      whether the AI defends cities as well as it holds the land, and the simulation's cost (38 s of CPU per
+      campaign instead of 26)
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
 - [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
@@ -238,6 +257,18 @@ Found by playing full campaigns in the browser and reading the code end to end.
       in Paris"); neutral garrisons are "overwhelmed", not "encircled"
 - [x] Corrected equipment details (Panhard 178, 105 mm mle 1935 B, Polish 20TP) and tech and speciality descriptions
       that overstated their effects; removed dead code and styles
+
+### Playtest fixes: army orders
+
+- [x] Stop did nothing on a one-province march (it only cut the path after the current leg): Stop and Hold now halt at
+      once, an army on the road turning back to the province it set out from. The Stop button applies to every selected
+      army
+- [x] Split was greyed out until formations were ticked, with nothing to say so: with none ticked it splits the army in
+      two, each half with a share of every kind of unit
+- [x] Closing the army card returned to the city it stood in instead of the map
+- [x] The overview map is hidden until its button (under the zoom buttons) opens it
+- [x] With several armies selected, Split, Merge and Disband acted on the first army only (Merge on every army in its
+      province): they now act on the selection, Merge joining the selected armies that stand together
 
 ## M4 — Fog of war and diplomacy
 

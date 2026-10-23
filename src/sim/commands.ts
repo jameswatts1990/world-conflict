@@ -30,8 +30,8 @@ import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
-import type { ArmyId, BuildingType, GameState, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
-import { durationText, nationName, sentence } from './text';
+import type { Army, ArmyId, BuildingType, GameState, MoveLeg, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import { durationText, nationName, provinceName, sentence } from './text';
 import type { World } from './world';
 
 export type Command =
@@ -102,10 +102,11 @@ export function checkRecruit(
   if (!actor.ok) return actor;
   const p = state.provinces[province];
   if (!p || p.owner !== nation) return fail('You do not control this province.');
+  if (!world.provinces[province].city) return fail('Units are raised in cities.');
   if (!isUnitUnlocked(state, nation, unitType)) return fail(`${UNITS[unitType].name} must be researched first.`);
   const missing = UNITS[unitType].requires.filter((b) => !p.buildings[b]);
   if (missing.length > 0) {
-    return fail(`Requires ${missing.map((b) => BUILDINGS[b].name).join(' and ')} in ${world.provinces[province].city.name}.`);
+    return fail(`Requires ${missing.map((b) => BUILDINGS[b].name).join(' and ')} in ${provinceName(world, province)}.`);
   }
   if (p.recruitQueue.length >= ARMY_RULES.maxRecruitQueue) return fail('Recruitment queue is full.');
   if (!canAfford(state.nations[nation].resources, recruitCost(state, nation, unitType))) return fail('Not enough resources.');
@@ -125,6 +126,7 @@ export function checkBuildRules(
   const p = state.provinces[province];
   if (!p || p.owner !== nation) return fail('You do not control this province.');
   const cfg = BUILDINGS[building];
+  if (!world.provinces[province].city && cfg.category !== 'infrastructure') return fail('Needs a city: the land between cities takes only infrastructure.');
   if (!isBuildingUnlocked(state, nation, building)) return fail(`${cfg.name} must be researched first.`);
   if (cfg.occupiedOnly && world.provinces[province].core === nation) return fail('Only in occupied provinces.');
   if (cfg.coastalOnly && !world.seaLandings.has(province)) return fail('Only where a sea crossing lands.');
@@ -137,8 +139,8 @@ export function checkBuildRules(
   if (building === 'refinery' && refineryFuel(state, nation, world.provinces[province].oil === true, 1) <= 0) {
     return fail('Needs an oil field, or Synthetic Fuel research.');
   }
-  if (cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, province)) {
-    return fail(`No free building slot (${CITY.tierNames[p.tier]}: ${buildingSlots(state, province)} slots). Grow the city or demolish something.`);
+  if (cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, world, province)) {
+    return fail(`No free building slot (${CITY.tierNames[p.tier]}: ${buildingSlots(state, world, province)} slots). Grow the city or demolish something.`);
   }
   return OK;
 }
@@ -241,9 +243,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (leg) {
         if (cmd.to === leg.from) {
           // Turn around mid-march.
-          army.province = leg.to;
-          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
-          if (mode === 'patrol') army.move.patrol = [leg.to, leg.from];
+          turnBack(army, leg, mode);
+          if (mode === 'patrol') army.move!.patrol = [leg.to, leg.from];
           return OK;
         }
         const rest = cmd.to === leg.to ? [] : findPath(state, world, army, leg.to, cmd.to)!.path;
@@ -264,7 +265,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (!army.move) return fail('The army is not moving.');
-      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      if (army.move.halting) return fail('The army is already turning back.');
+      halt(army);
       return OK;
     }
     case 'hold': {
@@ -273,7 +275,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       army.holding = cmd.hold;
-      if (cmd.hold && army.move) army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      if (cmd.hold && army.move) halt(army);
       return OK;
     }
     case 'setAutoRetreat': {
@@ -396,7 +398,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
         return fail(`${BUILDINGS[p.construction.building].name}, under construction, depends on it.`);
       }
       delete p.buildings[cmd.building];
-      pushEvent(state, 'demolish', `${BUILDINGS[cmd.building].name} demolished in ${world.provinces[cmd.province].city.name}.`, {
+      pushEvent(state, 'demolish', `${BUILDINGS[cmd.building].name} demolished in ${provinceName(world, cmd.province)}.`, {
         nations: [cmd.nation],
         province: cmd.province,
       });
@@ -480,6 +482,22 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       }
       return OK;
     }
+  }
+}
+
+/** Turns a marching army round mid-leg: it walks back to the province it set out from, as far as it has come. */
+function turnBack(army: Army, leg: MoveLeg, mode: MoveMode): void {
+  army.province = leg.to;
+  army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
+}
+
+/** Stop and Hold halt an army at once: one on the road turns back to the province it set out from. */
+function halt(army: Army): void {
+  const leg = army.move?.leg;
+  if (!leg || leg.elapsed === 0) army.move = null;
+  else if (!army.move!.halting) {
+    turnBack(army, leg, 'move');
+    army.move!.halting = true;
   }
 }
 
