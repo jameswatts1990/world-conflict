@@ -202,24 +202,23 @@ try {
   await waitUntil(`(s) => s.armies['${recruits}'].province === 'es-castile' && !s.armies['${recruits}'].move`, 30000, 'recruits arrival');
   step('recruits marched to Castile & León');
 
-  // 7. Merge in Castile & León, declare war on Portugal (a minor power) and invade it.
+  // 7. Merge in Castile & León and attack Portugal (a minor power): the order asks to declare war first.
   await setPaused(true);
   p = await armyPoint(madridArmy);
   await page.mouse.click(p.x, p.y);
   await page.click('text=Merge here');
   const merged = await state((s) => Object.values(s.armies).filter((a) => a.owner === 'es' && a.province === 'es-castile'));
   if (merged.length !== 1) throw new Error('merge failed');
-  await page.click('[data-testid="open-diplomacy"]');
-  await page.click('[data-declare-war="pt"]');
-  await page.click('[data-testid="confirm"]');
-  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'war') throw new Error('war on Portugal not declared');
-  await page.keyboard.press('Escape');
   const portugal = await provincePoint('pt-lisbon');
   await page.click('[data-testid="move-mode"]');
   await page.mouse.click(portugal.x, portugal.y);
+  await page.waitForSelector('[data-testid="confirm"]');
+  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'peace') throw new Error('war declared without asking');
+  await page.click('[data-testid="confirm"]');
+  if ((await state((s) => s.nations.es.relations.pt.status)) !== 'war') throw new Error('war on Portugal not declared');
   const target = await page.evaluate((id) => window.__game.state.armies[id].move?.path?.at(-1), madridArmy);
   if (target !== 'pt-lisbon') throw new Error('attack order not accepted');
-  step('merged armies, declared war on Portugal and ordered the invasion', { castileArmyMerged: castileArmy, units: merged[0].units.length });
+  step('merged armies, ordered the invasion of Portugal and declared war when asked', { castileArmyMerged: castileArmy, units: merged[0].units.length });
   await setPaused(false);
   await waitUntil((s) => Object.keys(s.battles).includes('pt-lisbon'), 30000, 'battle start');
   await page.waitForTimeout(400);

@@ -14,6 +14,7 @@ import {
   armyMorale,
   atWar,
   buildingSlots,
+  checkDeclareWar,
   connectionBetween,
   findPath,
   isArmyInTransit,
@@ -207,6 +208,8 @@ export interface RoutePreview {
   ticks: number;
   /** Why there is no route. */
   blocked: string;
+  /** The nation at peace with us that owns the destination, when an order there would first ask to declare war on it. */
+  warOn?: NationId;
 }
 
 /** The route an army would take to a province, with its arrival time (null for where it already is). */
@@ -216,8 +219,9 @@ export function routePreview(state: GameState, world: World, human: NationId, ar
   const route = findPath(state, world, army, from, to);
   if (!route) {
     const owner = state.provinces[to].owner;
-    const peace = owner !== human && owner !== 'neutral' && !atWar(state, human, owner);
-    return { to, path: null, ticks: 0, blocked: peace ? `At peace with ${nationName(world, owner)}` : 'No route' };
+    if (owner === human || owner === 'neutral' || atWar(state, human, owner)) return { to, path: null, ticks: 0, blocked: 'No route' };
+    if (!checkDeclareWar(state, human, owner).ok) return { to, path: null, ticks: 0, blocked: `Truce with ${nationName(world, owner)}` };
+    return { to, path: null, ticks: 0, blocked: `At peace with ${nationName(world, owner)}: declare war to enter`, warOn: owner };
   }
   const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
   return { to, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };

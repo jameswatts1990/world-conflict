@@ -300,7 +300,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 9. War and peace
 
-- All powers start at **peace**. Declaring war is instant. After peace there is a 5-minute truce.
+- All powers start at **peace**. Declaring war is instant, from Diplomacy or by ordering an army into the other
+  nation's land (which asks first). After peace there is a 5-minute truce.
 - Peace can be offered after 3 minutes of war, and offers expire after 90 s. After an offer is rejected or ignored, the
   side that made it waits 4 minutes before proposing again (this also keeps the AI from flooding the player with
   offers). Peace is status quo: borders freeze and trespassing armies withdraw.
@@ -453,7 +454,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   standing), then the selection, so a click lands on what you most likely meant. Marching routes are animated dashed
   lines with arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy
   army previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At
-  peace with France"); right-clicking an enemy army attacks it. The army panel's **Move**, **Attack** and **Patrol**
+  peace with France: declare war to enter"); right-clicking an enemy army attacks it. An order into the land of a
+  nation you are at peace with asks first whether to declare war on it (the same dialog as in Diplomacy): confirming
+  declares war and gives the order, cancelling gives neither; during a truce the order is refused with the time left.
+  On touch screens the move banner offers **Declare war…** in place of Confirm. The army panel's **Move**, **Attack** and **Patrol**
   buttons (M, A, P) pick the kind of order for the next click, **Hold** (G) holds or releases, and its **Fall back
   when broken** box sets that option for every selected army.
 - **3D armies.** Wherever the cities are 3D models, so are the armies: each is a low-poly model of its main unit, in

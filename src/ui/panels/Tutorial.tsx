@@ -64,7 +64,7 @@ export function tutorialSteps(
     {
       title: 'War, supply and research',
       icon: 'research',
-      body: `Everyone starts at peace: declare war from Diplomacy ${compact ? 'in the command bar' : 'on the left command rail'}. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research${touch ? '' : ' (R)'} is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; ${
+      body: `Everyone starts at peace: declare war from Diplomacy ${compact ? 'in the command bar' : 'on the left command rail'}, or order an attack into a nation's land and confirm the declaration. Armies must stay connected through your territory to your capital or a Supply Depot, or they fight worse and then lose strength. Research${touch ? '' : ' (R)'} is a tree across four eras: it unlocks new units and buildings and upgrades your equipment in place. It is longer than a campaign, so choose a direction; ${
         touch ? 'tap a technology for its details, then research it or queue the whole path to it' : 'click a distant technology to queue the whole path'
       }.`,
     },
