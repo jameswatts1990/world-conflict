@@ -38,7 +38,8 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
     if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
   }
   const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
-  return Math.max(scaledTicks(state, MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
+  const gate = world.provinces[from].within === to || world.provinces[to].within === from;
+  return Math.max(scaledTicks(state, gate ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**

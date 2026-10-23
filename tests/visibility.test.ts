@@ -20,6 +20,19 @@ describe('fog of war', () => {
     for (const id of ['de-bavaria', 'de-berlin', 'it-rome', 'pl-warsaw', 'es-madrid']) expect(seen.has(id)).toBe(false);
   });
 
+  it('sight is reckoned over the land: seeing a land shows its city, and a city looks out from its land', () => {
+    const state = quietGame();
+    clearArmies(state);
+    // Belgium holds only Brussels and the land round it: from there it sees the French lands next door and
+    // the cities inside them, but no further.
+    const seen = visibleProvinces(state, world, 'be');
+    for (const id of ['fr-nord-land', 'fr-nord', 'de-ruhr-land', 'de-ruhr', 'nl-amsterdam']) expect(seen.has(id)).toBe(true);
+    expect(seen.has('fr-paris')).toBe(false);
+    // A city cut off inside enemy land still looks out over the lands next to its own.
+    state.provinces['be-brussels-land'].owner = 'fr';
+    expect(visibleProvinces(state, world, 'be').has('fr-nord')).toBe(true);
+  });
+
   it('armies see around them; reconnaissance units see further', () => {
     const state = quietGame();
     clearArmies(state);
@@ -60,11 +73,11 @@ describe('fog of war', () => {
     clearArmies(state);
     setWar(state, 'fr', 'de');
     place(state, 'fr', 'de-hesse', { infantry: 1 });
-    const german = place(state, 'de', 'de-berlin', { infantry: 1 });
+    const german = place(state, 'de', 'de-berlin-land', { infantry: 1 });
     const seen = () => visibleProvinces(state, world, 'fr');
     expect(isArmyVisible(german, 'fr', seen())).toBe(false);
-    const ticks = legTicks(state, world, german, 'de-berlin', 'de-saxony');
-    expect(applyCommand(state, world, { type: 'move', nation: 'de', armyId: german.id, to: 'de-saxony' }).ok).toBe(true);
+    const ticks = legTicks(state, world, german, 'de-berlin-land', 'de-saxony-land');
+    expect(applyCommand(state, world, { type: 'move', nation: 'de', armyId: german.id, to: 'de-saxony-land' }).ok).toBe(true);
     run(state, Math.floor(ticks / 2) - 1);
     expect(isArmyVisible(german, 'fr', seen())).toBe(false);
     run(state, 2);

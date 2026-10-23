@@ -109,9 +109,11 @@ describe('3D city models', () => {
 describe('cities on the map', () => {
   const geo = buildMapGeometry(world);
 
-  it('lead roads out of town towards the neighbours over land', () => {
+  it('lead roads out of town towards the cities next door over land', () => {
     for (const id of world.provinceIds) {
-      const overLand = world.neighbors[id].filter((n) => n.kind !== 'strait');
+      const def = world.provinces[id];
+      // Land has no model, so no roads of its own.
+      const overLand = def.within ? world.neighbors[def.within].filter((n) => n.kind !== 'strait' && world.provinces[n.id].contains) : [];
       expect(geo.roads[id], id).toHaveLength(overLand.length);
     }
   });
@@ -119,7 +121,7 @@ describe('cities on the map', () => {
   it('give every coastal city a port near it, and only those', () => {
     for (const id of world.provinceIds) {
       const port = geo.ports[id];
-      if (!world.provinces[id].coastal) {
+      if (!world.provinces[id].city || !world.provinces[id].coastal) {
         expect(port, id).toBeNull();
         continue;
       }

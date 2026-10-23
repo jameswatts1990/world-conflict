@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
-import { buildProvinces, buildStartingSetup, type ProvinceRow } from '../src/sim/scenario/build';
+import { buildConnections, buildProvinces, buildStartingSetup, type LandData, type ProvinceRow } from '../src/sim/scenario/build';
 import {
   applyCommand,
   armyName,
@@ -69,13 +69,17 @@ const CONNECTIONS = [
   land('mm-cap', 'nt-x'),
 ];
 
+/** Each city's land is anchored a little north of it. */
+const landData = (r: ProvinceRow[]): LandData =>
+  Object.fromEntries(r.map((x) => [x.id, { anchor: [x.city.coord[0], x.city.coord[1] + 0.5] as [number, number], coast: false }]));
+
 function scenario(r = rows()): ScenarioDef {
   return {
     id: 'powers-test',
     name: 'Powers test',
     nations: NATIONS,
-    provinces: buildProvinces(r, NATIONS),
-    connections: CONNECTIONS,
+    provinces: buildProvinces(r, NATIONS, landData(r)),
+    connections: buildConnections(r, CONNECTIONS),
     ...buildStartingSetup(r, NATIONS, CONNECTIONS),
     startingTechs: [],
   };
@@ -96,11 +100,14 @@ describe('power tiers', () => {
 
   it('deal field units over border provinces first, and to the capital when there is nothing else', () => {
     const units = (province: string) => scenario().startingArmies.find((a) => a.province === province)?.units;
+    // Garrisons in the cities; field units out on the land.
     expect(units('aa-cap')).toEqual(POWERS.great.armies.capital);
-    expect(units('aa-b')).toEqual({ infantry: 3 }); // borders the major power
-    expect(units('aa-a')).toEqual({ infantry: 2, cavalry: 1 });
-    expect(units('bb-a')).toEqual(POWERS.major.armies.field);
-    expect(units('mm-cap')).toEqual(startingUnits('minor'));
+    expect(units('aa-b-land')).toEqual({ infantry: 3 }); // borders the major power
+    expect(units('aa-a-land')).toEqual({ infantry: 2, cavalry: 1 });
+    expect(units('aa-a')).toBeUndefined();
+    expect(units('bb-a-land')).toEqual(POWERS.major.armies.field);
+    expect(units('mm-cap')).toEqual(POWERS.minor.armies.capital);
+    expect(units('mm-cap-land')).toEqual(POWERS.minor.armies.field);
     expect(units('nt-x')).toEqual({ infantry: 2 });
     for (const n of NATIONS) {
       const total: Record<string, number> = {};
@@ -113,8 +120,8 @@ describe('power tiers', () => {
 
   it('use hand-placed field units and the recruiting city when the rows give them', () => {
     const s = scenario(rows({ 'aa-a': { recruiting: true, garrison: { infantry: 5, cavalry: 1 } } }));
-    expect(s.startingArmies.find((a) => a.province === 'aa-a')!.units).toEqual({ infantry: 5, cavalry: 1 });
-    expect(s.startingArmies.some((a) => a.province === 'aa-b')).toBe(false);
+    expect(s.startingArmies.find((a) => a.province === 'aa-a-land')!.units).toEqual({ infantry: 5, cavalry: 1 });
+    expect(s.startingArmies.some((a) => a.province === 'aa-b-land')).toBe(false);
     expect(s.startingBuildings.find((b) => b.province === 'aa-a')!.buildings).toEqual(POWERS.great.buildings.recruiting);
     expect(s.startingBuildings.find((b) => b.province === 'nt-x')!.buildings).toEqual({ fortifications: 1 });
   });
