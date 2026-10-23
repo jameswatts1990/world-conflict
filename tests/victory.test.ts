@@ -47,7 +47,10 @@ describe('victory conditions', () => {
     expect(state.outcome?.winner).toBe('fr');
     expect(state.outcome?.scores[0].nation).toBe('fr');
     const s = computeScores(state, world)[0];
-    expect(s.score).toBe(s.vp * VICTORY.score.perVp + s.provinces * VICTORY.score.perProvince + s.techs * VICTORY.score.perTech);
+    const held = world.provinceIds.filter((id) => state.provinces[id].owner === s.nation);
+    const cities = held.filter((id) => world.provinces[id].city).length;
+    expect(s.provinces).toBe(held.length);
+    expect(s.score).toBe(s.vp * VICTORY.score.perVp + cities * VICTORY.score.perCity + (held.length - cities) * VICTORY.score.perLand + s.techs * VICTORY.score.perTech);
   });
 
   it('eliminating the player ends the game as a loss', () => {

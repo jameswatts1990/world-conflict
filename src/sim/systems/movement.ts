@@ -8,7 +8,7 @@ import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import { NEUTRAL, type Army, type GameState, type MoveLeg, type ProvinceId, type RoadHalt, type UnitType } from '../types';
 import { provinceName } from '../text';
-import { connectionBetween, type World } from '../world';
+import { connectionBetween, isCity, type World } from '../world';
 import { withdrawArmy } from './territory';
 
 /**
@@ -39,7 +39,8 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
     if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
   }
   const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
-  return Math.max(scaledTicks(state, MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
+  const gate = world.provinces[from].within === to || world.provinces[to].within === from;
+  return Math.max(scaledTicks(state, gate ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**
@@ -56,7 +57,7 @@ export function mustHold(state: GameState, army: Army): boolean {
 
 /**
  * Begins the next leg of the army's path. From a spot on a road it carries on along the road
- * or walks back to its own city first. Returns false (and clears the order) if it is no longer legal.
+ * or walks back first to where its land's roads meet. Returns false (and clears the order) if it is no longer legal.
  */
 export function startLeg(state: GameState, world: World, army: Army): boolean {
   const move = army.move;
@@ -119,7 +120,7 @@ export function movementSystem(state: GameState, world: World): void {
       refuseEntry(state, world, army, leg.to);
       continue;
     }
-    // Walking back to its own city, an army keeps the way it came (a landing stays a landing).
+    // Walking back within its own province, an army keeps the way it came (a landing stays a landing).
     if (leg.to !== army.province) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
@@ -145,7 +146,7 @@ function haltOnRoad(state: GameState, world: World, army: Army, leg: MoveLeg, ha
 }
 
 /**
- * Diplomacy changed mid-march (peace signed): the army turns back to the city it set out from,
+ * Diplomacy changed mid-march (peace signed): the army turns back to the province it set out from,
  * or, standing in land it may no longer be in, withdraws home.
  */
 function refuseEntry(state: GameState, world: World, army: Army, to: ProvinceId): void {
@@ -163,7 +164,7 @@ function refuseEntry(state: GameState, world: World, army: Army, to: ProvinceId)
  * Computer opponents gather their armies with their own merge orders when they think.
  */
 function mergeOnArrival(state: GameState, world: World, army: Army): void {
-  if (army.owner === NEUTRAL || state.nations[army.owner].controller !== 'human' || army.holding) return;
+  if (!isCity(world, army.province) || army.owner === NEUTRAL || state.nations[army.owner].controller !== 'human' || army.holding) return;
   let host: Army | null = null;
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
@@ -171,7 +172,7 @@ function mergeOnArrival(state: GameState, world: World, army: Army): void {
     if (!host || a.serial < host.serial) host = a;
   }
   if (!host) return;
-  pushEvent(state, 'merge', `The ${armyName(world, army)} joined the ${armyName(world, host)} in ${world.provinces[army.province].city.name}.`, {
+  pushEvent(state, 'merge', `The ${armyName(world, army)} joined the ${armyName(world, host)} in ${provinceName(world, army.province)}.`, {
     nations: [army.owner],
     province: army.province,
   });

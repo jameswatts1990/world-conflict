@@ -22,7 +22,7 @@ import {
   veterancyRank,
 } from '../queries';
 import { random } from '../rng';
-import { ownerName, sentence } from '../text';
+import { ownerName, provinceName, sentence } from '../text';
 import { NEUTRAL, type Army, type BattleState, type GameState, type NationId, type OwnerId, type ProvinceId, type Unit } from '../types';
 import { connectionBetween, type World } from '../world';
 import { startLeg } from './movement';
@@ -113,7 +113,7 @@ function startBattle(state: GameState, world: World, pid: ProvinceId, armies: Ar
   // Attackers first, the defending province owner last: "Germany vs France".
   const defender = state.provinces[pid].owner;
   const names = [...owners.filter((o) => o !== defender), ...owners.filter((o) => o === defender)].map((o) => ownerName(world, o, pid));
-  pushEvent(state, 'battle', `Battle of ${world.provinces[pid].city.name}: ${names.join(' vs ')}.`, {
+  pushEvent(state, 'battle', `Battle of ${provinceName(world, pid)}: ${names.join(' vs ')}.`, {
     nations: involvedNations(owners),
     province: pid,
     severity: 'combat',
@@ -130,7 +130,7 @@ function endBattle(state: GameState, world: World, pid: ProvinceId, survivors: A
   delete state.battles[pid];
   if (!battle) return;
   const winners = [...new Set(survivors.map((a) => a.owner))].filter((o) => battle.owners.includes(o));
-  const city = world.provinces[pid].city.name;
+  const city = provinceName(world, pid);
   // A side is beaten if it is gone and still at war with the victors. If peace sent it home
   // (or nobody is gone), the fighting simply stopped and nobody earns a victory.
   const beaten = battle.owners.some((o) => !winners.includes(o) && winners.some((w) => areHostile(state, o, w)));
@@ -247,7 +247,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
     if (army.units.length === 0) {
       delete state.armies[army.id];
-      pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost the ${armyName(world, army, pid)} at ${world.provinces[pid].city.name}.`, {
+      pushEvent(state, 'army-destroyed', `${sentence(ownerName(world, army.owner, pid))} lost the ${armyName(world, army, pid)} at ${provinceName(world, pid)}.`, {
         nations: involvedNations([army.owner, ...hostileOwners]),
         province: pid,
         subject: army.owner,
@@ -310,12 +310,12 @@ export function withdrawArmy(state: GameState, world: World, army: Army, pid: Pr
     state.nations[army.owner].stats.retreats += 1;
   }
   if (lost > 0 && enemyOwners.length === 1 && enemyOwners[0] !== NEUTRAL) state.nations[enemyOwners[0]].stats.unitsDestroyed += lost;
-  const city = world.provinces[pid].city.name;
+  const city = provinceName(world, pid);
   const name = armyName(world, army, pid);
-  // Walking back to its own city, an army is not withdrawing anywhere.
+  // Walking back within its own province, an army is not withdrawing anywhere.
   const dest = army.move?.leg && army.move.leg.to !== pid ? army.move.leg.to : undefined;
   const conn = dest ? connectionBetween(world, pid, dest) : null;
-  const to = dest ? ` to ${world.provinces[dest].city.name}${conn?.kind === 'strait' ? ' by sea' : ''}` : '';
+  const to = dest ? ` to ${provinceName(world, dest)}${conn?.kind === 'strait' ? ' by sea' : ''}` : '';
   const left = lost > 0 ? `, leaving ${lost} unit${lost === 1 ? '' : 's'} behind` : '';
   const opts = { nations: involvedNations([army.owner, ...enemyOwners]), province: pid, subject: army.owner, severity: 'combat' as const };
   if (army.units.length === 0) {

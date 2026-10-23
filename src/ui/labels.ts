@@ -1,6 +1,6 @@
 // Display labels shared by the map, panels and hover card.
 import { UNITS } from '../sim/config/units';
-import type { Army, MoveMode, OwnerId, ProvinceId, Terrain, UnitType, World } from '../sim';
+import { cityOf, type Army, type MoveMode, type OwnerId, type ProvinceId, type Terrain, type UnitType, type World } from '../sim';
 
 /** March orders: button label, map hint and keyboard shortcut. */
 export const ORDER: Record<MoveMode, { label: string; hint: string; key: string; title: string }> = {
@@ -8,6 +8,11 @@ export const ORDER: Record<MoveMode, { label: string; hint: string; key: string;
   attack: { label: 'Attack', hint: 'Attack', key: 'A', title: 'March there, halting to capture every hostile province on the way' },
   patrol: { label: 'Patrol', hint: 'Patrol to', key: 'P', title: 'March back and forth between here and the destination until stopped, fighting whatever turns up' },
 };
+
+/** Where a road leads, as a traveller names it: the city in a land, or the land itself when it has none. */
+export function roadEndName(world: World, pid: ProvinceId): string {
+  return world.provinces[cityOf(world, pid) ?? pid].name;
+}
 
 export const TERRAIN_LABEL: Record<Terrain, string> = {
   plains: 'Plains',

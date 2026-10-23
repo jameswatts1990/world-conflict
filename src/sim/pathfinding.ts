@@ -57,16 +57,16 @@ export function findPath(
   return { path, ticks: dist.get(to)! };
 }
 
-/** A march from wherever the army is now: in a city, halted on a road, or on the way. */
+/** A march from wherever the army is now: in a province, halted on a road, or on the way. */
 export interface MarchPlan {
-  /** The city it reaches first (where it stands, or an end of the road it is on). */
+  /** The province it reaches first (where it stands, or an end of the road it is on). */
   start: ProvinceId;
-  /** The leg it is on or sets out on from a road (null: it sets out from its city along `path`). */
+  /** The leg it is on or sets out on from a road (null: it sets out from where it stands along `path`). */
   leg: MoveLeg | null;
   /** Provinces still to reach; path[0] is the leg's target. */
   path: ProvinceId[];
   ticks: number;
-  /** Where the march stops short of the last city in `path`, on the road leading to it. */
+  /** Where the march stops short of the last province in `path`, on the road leading to it. */
   halt?: RoadHalt;
 }
 
@@ -92,9 +92,9 @@ function placeOn(army: Army, a: ProvinceId, b: ProvinceId): number | null {
 }
 
 /**
- * The fastest march to a province's city, or with `road` to a spot on the road out of it.
- * From a road (or mid-march) the army may go on to the city ahead or turn back to the one
- * behind, whichever is quicker; a spot on a road is reached from either of its cities, or
+ * The fastest march to a province, or with `road` to a spot on the road out of it. From a
+ * road (or mid-march) the army may go on to the province ahead or turn back to the one
+ * behind, whichever is quicker; a spot on a road is reached from either of its ends, or
  * straight along the road when the army is already on it. Null when there is no route.
  */
 export function planMarch(state: GameState, world: World, army: Army, to: ProvinceId, road?: RoadSpot | null): MarchPlan | null {
@@ -113,7 +113,7 @@ export function planMarch(state: GameState, world: World, army: Army, to: Provin
       return { start: next, leg: out, path: [next], ticks: Math.max(0, stop - out.elapsed), halt };
     }
   }
-  // The cities it can make for first, and what reaching them costs.
+  // The provinces it can make for first, and what reaching them costs.
   const starts: { node: ProvinceId; leg: MoveLeg | null; cost: number }[] = [];
   const leg = army.move?.leg;
   if (leg) {
@@ -127,7 +127,7 @@ export function planMarch(state: GameState, world: World, army: Army, to: Provin
   } else {
     starts.push({ node: army.province, leg: null, cost: 0 });
   }
-  // The cities it can make for last, and the stretch of road from there to the spot.
+  // The provinces it can make for last, and the stretch of road from there to the spot.
   const ends: { node: ProvinceId; next: ProvinceId | null; cost: number }[] = [];
   if (halt) {
     const out = legTicks(state, world, army, to, halt.toward);
@@ -164,7 +164,7 @@ export function marchTicksLeft(state: GameState, world: World, army: Army): numb
   const via = (a: ProvinceId, b: ProvinceId) => (a === b ? 0 : (findPath(state, world, army, a, b)?.ticks ?? 0));
   const halt = move.halt;
   if (!halt) return legLeft + via(from, dest);
-  // It stops on the road into the last city, short of it.
+  // It stops on the road into the last province, short of it.
   const last = move.path.length >= 2 ? move.path[move.path.length - 2] : leg ? leg.from : army.province;
   const into = last === halt.province ? halt.at : 1 - halt.at;
   if (leg && move.path.length === 1) return Math.max(0, Math.round(into * leg.duration) - leg.elapsed);

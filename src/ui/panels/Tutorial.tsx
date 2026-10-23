@@ -37,14 +37,14 @@ export function tutorialSteps(
       title: 'The map',
       icon: 'diplomacy',
       body: touch
-        ? `Drag to pan and pinch to zoom; towns appear as you zoom in, and the fit button shows the whole theatre. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
-        : `Drag to pan, scroll to zoom${compact ? '' : ', or use the overview map at the bottom right'}; towns appear as you zoom in. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
+        ? `Drag to pan and pinch to zoom; the provinces' names appear as you zoom in, and the fit button shows the whole theatre. Every city is a small province of its own inside the land round it: armies fight over the land, and a city whose land is lost is cut off. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left; the last button there opens the map key.`
+        : `Drag to pan, scroll to zoom${compact ? '' : ' (the map button under the zoom buttons opens an overview)'}; the provinces' names appear as you zoom in. Every city is a small province of its own inside the land round it: armies fight over the land, and a city whose land is lost is cut off. ${landText(world)}${FOG} Switch between Political, Terrain, Supply, Morale and City-size views at the top left (or cycle them with V), and press K for the map key.`,
     },
     {
       title: 'Cities and the economy',
       icon: 'factory',
       body: `The top bar shows money, materials, fuel and manpower with their change per minute; ${touch ? 'tap' : 'point at'} one for the breakdown. ${
-        touch ? 'Tap one of your provinces to open its city' : 'Click one of your provinces to open its city on the right'
+        touch ? 'Tap one of your cities to open its page' : 'Click one of your cities to open it on the right'
       }. Each city has building slots set by its size, so choose what to build: industry and exchanges for money and materials, housing to grow the city into a bigger tier with more slots, universities for research, barracks, arms and tank works to recruit, and infrastructure (forts, depots, railways) that needs no slot.`,
     },
     {
@@ -136,15 +136,16 @@ export function Tutorial({
 }
 
 export const CONTROLS: [string, string][] = [
-  ['Left-click province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
+  ['Left-click city', 'Open it: morale, growth, buildings, recruitment, forces present'],
+  ['Left-click province', 'Open the land round a city: morale, infrastructure, forces present'],
   ['Left-click army counter', 'Select an army (Shift-click adds more of your armies)'],
   ['Shift-drag', 'Select every army of yours inside the box'],
   [', / .', 'Previous / next of your armies'],
   ['Right-click', 'Send the selected armies to the province, spot on a road or enemy army under the cursor (Attack into foreign land, Move within your own)'],
   ['M / A / P', 'Move, Attack or Patrol: the next left-click sets the destination'],
   ['G', 'Hold position: halt and stay, never withdrawing on its own, until given a new order (again to release)'],
-  ['S', 'Stop the selected armies after their current leg'],
-  ['Drag / Mouse wheel', 'Pan / zoom the map (or use the overview map)'],
+  ['S', 'Stop the selected armies at once: one on the road turns back to the province it left'],
+  ['Drag / Mouse wheel', 'Pan / zoom the map (or open the overview map by the zoom buttons)'],
   ['Arrow keys', 'Pan the map (with Shift, further)'],
   ['C / Home', 'Jump to your capital'],
   ['Space', 'Pause / resume'],
@@ -159,10 +160,13 @@ export const CONTROLS: [string, string][] = [
 
 /** The same reference for touch screens. */
 export const TOUCH_CONTROLS: [string, string][] = [
-  ['Tap province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
+  ['Tap city', 'Open its page: morale, growth, buildings, recruitment, forces present'],
+  ['Tap province', 'Open the land round a city: morale, infrastructure, forces present'],
+  ['Tap a unit (Recruit)', 'Its role, numbers, strengths and weaknesses'],
   ['Tap army counter', 'Select the army'],
   ['Move / Attack / Patrol, then tap', 'Preview the route and arrival time to a province, a spot on a road or an enemy army; tap the same place again (or Confirm) to march'],
-  ['Stop', 'Halt the selected army after its current leg'],
+  ['Stop', 'Halt the selected armies at once: one on the road turns back to the province it left'],
+  ['Split', 'Split the army in two, or tick formations first to choose which go'],
   ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],
   ['Panel handle', 'Drag the selection panel up for more, down to close it (upright phones)'],
   ['Tap resource', 'Income, army upkeep and net change'],

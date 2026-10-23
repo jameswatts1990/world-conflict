@@ -48,6 +48,9 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
   const provinces = world.provinceIds.filter((p) => state.provinces[p].owner === me);
   const army = armies.length ? pick(armies) : null;
   const province = provinces.length ? pick(provinces) : null;
+  // Recruits are raised in cities: aim most such orders at one (the rest try the land, and fail).
+  const cities = provinces.filter((p) => world.provinces[p].city);
+  const city = cities.length && rnd() < 0.8 ? pick(cities) : province;
   switch (Math.floor(rnd() * 12)) {
     case 0: {
       if (!army) return null;
@@ -64,7 +67,7 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
     case 3:
       return armies.length > 1 ? { type: 'merge', nation: me, armyIds: [pick(armies).id, pick(armies).id] } : null;
     case 4:
-      return province ? { type: 'recruit', nation: me, province, unitType: pick(UNIT_TYPES) } : null;
+      return city ? { type: 'recruit', nation: me, province: city, unitType: pick(UNIT_TYPES) } : null;
     case 5:
       return province ? { type: 'cancelRecruit', nation: me, province, index: Math.floor(rnd() * 3) } : null;
     case 6:
