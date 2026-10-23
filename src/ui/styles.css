@@ -2667,7 +2667,19 @@ kbd {
   color: var(--bad);
 }
 .army-panel .orders {
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+}
+.army-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.army-option .muted {
+  margin-left: auto;
+  font-size: 12px;
 }
 .order-btn.danger:not(.active) {
   color: #ffb4a6;

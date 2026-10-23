@@ -136,6 +136,20 @@ describe('save / load', () => {
     expect(hashState(loaded.state)).toBe(hashState(state));
   });
 
+  it('gives armies in older saves a march mode and the new army options', () => {
+    const state = aiGame(5, 'fr');
+    run(state, 120);
+    const old = JSON.parse(serializeGame(state, 'v4'));
+    old.schemaVersion = old.state.schemaVersion = 4;
+    for (const a of Object.values(old.state.armies) as Record<string, any>[]) {
+      delete a.autoRetreat;
+      delete a.holding;
+      if (a.move) delete a.move.mode;
+    }
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
+    expect(hashState(loaded)).toBe(hashState(state));
+  });
+
   it('a save from before a country joined the scenario takes it in and plays on', () => {
     const state = aiGame(31, 'fr');
     run(state, 900);

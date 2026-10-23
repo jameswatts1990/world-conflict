@@ -31,6 +31,8 @@ export const MORALE = {
   retreatLoss: 0.15,
   /** Morale lost by every unit of an army withdrawing under fire. */
   retreatMoraleShock: 0.1,
+  /** An army set to fall back withdraws on its own when its strength-weighted morale drops below this. */
+  autoRetreatAt: 0.25,
   /** Neutral garrisons defend their homeland stubbornly. */
   neutralResilience: 1.4,
   /** Morale regained per army upkeep step out of combat. */

@@ -208,9 +208,19 @@ Specialities are optional: a nation without one shows its bloc instead.
   its own factors for passes, straits and terrain (mountain troops climb, lorries bog down). Owned railway
   junctions speed legs up. The minimum leg is 15 s.
 - Orders use Dijkstra over legal provinces: own territory, nations at war, and any neutral states.
-- Armies on a multi-leg order **hold** to fight and to capture each hostile province, then continue. An explicit
-  new order leaves immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and
-  **disband** (half the manpower returns; not in battle) are available while stationary.
+- March orders come in three kinds. **Move** marches straight to the destination, holding only to fight where an
+  enemy army bars the way, and takes the destination itself (provinces passed through stay the enemy's, so the
+  army may march itself out of supply). **Attack** also holds to capture each hostile province on the route, then
+  continues (the computer's orders are all attacks). **Patrol** marches back and forth between the army's position
+  and the destination until stopped, fighting and capturing like Attack. **Hold position** halts the army after
+  its current leg and keeps it there, never withdrawing on its own, until it is given a new march order or
+  released. Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves
+  immediately, even from a battle (a withdrawal under fire, see §7). Split, merge and **disband** (half the
+  manpower returns; not in battle) are available while stationary.
+- Each army has a **Fall back when broken** option, off by default: when its strength-weighted morale drops below
+  **25%** in battle it withdraws on its own to the best friendly neighbouring province, paying the usual price of a
+  withdrawal under fire. With nowhere to go, or while holding position, it fights on. A split army keeps its
+  parent's options; a merged one the senior army's.
 
 ### 6.6 Capture and supply
 
@@ -243,8 +253,8 @@ Morale works on three levels.
 by the target's **resilience** (type, veterancy, nation) and by 1.3 for defenders on their own ground. Each round
 also drains a little morale, more when outnumbered, and every destroyed unit shakes the rest of its army. Low
 morale blunts firepower (down to half at zero), but **armies never break: they fight to the death** unless their
-owner orders them out. **A withdrawal under fire** costs every unit 15 strength points (7.5 with recon screening
-it) and 10% morale; units too weak to get away are left behind and count as destroyed, so an army already cut to
+owner orders them out (or has set them to fall back when broken, see §6.5). **A withdrawal under fire** costs
+every unit 15 strength points (7.5 with recon screening it) and 10% morale; units too weak to get away are left behind and count as destroyed, so an army already cut to
 pieces may not escape at all. Encirclement still matters: with no friendly province next door there is nowhere to
 withdraw to. Neutral garrisons never withdraw, and are 40% more resilient. Out of combat, morale
 recovers 5% per 10 s (×1.5 in supplied home territory, ×2 at a hospital, ×0.5 while marching), up to a **cap**
@@ -396,7 +406,9 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   standing), then the selection, so a click lands on what you most likely meant. Marching routes are animated dashed
   lines with arrowheads. Battles show a pulsing explosion. With your army selected, pointing at a province or an enemy
   army previews the route, highlights the provinces on it and shows the arrival time (or why there is no route: "At
-  peace with France"); right-clicking an enemy army attacks it.
+  peace with France"); right-clicking an enemy army attacks it. The army panel's **Move**, **Attack** and **Patrol**
+  buttons (M, A, P) pick the kind of order for the next click, **Hold** (G) holds or releases, and its **Fall back
+  when broken** box sets that option for every selected army.
 - **3D armies.** Wherever the cities are 3D models, so are the armies: each is a low-poly model of its main unit, in
   its generation's equipment and its nation's uniform, headgear, paint (and camouflage) and flag: a squad advancing
   under its colours, assault troops with a flamethrower, mountain troops with a pack mule, a lorry and its riflemen,

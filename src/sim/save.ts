@@ -39,6 +39,15 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
       stats.retreats = 0;
     }
   },
+  // 5: march orders carry a mode (older ones all captured along the way); armies gain the
+  // automatic-withdrawal and hold-position options, both off.
+  4: (state) => {
+    for (const a of Object.values(state.armies)) {
+      if (a.move) a.move.mode = 'attack';
+      a.autoRetreat = false;
+      a.holding = false;
+    }
+  },
 };
 
 /**

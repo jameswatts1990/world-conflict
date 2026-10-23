@@ -57,8 +57,8 @@ export function tutorialSteps(
       icon: 'swords',
       body: `${
         touch
-          ? 'Tap an army counter to select it, press Move, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army.'
-          : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, then click). The route and arrival time show as you point.'
+          ? 'Tap an army counter to select it, press Move, Attack or Patrol, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army. Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there.'
+          : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, Attack or Patrol, then click). Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there. The route and arrival time show as you point.'
       } Battles wear down strength and morale, and armies fight to the death: pull one out under fire and every unit pays in strength, so encircle the enemy and leave it nowhere to go. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
     },
     {
@@ -138,8 +138,9 @@ export function Tutorial({
 export const CONTROLS: [string, string][] = [
   ['Left-click province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
   ['Left-click army counter', 'Select an army (Shift-click adds more of your armies)'],
-  ['Right-click', 'March the selected armies to the province or enemy army under the cursor'],
-  ['M / Move button', 'Move mode: the next left-click sets the destination'],
+  ['Right-click', 'Send the selected armies to the province or enemy army under the cursor (Attack into foreign land, Move within your own)'],
+  ['M / A / P', 'Move, Attack or Patrol: the next left-click sets the destination'],
+  ['G', 'Hold position: halt and stay, never withdrawing on its own, until given a new order (again to release)'],
   ['S', 'Stop the selected armies after their current leg'],
   ['Drag / Mouse wheel', 'Pan / zoom the map (or use the overview map)'],
   ['Space', 'Pause / resume'],
@@ -155,7 +156,7 @@ export const CONTROLS: [string, string][] = [
 export const TOUCH_CONTROLS: [string, string][] = [
   ['Tap province', 'Open its city: morale, growth, buildings, recruitment, forces present'],
   ['Tap army counter', 'Select the army'],
-  ['Move, then tap', 'Preview the route and arrival time; tap the same place again (or Confirm) to march'],
+  ['Move / Attack / Patrol, then tap', 'Preview the route and arrival time; tap the same place again (or Confirm) to march'],
   ['Stop', 'Halt the selected army after its current leg'],
   ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],
   ['Panel handle', 'Drag the selection panel up for more, down to close it (upright phones)'],
