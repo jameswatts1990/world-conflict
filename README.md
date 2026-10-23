@@ -75,8 +75,9 @@ Other scripts:
 | `npx vite-node scripts/art/contact-sheet.tsx <out.html>` | Contact sheet of all unit art (`scripts/art/city-sheet.tsx` for skylines, `scripts/art/city-models-sheet.tsx` for the map's 3D cities, `scripts/art/unit-models-sheet.tsx` for its 3D armies) |
 | `npm run map:fetch && npm run map:build` | Re-download Natural Earth data and rebuild the bundled map |
 | `npm run audio:fetch && npm run audio:build` | Re-download the recordings in `scripts/audio/sources.mjs` and rebuild the bundled sound (needs FFmpeg) |
-| `npm run e2e` | Scripted browser playthrough against the production build (`npm run build` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
-| `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build` first; about 20 seconds): upright, then turned on its side |
+| `npm run build:e2e` | The production build plus the `window.__game` handle the browser checks drive the game through (in `dist-e2e/`; the dev server has it too, the published build does not) |
+| `npm run e2e` | Scripted browser playthrough against the test build (`npm run build:e2e` first; about a minute at DEV speed: start → build → recruit → research → move → capture → save/load → campaign end) |
+| `npm run e2e:mobile` | The same for the phone layouts, by touch (`npm run build:e2e` first; about 20 seconds): upright, then turned on its side |
 
 The CI workflow (`.github/workflows/ci.yml`) runs the typecheck, the test suite, the build and both browser playthroughs on
 every push and pull request.

@@ -121,13 +121,15 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
       done, rejected peace offers)
-- [ ] Army groups / multi-select by box-drag; hotkeys to cycle armies
+- [x] Multi-select by box-drag (Shift-drag); hotkeys to cycle armies (, and .)
+- [ ] Army groups: saved selections on the number keys
 - [x] Responsive layout and touch controls: phone layouts upright (tab bar, bottom sheet) and on the side (slim tab bar,
       side sheet), tap-to-preview move orders, touch briefing and controls, a touch browser playthrough in CI
 - [x] Phones, second pass: the map opens close in on the capital with less clutter and no overview map, a minified
       top bar that fits down to 320 px, field reports counted on their tab, and a briefing that stays on screen
 - [ ] Phones: try on real devices (iOS Safari, Android Chrome); a research tree sized for a phone
 - [x] Split the bundle into cacheable chunks (libraries, map data, simulation, art, interface)
+- [x] Keep the `window.__game` debug handle out of the published build (dev server and `npm run build:e2e` only)
 - [ ] Lazy-load the world context layer and the rarely opened windows (research tree, city skylines)
 - [x] Sound: event cues, distant battle ambience, interface sounds, public-domain period music; N mutes
 - [x] Sound window: mute, overall / music / effects volumes, the piece playing now and a skip (rail on the desktop, More on phones)
