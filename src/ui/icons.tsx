@@ -78,6 +78,7 @@ const LINE = {
   close: 'M6 6l12 12M18 6L6 18',
   move: 'M4 12h14M13 6.5l5.5 5.5-5.5 5.5',
   stop: 'M7 7h10v10H7z',
+  patrol: 'M4 9h14M14.5 5.5L18 9l-3.5 3.5M20 15H6M9.5 11.5L6 15l3.5 3.5',
   split: 'M12 21v-7M12 14L6.5 6M12 14l5.5-8M4 6h5M15 6h5',
   merge: 'M6 3v4l6 6M18 3v4l-6 6M12 13v8M9 18l3 3 3-3',
   pause: 'M8.5 5v14M15.5 5v14',

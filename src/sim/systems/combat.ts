@@ -11,6 +11,7 @@ import { pushEvent } from '../events';
 import { armyName } from '../names';
 import {
   areHostile,
+  armyMorale,
   armyPower,
   fortificationReduction,
   hostileArmiesIn,
@@ -23,6 +24,7 @@ import { random } from '../rng';
 import { ownerName, sentence } from '../text';
 import { NEUTRAL, type Army, type BattleState, type GameState, type NationId, type OwnerId, type ProvinceId, type Unit } from '../types';
 import { connectionBetween, type World } from '../world';
+import { startLeg } from './movement';
 
 interface Target {
   army: Army;
@@ -251,6 +253,17 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
         severity: 'combat',
       });
     }
+  }
+
+  // Armies set to fall back withdraw on their own once their morale is spent, at the
+  // usual price; with nowhere to go, or holding position, they fight on.
+  for (const army of armies) {
+    if (!state.armies[army.id] || !army.autoRetreat || army.holding || army.move?.leg) continue;
+    if (armyMorale(army) >= MORALE.autoRetreatAt || hostileArmiesIn(state, pid, army.owner).length === 0) continue;
+    const to = retreatTarget(state, world, army, pid);
+    if (!to) continue;
+    army.move = { path: [to], leg: null, mode: 'move' };
+    if (startLeg(state, world, army)) withdrawArmy(state, world, army, pid);
   }
 }
 

@@ -1,6 +1,13 @@
 // Display labels shared by the map, panels and hover card.
 import { UNITS } from '../sim/config/units';
-import type { Army, OwnerId, ProvinceId, Terrain, UnitType, World } from '../sim';
+import type { Army, MoveMode, OwnerId, ProvinceId, Terrain, UnitType, World } from '../sim';
+
+/** March orders: button label, map hint and keyboard shortcut. */
+export const ORDER: Record<MoveMode, { label: string; hint: string; key: string; title: string }> = {
+  move: { label: 'Move', hint: 'Move to', key: 'M', title: 'March straight there, stopping only where enemy armies bar the way; takes the destination' },
+  attack: { label: 'Attack', hint: 'Attack', key: 'A', title: 'March there, halting to capture every hostile province on the way' },
+  patrol: { label: 'Patrol', hint: 'Patrol to', key: 'P', title: 'March back and forth between here and the destination until stopped, fighting whatever turns up' },
+};
 
 export const TERRAIN_LABEL: Record<Terrain, string> = {
   plains: 'Plains',

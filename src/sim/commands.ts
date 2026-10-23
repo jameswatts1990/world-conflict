@@ -30,12 +30,16 @@ import { withdrawArmy } from './systems/combat';
 import { declareWar, makePeace } from './systems/diplomacy';
 import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
-import type { ArmyId, BuildingType, GameState, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
+import type { ArmyId, BuildingType, GameState, MoveMode, NationId, ProvinceId, TechId, UnitId, UnitType } from './types';
 import { durationText, nationName, sentence } from './text';
 import type { World } from './world';
 
 export type Command =
-  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId }
+  /** `mode` defaults to attack: halt to capture every hostile province on the way. */
+  | { type: 'move'; nation: NationId; armyId: ArmyId; to: ProvinceId; mode?: MoveMode }
+  | { type: 'setAutoRetreat'; nation: NationId; armyId: ArmyId; autoRetreat: boolean }
+  /** Hold position: halt after the current leg and stay, never withdrawing on its own; `hold: false` releases it. */
+  | { type: 'hold'; nation: NationId; armyId: ArmyId; hold: boolean }
   | { type: 'stop'; nation: NationId; armyId: ArmyId }
   | { type: 'split'; nation: NationId; armyId: ArmyId; unitIds: UnitId[] }
   | { type: 'merge'; nation: NationId; armyIds: ArmyId[] }
@@ -231,20 +235,25 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const check = checkMove(state, world, cmd.nation, cmd.armyId, cmd.to);
       if (!check.ok) return check;
       const army = state.armies[cmd.armyId];
+      const mode = cmd.mode ?? 'attack';
+      army.holding = false;
       const leg = army.move?.leg;
       if (leg) {
         if (cmd.to === leg.from) {
           // Turn around mid-march.
           army.province = leg.to;
-          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration } };
+          army.move = { path: [leg.from], leg: { from: leg.to, to: leg.from, elapsed: leg.duration - leg.elapsed, duration: leg.duration }, mode };
+          if (mode === 'patrol') army.move.patrol = [leg.to, leg.from];
           return OK;
         }
         const rest = cmd.to === leg.to ? [] : findPath(state, world, army, leg.to, cmd.to)!.path;
-        army.move = { path: [leg.to, ...rest], leg };
+        army.move = { path: [leg.to, ...rest], leg, mode };
+        if (mode === 'patrol') army.move.patrol = [leg.to, cmd.to];
         return OK;
       }
       const route = findPath(state, world, army, army.province, cmd.to)!;
-      army.move = { path: route.path, leg: null };
+      army.move = { path: route.path, leg: null, mode };
+      if (mode === 'patrol') army.move.patrol = [army.province, cmd.to];
       // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
       if (startLeg(state, world, army)) withdrawArmy(state, world, army, army.province);
       return OK;
@@ -255,7 +264,24 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (!army.move) return fail('The army is not moving.');
-      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg } : null;
+      army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      return OK;
+    }
+    case 'hold': {
+      const actor = checkActor(state, cmd.nation);
+      if (!actor.ok) return actor;
+      const army = state.armies[cmd.armyId];
+      if (!army || army.owner !== cmd.nation) return fail('Not your army.');
+      army.holding = cmd.hold;
+      if (cmd.hold && army.move) army.move = army.move.leg ? { path: [army.move.leg.to], leg: army.move.leg, mode: army.move.mode } : null;
+      return OK;
+    }
+    case 'setAutoRetreat': {
+      const actor = checkActor(state, cmd.nation);
+      if (!actor.ok) return actor;
+      const army = state.armies[cmd.armyId];
+      if (!army || army.owner !== cmd.nation) return fail('Not your army.');
+      army.autoRetreat = cmd.autoRetreat;
       return OK;
     }
     case 'split': {
@@ -273,6 +299,8 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const created = createArmy(state, cmd.nation, army.province, moving);
       created.supplied = army.supplied;
       created.arrivedVia = army.arrivedVia;
+      created.autoRetreat = army.autoRetreat;
+      created.holding = army.holding;
       return OK;
     }
     case 'merge': {

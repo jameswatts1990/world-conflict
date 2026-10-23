@@ -23,7 +23,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface NewGameOptions {
   seed: number;
@@ -71,6 +71,8 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
     supplied: true,
     unsuppliedTicks: 0,
     arrivedVia: null,
+    autoRetreat: false,
+    holding: false,
   };
   state.armies[army.id] = army;
   return army;

@@ -18,6 +18,7 @@ import {
   type EventSeverity,
   type GameEvent,
   type GameState,
+  type MoveMode,
   type OwnerId,
   type ProvinceId,
   unitGen,
@@ -28,7 +29,7 @@ import type { GameController } from './game/GameController';
 import { OwnerFlag, Flag } from './flags';
 import { countOf, formatDuration } from './format';
 import { Icon, type IconName } from './icons';
-import { TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
+import { ORDER, TERRAIN_LABEL, composition, ownerLabel, ownerShortName } from './labels';
 import { useLayout, useTouch } from './layout';
 import { mapGeometry } from './map/geo';
 import { MapView, routePreview, type MapMode } from './map/MapView';
@@ -132,7 +133,8 @@ export function GameScreen({
   // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
   const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
-  const [moveMode, setMoveMode] = useState(false);
+  // The march order being given, while a destination is picked.
+  const [moveMode, setMoveMode] = useState<MoveMode | null>(null);
   const [panel, setPanel] = useState<PanelId | null>(null);
   const [tutorial, setTutorial] = useState(showTutorial);
   const [focus, setFocus] = useState<{ province: ProvinceId; seq: number } | null>(null);
@@ -214,7 +216,7 @@ export function GameScreen({
         return [id];
       });
       setSelectedProvince(army.move?.leg ? army.move.leg.from : army.province);
-      setMoveMode(false);
+      setMoveMode(null);
     },
     [ctrl],
   );
@@ -222,21 +224,23 @@ export function GameScreen({
   const orderMove = useCallback(
     (pid: ProvinceId) => {
       const own = selectedArmies.filter((id) => ctrl.state.armies[id]?.owner === ctrl.human);
+      // A right-click without a chosen order attacks into foreign land and moves within our own.
+      const mode = moveMode ?? (ctrl.state.provinces[pid].owner === ctrl.human ? 'move' : 'attack');
       let lastError: string | null = null;
       for (const id of own) {
-        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid });
+        const r = ctrl.submit({ type: 'move', nation: ctrl.human, armyId: id, to: pid, mode });
         if (!r.ok) lastError = r.reason;
       }
       if (lastError) setToast(lastError);
-      setMoveMode(false);
+      setMoveMode(null);
     },
-    [ctrl, selectedArmies],
+    [ctrl, selectedArmies, moveMode],
   );
 
   const selectProvince = useCallback((pid: ProvinceId | null) => {
     setSelectedProvince(pid);
     setSelectedArmies([]);
-    setMoveMode(false);
+    setMoveMode(null);
     // Tapping the province already selected raises a peeking sheet too.
     if (pid) setSheet((s) => (s === 'peek' ? 'half' : s));
   }, []);
@@ -263,7 +267,7 @@ export function GameScreen({
       } else if (/^[1-9]$/.test(e.key) && Number(e.key) <= CLIENT_SPEEDS.length) {
         ctrl.setSpeed(CLIENT_SPEEDS[Number(e.key) - 1].multiplier);
       } else if (e.key === 'Escape') {
-        if (moveMode) setMoveMode(false);
+        if (moveMode) setMoveMode(null);
         else if (legendOpen) setLegendOpen(false);
         else {
           setSelectedArmies([]);
@@ -272,7 +276,16 @@ export function GameScreen({
       } else if (key === 'r') setPanel((p) => (p === 'research' ? null : 'research'));
       else if (key === 'd') setPanel((p) => (p === 'diplomacy' ? null : 'diplomacy'));
       else if (key === 'h' || e.key === '?') setPanel('help');
-      else if (key === 'm' && selectedArmies.length) setMoveMode((m) => !m);
+      else if ((key === 'm' || key === 'a' || key === 'p') && selectedArmies.length) {
+        const order: MoveMode = key === 'm' ? 'move' : key === 'a' ? 'attack' : 'patrol';
+        setMoveMode((m) => (m === order ? null : order));
+      } else if (key === 'g' && selectedArmies.length) {
+        // Hold position, or release it if every selected army already holds.
+        const own = selectedArmies.map((id) => ctrl.state.armies[id]).filter((a) => a?.owner === ctrl.human);
+        const hold = !own.every((a) => a.holding);
+        for (const a of own) ctrl.submit({ type: 'hold', nation: ctrl.human, armyId: a.id, hold });
+        setMoveMode(null);
+      }
       else if (key === 's' && selectedArmies.length) {
         for (const id of selectedArmies) if (ctrl.state.armies[id]?.move) ctrl.submit({ type: 'stop', nation: ctrl.human, armyId: id });
       } else if (key === 'l') setFeedOpen((o) => !o);
@@ -315,7 +328,7 @@ export function GameScreen({
   const clearSelection = () => {
     setSelectedArmies([]);
     setSelectedProvince(null);
-    setMoveMode(false);
+    setMoveMode(null);
   };
   const mover = armySelected && state.armies[selectedArmies[0]].owner === human ? state.armies[selectedArmies[0]] : null;
   const pendingRoute = moveMode && moveTarget && mover ? routePreview(state, world, human, mover, moveTarget) : null;
@@ -343,7 +356,7 @@ export function GameScreen({
             geo={geo}
             selectedProvince={selectedProvince}
             selectedArmies={selectedArmies}
-            moveMode={moveMode}
+            moveMode={moveMode !== null}
             focus={focus}
             mapMode={mapMode}
             insetRight={insetRight}
@@ -398,7 +411,7 @@ export function GameScreen({
               {ctrl.loop.speed > 2 && !ctrl.loop.paused && <div className="banner dev-banner">Development speed {ctrl.loop.speed}x</div>}
               {moveMode && !touch && (
                 <div className="banner hint-banner">
-                  <Icon name="target" size={16} /> Choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
+                  <Icon name="target" size={16} /> {ORDER[moveMode].hint}: choose a destination — click a province or an enemy army <span className="muted">(Esc to cancel)</span>
                 </div>
               )}
               {moveMode && touch && (
@@ -413,7 +426,7 @@ export function GameScreen({
                       </span>
                     ) : (
                       <span>
-                        March to {world.provinces[moveTarget].city.name}
+                        {ORDER[moveMode].hint} {world.provinces[moveTarget].city.name}
                         {pendingRoute && <span className="muted"> · {formatDuration(pendingRoute.ticks, state)}</span>}
                       </span>
                     )}
@@ -424,7 +437,7 @@ export function GameScreen({
                         Confirm
                       </button>
                     )}
-                    <button onClick={() => setMoveMode(false)}>Cancel</button>
+                    <button onClick={() => setMoveMode(null)}>Cancel</button>
                   </span>
                 </div>
               )}
@@ -513,7 +526,7 @@ export function GameScreen({
                   onSelectArmies={setSelectedArmies}
                   onClose={() => {
                     setSelectedArmies([]);
-                    setMoveMode(false);
+                    setMoveMode(null);
                   }}
                 />
               )}

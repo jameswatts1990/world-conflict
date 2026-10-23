@@ -17,6 +17,7 @@ import {
   unitStats,
   veterancyRank,
   type ArmyId,
+  type MoveMode,
 } from '../../sim';
 import { UnitIconArt } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
@@ -24,7 +25,7 @@ import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { countOf, formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
-import { composition, ownerShortName } from '../labels';
+import { ORDER, composition, ownerShortName } from '../labels';
 import { MoraleMeter, Progress, Section, moraleClass } from './Common';
 
 /** Rank chevrons: none for Green, one to three for Regular to Elite. */
@@ -47,8 +48,9 @@ export function ArmyPanel({
 }: {
   ctrl: GameController;
   armyIds: ArmyId[];
-  moveMode: boolean;
-  onMoveMode: (on: boolean) => void;
+  /** The march order whose destination is being picked, if any. */
+  moveMode: MoveMode | null;
+  onMoveMode: (mode: MoveMode | null) => void;
   onSelectArmies: (ids: ArmyId[]) => void;
   onClose: () => void;
 }) {
@@ -70,9 +72,16 @@ export function ArmyPanel({
   let status: string;
   let statusIcon: IconName;
   const here = provinceName(world, army.province);
-  if (leg) {
-    status = `Marching to ${provinceName(world, leg.to)}`;
-    statusIcon = 'move';
+  if (army.holding && !leg) {
+    status = hostiles.length > 0 ? `Holding ${here} under attack` : `Holding position in ${here}`;
+    statusIcon = 'lock';
+  } else if (army.move?.patrol) {
+    const [a, b] = army.move.patrol;
+    status = `Patrolling between ${provinceName(world, a)} and ${provinceName(world, b)}`;
+    statusIcon = 'patrol';
+  } else if (leg) {
+    status = `${army.move?.mode === 'attack' ? 'Advancing' : 'Marching'} to ${provinceName(world, leg.to)}`;
+    statusIcon = army.move?.mode === 'attack' ? 'swords' : 'move';
   } else if (hostiles.length > 0) {
     status = `In battle in ${here}`;
     statusIcon = 'swords';
@@ -90,6 +99,14 @@ export function ArmyPanel({
     const rest = from === dest ? 0 : (findPath(state, world, army, from, dest)?.ticks ?? 0);
     eta = (leg ? leg.duration - leg.elapsed : 0) + rest;
   }
+
+  const selectedOwn = armyIds.map((id) => state.armies[id]).filter((a) => a && a.owner === human);
+  const setRetreat = (on: boolean) => {
+    for (const a of selectedOwn) ctrl.submit({ type: 'setAutoRetreat', nation: human, armyId: a.id, autoRetreat: on });
+  };
+  const holdAll = (hold: boolean) => {
+    for (const a of selectedOwn) ctrl.submit({ type: 'hold', nation: human, armyId: a.id, hold });
+  };
 
   const sameProvinceOwn = armiesIn(state, army.province).filter((a) => a.owner === human);
   const grace = scaledTicks(state, SUPPLY.attritionGraceSeconds);
@@ -183,7 +200,7 @@ export function ArmyPanel({
                 </span>
               )}
             </div>
-            {!leg && <div className="muted">Halted to fight or capture, then marching on</div>}
+            {!leg && <div className="muted">{army.move.mode === 'move' ? 'Halted to fight' : 'Halted to fight or capture'}, then marching on</div>}
           </div>
         )}
 
@@ -215,14 +232,26 @@ export function ArmyPanel({
 
         {own && (
           <div className="orders">
+            {(['move', 'attack', 'patrol'] as const).map((mode) => (
+              <button
+                key={mode}
+                className={`order-btn${moveMode === mode ? ' active' : ''}`}
+                onClick={() => onMoveMode(moveMode === mode ? null : mode)}
+                title={`${ORDER[mode].title}. Then click a destination — ${ORDER[mode].key}`}
+                data-testid={mode === 'move' ? 'move-mode' : `${mode}-mode`}
+              >
+                <Icon name={mode === 'move' ? 'move' : mode === 'attack' ? 'swords' : 'patrol'} size={18} />
+                <span>{moveMode === mode ? 'Pick target' : ORDER[mode].label}</span>
+              </button>
+            ))}
             <button
-              className={`order-btn${moveMode ? ' active' : ''}`}
-              onClick={() => onMoveMode(!moveMode)}
-              title="Then click a destination (or right-click a province any time) — M"
-              data-testid="move-mode"
+              className={`order-btn${army.holding ? ' active' : ''}`}
+              onClick={() => holdAll(!army.holding)}
+              title={army.holding ? 'Release the hold (G)' : 'Hold position: halt after the current leg and stay, never withdrawing on its own, until given a new order (G)'}
+              data-testid="hold"
             >
-              <Icon name="move" size={18} />
-              <span>{moveMode ? 'Pick target' : 'Move'}</span>
+              <Icon name="lock" size={18} />
+              <span>{army.holding ? 'Holding' : 'Hold'}</span>
             </button>
             <button className="order-btn" disabled={!army.move} onClick={() => ctrl.submit({ type: 'stop', nation: human, armyId: army.id })} title="Stop after the current leg (S)">
               <Icon name="stop" size={18} />
@@ -257,7 +286,17 @@ export function ArmyPanel({
             </button>
           </div>
         )}
-        {own && armyIds.length > 1 && <div className="muted multi-note">{armyIds.length} armies selected — move orders apply to all.</div>}
+        {own && (
+          <label
+            className="army-option"
+            title={`When its morale falls below ${Math.round(MORALE.autoRetreatAt * 100)}% in battle, the army withdraws to a friendly neighbouring province on its own, paying the usual price of a withdrawal. Otherwise it fights on until destroyed or ordered out.`}
+          >
+            <input type="checkbox" checked={army.autoRetreat} onChange={(e) => setRetreat(e.target.checked)} data-testid="auto-retreat" />
+            <span>Fall back when broken</span>
+            <span className="muted">{!army.autoRetreat ? 'fights to the end' : army.holding ? 'not while holding' : `withdraws below ${Math.round(MORALE.autoRetreatAt * 100)}% morale`}</span>
+          </label>
+        )}
+        {own && armyIds.length > 1 && <div className="muted multi-note">{armyIds.length} armies selected — orders and options apply to all.</div>}
 
         <Section
           title={`Formations (${army.units.length})`}

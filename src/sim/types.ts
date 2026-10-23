@@ -290,11 +290,22 @@ export interface MoveLeg {
   duration: number;
 }
 
+/**
+ * How an army carries out a march order:
+ * - move: straight to the destination, stopping only where enemy armies bar the way;
+ * - attack: also halts to capture every hostile province on the route;
+ * - patrol: marches back and forth between two provinces, fighting and capturing like attack.
+ */
+export type MoveMode = 'move' | 'attack' | 'patrol';
+
 export interface ArmyMove {
   /** Remaining destinations in order; path[0] is the current/next leg target. */
   path: ProvinceId[];
   /** Non-null while travelling between two provinces. */
   leg: MoveLeg | null;
+  mode: MoveMode;
+  /** Patrol ends; the army turns for the other end each time it reaches one. */
+  patrol?: [ProvinceId, ProvinceId];
 }
 
 export interface Army {
@@ -311,6 +322,10 @@ export interface Army {
   unsuppliedTicks: number;
   /** How the army reached its current province (sea landings fight at a penalty). */
   arrivedVia: ConnectionKind | null;
+  /** Withdraw from a battle on its own (paying the price of a withdrawal) once morale falls below MORALE.autoRetreatAt. */
+  autoRetreat: boolean;
+  /** Holding position: halted where it is and never withdrawing on its own, until given a march order. */
+  holding: boolean;
 }
 
 export interface ConstructionJob {

@@ -241,6 +241,34 @@ describe('morale in battle', () => {
     expect(state.events.some((e) => e.kind === 'rout' && e.subject === 'fr')).toBe(true);
   });
 
+  it('an army set to fall back withdraws on its own once its morale is spent, at the usual price', () => {
+    const r = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, {
+      seed: 2,
+      tweak: (s) => Object.values(s.armies).forEach((a) => (a.autoRetreat = a.owner === 'fr')),
+    });
+    const army = r.state.armies[r.att.id];
+    expect(army).toBeDefined();
+    expect(army.move?.leg?.to).toBe(r.retreat);
+    expect(r.state.nations.fr.stats.retreats).toBe(1);
+    expect(r.state.events.some((e) => e.kind === 'rout' && e.subject === 'fr')).toBe(true);
+  });
+
+  it('with nowhere to go, or holding position, an army set to fall back fights on', () => {
+    const fallBack = (s: GameState) => Object.values(s.armies).forEach((a) => (a.autoRetreat = a.owner === 'fr'));
+    const cut = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, { seed: 2, encircled: true, tweak: fallBack });
+    const held = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, {
+      seed: 2,
+      tweak: (s) => {
+        fallBack(s);
+        for (const a of Object.values(s.armies)) a.holding = a.owner === 'fr';
+      },
+    });
+    for (const r of [cut, held]) {
+      expect(r.state.armies[r.att.id]).toBeUndefined();
+      expect(r.state.nations.fr.stats.retreats).toBe(0);
+    }
+  });
+
   it('marching on outside a battle costs nothing', () => {
     const state = quietGame();
     clearArmies(state);
