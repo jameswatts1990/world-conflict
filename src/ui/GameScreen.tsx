@@ -133,7 +133,9 @@ export function GameScreen({
   const compact = layout !== 'desktop';
 
   // The desktop opens on the capital's city; a phone keeps the map clear until something is tapped.
-  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact ? null : world.nations[human].capital);
+  // The desktop opens on your capital's city, once the opening briefing (if any) is out of the way.
+  const [selectedProvince, setSelectedProvince] = useState<ProvinceId | null>(compact || showTutorial ? null : world.nations[human].capital);
+  const capitalShown = useRef(!showTutorial);
   const [selectedArmies, setSelectedArmies] = useState<ArmyId[]>([]);
   // The march order being given, while a destination is picked.
   const [moveMode, setMoveMode] = useState<MoveMode | null>(null);
@@ -604,7 +606,11 @@ export function GameScreen({
           nationName={nationName(world, human)}
           limitMinutes={state.settings.timeLimitTicks / TICKS_PER_MINUTE / state.settings.durationScale}
           input={{ touch, compact }}
-          onClose={() => setTutorial(false)}
+          onClose={() => {
+            setTutorial(false);
+            if (!capitalShown.current && !compact) setSelectedProvince((p) => p ?? world.nations[human].capital);
+            capitalShown.current = true;
+          }}
         />
       )}
       {outcome && !outcomeSeen && <OutcomeDialog ctrl={ctrl} onMenu={onExit} onClose={() => setOutcomeSeen(true)} />}
