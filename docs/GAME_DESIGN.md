@@ -497,14 +497,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 21 VP / 90 s reachable for a human in 2–3 hours? Since AI armies hold a province until its capture completes,
-  AI-vs-AI campaigns end on objectives (8 of 8 test runs, after 68 to 137 minutes); the AI conquers nearly every
-  minor power along the way, most between minutes 10 and 40.
+- Is 21 VP / 90 s reachable for a human in 2–3 hours? Over 80 AI-vs-AI campaigns about a third end on objectives
+  (after 73 to 150 minutes) and the rest on score at the time limit, since winning AIs settle for limited gains; the
+  AI conquers nearly every minor power along the way, most between minutes 25 and 50.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
 - Is one province of sight around your land and armies the right amount of fog? Should sight be blocked by mountains or
   reach further across the sea?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
-- The central powers win less than the others in AI-only campaigns (see the balance report): is that acceptable for
-  the most exposed positions?
+- Positions differ in AI-only campaigns (see the balance report): Poland, with one great-power neighbour and two
+  minor powers to absorb, wins a quarter of them and is never conquered, while Serbia and Romania rarely win. Which
+  of these differences are acceptable strengths and weaknesses of a position?

@@ -93,19 +93,21 @@ npx vite-node scripts/dev/ai-report.ts 10 90
 npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 ```
 
-- **Pathologies** should stay near zero: back-and-forth reversals about 1–2% of orders, abandoned captures 0%,
-  pile-on attacks under 5%. Armies idle in the interior run at about 8% at Normal, mostly capital garrisons in
-  capitals with no foreign border (Easy higher by design).
+- **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
+  pile-on attacks under 5%. Armies idle in the interior run at about 10% at Normal, mostly capital garrisons in
+  capitals with no foreign border (Easy higher by design, about 17%).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
-  counting timing (currently about 25% and 10% at Normal, 37% and 17% at Easy), and who fights the first war.
+  counting timing (currently about 22% and 10% at Normal, 16% and 5% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently the central powers win less than the others: France 6 and Germany 5 of 80, the others 15–22,
-  and France is eliminated in about a quarter of campaigns.
-- **Challenge**: when war comes to an idle player and when they fall (currently 7–13 and about 30 minutes at
-  Normal, 13–27 and about 45 at Easy). An idle player should lose, just not at once.
+  limit). Currently about a third of campaigns end on objectives within 150 minutes. Counting wins on score, Poland
+  (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
+  France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
+  in about half.
+- **Challenge**: when war comes to an idle player and when they fall (an idle France: currently 7–13 and about 27
+  minutes at Normal, 14–64 and about 58 at Easy). An idle player should lose, just not at once.
 
 Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather
 than retuning silently, and recommend human playtests for anything about feel.

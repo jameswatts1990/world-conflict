@@ -190,9 +190,11 @@ tests/              Simulation tests
 
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
-- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. In those runs,
-  every campaign ends on objectives (8 of 8, after 68–137 minutes), and the AI conquers nearly every minor power
-  along the way, most between minutes 10 and 40. Serbia is nearly always conquered, and France in most runs.
+- Balance has only been tuned with headless AI-vs-AI campaigns; human playtesting is still needed. Over 80 such
+  campaigns, about a third end on objectives (after 73–150 minutes) and the rest on score at the time limit; the AI
+  conquers nearly every minor power along the way, most between minutes 25 and 50. Poland, with a single great-power
+  neighbour, wins a quarter of them and is never conquered; Serbia and Romania rarely win and are conquered in about
+  half, France in about two in five.
 - Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.

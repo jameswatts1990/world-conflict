@@ -102,7 +102,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       a capital and lose 40–60% of their strength. Minor powers never start wars (they used to start two to four a
       game, mostly on each other) and only great and major powers count for victory
 - [ ] Minor powers still fall to the AI between minutes 10 and 40 in most campaigns (by minute 20: 43 of 80, down
-      from 65): make the AI weigh the cost of a fortress against other targets
+      from 65; with the 10-minute grace on wars against them, most between minutes 25 and 50): make the AI weigh the
+      cost of a fortress against other targets
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -136,8 +137,16 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       other fronts, offers the main enemy peace once its gains are in hand, and counts railways in its distances.
       Over 80 full campaigns France wins 6 instead of 1 and Germany 5 instead of 2. Also settling the other fronts
       made things worse (each truce ran out into a fresh war) and was dropped
-- [ ] Balance: France is still eliminated in about a quarter of campaigns and the central powers win 5–6 of 80
-      against 15–22 for the others
+- [x] Balance: the measures above were taken on the six-power map, where France was then eliminated in about a
+      quarter of campaigns and the central powers won 5–6 of 80 against 15–22 for the others. On the map with
+      minor powers (80 full campaigns), they cut eliminations: France 31 instead of 61, Serbia 46 instead of 67,
+      Germany 24 instead of 35, Britain 11 instead of 25
+- [ ] Balance on the map with minor powers: Poland, with one great-power neighbour and two minor powers to absorb,
+      wins 20 of 80 (counting wins on score) and is never eliminated; it leads with any one of capital garrisons,
+      war aims, home soil or interior lines switched off (18–32 wins). Serbia and Romania win 0–2. Look at routes
+      that give Poland a second great-power neighbour and at how the others gang up on a leader
+- [ ] Game length: with limited war aims, about a third of all-AI campaigns end on objectives within 150 minutes
+      (59 of 80 before), the rest on score at the time limit
 - [ ] AI: don't pile into a province already falling uncontested (3–5% of orders)
 - [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
       campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
