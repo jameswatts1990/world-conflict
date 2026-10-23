@@ -16,6 +16,7 @@
     "balance": "vite-node scripts/balance/cli.ts",
     "balance:units": "vite-node scripts/balance/units.ts",
     "balance:tune": "vite-node scripts/balance/tune.ts",
+    "balance:techs": "vite-node scripts/balance/techs.ts",
     "map:fetch": "node scripts/map/fetch-natural-earth.mjs",
     "map:build": "node scripts/map/build-map.mjs",
     "audio:fetch": "node scripts/audio/fetch.mjs",

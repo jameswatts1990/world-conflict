@@ -26,6 +26,7 @@ jobs:
       # The balance tools (docs/BALANCE.md) on a few short campaigns and battles, so they keep up with the simulation.
       - run: npm run balance -- --games 4 --minutes 10 --quiet
       - run: npm run balance:units -- --levels ww1 --units cavalry --seeds 2 --quiet
+      - run: npm run balance:techs -- --techs staffCollege --games 2 --minutes 25 --quiet
       - run: npm run build
       # The same build with the window.__game handle the browser checks read the game through.
       - run: npm run build:e2e
