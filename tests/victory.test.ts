@@ -68,6 +68,31 @@ describe('victory conditions', () => {
     expect(state.outcome?.winner).toBe('it');
   });
 
+  it('a minor power never wins: not on objectives, on score or as the last power standing', () => {
+    const objectives = quietGame();
+    giveObjectives(objectives, 'be', vpToWin(world));
+    run(objectives, scaledTicks(objectives, VICTORY.holdSeconds) + 10);
+    expect(objectives.outcome).toBeNull();
+    expect(objectives.victory.leader).toBeNull();
+
+    const score = quietGame();
+    for (const id of world.provinceIds) if (world.provinces[id].core !== 'fr') score.provinces[id].owner = 'be';
+    score.settings.timeLimitTicks = 60;
+    run(score, 60);
+    expect(score.outcome?.scores[0].nation).toBe('be');
+    expect(score.outcome?.winner).toBe('fr');
+
+    // The last great or major power wins, though minor powers survive it.
+    const standing = quietGame();
+    standing.settings.humanNation = null;
+    for (const id of world.provinceIds) standing.provinces[id].owner = id === 'it-rome' ? 'it' : 'nl';
+    standing.provinces['be-brussels'].owner = 'be';
+    run(standing, 10);
+    expect(standing.outcome?.reason).toBe('lastStanding');
+    expect(standing.outcome?.winner).toBe('it');
+    expect(standing.nations.be.eliminated).toBe(false);
+  });
+
   it('an all-AI campaign always reaches an outcome within the time limit', () => {
     const state = aiGame(11);
     run(state, state.settings.timeLimitTicks + 5);

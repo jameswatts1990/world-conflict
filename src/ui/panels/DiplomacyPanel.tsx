@@ -53,7 +53,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           {proseDuration(DIPLOMACY.minWarSecondsBeforePeace)} of war and an offer stands for {proseDuration(DIPLOMACY.peaceOfferExpirySeconds)}; after a refusal,
           wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
           sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
-          {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations: invading one means declaring war on it.'}{' '}
+          {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations that never win: invading one means declaring war on it, and their fortified capitals take a real army to crack.'}{' '}
           Powers fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
         </p>
       </details>

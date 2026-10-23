@@ -19,14 +19,16 @@ the starting buildings and army.
 | --- | --- | --- | --- | --- | --- | --- |
 | `great` | Yes | 260 / 140 / 70 | 13: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, field 5 INF + 1 CAV | Capital 3, heartland 2 | Metropolis | 6–9 |
 | `major` | Yes | 150 / 80 / 40 | 8: capital 2 INF + 1 ART, heartland 2 INF, field 2 INF + 1 CAV | Capital 2, heartland 1 | Large City | 3–5 |
-| `minor` | No: always computer-controlled | 70 / 35 / 20 | 4: capital 3 INF, field 1 INF | Capital 1 | City | 1–2 |
+| `minor` | No: always computer-controlled, never wins | 70 / 35 / 20 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | 1–2 |
 
-The smaller tiers spend the same share of income on army upkeep at the start as a great power (about a sixth).
-Europe has seven great powers, two major powers (Romania and Serbia) and ten minor powers. Minor powers are
-real nations: they have an economy, research, recruit, make war and peace, and the AI plays them. Players can't
-pick them on the nation picker. The AI keeps a minor to a garrison of about five units (`unitsFlat` in
-`config/ai.ts`): a focused seven-unit attack takes its capital, while six defenders that refill repel it most of
-the time.
+Major powers spend the same share of income on army upkeep at the start as a great power (about a sixth); minor
+powers spend about a quarter. Europe has seven great powers, two major powers (Romania and Serbia) and ten minor
+powers. Minor powers are real nations: they have an economy, research, recruit, defend themselves and make peace,
+and the AI plays them. They never start a war and never win (only great and major powers count for victory), and
+players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
+seven or eight behind the capital's forts (`unitsFlat` in `config/ai.ts`), so an eight-unit probe fails and taking
+one costs twelve to fourteen units with artillery about half their strength. A row's own `buildings` replace the
+tier's: Switzerland's says `fortifications: 3`.
 
 **Field units** go where the province rows put them (`garrison`). If a nation's rows place none, they are dealt
 out one at a time over its border provinces first, then its other provinces, then its capital. The original six
