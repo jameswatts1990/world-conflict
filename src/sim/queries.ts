@@ -454,6 +454,17 @@ export function perTick(perMinute: number, state: GameState): number {
 // ---------------------------------------------------------------------------
 
 /** Highest morale a nation's units can reach, set by home-front morale. */
+/**
+ * Combat multiplier for an army fighting in a province that is its own nation's home soil (1 elsewhere): it hits
+ * harder and holds firmer, the more so the higher its national morale.
+ */
+export function homeSoilMult(state: GameState, world: World, owner: OwnerId, province: ProvinceId): number {
+  if (owner === NEUTRAL || world.provinces[province].core !== owner) return 1;
+  const nm = state.nations[owner]?.morale ?? MORALE.start;
+  const spirit = Math.max(0, Math.min(1, (nm - MORALE.homeSoilFrom) / (MORALE.homeSoilFull - MORALE.homeSoilFrom)));
+  return 1 + MORALE.homeSoil * spirit;
+}
+
 export function unitMoraleCap(state: GameState, owner: OwnerId): number {
   if (owner === NEUTRAL) return 1;
   const nm = state.nations[owner]?.morale ?? MORALE.start;

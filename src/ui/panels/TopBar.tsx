@@ -1,7 +1,7 @@
 import { TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, VICTORY } from '../../sim/config/rules';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { RESOURCE_KEYS, heldVp, nationEconomy, nationEra, nationName, nextQueuedResearch, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
+import { RESOURCE_KEYS, heldVp, homeSoilMult, nationEconomy, nationEra, nationName, nextQueuedResearch, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
 import type { GameController } from '../game/GameController';
 import { Flag } from '../flags';
 import { costParts, fmt, fmtRate, formatClock, formatDuration, proseDuration, shortfallText } from '../format';
@@ -41,6 +41,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   const waiting = active || over ? null : nextQueuedResearch(state, human);
   const idle = jobs.length < slots;
   const leader = state.victory.leader;
+  const homeSoil = Math.round((homeSoilMult(state, world, human, def.capital) - 1) * 100);
 
   return (
     <header className="topbar" style={{ '--nation': def.color } as React.CSSProperties}>
@@ -88,7 +89,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
 
       <div
         className={`tb-morale ${moraleClass(nation.morale)}`}
-        title="National morale: the home-front average. It caps how high your units' morale can climb and decides how long the nation will fight."
+        title={`National morale: the home-front average. It caps how high your units' morale can climb, makes them fight harder on home soil (+${homeSoil}% now, more the higher it is) and decides how long the nation will fight.`}
         data-testid="national-morale"
       >
         <span className="tb-morale-val">{Math.round(nation.morale)}</span>

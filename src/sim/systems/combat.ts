@@ -14,6 +14,7 @@ import {
   armyMorale,
   armyPower,
   fortificationReduction,
+  homeSoilMult,
   hostileArmiesIn,
   isArmyInTransit,
   techEffects,
@@ -189,7 +190,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     }
     if (targets.length === 0) continue;
     const role = province.owner === army.owner ? 'defence' : 'attack';
-    const armyMult = armyCombatMultiplier(state, army, pid);
+    const armyMult = armyCombatMultiplier(state, army, pid) * homeSoilMult(state, world, army.owner, pid);
     const fuelShort = army.owner !== NEUTRAL && state.nations[army.owner].shortages.fuel;
     const ignore = fortIgnore(army);
 
@@ -228,7 +229,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     const drain = MORALE.roundDrain * ratio;
     const before = army.units.length;
     const gain = VETERANCY.perRound * xpGainMult(state, army.owner);
-    const dugIn = army.owner === province.owner ? MORALE.defenderResilience : 1;
+    const dugIn = (army.owner === province.owner ? MORALE.defenderResilience : 1) * homeSoilMult(state, world, army.owner, pid);
     for (const u of army.units) {
       const res = unitStats(state, army.owner, u.type).resilience * VETERANCY.resilience[veterancyRank(u.xp)] * dugIn;
       u.strength -= hpDamage.get(u.id) ?? 0;

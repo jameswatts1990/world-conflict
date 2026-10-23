@@ -43,9 +43,12 @@ espionage, naval and air warfare, later eras, multiplayer.
 - **69 playable provinces**, merged from Natural Earth admin-1 regions. Each has a principal city (movement
   anchor) with a population and starting city tier, two to five secondary towns (drawn at close zoom), a terrain
   type, base output, a coastline flag and optionally an oil field or objective value.
-- **156 explicit movement connections**: 127 land, 21 mountain passes and 8 sea crossings. Connections are
+- **159 explicit movement connections**: 127 land, 21 mountain passes and 11 sea crossings. Connections are
   authored data, separate from the map shapes; a test checks that every shared border has a land or mountain
-  link and every such link a shared border (`scripts/map/check-borders.ts` prints the same report).
+  link and every such link a shared border (`scripts/map/check-borders.ts` prints the same report). The North Sea
+  (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western Mediterranean (Barcelona–Palermo) crossings
+  give every great power except Poland at least two great or major powers as neighbours, so France is not the only
+  target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -165,8 +168,11 @@ Infantry, field artillery and cavalry are available from the start; everything e
 - **Hardness:** damage blends soft and hard values by the target's armour hardness (infantry 0, armoured cars
   0.55, tanks 0.8–0.95).
 - Damage = value × terrain × (0.4 + 0.6 × strength) × (0.5 + 0.5 × morale) × veterancy × random ±20% × army
-  modifiers (supply, treasury, combined arms, recon +10%, sea landing −25%), reduced by the defender's
+  modifiers (supply, treasury, combined arms, recon +10%, sea landing −25%, home soil), reduced by the defender's
   fortifications (less the attacker's fort-busting share). Damage is divided by the target's max HP.
+- **Home soil:** an army fighting in one of its own nation's home provinces, defending it or liberating it, hits
+  harder and holds its nerve better: by nothing at national morale 30 or below, rising to +20% at 90 or above
+  (about +13% at the starting 70). The battle view shows each side's bonus.
 - **Sea landings:** an army that arrived by sea crossing fights at −25% until the province is won (Amphibious
   Doctrine cuts this by 70%; Britain's speciality removes it).
 - Destroyed units are removed. A battle ends when no hostile pair remains standing in the province.
@@ -271,7 +277,8 @@ capital is occupied. Shocks: declaring war −3 (the victim's people rally +2); 
 (45 if liberated); its neighbours lose 8; losing the capital costs every core province 15.
 
 **National morale** is the population-weighted average of core province morale. It caps unit morale
-(`0.45 + 0.0085 × national morale`, between 0.5 and 1) and the AI sues for peace when it falls low.
+(`0.45 + 0.0085 × national morale`, between 0.5 and 1), sets how much harder armies fight on home soil (from
+nothing at 30 to +20% at 90), and the AI sues for peace when it falls low.
 
 ## 8. Research
 
@@ -311,12 +318,26 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 ## 11. Computer opponents
 
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
-personality drawn from the seed: aggression, economy bias and a **doctrine** (armour, infantry or artillery).
+personality drawn from the seed: aggression, economy bias, a **doctrine** (armour, infantry or artillery), two
+**claims** and an **opening**, so that each campaign plays differently. Claims are provinces across its land borders
+that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
+holding one is a likelier war target. The opening sets how it begins: *strike* starts wars of opportunity as soon as
+the grace period allows, *expand* keeps the peace 1.5 times as long and takes neutral states first, *build* keeps the
+peace twice as long and leaves neutrals alone 1.5 times as long. The bullets describe Normal difficulty.
 
-- **Diplomacy:** after a 6-minute grace period it starts wars of opportunity against weaker or distracted
-  neighbours (minor powers never start a war), preferring ones whose objectives border its land, and avoids a second front. **Any power within 3
-  VP of an objective victory becomes everyone's target.** It accepts peace when it is actually losing (ground,
-  capital or morale), closes the worse of two fronts first, and keeps fighting a war it is winning.
+- **Difficulty** (main menu): Easy opponents get the same resources but play worse. They think every 14 s, field
+  three-quarters of the army, want a bigger edge before attacking and run one offensive at a time, garrison more
+  thinly, hang on longer before falling back and choose targets less carefully. They start wars of opportunity half
+  as often and not before 12 minutes, never join a war on a nation that is already fighting one, and accept peace
+  once they are no longer stronger. They do not plan by interior lines (below). The levels live in `AI_LEVELS`
+  (`src/sim/config/ai.ts`).
+- **Diplomacy:** minor powers never start a war. The others leave minor powers (the former neutral states) alone for
+  at least the first 10 minutes, so a player can take a neighbouring one first. After at least a 6-minute grace
+  period they start wars of opportunity against weaker or distracted neighbours, preferring ones whose objectives
+  border their land, and avoid a second front. **Any power within 3 VP of an objective victory becomes everyone's
+  target.** An AI accepts peace when it is actually losing (ground, capital or morale) and closes the worse of two
+  fronts first. Its wars have limited aims: once it holds two of the enemy's home provinces and the war is 10 minutes
+  old, it accepts peace even while winning (against a power about to win, it fights on).
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
   sagging).
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
@@ -327,11 +348,21 @@ personality drawn from the seed: aggression, economy bias and a **doctrine** (ar
   alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units (only at home, never
   occupiers abroad).
 - **Military:** armies fight to the death, withdrawing only when the battle is hopeless (under a fifth of the
-  enemy's power there) and the army's morale is spent (below 30%); starving or worn-out armies go home to
-  recover; armies occupying a hostile province stay until it falls; up to two offensives mass at a staging province and strike together, frontier armies leaving a rear
-  guard sized to the threat that remains; targets whose defenders would be encircled are preferred; threatened
-  provinces are covered by the nearest free armies; the rest moves up to the front. An enemy stack only counts
-  fully against one province, so a single army cannot tie down a whole frontier.
+  enemy's power there) and the army's morale is spent (below 30%); armies taking a province hold it until it falls
+  (unless they would starve first); starving or worn-out armies go home to recover; the capital keeps a garrison
+  sized to the danger around it (enemies next door, half of those two provinces away, and a third of the armies of
+  great and major powers still at peace, as far as it can see or estimate), set aside before any offensive; up to
+  two offensives mass at a staging province and strike together, frontier armies leaving a rear guard sized to the
+  threat that remains; targets whose defenders would be encircled are preferred; threatened provinces are covered by
+  the nearest free armies; the rest moves up to the front. An enemy stack only counts fully against one province, so
+  a single army cannot tie down a whole frontier.
+- **Interior lines:** at war on several fronts, it picks a main enemy (a power about to win; otherwise the weakest
+  against it, the one holding its home provinces or its claims, kept unless another looks clearly better). It
+  attacks only the main enemy, holds the other fronts with the armies already there, sends its reserves to the
+  main front, and offers the main enemy peace once it holds two of its home provinces, then turns to the next.
+  Its distance estimates count its own railway junctions, so a front linked by rail counts as near. Settling the
+  other fronts as well was tried and dropped: each truce ran out into a fresh war, and the central powers fared
+  worse.
 - **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
   military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
   (§6.7), and its allies' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot see is
@@ -467,7 +498,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   briefing. The results screen charts the race over the campaign (score, objective VP or provinces, sampled every
   2 minutes: your line and the winner's in colour, the other powers in grey) and ranks the powers with their
   provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner brings it
-  back. The main menu shows the theatre map with the chosen nation lit up and its speciality.
+  back. The main menu shows the theatre map with the chosen nation lit up and its speciality, and sets the
+  campaign speed, the opponents' difficulty and the seed.
 - **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
   neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched from other
@@ -483,11 +515,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 21 VP / 90 s reachable for a human in 2–3 hours? Since AI armies hold a province until its capture completes,
-  AI-vs-AI campaigns end on objectives (8 of 8 test runs, after 68 to 137 minutes); the AI conquers nearly every
-  minor power along the way, most between minutes 10 and 40.
+- Is 21 VP / 90 s reachable for a human in 2–3 hours? Over 80 AI-vs-AI campaigns about a third end on objectives
+  (after 73 to 150 minutes) and the rest on score at the time limit, since winning AIs settle for limited gains; the
+  AI conquers nearly every minor power along the way, most between minutes 25 and 50.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
 - Is one province of sight around your land and armies the right amount of fog? Should sight be blocked by mountains or
   reach further across the sea?
+- Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
+- Positions differ in AI-only campaigns (see the balance report): Poland, with one great-power neighbour and two
+  minor powers to absorb, wins a quarter of them and is never conquered, while Serbia and Romania rarely win. Which
+  of these differences are acceptable strengths and weaknesses of a position?

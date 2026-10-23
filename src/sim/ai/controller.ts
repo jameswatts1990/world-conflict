@@ -1,7 +1,7 @@
 // Computer opponents. The AI reads the game state and acts only by issuing the
 // same validated commands a human player would. It is deterministic: all
 // randomness comes from the seeded game RNG.
-import { AI } from '../config/ai';
+import { aiLevel } from '../config/ai';
 import { scaledTicks } from '../queries';
 import type { GameState, NationId } from '../types';
 import type { World } from '../world';
@@ -17,7 +17,7 @@ export function runAi(state: GameState, world: World, me: NationId): void {
   const nation = state.nations[me];
   if (!nation.ai || nation.eliminated || state.outcome) return;
   if (state.tick < nation.ai.nextThinkTick) return;
-  nation.ai.nextThinkTick = state.tick + scaledTicks(state, AI.thinkIntervalSeconds);
+  nation.ai.nextThinkTick = state.tick + scaledTicks(state, aiLevel(state).thinkIntervalSeconds);
 
   observeForces(state, world, me);
   handleDiplomacy(buildContext(state, world, me));

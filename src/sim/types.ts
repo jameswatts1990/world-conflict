@@ -403,6 +403,12 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /** Neighbouring provinces this AI covets in this campaign, drawn from the seed (absent in older saves). */
+  claims?: ProvinceId[];
+  /** How it opens the campaign, drawn from the seed (absent in older saves, which open with 'strike'). */
+  opening?: AiOpening;
+  /** On several fronts, the enemy it concentrates on while holding the others. */
+  focus?: NationId | null;
   /**
    * Fog of war: the share of armour among each nation's units, as far as this AI has seen
    * them (a running estimate, so tanks that drop out of sight are not forgotten at once).
@@ -410,6 +416,9 @@ export interface AiMemory {
    */
   armourSeen?: Record<NationId, number>;
 }
+
+/** strike: war as soon as it may; expand: minor powers (or neutral states) first; build: a longer peace to build up. */
+export type AiOpening = 'strike' | 'expand' | 'build';
 
 export interface NationState {
   id: NationId;
@@ -472,12 +481,16 @@ export interface GameOutcome {
   scores: ScoreLine[];
 }
 
+export type AiDifficulty = 'easy' | 'normal';
+
 export interface GameSettings {
   speed: 'standard' | 'slow';
   /** Multiplier applied to every duration (1 for Standard). */
   durationScale: number;
   timeLimitTicks: number;
   humanNation: NationId | null;
+  /** How well the computer opponents play (absent in older saves, which play at normal). */
+  difficulty?: AiDifficulty;
 }
 
 export interface GameState {
