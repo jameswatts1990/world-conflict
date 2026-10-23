@@ -2099,7 +2099,8 @@ export function MapView(props: MapViewProps) {
               <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
               <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} cities={cities} />
               {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />}
-              <g ref={setArmyBack} className="army-layer army-models army-back" />
+              {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
+              <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />
               <CityLayer
                 geo={geo}
                 state={state}
