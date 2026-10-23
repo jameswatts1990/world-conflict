@@ -117,7 +117,7 @@ export type Effect =
   /** Scales the penalty for attacking straight off a sea crossing. */
   | { kind: 'amphibious'; mult: number }
   | { kind: 'movement'; mult: number }
-  /** Fog of war: see everything your allies (powers at war with a common enemy) see. */
+  /** Fog of war: see everything your co-belligerents (powers at peace with you and at war with a common enemy) see. */
   | { kind: 'alliedSight' };
 
 // ---------------------------------------------------------------------------

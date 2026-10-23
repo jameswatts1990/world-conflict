@@ -53,7 +53,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
           wait {proseDuration(DIPLOMACY.peaceRetrySeconds)} before asking again. The AI accepts when it is losing or war-weary. Peace freezes the current borders,
           sends trespassing armies home and starts a truce of {proseDuration(DIPLOMACY.truceSeconds)}.{' '}
           {hasNeutrals(world) ? 'Neutral states may be invaded at any time.' : 'Minor powers are computer-controlled nations that never win: invading one means declaring war on it, and their fortified capitals take a real army to crack.'}{' '}
-          Powers fighting a common enemy are allies; with Liaison Officers researched, you see through the fog of war whatever your allies see.
+          Powers at peace with each other and at war with a common enemy are co-belligerents. That is not an alliance: there are no treaties, nobody
+          agrees to it, and all it changes is that a power with Liaison Officers sees through the fog of war whatever its co-belligerents see.
         </p>
       </details>
       {/* A table on the desktop; one card per nation on small screens (the cells are named for that). */}
@@ -110,10 +111,10 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                     <>
                       <span
                         className="rel-pill ally"
-                        title={`Fighting ${listText(commonEnemies(state, human, s.nation).map((e) => nationName(world, e)))} alongside you`}
+                        title={`Also at war with ${listText(commonEnemies(state, human, s.nation).map((e) => nationName(world, e)))}. Not an alliance: no treaty binds you.`}
                         data-ally={s.nation}
                       >
-                        <Icon name="flag" size={12} /> Ally
+                        <Icon name="flag" size={12} /> Co-belligerent
                       </span>
                       <span className={`ally-intel${liaison ? ' on' : ''}`}>
                         <Icon name="eye" size={11} /> {liaison ? 'You share its sight' : 'Liaison Officers share its sight'}

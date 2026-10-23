@@ -36,8 +36,9 @@ What is in it (Milestone 2, Depth):
 - A **60-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Fog of war**: you see your own land, wherever your armies stand, and one province around them (cavalry and
   armoured cars see two). Beyond that the map lies under haze and drifting cloud, and its armies, battles, sieges,
-  buildings and morale are hidden. Powers fighting a common enemy are **allies**: research **Liaison Officers** and
-  you also see everything your allies see. The computer opponents play under the same fog.
+  buildings and morale are hidden. Powers fighting a common enemy are **co-belligerents** (not allies: there are no
+  treaties): research **Liaison Officers** and you also see everything they see. The computer opponents play under the
+  same fog.
 - A **map that reads at a glance**: natural relief under light national colours, your own land lit up inside a
   glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
   power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
@@ -142,8 +143,8 @@ Declaring war and leaving the campaign ask for confirmation.
 Land outside your sight lies under the fog of war: a darker veil with drifting cloud, a faint line where your sight
 ends, and no armies, battles, sieges or buildings in it (a city there shows only its old town). Pointing at a fogged
 province says so, and its city panel explains how to see it; the morale view shows its morale as unknown. Who holds
-it and how big its city is are always known. Diplomacy marks your allies (powers at peace with you and at war with a
-common enemy) and whether you share their sight. When the campaign ends the fog lifts.
+it and how big its city is are always known. Diplomacy marks your co-belligerents (powers at peace with you and at war
+with a common enemy) and whether you share their sight. When the campaign ends the fog lifts.
 
 ### On a phone or tablet
 
@@ -214,7 +215,8 @@ tests/              Simulation tests
   conquers nearly every minor power along the way, most between minutes 25 and 50. Poland, with a single great-power
   neighbour, wins a quarter of them and is never conquered; Serbia and Romania rarely win and are conquered in about
   half, France in about two in five.
-- Alliances are informal: any powers fighting a common enemy count as allies. There are no treaties yet.
+- There are no alliances yet: powers fighting a common enemy are only co-belligerents, and all that does is share
+  sight through Liaison Officers.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android

@@ -703,7 +703,7 @@ export const TECHS: TechConfig[] = [
     col: 2,
     row: 1,
     description:
-      'Officers posted to allied headquarters pool their reports: see everything your allies see through the fog of war. Allies are powers at peace with you and at war with a common enemy.',
+      'Officers posted to friendly headquarters pool their reports: see everything your co-belligerents see through the fog of war. Co-belligerents are powers at peace with you and at war with a common enemy; no treaty is needed.',
     requires: ['staffCollege'],
     ...tier(2),
     effects: [{ kind: 'alliedSight' }],
