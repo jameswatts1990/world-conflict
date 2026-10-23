@@ -171,39 +171,42 @@ export function MainMenu({
           </div>
         </div>
 
-        <div className="menu-options">
-          <label>
-            Campaign speed
-            <select value={speed} onChange={(e) => setSpeed(e.target.value as GameSettings['speed'])}>
-              {Object.entries(SPEED_PRESETS).map(([id, p]) => (
-                <option key={id} value={id} disabled={!p.available}>
-                  {p.label}
-                  {p.available ? '' : ' — needs the future server version'}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
-            Campaign seed
-            <span className="seed-field">
-              <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
-              <button type="button" className="icon-btn" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))} title="New random seed" aria-label="New random seed">
-                <Icon name="dice" size={16} />
-              </button>
-            </span>
-          </label>
-        </div>
-        <p className="menu-victory">
-          <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
-          the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. {world.nationIds.length - 1} computer opponents control the other powers.
-        </p>
-        <div className="btn-row menu-actions">
-          <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">
-            <Icon name="play" size={16} /> Start campaign
-          </button>
-          <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">
-            <Icon name="load" size={16} /> Load game
-          </button>
+        {/* Speed, seed and the start buttons stay at the foot of the column, in view on any screen. */}
+        <div className="menu-start">
+          <div className="menu-options">
+            <label>
+              Campaign speed
+              <select value={speed} onChange={(e) => setSpeed(e.target.value as GameSettings['speed'])}>
+                {Object.entries(SPEED_PRESETS).map(([id, p]) => (
+                  <option key={id} value={id} disabled={!p.available}>
+                    {p.label}
+                    {p.available ? '' : ' — needs the future server version'}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label title="Sets the computer opponents' personalities and the luck of battle. The same seed and orders replay the same campaign.">
+              Campaign seed
+              <span className="seed-field">
+                <input type="number" value={seed} onChange={(e) => setSeed(Number(e.target.value) || 0)} />
+                <button type="button" className="icon-btn" onClick={() => setSeed(Math.floor(Math.random() * 1_000_000))} title="New random seed" aria-label="New random seed">
+                  <Icon name="dice" size={16} />
+                </button>
+              </span>
+            </label>
+          </div>
+          <p className="menu-victory">
+            <Icon name="target" size={14} /> Win by holding {vpToWin(world)} of {world.totalVp} objective VP for {proseDuration(VICTORY.holdSeconds)}, or lead on score when
+            the {hoursText(SPEED_PRESETS[speed].timeLimitMinutes)} limit ends. {world.nationIds.length - 1} computer opponents control the other powers.
+          </p>
+          <div className="btn-row menu-actions">
+            <button className="primary big" onClick={() => onStart(nation, seed, speed)} data-testid="start-campaign">
+              <Icon name="play" size={16} /> Start campaign
+            </button>
+            <button className="big" onClick={() => setLoading(true)} data-testid="menu-load">
+              <Icon name="load" size={16} /> Load game
+            </button>
+          </div>
         </div>
 
         <footer className="credits">

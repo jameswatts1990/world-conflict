@@ -4355,6 +4355,95 @@ button.chip.queued:hover {
     padding: 20px 16px;
   }
 }
+/* The start controls stay at the foot of the column; the nations and briefing scroll above them. */
+.menu-start {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin-top: auto;
+  padding-top: 10px;
+  /* The column's bottom padding lives here, or text would scroll past under the buttons. */
+  padding-bottom: 22px;
+  background: linear-gradient(rgba(7, 13, 20, 0), #070d14 14px);
+}
+.menu-column {
+  padding-bottom: 0;
+}
+/* Wide screens: a wider column with the nations three abreast. */
+@media (min-width: 1200px) {
+  .menu-column {
+    width: 600px;
+  }
+  .menu-map {
+    left: 440px;
+    width: calc(100% - 440px);
+  }
+  .menu-shade {
+    background:
+      linear-gradient(90deg, #070d14 0%, rgba(7, 13, 20, 0.97) 460px, rgba(7, 13, 20, 0.55) 640px, rgba(7, 13, 20, 0.05) 78%),
+      radial-gradient(ellipse at 70% 50%, transparent 50%, rgba(3, 7, 11, 0.6) 100%);
+  }
+  .nation-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .nc-text strong {
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+}
+/* Desktop: the credits sit in the map's corner, under the nation's name, not in the column. */
+@media (min-width: 901px) and (min-height: 521px) {
+  .credits {
+    position: fixed;
+    right: 48px;
+    bottom: 14px;
+    z-index: 2;
+    max-width: 480px;
+    margin: 0;
+    padding: 6px 10px;
+    text-align: right;
+    background: rgba(7, 13, 20, 0.72);
+    border-radius: 6px;
+  }
+  .menu-nation-label {
+    bottom: 76px;
+  }
+}
+/* Short desktop screens: tighter spacing so the choice and the start button share the screen. */
+@media (min-width: 901px) and (max-height: 860px) {
+  .menu-column {
+    padding-top: 22px;
+  }
+  .menu-start {
+    padding-bottom: 14px;
+  }
+  .brand-mark {
+    width: 46px;
+    height: 46px;
+  }
+  .brand h1 {
+    font-size: 38px;
+  }
+  .menu-h2 {
+    margin: 16px 0 8px;
+  }
+  .nation-card {
+    padding: 6px 10px;
+  }
+  .menu-brief {
+    margin-top: 10px;
+    padding: 10px 12px;
+  }
+  .menu-brief p {
+    margin: 6px 0;
+    font-size: 13px;
+    line-height: 1.42;
+  }
+  .menu-options {
+    margin: 6px 0 4px;
+  }
+}
 
 /* ---------------------------------------------------------------- Depth: map, top bar, menu */
 .town-dot {
@@ -5253,6 +5342,9 @@ body {
   .menu-column {
     padding-top: max(20px, env(safe-area-inset-top));
     padding-left: max(16px, env(safe-area-inset-left));
+  }
+  .menu-start,
+  .credits {
     padding-bottom: max(16px, env(safe-area-inset-bottom));
   }
 }
