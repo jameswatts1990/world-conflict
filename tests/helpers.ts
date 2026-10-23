@@ -1,3 +1,4 @@
+import { seedToState } from '../src/sim/rng';
 import {
   EUROPE_SCENARIO,
   buildWorld,
@@ -15,13 +16,18 @@ import {
 
 export const world = buildWorld(EUROPE_SCENARIO);
 
-/** New game with every nation under "human" control, i.e. no AI interference. */
+/**
+ * New game with every nation under "human" control, i.e. no AI interference. The
+ * random stream restarts after setup, so battles in tests roll the same dice however
+ * many nations the scenario has (each AI personality drawn at setup would shift them).
+ */
 export function quietGame(seed = 42): GameState {
   const state = createInitialState(world, { seed, humanNation: 'fr' });
   for (const id of world.nationIds) {
     state.nations[id].controller = 'human';
     state.nations[id].ai = null;
   }
+  state.rng = seedToState(seed);
   return state;
 }
 

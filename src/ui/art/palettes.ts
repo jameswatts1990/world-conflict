@@ -1,5 +1,5 @@
-// Colour vocabulary for the unit artwork: per-nation uniform and vehicle
-// paint for each generation, plus the shared material colours.
+// Colour vocabulary for the unit artwork: per-nation (and per-bloc) uniform
+// and vehicle paint for each generation, plus the shared material colours.
 import type { ArtGen, ArtNation } from './types';
 
 export type { ArtGen, ArtNation } from './types';
@@ -78,6 +78,23 @@ export const NATION_PALETTES: Record<ArtNation, Record<ArtGen, NationPalette>> =
     interwar: pal('#7d7a55', PL_CAMO[0], PL_CAMO),
     ww2: pal('#7d7a55', PL_CAMO[0], PL_CAMO),
   },
+  // Blocs: khaki for the west, pike grey turning field grey for the centre,
+  // Russian khaki and Soviet green for the east.
+  western: {
+    ww1: pal('#8d8460', '#72734f'),
+    interwar: pal('#857f5a', '#6a6e48'),
+    ww2: pal('#7f7a55', '#646a44'),
+  },
+  central: {
+    ww1: pal('#7d8580', '#767a68'),
+    interwar: pal('#6f7462', '#626858'),
+    ww2: pal('#686b55', '#5b604c'),
+  },
+  eastern: {
+    ww1: pal('#8e8a62', '#6b6b52'),
+    interwar: pal('#827c58', '#4f5a3c'),
+    ww2: pal('#7b7652', '#4b5a35'),
+  },
   neutral: {
     ww1: pal('#8a8a82', '#7c7f7a'),
     interwar: pal('#8a8a82', '#7c7f7a'),
@@ -121,6 +138,9 @@ export const HORSE_COATS: Record<ArtNation, { coat: string; mane: string }> = {
   it: { coat: '#9a6b3e', mane: '#3a2817' },
   es: { coat: '#a78150', mane: '#3f2c19' },
   pl: { coat: '#7e4626', mane: '#2e1a10' },
+  western: { coat: '#84522e', mane: '#33201a' },
+  central: { coat: '#5a3e2b', mane: '#1f1712' },
+  eastern: { coat: '#9c7448', mane: '#3b2a1a' },
   neutral: { coat: '#6e5a48', mane: '#2e251d' },
 };
 
@@ -132,5 +152,25 @@ export const PENNANTS: Record<ArtNation, [string, string]> = {
   it: ['#1f7a3a', '#c8102e'],
   es: ['#c8102e', '#f1bf00'],
   pl: ['#ffffff', '#d4213d'],
+  western: ['#1f4fa8', '#ffffff'],
+  central: ['#1d1f24', '#f2d23c'],
+  eastern: ['#c8102e', '#e8c547'],
   neutral: ['#9a9c9f', '#d9dadc'],
+};
+
+/**
+ * Insignia colour of the bloc styles when no nation colour is given (the game passes
+ * each nation's own, so two nations of one bloc still mark their vehicles differently).
+ */
+export const STYLE_ACCENT: Record<ArtNation, string> = {
+  uk: '#c8102e',
+  fr: '#1f4fa8',
+  de: '#15161a',
+  it: '#1f7a3a',
+  es: '#c8102e',
+  pl: '#d4213d',
+  western: '#2f5fa8',
+  central: '#6b2f3a',
+  eastern: '#c8102e',
+  neutral: '#8d9196',
 };

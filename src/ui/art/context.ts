@@ -1,6 +1,6 @@
 // Per-render drawing context: which nation and generation is being drawn and
 // the derived colours, headgear and camouflage every unit drawing needs.
-import { BOOT, NATION_PALETTES, camoHasLines, shade, type NationPalette } from './palettes';
+import { BOOT, NATION_PALETTES, STYLE_ACCENT, camoHasLines, shade, type NationPalette } from './palettes';
 import type { ArtGen, ArtNation, CamoSpec } from './types';
 
 export type Headgear =
@@ -21,7 +21,8 @@ export type Headgear =
   | 'bergmutze'
   | 'fez'
   | 'cuirassier'
-  | 'czapka';
+  | 'czapka'
+  | 'budenovka';
 
 /** How a soldier is dressed: colours plus headgear. */
 export interface Kit {
@@ -39,6 +40,13 @@ export interface Kit {
 
 export interface Ctx {
   nation: ArtNation;
+  /**
+   * Whose drawings of equipment and drill to use (tank models, machine guns, grenades,
+   * mountain and cavalry dress): a bloc borrows its patron's, a nation uses its own.
+   */
+  pattern: ArtNation;
+  /** Main colour of the national insignia for the bloc styles (the nation's own colour). */
+  accent: string;
   gen: ArtGen;
   pal: NationPalette;
   kit: Kit;
@@ -62,6 +70,13 @@ export function standardHeadgear(nation: ArtNation, gen: ArtGen): Headgear {
       return gen === 'ww1' ? 'kepi' : gen === 'interwar' ? 'trubia' : 'm26';
     case 'pl':
       return gen === 'ww1' ? 'maciejowka' : gen === 'interwar' ? 'adrian' : 'wz31';
+    case 'western':
+      return 'adrian';
+    case 'central':
+      // The Austro-Hungarian field cap, then the steel helmet.
+      return gen === 'ww1' ? 'bergmutze' : gen === 'interwar' ? 'stahlhelm16' : 'stahlhelm35';
+    case 'eastern':
+      return gen === 'ww1' ? 'plain' : gen === 'interwar' ? 'budenovka' : 'm33';
     default:
       return 'plain';
   }
@@ -86,6 +101,7 @@ export function hatColour(headgear: Headgear, nation: ArtNation, gen: ArtGen, un
     case 'stahlhelm35':
       return gen === 'ww2' ? '#565d50' : '#5f6655';
     case 'kepi':
+    case 'budenovka':
       return shade(uniform, -0.05);
     case 'maciejowka':
     case 'czapka':
@@ -106,7 +122,7 @@ export function makeKit(nation: ArtNation, gen: ArtGen, headgear?: Headgear): Ki
     headgear: hg,
     hat: hatColour(hg, nation, gen, pal.uniform),
     boots: BOOT,
-    jackboots: nation === 'de',
+    jackboots: nation === 'de' || nation === 'eastern',
   };
 }
 
@@ -125,10 +141,17 @@ export function dimKit(kit: Kit, amt: number): Kit {
   };
 }
 
-export function makeCtx(nation: ArtNation, gen: ArtGen, icon: boolean): Ctx {
+/** Whose equipment drawings a style uses: the Central bloc draws German-pattern kit, the Western bloc French. */
+export function patternOf(nation: ArtNation): ArtNation {
+  return nation === 'central' ? 'de' : nation === 'western' ? 'fr' : nation;
+}
+
+export function makeCtx(nation: ArtNation, gen: ArtGen, icon: boolean, accent?: string): Ctx {
   const pal = NATION_PALETTES[nation][gen];
   return {
     nation,
+    pattern: patternOf(nation),
+    accent: accent ?? STYLE_ACCENT[nation],
     gen,
     pal,
     kit: makeKit(nation, gen),

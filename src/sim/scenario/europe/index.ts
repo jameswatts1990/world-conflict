@@ -2,7 +2,7 @@ import type { ScenarioDef } from '../../types';
 import { CONNECTIONS } from './connections';
 import { NATIONS } from './nations';
 import { PROVINCES } from './provinces';
-import { STARTING_ARMIES, STARTING_BUILDINGS, STARTING_RESOURCES } from './setup';
+import { STARTING_ARMIES, STARTING_BUILDINGS } from './setup';
 
 export const EUROPE_SCENARIO: ScenarioDef = {
   id: 'europe-modern-borders',
@@ -12,6 +12,5 @@ export const EUROPE_SCENARIO: ScenarioDef = {
   connections: CONNECTIONS,
   startingBuildings: STARTING_BUILDINGS,
   startingArmies: STARTING_ARMIES,
-  startingResources: STARTING_RESOURCES,
   startingTechs: [],
 };

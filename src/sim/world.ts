@@ -74,7 +74,7 @@ export function buildWorld(scenario: ScenarioDef): World {
       seaLandings.add(c.b);
     }
   }
-  specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality.effects])));
+  specialities.set(scenario.id, Object.fromEntries(scenario.nations.map((n) => [n.id, n.speciality?.effects ?? []])));
 
   return {
     scenario,
@@ -87,6 +87,11 @@ export function buildWorld(scenario: ScenarioDef): World {
     totalVp,
     seaLandings,
   };
+}
+
+/** Whether any province starts unowned: neutral states, garrisoned, that anyone may invade. */
+export function hasNeutrals(world: World): boolean {
+  return world.provinceIds.some((id) => !world.provinces[id].core);
 }
 
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {

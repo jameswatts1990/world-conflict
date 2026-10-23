@@ -52,8 +52,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 
 ### 2.2 Morale
 
-- [x] **Unit morale**: damage breaks morale before it destroys units. Broken armies **rout** to a friendly
-      neighbour, and armies with nowhere to go **surrender**, so encirclement matters
+- [x] **Unit morale**: damage wears morale down, blunting firepower. Armies **fight to the death** unless
+      ordered out; a **withdrawal under fire** costs every unit a set share of strength
 - [x] Morale recovers out of combat, faster in supplied home territory and near hospitals
 - [x] **Province morale** (0–100): drives output. It is lowered by nearby enemies, battles, shortages and a lost
       capital, and raised by garrisons, propaganda and time. It replaces the flat 50% occupied-output penalty
@@ -88,7 +88,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Army-size discipline: upkeep budgets and disbanding obsolete units when bankrupt
 - [x] Composition that answers the enemy and terrain (anti-tank against armour, mountain troops on alpine
       fronts, siege guns against forts)
-- [x] Morale-aware combat: attack where it can break the enemy, pull back before routing, exploit encirclement
+- [x] Morale-aware combat: attack where it can break the enemy, withdraw only from hopeless battles, exploit encirclement
 - [x] Slot-aware city planning (growth, universities, propaganda when morale sags, occupation HQs)
 - [x] Research strategies by personality (doctrine) and need
 - [x] Diplomacy: opportunistic wars, avoiding two fronts, and ganging up on a power close to victory
@@ -96,7 +96,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 ### 2.6 Balance and presentation
 
 - [x] Headless campaign sweeps across seeds (`scripts/dev/batch.ts`)
-- [ ] Campaigns that sometimes end by objectives: AI-vs-AI games all reach the time limit today
+- [x] Campaigns that sometimes end by objectives: since AI armies hold a province until the capture completes, 5 of
+      8 AI-vs-AI test campaigns end on objectives
+- [ ] Minor powers rarely last: in AI-vs-AI campaigns nearly every minor power is conquered, most within 20 minutes;
+      Serbia falls in every run and Romania in most. Tune the AI's appetite for small neighbours or their defence
 - [x] New tests for every system; save schema 3 (schema 2 saves with the Depth state are upgraded on load)
 - [x] Design document, tutorial and controls updated
 
@@ -106,6 +109,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       the Depth UI: city view, unit art, morale, research tree and the extra map views in the new style
 - [x] Run the scripted browser playthrough (`npm run e2e`) end to end and add it to CI
 - [ ] Human playtests at Standard speed; tune the VP threshold, combat damage, morale and AI aggression
+- [x] Hungary no longer walks into neutral Austria at minute 8: with Austria a minor power, it survived all 8 AI test
+      campaigns, and wins spread over six great powers (Hungary 1 of 8, down from 3)
+- [ ] France is now the weakest great power in AI campaigns (mean rank 6.6 of 7, last in 5 of 8 runs, conquered in
+      all 8); Germany comes next (4.6, conquered in 4)
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
@@ -130,6 +137,10 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Cities drawn as part of the map instead of on a round token: a web of streets that fades into the countryside,
       main roads running on towards the neighbouring cities, the old town round the landmark and each building on its
       pad around it; seaside cities keep to the land (streets stop at the coast) and get a port on the real coast
+- [x] A map that reads at a glance: lighter national washes over natural relief, each power's colour along the inside of
+      its border under a cased border line, your own land lit up inside a glowing white outline, the front with an enemy
+      in red; zoom to 20× the whole-theatre view (overlays stop growing, so fronts spread out) with close-up relief
+      tiles baked on demand
 
 ### Polish pass (done)
 
@@ -140,7 +151,7 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       answer offers from the Diplomacy window
 - [x] Resource breakdown (production, upkeep, net) on the top bar; live rates from the first second
 - [x] Battle box in the province card (with each side's morale); results screen with provinces captured, units
-      destroyed, units lost and armies surrendered
+      destroyed, units lost and retreats ordered
 - [x] Alerts that wait while paused; Ctrl/Alt shortcuts left to the browser; working campaign-speed select
 - [x] Event wording ("the United Kingdom", "occupied the Netherlands"), config-driven rule text, distinct tech art,
       map key for army rims, country names as a background layer placed clear of cities, constant-size neutral hatching
@@ -172,10 +183,15 @@ Found by playing full campaigns in the browser and reading the code end to end.
 
 ## M4 — Fog of war and diplomacy
 
-- [ ] Fog of war and reconnaissance (recon units gain a sight bonus)
-- [ ] Alliances, right of passage, non-aggression pacts, coalition victory
+- [x] Fog of war: provinces and armies see one province around them, reconnaissance units two; unseen land is veiled and
+      hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
+- [x] Shared sight between allies (powers fighting a common enemy) with the Liaison Officers research
+- [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
+      (and allies, with Liaison Officers) can see, guess at the rest from public totals, and remember enemy armour
+- [ ] Alliances as treaties (today any powers fighting a common enemy count as allies), right of passage,
+      non-aggression pacts, coalition victory
 - [ ] Peace terms: province transfers and reparations
-- [ ] Neutral states that can be courted or guaranteed, and that react to invasions
+- [ ] Minor powers that can be courted or guaranteed, and that react to invasions of their neighbours
 
 ## M5 — Air and naval warfare
 
@@ -192,6 +208,19 @@ Found by playing full campaigns in the browser and reading the code end to end.
 
 ## M7 — Global map and server
 
+- [x] Equipment blocs (Western, Central, Eastern): a new nation inherits named designs, formation names and unit
+      art from its bloc and overrides only what it wants (see docs/ADDING_A_COUNTRY.md)
+- [x] Hungary, the first nation added through blocs; older saves take in newly added nations
+- [x] Power tiers (great, major, minor; minor powers computer-only) that scale output, treasury, starting army,
+      objective VP, capital size and province count
+- [x] Starting setups generated from each nation's tier and its province rows
+- [x] The seven neutral states are now computer-controlled minor powers (garrisoned by the AI at about five units)
+- [ ] Seed land connections from the map build; propose province rows from Natural Earth populated places
+- [ ] Group minor powers in Diplomacy and on the results screen once there are many
+- [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
+- [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
+- [ ] Eastern-bloc nations east of Poland and Romania
+- [ ] A nation picker that scales past a dozen nations (pick on the map)
 - [ ] Expand beyond Europe: more theatres, then the whole world
 - [ ] Authoritative multiplayer server running `src/sim` unchanged; client sends commands only
 - [ ] Persistent offline progression for the **Slow** (~1 week) campaign speed

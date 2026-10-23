@@ -13,12 +13,12 @@ export const MAP_WIDTH = 1000;
 export const MAP_HEIGHT = 820;
 
 const topo = mapJson as unknown as Topology<{
-  provinces: GeometryCollection<{ pid: string }>;
+  provinces: GeometryCollection<{ pid: string; iso: string }>;
   countries: GeometryCollection<{ iso: string; name: string }>;
 }>;
 
 /** Countries that are (partly) represented by playable provinces. */
-export const THEATRE_ISO = new Set(['GBR', 'FRA', 'DEU', 'ITA', 'ESP', 'POL', 'BEL', 'LUX', 'NLD', 'CHE', 'AUT', 'CZE', 'DNK', 'PRT']);
+export const THEATRE_ISO = new Set(topo.objects.provinces.geometries.map((g) => (g.properties as { iso: string }).iso));
 
 export interface CountryShape {
   iso: string;
@@ -37,6 +37,8 @@ export interface MapGeometry {
   /** Projected area of each province, in map units² (for label weighting). */
   provinceArea: Record<ProvinceId, number>;
   provinceBounds: Record<ProvinceId, [[number, number], [number, number]]>;
+  /** Bounds of each province's whole shape, islands included (provinceBounds keeps to its largest part). */
+  shapeBounds: Record<ProvinceId, [[number, number], [number, number]]>;
   /** Bounding box of the playable theatre, in map units. */
   theatreBounds: [[number, number], [number, number]];
   coastline: string;
@@ -46,10 +48,15 @@ export interface MapGeometry {
   provinceBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
-  /** The land borders between provinces whose owners `front` says are at war. */
-  frontLines: (ownerOf: (pid: ProvinceId) => OwnerId, front: (a: OwnerId, b: OwnerId) => boolean) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
+  /**
+   * The province borders that pass a test, as one path: `b` is the province on the other
+   * side, or null for the coast and the edge of the theatre.
+   */
+  arcs: (test: (a: ProvinceId, b: ProvinceId | null) => boolean) => string;
+  /** The provinces that pass a test as one shape, without the borders between them. */
+  union: (test: (pid: ProvinceId) => boolean) => string;
   /** Screen directions (radians) from each city towards its neighbours over land: the roads out of town. */
   roads: Record<ProvinceId, number[]>;
   /**
@@ -199,7 +206,7 @@ export function mapGeometry(world: World): MapGeometry {
 }
 
 export function buildMapGeometry(world: World): MapGeometry {
-  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>;
+  const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string; iso: string }>;
   const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
   const projection = geoMercator().fitExtent(
@@ -215,11 +222,13 @@ export function buildMapGeometry(world: World): MapGeometry {
   const labelPoints: Record<ProvinceId, [number, number]> = {};
   const provinceArea: Record<ProvinceId, number> = {};
   const provinceBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
+  const shapeBounds: Record<ProvinceId, [[number, number], [number, number]]> = {};
   provinces.features.forEach((f) => {
     provincePaths[f.properties.pid] = path(f) ?? '';
     labelPoints[f.properties.pid] = path.centroid(largestPolygon(f));
     provinceArea[f.properties.pid] = path.area(f);
     provinceBounds[f.properties.pid] = path.bounds(largestPolygon(f)) as [[number, number], [number, number]];
+    shapeBounds[f.properties.pid] = path.bounds(f) as [[number, number], [number, number]];
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
@@ -282,6 +291,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     countries: countryShapes,
     provinceArea,
     provinceBounds,
+    shapeBounds,
     theatreBounds,
     coastline,
     land,
@@ -293,13 +303,6 @@ export function buildMapGeometry(world: World): MapGeometry {
       path(
         mesh(topo, geoms, (a, b) => a !== b && ownerOf(pidOf(a)) !== ownerOf(pidOf(b))),
       ) ?? '',
-    frontLines: (ownerOf, front) =>
-      path(
-        mesh(topo, geoms, (a, b) => {
-          const [oa, ob] = [ownerOf(pidOf(a)), ownerOf(pidOf(b))];
-          return a !== b && oa !== ob && front(oa, ob);
-        }),
-      ) ?? '',
     ownerOutline: (owner, ownerOf) =>
       path(
         mesh(topo, geoms, (a, b) => {
@@ -307,5 +310,10 @@ export function buildMapGeometry(world: World): MapGeometry {
           return a === b ? inA : inA !== (ownerOf(pidOf(b)) === owner);
         }),
       ) ?? '',
+    arcs: (test) => path(mesh(topo, geoms, (a, b) => test(pidOf(a), a === b ? null : pidOf(b)))) ?? '',
+    union: (test) => {
+      const parts = geoms.geometries.filter((g) => test(pidOf(g))) as (TopoPolygon | TopoMultiPolygon)[];
+      return parts.length ? (path(merge(topo, parts)) ?? '') : '';
+    },
   };
 }

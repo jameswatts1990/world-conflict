@@ -116,7 +116,9 @@ export type Effect =
   | { kind: 'healing'; mult: number }
   /** Scales the penalty for attacking straight off a sea crossing. */
   | { kind: 'amphibious'; mult: number }
-  | { kind: 'movement'; mult: number };
+  | { kind: 'movement'; mult: number }
+  /** Fog of war: see everything your allies (powers at war with a common enemy) see. */
+  | { kind: 'alliedSight' };
 
 // ---------------------------------------------------------------------------
 // Static scenario definition (never mutated during play)
@@ -197,6 +199,36 @@ export interface NationIdentity {
   army: string;
 }
 
+/**
+ * Equipment family (see blocs.ts). A nation inherits its bloc's named designs,
+ * formation names and unit look, and overrides only what it makes its own.
+ */
+export type BlocId = 'western' | 'central' | 'eastern';
+export const BLOC_IDS: readonly BlocId[] = ['western', 'central', 'eastern'];
+
+export interface BlocDef {
+  id: BlocId;
+  name: string;
+  description: string;
+  /** Complete: every unit type and generation is named. */
+  identity: NationIdentity;
+}
+
+/**
+ * How much of a power a nation is (see config/powers.ts): it sets the nation's output, starting
+ * army and buildings, objective values and size. Great and major powers are playable; minor
+ * powers are always computer-controlled.
+ */
+export type PowerTier = 'great' | 'major' | 'minor';
+export const POWER_TIERS: readonly PowerTier[] = ['great', 'major', 'minor'];
+
+/** A nation's departures from its bloc's identity; anything left out comes from the bloc. */
+export interface NationIdentityOverrides {
+  units?: NationIdentity['units'];
+  formations?: Partial<Record<UnitType, string>>;
+  army?: string;
+}
+
 export interface NationDef {
   id: NationId;
   name: string;
@@ -204,8 +236,16 @@ export interface NationDef {
   adjective: string;
   color: string;
   capital: ProvinceId;
-  speciality: NationSpeciality;
+  power: PowerTier;
+  bloc: BlocId;
+  /** One small national edge; optional, so a new country can start without one. */
+  speciality?: NationSpeciality;
+  /** Resolved identity: the bloc's, with the nation's overrides laid over it. */
   identity: NationIdentity;
+  /** Strategic character in two or three words, for the nation picker. */
+  trait?: string;
+  /** One-sentence strategic briefing, for the nation picker. */
+  blurb?: string;
 }
 
 export interface StartingArmyDef {
@@ -222,7 +262,6 @@ export interface ScenarioDef {
   connections: ConnectionDef[];
   startingBuildings: { province: ProvinceId; buildings: Partial<Record<BuildingType, number>> }[];
   startingArmies: StartingArmyDef[];
-  startingResources: Resources;
   /** Technologies every nation knows at the start. */
   startingTechs: TechId[];
 }
@@ -236,7 +275,7 @@ export interface Unit {
   type: UnitType;
   /** Fraction of full strength, 0..1. Max HP comes from config + research. */
   strength: number;
-  /** Fighting spirit, 0..1. Broken armies rout. */
+  /** Fighting spirit, 0..1. Low morale blunts firepower; armies never break. */
   morale: number;
   /** Combat experience; ranks Green, Regular, Veteran, Elite. */
   xp: number;
@@ -251,11 +290,22 @@ export interface MoveLeg {
   duration: number;
 }
 
+/**
+ * How an army carries out a march order:
+ * - move: straight to the destination, stopping only where enemy armies bar the way;
+ * - attack: also halts to capture every hostile province on the route;
+ * - patrol: marches back and forth between two provinces, fighting and capturing like attack.
+ */
+export type MoveMode = 'move' | 'attack' | 'patrol';
+
 export interface ArmyMove {
   /** Remaining destinations in order; path[0] is the current/next leg target. */
   path: ProvinceId[];
   /** Non-null while travelling between two provinces. */
   leg: MoveLeg | null;
+  mode: MoveMode;
+  /** Patrol ends; the army turns for the other end each time it reaches one. */
+  patrol?: [ProvinceId, ProvinceId];
 }
 
 export interface Army {
@@ -272,8 +322,10 @@ export interface Army {
   unsuppliedTicks: number;
   /** How the army reached its current province (sea landings fight at a penalty). */
   arrivedVia: ConnectionKind | null;
-  /** A routed army cannot take orders until this tick. */
-  routedUntil: number;
+  /** Withdraw from a battle on its own (paying the price of a withdrawal) once morale falls below MORALE.autoRetreatAt. */
+  autoRetreat: boolean;
+  /** Holding position: halted where it is and never withdrawing on its own, until given a march order. */
+  holding: boolean;
 }
 
 export interface ConstructionJob {
@@ -351,6 +403,12 @@ export interface AiMemory {
   nextThinkTick: number;
   /** Provinces currently being massed against (kept between thinks to avoid dithering). */
   campaigns: ProvinceId[];
+  /**
+   * Fog of war: the share of armour among each nation's units, as far as this AI has seen
+   * them (a running estimate, so tanks that drop out of sight are not forgotten at once).
+   * Absent until it first sees foreign troops, and in older saves.
+   */
+  armourSeen?: Record<NationId, number>;
 }
 
 export interface NationState {
@@ -365,7 +423,7 @@ export interface NationState {
   /** Home-front morale 0..100 (population-weighted core province morale). */
   morale: number;
   ai: AiMemory | null;
-  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; armiesSurrendered: number };
+  stats: { provincesCaptured: number; unitsLost: number; unitsDestroyed: number; retreats: number };
 }
 
 export interface PeaceOffer {

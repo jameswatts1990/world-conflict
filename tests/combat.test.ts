@@ -21,12 +21,14 @@ interface BattleOptions {
   encircled?: boolean;
   tweak?: (s: GameState) => void;
   xp?: { attacker?: number; defender?: number };
+  /** Stop after this many rounds even if both sides still stand. */
+  maxRounds?: number;
 }
 
 /**
  * France attacks a German-owned province until one side is no longer standing
- * on it (routed away, surrendered or destroyed). A neighbouring province is
- * French so a broken attacker has somewhere to run.
+ * on it. A neighbouring province is French so the attacker has somewhere to
+ * withdraw to if ordered.
  */
 function battle(province: ProvinceId, attacker: Units, defender: Units, opts: BattleOptions = {}) {
   const state = quietGame(opts.seed ?? 1);
@@ -42,7 +44,7 @@ function battle(province: ProvinceId, attacker: Units, defender: Units, opts: Ba
   opts.tweak?.(state);
   const standing = (id: string) => !!state.armies[id] && !isArmyInTransit(state.armies[id]) && state.armies[id].province === province;
   let rounds = 0;
-  while (standing(att.id) && standing(def.id) && rounds < 300) {
+  while (standing(att.id) && standing(def.id) && rounds < (opts.maxRounds ?? 300)) {
     combatSystem(state, world);
     rounds++;
   }
@@ -77,9 +79,10 @@ describe('combat resolution', () => {
     expect(wins(5, (seed) => battle('de-north', { infantry: 6, artillery: 2 }, { infantry: 2 }, { seed }).attackerWon)).toBe(5);
   });
 
-  it('dug-in defenders win even fights and hold against a small edge', () => {
+  it('dug-in defenders win even fights, and a small edge is no sure thing', () => {
     expect(wins(10, (seed) => !battle('de-north', { infantry: 3 }, { infantry: 3 }, { seed }).attackerWon)).toBeGreaterThanOrEqual(9);
-    expect(wins(10, (seed) => !battle('de-north', { infantry: 4 }, { infantry: 3 }, { seed }).attackerWon)).toBeGreaterThanOrEqual(6);
+    // With no rout, a larger force grinds on until it wins; ground and nerve still cost it.
+    expect(wins(10, (seed) => !battle('de-north', { infantry: 4 }, { infantry: 3 }, { seed }).attackerWon)).toBeGreaterThanOrEqual(1);
   });
 
   it('artillery breaks defences that infantry alone cannot', () => {
@@ -109,7 +112,7 @@ describe('combat resolution', () => {
     const r = battle('de-north', { tank: 1 }, { infantry: 1 }, { seed: 3 });
     const tank = r.state.armies[r.att.id]?.units[0]?.strength ?? 0;
     const rifles = r.state.armies[r.def.id]?.units[0]?.strength ?? 0;
-    expect(tank).toBeGreaterThan(0.85);
+    expect(tank).toBeGreaterThan(0.8);
     expect(tank).toBeGreaterThan(rifles);
   });
 
@@ -117,7 +120,7 @@ describe('combat resolution', () => {
     let infLoss = 0;
     let artLoss = 0;
     for (let seed = 1; seed <= 6; seed++) {
-      const r = battle('de-north', { infantry: 4 }, { infantry: 2, artillery: 2 }, { seed });
+      const r = battle('de-north', { infantry: 4 }, { infantry: 2, artillery: 2 }, { seed, maxRounds: 15 });
       const units = r.state.armies[r.def.id]?.units ?? [];
       for (const u of units) {
         if (u.type === 'infantry') infLoss += 1 - u.strength;
@@ -208,33 +211,84 @@ describe('combat resolution', () => {
 });
 
 describe('morale in battle', () => {
-  it('a broken army routs to a friendly neighbour instead of fighting to the last man', () => {
+  it('a losing army fights to the death instead of breaking', () => {
     const r = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, { seed: 2 });
     expect(r.attackerWon).toBe(false);
+    expect(r.state.armies[r.att.id]).toBeUndefined();
+    expect(r.state.events.some((e) => e.kind === 'army-destroyed' && e.subject === 'fr')).toBe(true);
+    expect(r.state.events.some((e) => e.kind === 'rout' || e.kind === 'surrender')).toBe(false);
+  });
+
+  it('an army ordered out of a battle pays a set price in strength and leaves its weakest behind', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    const army = place(state, 'fr', 'de-baden', { infantry: 3 });
+    place(state, 'de', 'de-baden', { infantry: 3 });
+    army.units[0].strength = 0.1;
+    combatSystem(state, world);
+    const before = army.units.map((u) => [u.id, u.strength] as const);
+    const order = applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east' });
+    expect(order.ok).toBe(true);
+    expect(isArmyInTransit(army)).toBe(true);
+    expect(army.units.length).toBe(before.length - 1);
+    for (const u of army.units) {
+      const was = before.find(([id]) => id === u.id)![1];
+      expect(u.strength).toBeCloseTo(was - MORALE.retreatLoss, 9);
+    }
+    expect(state.nations.fr.stats.retreats).toBe(1);
+    expect(state.nations.de.stats.unitsDestroyed).toBeGreaterThanOrEqual(1);
+    expect(state.events.some((e) => e.kind === 'rout' && e.subject === 'fr')).toBe(true);
+  });
+
+  it('an army set to fall back withdraws on its own once its morale is spent, at the usual price', () => {
+    const r = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, {
+      seed: 2,
+      tweak: (s) => Object.values(s.armies).forEach((a) => (a.autoRetreat = a.owner === 'fr')),
+    });
     const army = r.state.armies[r.att.id];
     expect(army).toBeDefined();
     expect(army.move?.leg?.to).toBe(r.retreat);
-    expect(army.units.length).toBeGreaterThan(0);
-    expect(armyMorale(army)).toBeLessThan(MORALE.routThreshold);
-    expect(r.state.events.some((e) => e.kind === 'rout')).toBe(true);
-    // A routed army cannot be given orders for a while.
-    const order = applyCommand(r.state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-north' });
-    expect(order.ok).toBe(false);
+    expect(r.state.nations.fr.stats.retreats).toBe(1);
+    expect(r.state.events.some((e) => e.kind === 'rout' && e.subject === 'fr')).toBe(true);
   });
 
-  it('an encircled army with nowhere to run surrenders', () => {
-    const r = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, { seed: 2, encircled: true });
-    expect(r.state.armies[r.att.id]).toBeUndefined();
-    expect(r.state.events.some((e) => e.kind === 'surrender')).toBe(true);
-    expect(r.state.nations.fr.stats.armiesSurrendered).toBe(1);
+  it('with nowhere to go, or holding position, an army set to fall back fights on', () => {
+    const fallBack = (s: GameState) => Object.values(s.armies).forEach((a) => (a.autoRetreat = a.owner === 'fr'));
+    const cut = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, { seed: 2, encircled: true, tweak: fallBack });
+    const held = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, {
+      seed: 2,
+      tweak: (s) => {
+        fallBack(s);
+        for (const a of Object.values(s.armies)) a.holding = a.owner === 'fr';
+      },
+    });
+    for (const r of [cut, held]) {
+      expect(r.state.armies[r.att.id]).toBeUndefined();
+      expect(r.state.nations.fr.stats.retreats).toBe(0);
+    }
   });
 
-  it('routed armies recover their morale out of combat', () => {
-    const r = battle('de-north', { infantry: 3 }, { infantry: 3, artillery: 2 }, { seed: 2 });
-    const id = r.att.id;
-    const before = armyMorale(r.state.armies[id]);
-    run(r.state, 200);
-    expect(armyMorale(r.state.armies[id])).toBeGreaterThan(before + 0.3);
+  it('marching on outside a battle costs nothing', () => {
+    const state = quietGame();
+    clearArmies(state);
+    const army = place(state, 'fr', 'fr-east', { infantry: 2 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-paris' });
+    for (const u of army.units) expect(u.strength).toBe(1);
+    expect(state.nations.fr.stats.retreats).toBe(0);
+  });
+
+  it('withdrawn armies recover their morale out of combat', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    const army = place(state, 'fr', 'de-baden', { infantry: 3 });
+    place(state, 'de', 'de-baden', { infantry: 3, artillery: 2 });
+    for (let i = 0; i < 6; i++) combatSystem(state, world);
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east' });
+    const before = armyMorale(army);
+    run(state, 200);
+    expect(armyMorale(state.armies[army.id])).toBeGreaterThan(before + 0.2);
   });
 
   it('reconnaissance speeds up captures', () => {

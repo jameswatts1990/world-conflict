@@ -344,6 +344,14 @@ function headgearParts(kind: Headgear, hat: string): HatPart[] {
         { d: 'M-2.2 -3.5C-1.4 -6.6 1.8 -6.6 2.6 -3.3L2.0 -3.2C1.2 -5.0 -1.0 -5.0 -1.5 -3.2Z', fill: BRASS },
         { d: 'M2.1 -1.0L4.9 -0.1L2.4 0.1Z', fill: '#26262b' },
       ];
+    case 'budenovka':
+      // Pointed cloth cap with its flaps buttoned up and a cloth star on the front.
+      return [
+        { d: 'M-3.0 -0.7C-3.3 -3.3 -1.9 -4.9 -0.4 -5.3L0.1 -7.3L0.7 -5.2C2.1 -4.7 3.3 -3.2 3.0 -0.7Z', fill: hat },
+        { d: 'M-3.0 -0.7L-3.05 -1.9L3.0 -1.9L3.0 -0.7Z', fill: shade(hat, -0.12) },
+        { d: 'M2.4 -1.0L5.0 -0.2L2.6 0.1Z', fill: peak },
+        { d: ellipse(1.7, -3.1, 0.62, 0.68), fill: '#c8102e', stroke: false },
+      ];
     case 'czapka':
       return [
         { d: 'M-1.4 -3.8L-1.0 -5.3L-3.9 -7.6L3.4 -8.4L1.2 -5.3L1.6 -3.8Z', fill: hat },

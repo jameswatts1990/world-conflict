@@ -20,7 +20,7 @@ export interface CityModelProps {
   /** Province id, e.g. 'uk-north': picks the regional architecture and drives variety. */
   seed: string;
   tier: 1 | 2 | 3 | 4 | 5;
-  /** A capital: gets a landmark (a national one for the six powers' capitals). */
+  /** A capital: gets a landmark (a national one for the powers' capitals). */
   capital?: boolean;
   /** Building -> level (0 or absent = not built). */
   buildings: Partial<Record<ArtBuilding, number>>;
@@ -160,18 +160,23 @@ const REGIONS: Record<string, Region> = {
   alpine: { walls: ['#ece6d6', '#e0d5bd', '#d4c3a1'], roofs: ['#5e4a3e', '#6d5a4c', '#545a62'] },
 };
 
-const NEUTRAL_REGION: Record<string, string> = {
-  'nt-netherlands': 'nl',
-  'nt-benelux': 'fr',
-  'nt-denmark': 'dk',
-  'nt-switzerland': 'alpine',
-  'nt-austria': 'alpine',
-  'nt-czechia': 'de',
-  'nt-portugal': 'es',
+/** Countries that build like a neighbour, by the province id's country prefix. */
+const REGION_ALIAS: Record<string, string> = {
+  be: 'fr',
+  ch: 'alpine',
+  at: 'alpine',
+  cz: 'de',
+  pt: 'es',
+  sk: 'de',
+  si: 'alpine',
+  hr: 'it',
+  rs: 'it',
+  ro: 'de',
 };
 
 function regionOf(seed: string): Region {
-  return REGIONS[NEUTRAL_REGION[seed] ?? seed.slice(0, 2)] ?? REGIONS.de;
+  const country = seed.slice(0, 2);
+  return REGIONS[REGION_ALIAS[country] ?? country] ?? REGIONS.de;
 }
 
 // ------------------------------------------------------------------ layout
@@ -1022,6 +1027,11 @@ const NATIONAL_LANDMARKS: Record<string, LandmarkKind> = {
   'it-rome': 'dome',
   'es-madrid': 'palace',
   'pl-warsaw': 'castle',
+  // A domed parliament on the river, like Berlin's.
+  'hu-budapest': 'reichstag',
+  // The Kalemegdan fortress over the confluence; the Athenaeum's dome.
+  'rs-belgrade': 'castle',
+  'ro-bucharest': 'dome',
 };
 
 function landmark(l: Lot, kind: LandmarkKind, ctx: Ctx): void {

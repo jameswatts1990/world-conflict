@@ -91,8 +91,6 @@ export function eventCue(e: GameEvent, state: GameState, world: World, human: Na
       return e.nations.includes(human) ? 'battle' : null;
     case 'rout':
       return e.nations.includes(human) ? 'rout' : null;
-    case 'surrender':
-      return ours ? 'capture.lost' : e.nations.includes(human) ? 'capture.won' : null;
     case 'army-destroyed':
       return ours ? 'capture.lost' : null;
     case 'shortage':

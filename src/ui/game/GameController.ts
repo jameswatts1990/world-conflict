@@ -4,7 +4,7 @@
 // concerns, not simulation rules.
 import { attachGameAudio } from '../../audio';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { GameLoop, Simulation, type Command, type CommandResult, type GameState, type NationId, type World } from '../../sim';
+import { GameLoop, Simulation, visibleProvinces, type Command, type CommandResult, type GameState, type NationId, type ProvinceId, type World } from '../../sim';
 import { saveToSlot } from './storage';
 
 const UI_NOTIFY_MS = 120;
@@ -32,6 +32,7 @@ export class GameController {
   private dirty = false;
   private lastAutosave = 0;
   private running = false;
+  private sightCache: { state: GameState; tick: number; version: number; seen: ReadonlySet<ProvinceId> } | null = null;
 
   constructor(
     readonly world: World,
@@ -47,6 +48,15 @@ export class GameController {
 
   get state(): GameState {
     return this.sim.state;
+  }
+
+  /** Provinces the player can see through the fog of war, worked out once per tick (orders can change it too). */
+  sight(): ReadonlySet<ProvinceId> {
+    const c = this.sightCache;
+    if (c && c.state === this.state && c.tick === this.state.tick && c.version === this.version) return c.seen;
+    const seen = visibleProvinces(this.state, this.world, this.human);
+    this.sightCache = { state: this.state, tick: this.state.tick, version: this.version, seen };
+    return seen;
   }
 
   start(): void {

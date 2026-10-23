@@ -197,7 +197,7 @@ try {
   await tapAt(await provincePoint('es-castile'));
   await settle();
   const banner = await page.textContent('[data-testid="move-confirm"]');
-  if (!banner.includes('March to')) throw new Error(`no route preview: "${banner}"`);
+  if (!banner.includes('Move to')) throw new Error(`no route preview: "${banner}"`);
   if (await state(`(s) => !!s.armies['${army}'].move`)) throw new Error('the first tap already gave the order');
   await shot('05-move-preview');
   await page.tap('[data-testid="confirm-move"]');

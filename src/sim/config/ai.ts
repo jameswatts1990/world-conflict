@@ -1,4 +1,6 @@
 // Computer opponent tuning.
+import type { PowerTier } from '../types';
+
 export const AI = {
   thinkIntervalSeconds: 8,
   /** No AI declares war on a nation before this many seconds have passed. */
@@ -26,9 +28,14 @@ export const AI = {
   leaderAlarmVp: 3,
   /** Reserve kept back when spending (fraction of income per minute). */
   reserveMinutes: 0.5,
-  /** Army size cap: units per owned province, a flat reserve, and one unit per this much money income a minute. */
+  /**
+   * Army size cap: units per owned province, a flat reserve by power tier, and one unit per this much
+   * money income a minute. A one-province minor power keeps a garrison of about five, not a field army:
+   * a focused seven-unit attack takes its capital (with a reserve of 1 it holds six and refills, and
+   * repels that attack seven times in ten).
+   */
   unitsPerProvince: 3,
-  unitsFlat: 8,
+  unitsFlat: { great: 8, major: 5, minor: 0 } as Record<PowerTier, number>,
   unitsPerIncome: 50,
   /** Share of money income that may go to upkeep (scaled up by aggression and war). */
   upkeepShare: 0.45,
@@ -37,12 +44,16 @@ export const AI = {
   /** Armies below these do not attack; they rest first. */
   attackMorale: 0.5,
   attackStrength: 0.55,
-  /** In battle, pull back before routing when morale is this low and the enemy is not weaker. */
-  retreatMorale: 0.33,
+  /** Only pull out of a battle (and pay the withdrawal penalty) when our power there is below this share of the enemy's. */
+  retreatOdds: 0.2,
+  /** ...and only once the army's morale has sunk this low. */
+  retreatMorale: 0.3,
   /** Defenders wanted per unit of threat on a frontier province. */
   defenceFactor: 0.9,
   /** Most offensives run at once. */
   maxCampaigns: 2,
   /** A new campaign target must beat the current one by this factor to replace it. */
   campaignStickiness: 1.25,
+  /** Fog of war: how far each think's sightings move the AI's estimate of a nation's armour share (0..1). */
+  armourSightingWeight: 0.3,
 };

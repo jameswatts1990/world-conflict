@@ -1,5 +1,6 @@
 // Creates the initial GameState for a scenario.
 import { AI } from './config/ai';
+import { POWERS } from './config/powers';
 import { MORALE } from './config/rules';
 import { SPEED_PRESETS, TICKS_PER_MINUTE } from './config/timing';
 import { VETERANCY } from './config/units';
@@ -22,7 +23,7 @@ import {
 } from './types';
 import type { World } from './world';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 5;
 
 export interface NewGameOptions {
   seed: number;
@@ -70,7 +71,8 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
     supplied: true,
     unsuppliedTicks: 0,
     arrivedVia: null,
-    routedUntil: 0,
+    autoRetreat: false,
+    holding: false,
   };
   state.armies[army.id] = army;
   return army;
@@ -79,6 +81,11 @@ export function createArmy(state: GameState, owner: OwnerId, province: ProvinceI
 const DOCTRINES: AiMemory['doctrine'][] = ['armour', 'infantry', 'artillery'];
 
 export function createInitialState(world: World, opts: NewGameOptions): GameState {
+  if (opts.humanNation !== null) {
+    const human = world.nations[opts.humanNation];
+    if (!human) throw new Error(`Unknown nation ${opts.humanNation}`);
+    if (!POWERS[human.power].playable) throw new Error(`${human.name} is a ${POWERS[human.power].name.toLowerCase()} and is always computer-controlled`);
+  }
   const preset = SPEED_PRESETS[opts.speed ?? 'standard'];
   const scenario = world.scenario;
   const state: GameState = {
@@ -135,7 +142,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
     state.nations[n.id] = {
       id: n.id,
       controller: isHuman ? 'human' : 'ai',
-      resources: { ...scenario.startingResources },
+      resources: { ...POWERS[n.power].startingResources },
       research: { completed: [...scenario.startingTechs], active: [], queue: [] },
       relations,
       eliminated: false,
@@ -151,7 +158,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
             nextThinkTick: Math.floor(random(state) * AI.thinkIntervalSeconds),
             campaigns: [],
           },
-      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, armiesSurrendered: 0 },
+      stats: { provincesCaptured: 0, unitsLost: 0, unitsDestroyed: 0, retreats: 0 },
     };
   }
 
@@ -166,7 +173,7 @@ export function createInitialState(world: World, opts: NewGameOptions): GameStat
   pushEvent(
     state,
     'start',
-    'The campaign begins. Six powers hold modern borders with Great War arsenals. Neutral states stand between them.',
+    'The campaign begins. The powers hold modern borders with Great War arsenals.',
     { severity: 'system' },
   );
   return state;
