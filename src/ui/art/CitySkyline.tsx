@@ -1410,7 +1410,7 @@ type LandmarkKind = 'parliament' | 'dome' | 'cathedral';
 
 function landmarkFor(seed: string): LandmarkKind {
   const prefix = seed.split('-')[0];
-  const byNation: Record<string, LandmarkKind> = { uk: 'parliament', fr: 'dome', it: 'dome', de: 'cathedral', es: 'cathedral', pl: 'cathedral', hu: 'parliament' };
+  const byNation: Record<string, LandmarkKind> = { uk: 'parliament', fr: 'dome', it: 'dome', de: 'cathedral', es: 'cathedral', pl: 'cathedral', hu: 'parliament', ro: 'dome', rs: 'cathedral' };
   if (byNation[prefix]) return byNation[prefix];
   const kinds: LandmarkKind[] = ['parliament', 'dome', 'cathedral'];
   return kinds[hash32(seed) % 3];

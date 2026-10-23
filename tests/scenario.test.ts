@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { geoContains } from 'd3-geo';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
-import { feature } from 'topojson-client';
+import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
 import { UNITS } from '../src/sim/config/units';
@@ -44,6 +44,18 @@ describe('scenario data', () => {
       }
     }
     expect(covered).toEqual([]);
+  });
+
+  it('every shared border has a land or mountain link, and every such link a shared border', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const geoms = topo.objects.provinces.geometries as { properties: { pid: string } }[];
+    const key = (a: string, b: string) => [a, b].sort().join(' — ');
+    const borders = new Set<string>();
+    neighbors(geoms as never).forEach((list, i) => list.forEach((j) => borders.add(key(geoms[i].properties.pid, geoms[j].properties.pid))));
+    const links = new Set(world.scenario.connections.filter((c) => c.kind !== 'strait').map((c) => key(c.a, c.b)));
+    // scripts/map/check-borders.ts prints the same report while you work.
+    expect([...borders].filter((k) => !links.has(k)), 'borders without a link').toEqual([]);
+    expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {

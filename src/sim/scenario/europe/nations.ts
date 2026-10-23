@@ -36,12 +36,23 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'pl', name: 'Poland', adjective: 'Polish', color: '#8d5bb4', capital: 'pl-warsaw', power: 'great', bloc: 'western',
     trait: 'Open plains',
-    blurb: 'Open plains between Germany and the edge of the theatre. Czechia lies to the south.',
+    blurb: 'Open plains between Germany and the edge of the theatre. Czechia and Slovakia lie to the south, beyond the mountains.',
   },
   {
     id: 'hu', name: 'Hungary', adjective: 'Hungarian', color: '#b0476d', capital: 'hu-budapest', power: 'great', bloc: 'central',
-    trait: 'One gateway',
-    blurb: 'Landlocked behind Austria. The only road out runs through Vienna, and it is the only road in.',
+    trait: 'Danube crossroads',
+    blurb: 'The heart of the Danube basin. Six neighbours and none of them a great power: room to grow, and a front on every side.',
+  },
+  // Major powers: playable, smaller than the great powers (config/powers.ts).
+  {
+    id: 'ro', name: 'Romania', adjective: 'Romanian', color: '#3d78c0', capital: 'ro-bucharest', power: 'major', bloc: 'western',
+    trait: 'Oil and mountains',
+    blurb: "Europe's own oil field behind the arc of the Carpathians. Hungary and Serbia to the west; the Black Sea and the edge of the theatre to the east.",
+  },
+  {
+    id: 'rs', name: 'Serbia', adjective: 'Serbian', color: '#c0703a', capital: 'rs-belgrade', power: 'major', bloc: 'western',
+    trait: 'Balkan bastion',
+    blurb: 'Where the Sava meets the Danube. Hungary across the plain to the north, Croatia and Romania on either flank; to the south, only the edge of the theatre.',
   },
   // Minor powers: one province each, always computer-controlled. Blocs follow who armed them: Belgium,
   // Denmark and Portugal Entente-style; the Netherlands, Switzerland, Austria and Czechia with
@@ -53,6 +64,10 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   { id: 'at', name: 'Austria', adjective: 'Austrian', color: '#4f86b8', capital: 'at-vienna', power: 'minor', bloc: 'central' },
   { id: 'cz', name: 'Czechia', adjective: 'Czech', color: '#8a6a44', capital: 'cz-prague', power: 'minor', bloc: 'central' },
   { id: 'pt', name: 'Portugal', adjective: 'Portuguese', color: '#2e8b6e', capital: 'pt-lisbon', power: 'minor', bloc: 'western' },
+  // Slovakia, Slovenia and Croatia: two provinces, one and two; Austro-Hungarian heritage and Škoda kit.
+  { id: 'sk', name: 'Slovakia', adjective: 'Slovak', color: '#3a9c96', capital: 'sk-bratislava', power: 'minor', bloc: 'central' },
+  { id: 'si', name: 'Slovenia', adjective: 'Slovenian', color: '#d4a13a', capital: 'si-ljubljana', power: 'minor', bloc: 'central' },
+  { id: 'hr', name: 'Croatia', adjective: 'Croatian', color: '#6f5aa8', capital: 'hr-zagreb', power: 'minor', bloc: 'central' },
 ];
 
 export const NATIONS: NationDef[] = base.map((n) => ({ ...n, speciality: SPECIALITIES[n.id], identity: nationIdentity(n.bloc, IDENTITIES[n.id]) }));

@@ -21,8 +21,8 @@ Guidance for Claude Code working in this repository.
 
 ## Debugging AI behaviour
 
-- `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game; its `neutral:N` column shows how many
-  neutral provinces are left.
+- `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,
+  units, VP and wars every 10 minutes (`neutral:N` is always 0 in Europe: its former neutral states are minor powers).
 - The AI thinks every 8 s (`AI.thinkIntervalSeconds`), but captures take 20 s or more. Any step in
   `ai/military.ts` or `ai/recruitment.ts` that picks "free" or "rear" armies must skip armies holding a province
   they are capturing. `ctx.threat` and `ctx.frontier` cover only owned provinces, so an army abroad reads as
