@@ -70,8 +70,8 @@ describe('scenario data', () => {
     // Where the shapes leave a road no way that keeps to its two provinces (it goes as briefly as it can through
     // what it must), and why. Any other road that strays is a map to fix or a road to route again.
     const lastResort: Record<string, string> = {
-      'es-madrid-e|es-valencia-n': 'Valencia reaches the Cuenca land only at the Rincón de Ademuz, its exclave beyond Aragon',
-      'be-brussels-w|nl-amsterdam-se': 'Flanders meets the Dutch land only at Zeelandic Flanders, across the Western Scheldt',
+      'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
+      'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
     expect(strays.sort()).toEqual(Object.keys(lastResort).sort());

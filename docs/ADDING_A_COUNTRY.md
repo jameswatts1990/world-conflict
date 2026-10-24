@@ -103,8 +103,8 @@ Two rules hold for every area of the map (CLAUDE.md, *Map rules*), and the gener
 The scenario tests fail a map that breaks them. When one names a road that strays, the shapes usually leave it no
 clean way: a land that touches its neighbour only through an exclave, or only across an estuary. Reshape the
 regions if you can (`province-sources.mjs`); if the geography really is that way, add the road to the test's
-`lastResort` list with the reason, as Madrid–Valencia (the Rincón de Ademuz) and Flanders–Zeeland (the Western
-Scheldt) are.
+`lastResort` list with the reason, as the Alcarria–Valencia road (the Rincón de Ademuz) and the Flanders–Brabant one
+(the Western Scheldt) are.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the

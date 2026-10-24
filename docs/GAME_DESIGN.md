@@ -75,9 +75,9 @@ espionage, naval and air warfare, later eras, multiplayer.
   through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
   over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
   within 3 km of anything else, the road bends round it (156 of the 564 do). Only two roads find no clean way, as
-  the shapes stand: Madrid's eastern land reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon,
-  and Flanders meets the Dutch land only at Zeelandic Flanders, across the Western Scheldt; the scenario test names
-  them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  the shapes stand: the Alcarria, east of Madrid, reaches Valencia only at the Rincón de Ademuz, Valencia's exclave
+  beyond Aragon, and Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; the
+  scenario test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
   powers as neighbours, so France is not the only target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.
