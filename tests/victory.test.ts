@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { VICTORY } from '../src/sim/config/rules';
-import { computeScores, heldVp, scaledTicks, vpToWin } from '../src/sim';
+import { computeScores, heldVp, landShare, scaledTicks, vpToWin } from '../src/sim';
 import { aiGame, quietGame, run, world } from './helpers';
 
 function giveObjectives(state: ReturnType<typeof quietGame>, nation: string, vp: number) {
@@ -49,8 +49,10 @@ describe('victory conditions', () => {
     const s = computeScores(state, world)[0];
     const held = world.provinceIds.filter((id) => state.provinces[id].owner === s.nation);
     const cities = held.filter((id) => world.provinces[id].city).length;
+    // The land round a city scores as one province, shared between its lands.
+    const land = held.filter((id) => !world.provinces[id].city).reduce((t, id) => t + landShare(world, id), 0);
     expect(s.provinces).toBe(held.length);
-    expect(s.score).toBe(s.vp * VICTORY.score.perVp + cities * VICTORY.score.perCity + (held.length - cities) * VICTORY.score.perLand + s.techs * VICTORY.score.perTech);
+    expect(s.score).toBeCloseTo(s.vp * VICTORY.score.perVp + cities * VICTORY.score.perCity + land * VICTORY.score.perLand + s.techs * VICTORY.score.perTech);
   });
 
   it('eliminating the player ends the game as a loss', () => {

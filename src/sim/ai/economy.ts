@@ -8,7 +8,7 @@ import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
 import { random } from '../rng';
 import type { BuildingType, ProvinceId } from '../types';
-import { landOf } from '../world';
+import { landsOf } from '../world';
 import { alliesOf } from '../visibility';
 import { affordableWithReserve, issue, type Ctx } from './context';
 
@@ -73,6 +73,9 @@ function count(ctx: Ctx, b: BuildingType): number {
 export function handleConstruction(ctx: Ctx): void {
   const { state, world, me } = ctx;
   const candidates: { pid: ProvinceId; b: BuildingType; score: number }[] = [];
+  // How many of each building it has, counted once: nothing is built until every candidate is in.
+  const counts = new Map<BuildingType, number>();
+  const held = (b: BuildingType) => counts.get(b) ?? counts.set(b, count(ctx, b)).get(b)!;
   const nationMorale = state.nations[me].morale;
   const atWar = ctx.enemies.length > 0;
 
@@ -85,7 +88,7 @@ export function handleConstruction(ctx: Ctx): void {
     const freeSlots = buildingSlots(state, world, pid) - slotsUsed(p.buildings, null);
     const frontier = ctx.frontier.has(pid);
     // A city whose land meets the enemy is on the front too.
-    const front = frontier || ctx.frontier.has(landOf(world, pid));
+    const front = frontier || landsOf(world, pid).some((land) => ctx.frontier.has(land));
     const threat = ctx.threat.get(pid) ?? 0;
     const presence = ctx.presence.get(pid) ?? 0;
     const lvl = (b: BuildingType) => p.buildings[b] ?? 0;
@@ -100,16 +103,16 @@ export function handleConstruction(ctx: Ctx): void {
     add('market', (def.production.money * 0.3 * outputFactor * (1 + ctx.mem.economyBias)) / (1 + lvl('market')));
     add('powerPlant', 9 + world.nearbyCities[pid].filter((c) => ctx.ownedSet.has(c)).length * 2);
     add('housing', p.tier < 4 ? (core ? 9 : 4) + (CITY.slots[p.tier + 1] - CITY.slots[p.tier]) * 2 - lvl('housing') * 2 : 0);
-    if (count(ctx, 'university') < 3) add('university', 18 - count(ctx, 'university') * 3);
-    if (count(ctx, 'barracks') < 2 + Math.floor(ctx.ownedCities / 4)) add('barracks', 13 + (front ? 5 : 0));
-    if (count(ctx, 'academy') < 1 && (isUnitUnlocked(state, me, 'stormtroopers') || ctx.mem.doctrine === 'infantry')) add('academy', 11);
-    if (count(ctx, 'armsWorks') < 2) add('armsWorks', 12 + (ctx.mem.doctrine === 'artillery' ? 3 : 0));
-    if (count(ctx, 'motorPool') < 1 && (isUnitUnlocked(state, me, 'motorised') || isUnitUnlocked(state, me, 'armouredCar'))) add('motorPool', 11);
-    if (count(ctx, 'tankWorks') < (ctx.mem.doctrine === 'armour' ? 2 : 1) && ctx.eco.income.fuel > 4) add('tankWorks', 15);
+    if (held('university') < 3) add('university', 18 - held('university') * 3);
+    if (held('barracks') < 2 + Math.floor(ctx.ownedCities / 4)) add('barracks', 13 + (front ? 5 : 0));
+    if (held('academy') < 1 && (isUnitUnlocked(state, me, 'stormtroopers') || ctx.mem.doctrine === 'infantry')) add('academy', 11);
+    if (held('armsWorks') < 2) add('armsWorks', 12 + (ctx.mem.doctrine === 'artillery' ? 3 : 0));
+    if (held('motorPool') < 1 && (isUnitUnlocked(state, me, 'motorised') || isUnitUnlocked(state, me, 'armouredCar'))) add('motorPool', 11);
+    if (held('tankWorks') < (ctx.mem.doctrine === 'armour' ? 2 : 1) && ctx.eco.income.fuel > 4) add('tankWorks', 15);
     if (def.oil && lvl('refinery') < 2) add('refinery', 18 - lvl('refinery') * 6);
-    else if (!def.oil && ctx.eco.net.fuel < 3 && count(ctx, 'refinery') < 3) add('refinery', 10);
+    else if (!def.oil && ctx.eco.net.fuel < 3 && held('refinery') < 3) add('refinery', 10);
     if (front && atWar) add('hospital', 8);
-    if (nationMorale < 55 && count(ctx, 'propaganda') < 3) add('propaganda', 16 - count(ctx, 'propaganda') * 3);
+    if (nationMorale < 55 && held('propaganda') < 3) add('propaganda', 16 - held('propaganda') * 3);
     if (!core && p.morale < 55) add('garrisonHq', 15);
     if (!p.supplied && !p.buildings.supplyDepot) add('supplyDepot', 30);
     if (threat > presence * 0.7 && threat > 0 && lvl('fortifications') < 3) add('fortifications', 15 + (def.objectiveVp ?? 0) * 4 - lvl('fortifications') * 3);

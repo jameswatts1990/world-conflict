@@ -409,6 +409,8 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   const out = emptyResources();
   if (ps.owner === NEUTRAL) return out;
   const b = ps.buildings;
+  // Land without output of its own (all the land round the cities) yields nothing whatever its owner's bonuses.
+  if (!b.refinery && RESOURCE_KEYS.every((k) => !def.production[k])) return out;
   const E = BUILDING_EFFECTS;
   const industry = b.industry ?? 0;
   const power = (b.powerPlant ?? 0) > 0 ? E.powerPlantLocal : 0;
@@ -469,6 +471,27 @@ export function nationEconomy(state: GameState, world: World, nation: NationId):
   return { income, upkeep, net };
 }
 
+/** Every nation's economy, as `nationEconomy` gives each, in one pass over the provinces and armies. */
+export function nationEconomies(state: GameState, world: World): Map<OwnerId, NationEconomy> {
+  const all = new Map<OwnerId, NationEconomy>(world.nationIds.map((id) => [id, { income: emptyResources(), upkeep: emptyResources(), net: emptyResources() }]));
+  for (const id of world.provinceIds) {
+    const eco = all.get(state.provinces[id].owner);
+    if (!eco) continue;
+    const o = provinceOutput(state, world, id);
+    for (const k of RESOURCE_KEYS) eco.income[k] += o[k];
+  }
+  for (const a of Object.values(state.armies)) {
+    const eco = all.get(a.owner);
+    if (!eco) continue;
+    for (const u of a.units) {
+      const up = UNITS[u.type].upkeepPerMinute;
+      for (const k of RESOURCE_KEYS) eco.upkeep[k] += up[k] ?? 0;
+    }
+  }
+  for (const eco of all.values()) for (const k of RESOURCE_KEYS) eco.net[k] = eco.income[k] - eco.upkeep[k];
+  return all;
+}
+
 export function perTick(perMinute: number, state: GameState): number {
   return perMinute / TICKS_PER_MINUTE / state.settings.durationScale;
 }
@@ -514,9 +537,11 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     const vp = heldVp(state, world, nation);
     const held = world.provinceIds.filter((id) => state.provinces[id].owner === nation);
     const cities = held.filter((id) => world.provinces[id].city).length;
+    // The land round a city scores as one province, shared out between its lands.
+    const land = held.reduce((t, id) => (world.provinces[id].city ? t : t + landShare(world, id)), 0);
     const techs = state.nations[nation].research.completed.length;
     const s = VICTORY.score;
-    const score = vp * s.perVp + cities * s.perCity + (held.length - cities) * s.perLand + techs * s.perTech;
+    const score = vp * s.perVp + cities * s.perCity + land * s.perLand + techs * s.perTech;
     return { nation, vp, provinces: held.length, techs, score };
   });
   // Stable ranking: score, then VP, then provinces, then scenario order.
@@ -524,6 +549,17 @@ export function computeScores(state: GameState, world: World): ScoreLine[] {
     .map((l, i) => ({ l, i }))
     .sort((x, y) => y.l.score - x.l.score || y.l.vp - x.l.vp || y.l.provinces - x.l.provinces || x.i - y.i)
     .map((x) => x.l);
+}
+
+/** How much of the land round its city a land is (1 for land without a city). */
+export function landShare(world: World, pid: ProvinceId): number {
+  const city = world.provinces[pid].around;
+  return city ? 1 / (world.provinces[city].lands?.length ?? 1) : 1;
+}
+
+/** How much of a place a province is: a city one, and the land round it one between its lands. */
+export function placeShare(world: World, pid: ProvinceId): number {
+  return world.provinces[pid].city ? 1 : landShare(world, pid);
 }
 
 /** Great and major powers contend for victory; minor powers can be conquered but never win. */

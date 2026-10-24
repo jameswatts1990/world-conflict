@@ -133,9 +133,9 @@ export const AI = {
   /** Accept peace after this long at war regardless (war weariness). */
   warWearinessSeconds: 1500,
   /**
-   * A winning AI settles once it holds this many of the enemy's home cities, and the war is this old; home land
-   * without its city counts as `warAimLandShare` of a city there, and as `landShare` wherever the AI weighs who is
-   * winning a war.
+   * A winning AI settles once it holds this many of the enemy's home cities, and the war is this old; the home land
+   * round a city, without the city, counts as `warAimLandShare` of it there, and as `landShare` wherever the AI
+   * weighs who is winning a war (shared between the lands round the city).
    */
   warAimProvinces: 2,
   warAimLandShare: 0,

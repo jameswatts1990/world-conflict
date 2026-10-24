@@ -30,7 +30,8 @@ const difficulty = (flag('difficulty') ?? 'normal') as AiDifficulty;
 const seeds = Number(args[0] ?? 10);
 const minutes = Number(args[1] ?? 90);
 const world = buildWorld(EUROPE_SCENARIO);
-const city = (pid: string) => world.provinces[pid].name;
+/** A place as the report counts it: a city by its name, land by its region's (as before the land was divided). */
+const place = (pid: string) => (world.provinces[pid].around ? (world.provinces[pid].region ?? world.provinces[pid].name) : world.provinces[pid].name);
 const REVERSAL_WINDOW = 240;
 /** The opening: captures made and wars started in this many minutes. */
 const OPENING_MINUTES = 25;
@@ -81,11 +82,11 @@ for (let seed = 1; seed <= seeds; seed++) {
     sim.run(60);
     for (const pid of world.provinceIds) {
       const owner = s.provinces[pid].owner;
-      if (owner !== startOwner[pid] && owner !== 'neutral') note(m, `${owner} takes ${city(pid)}`);
+      if (owner !== startOwner[pid] && owner !== 'neutral') note(m, `${owner} takes ${place(pid)}`);
       if (owner === startOwner[pid] || owner === 'neutral' || owner === human || captured.has(owner)) continue;
       captured.add(owner);
-      ((firstCapture[owner] ??= {})[city(pid)] ??= 0);
-      firstCapture[owner][city(pid)]++;
+      ((firstCapture[owner] ??= {})[place(pid)] ??= 0);
+      firstCapture[owner][place(pid)]++;
     }
     const wars = world.nationIds.flatMap((a) => world.nationIds.filter((b) => a < b && s.nations[a].relations[b]?.status === 'war').map((b) => `${a}-${b}`));
     for (const w of wars) note(m, `war ${w}`);

@@ -15,12 +15,13 @@ import {
   isArmyInTransit,
   isContender,
   nationEconomy,
+  placeShare,
   scaledTicks,
   type NationEconomy,
 } from '../queries';
 import { NEUTRAL, RESOURCE_KEYS, type AiMemory, type Army, type GameState, type NationId, type PartialResources, type ProvinceId } from '../types';
 import { isArmyVisible, visibleProvinces } from '../visibility';
-import { landOf, type World } from '../world';
+import type { World } from '../world';
 
 export interface Ctx {
   state: GameState;
@@ -43,8 +44,9 @@ export interface Ctx {
   /** Provinces in sight (fog of war): the only places where other nations' armies are known. */
   seen: ReadonlySet<ProvinceId>;
   /**
-   * For a province out of sight, a guess at the strength there of the nation holding it: the part
-   * of its army that is out of sight (its total is public), spread evenly over its unseen provinces.
+   * For a province out of sight, a guess at the strength there of the nation holding it: the part of its army
+   * that is out of sight (its total is public), spread evenly over what it holds out of sight (a city one place,
+   * the land round it one more between its lands).
    */
   unseen: Map<NationId, number>;
   /** Power of armies at war with me (stationed or arriving) per province, as far as I can see; neutral garrisons included. */
@@ -54,9 +56,9 @@ export interface Ctx {
   /** Owned provinces touching enemy or neutral territory. */
   frontier: Set<ProvinceId>;
   /**
-   * Danger to my capital, as far as I can see or estimate: hostile power in it, in its land or the lands next door,
-   * half of what stands in the lands beyond, and a share of the armies of great and major powers at peace, who
-   * could declare war. A capital in the interior is still in danger once an enemy is one land away.
+   * Danger to my capital, as far as I can see or estimate: hostile power in it, in its region or the regions next
+   * door, half of what stands in the regions beyond, and a share of the armies of great and major powers at peace,
+   * who could declare war. A capital in the interior is still in danger once an enemy is one region away.
    */
   capitalDanger: number;
   /** Share of armoured units among my enemies' armies, as far as I have seen them (0..1). */
@@ -113,6 +115,24 @@ export function armyLocation(army: Army, mine = false): ProvinceId {
   return move.leg.to;
 }
 
+const rings = new WeakMap<World, Map<ProvinceId, { ring1: Set<ProvinceId>; ring2: Set<ProvinceId> }>>();
+
+/**
+ * Where danger to a capital is reckoned, by region (a city with the lands round it): the capital's own region and
+ * the regions next to it, then the regions beyond. The map never changes, so each is worked out once.
+ */
+function ringsRound(world: World, capital: ProvinceId): { ring1: Set<ProvinceId>; ring2: Set<ProvinceId> } {
+  let byCapital = rings.get(world);
+  if (!byCapital) rings.set(world, (byCapital = new Map()));
+  let r = byCapital.get(capital);
+  if (!r) {
+    const ring1 = new Set(world.vicinity[capital]);
+    const ring2 = new Set([...ring1].flatMap((id) => world.vicinity[id]).filter((id) => id !== capital && !ring1.has(id)));
+    byCapital.set(capital, (r = { ring1, ring2 }));
+  }
+  return r;
+}
+
 export function buildContext(state: GameState, world: World, me: NationId): Ctx {
   const owned = world.provinceIds.filter((id) => state.provinces[id].owner === me);
   const ownedSet = new Set(owned);
@@ -127,19 +147,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   const total = new Map<NationId, number>();
   const inSight = new Map<NationId, number>();
   const capital = world.nations[me].capital;
-  // Danger is reckoned over the land: the capital's own land and the lands next to it, then the lands beyond, each
-  // with the city in its middle.
-  const withCity = (land: ProvinceId) => [land, ...(world.provinces[land].contains ? [world.provinces[land].contains!] : [])];
-  const home = landOf(world, capital);
-  const ring1 = new Set([home, ...world.neighbors[home].map((n) => n.id)].filter((id) => !world.provinces[id].city).flatMap(withCity));
-  ring1.delete(capital);
-  const ring2 = new Set(
-    [...ring1]
-      .filter((id) => !world.provinces[id].city)
-      .flatMap((id) => world.neighbors[id].map((n) => n.id))
-      .filter((id) => !world.provinces[id].city && !ring1.has(id))
-      .flatMap(withCity),
-  );
+  const { ring1, ring2 } = ringsRound(world, capital);
   const reach = (pid: ProvinceId) => (pid === capital || ring1.has(pid) ? 1 : ring2.has(pid) ? AI.capitalDepth : 0);
   // Enemies count in full; powers at peace could declare war, except minor powers, which never start one.
   const menace = (owner: NationId) => (areHostile(state, me, owner) ? 1 : isContender(world, owner) ? AI.peacetimeVigilance : 0);
@@ -163,18 +171,24 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
       if (a.owner !== NEUTRAL) striking.set(where, (striking.get(where) ?? 0) + pw);
     }
   }
+  // Spread over what each nation holds out of sight: a city one place and the land round it one more, shared
+  // between its lands, so dividing the land does not thin a nation's armies out.
+  const dark = new Map<string, number>();
+  for (const pid of world.provinceIds) {
+    const o = state.provinces[pid].owner;
+    if (o !== me && !seen.has(pid)) dark.set(o, (dark.get(o) ?? 0) + placeShare(world, pid));
+  }
   const unseen = new Map<NationId, number>();
   for (const n of world.nationIds) {
-    if (n === me) continue;
-    const dark = world.provinceIds.filter((pid) => state.provinces[pid].owner === n && !seen.has(pid)).length;
-    if (dark > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / dark);
+    const count = n === me ? 0 : (dark.get(n) ?? 0);
+    if (count > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / count);
   }
-  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in.
+  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in (a land its share).
   if (guardCapital) {
     for (const pid of [...ring1, ...ring2]) {
       const o = state.provinces[pid].owner;
       if (seen.has(pid) || o === me || o === NEUTRAL) continue;
-      capitalDanger += (unseen.get(o) ?? 0) * reach(pid) * menace(o);
+      capitalDanger += (unseen.get(o) ?? 0) * placeShare(world, pid) * reach(pid) * menace(o);
     }
   }
   // What the enemy fields: each enemy's armour share as last seen, weighted by its strength.

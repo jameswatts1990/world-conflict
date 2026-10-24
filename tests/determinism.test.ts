@@ -12,7 +12,7 @@ import {
   stepState,
   type Command,
 } from '../src/sim';
-import { aiGame, run, world } from './helpers';
+import { aiGame, landsOf, run, world } from './helpers';
 
 /** A scripted player (France) issuing orders at fixed ticks, plus five AIs. */
 const SCRIPT: { tick: number; command: Command }[] = [
@@ -52,6 +52,7 @@ describe('determinism', () => {
     expect(hashState(a)).not.toBe(hashState(b));
   });
 
+  // Four campaigns of 50 minutes each: more than the usual time limit allows on a slow machine.
   it('rendering frame rate does not change simulation outcomes', () => {
     const targetTicks = 3000; // 50 game-minutes
     const frameProfiles: Record<string, () => number> = {
@@ -93,7 +94,7 @@ describe('determinism', () => {
       hashes[name] = hashState(state);
     }
     expect(new Set(Object.values(hashes)).size).toBe(1);
-  });
+  }, 120000);
 
   it('a recorded command log replays to the same state', () => {
     const sim = new Simulation(world, scriptedGame());
@@ -156,17 +157,52 @@ describe('save / load', () => {
     // As a schema 5 save had it: no land round the cities, every army in a city, Paris lost to Germany.
     const old = JSON.parse(serializeGame(state, 'v5'));
     old.schemaVersion = old.state.schemaVersion = 5;
-    for (const id of Object.keys(old.state.provinces)) if (id.endsWith('-land')) delete old.state.provinces[id];
+    for (const id of Object.keys(old.state.provinces)) if (!world.provinces[id].city) delete old.state.provinces[id];
     for (const a of Object.values(old.state.armies) as Record<string, any>[]) {
-      a.province = a.province.replace(/-land$/, '');
+      a.province = world.provinces[a.province].around ?? a.province;
       if (a.move) a.move = { ...a.move, path: [], leg: null };
     }
+    old.state.battles = {};
     old.state.provinces['fr-paris'].owner = 'de';
     const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
     expect(Object.keys(loaded.provinces).sort()).toEqual([...world.provinceIds].sort());
-    expect(loaded.provinces['fr-paris-land'].owner).toBe('de');
-    expect(loaded.provinces['fr-nord-land'].owner).toBe('fr');
+    for (const land of landsOf('fr-paris')) expect(loaded.provinces[land].owner).toBe('de');
+    for (const land of landsOf('fr-nord')) expect(loaded.provinces[land].owner).toBe('fr');
     expect(Object.values(loaded.armies).every((a) => a.move === null)).toBe(true);
+    // And it plays on.
+    run(loaded, 600);
+    expect(loaded.outcome).toBeNull();
+  });
+
+  it('divides the land round each city of a save from before it was several provinces', () => {
+    const state = aiGame(9, 'fr');
+    run(state, 600);
+    // As a schema 6 save had it: one province of land round each city, holding the armies of all its lands.
+    const old = JSON.parse(serializeGame(state, 'v6'));
+    old.schemaVersion = old.state.schemaVersion = 6;
+    const land = (pid: string) => (world.provinces[pid].around ? `${world.provinces[pid].around}-land` : pid);
+    for (const city of world.cityIds) {
+      const [first, ...rest] = landsOf(city);
+      old.state.provinces[`${city}-land`] = { ...old.state.provinces[first], id: `${city}-land` };
+      for (const id of [first, ...rest]) delete old.state.provinces[id];
+    }
+    for (const a of Object.values(old.state.armies) as Record<string, any>[]) {
+      a.province = land(a.province);
+      if (a.move) a.move = { ...a.move, path: [], leg: null };
+    }
+    old.state.battles = {};
+    old.state.provinces['fr-nord-land'].owner = 'de';
+    old.state.provinces['fr-nord-land'].buildings = { fortifications: 2 };
+    const army = Object.values(old.state.armies as Record<string, any>).find((a) => a.owner === 'fr')!;
+    army.province = 'fr-east-land';
+    const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
+    expect(Object.keys(loaded.provinces).sort()).toEqual([...world.provinceIds].sort());
+    // Each new land takes the old one's owner; its works and its armies go to the largest.
+    for (const id of landsOf('fr-nord')) expect(loaded.provinces[id].owner).toBe('de');
+    expect(loaded.provinces[landsOf('fr-nord')[0]].buildings).toEqual({ fortifications: 2 });
+    for (const id of landsOf('fr-nord').slice(1)) expect(loaded.provinces[id].buildings).toEqual({});
+    expect(loaded.armies[army.id].province).toBe(landsOf('fr-east')[0]);
+    expect(Object.values(loaded.armies).every((a) => a.move === null && world.provinces[a.province])).toBe(true);
     // And it plays on.
     run(loaded, 600);
     expect(loaded.outcome).toBeNull();

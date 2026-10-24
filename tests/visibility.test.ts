@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TECH_BY_ID } from '../src/sim/config/research';
 import { SIGHT } from '../src/sim/config/rules';
-import { alliesOf, applyCommand, areAllies, armySight, isArmyVisible, legTicks, visibleProvinces, type GameState, type NationId } from '../src/sim';
-import { clearArmies, place, quietGame, run, setWar, world } from './helpers';
+import { alliesOf, applyCommand, areAllies, armySight, findPath, isArmyVisible, legTicks, visibleProvinces, type GameState, type NationId } from '../src/sim';
+import { clearArmies, landOf, landsOf, place, quietGame, run, setWar, world } from './helpers';
 
 function research(state: GameState, nation: NationId, tech: string) {
   state.nations[nation].research.completed.push(tech);
@@ -20,16 +20,16 @@ describe('fog of war', () => {
     for (const id of ['de-bavaria', 'de-berlin', 'it-rome', 'pl-warsaw', 'es-madrid']) expect(seen.has(id)).toBe(false);
   });
 
-  it('sight is reckoned over the land: seeing a land shows its city, and a city looks out from its land', () => {
+  it('sight is reckoned over the land: seeing a land next to a city shows the city, and a city looks out from its lands', () => {
     const state = quietGame();
     clearArmies(state);
-    // Belgium holds only Brussels and the land round it: from there it sees the French lands next door and
-    // the cities inside them, but no further.
+    // Belgium holds only Brussels and the lands round it: from there it sees the lands next door and the
+    // cities they lie round, but no further.
     const seen = visibleProvinces(state, world, 'be');
-    for (const id of ['fr-nord-land', 'fr-nord', 'de-ruhr-land', 'de-ruhr', 'nl-amsterdam']) expect(seen.has(id)).toBe(true);
+    for (const id of [landOf('fr-nord', 'be-brussels'), 'fr-nord', landOf('de-ruhr', 'be-brussels'), 'de-ruhr', 'nl-amsterdam']) expect(seen.has(id)).toBe(true);
     expect(seen.has('fr-paris')).toBe(false);
     // A city cut off inside enemy land still looks out over the lands next to its own.
-    state.provinces['be-brussels-land'].owner = 'fr';
+    for (const land of landsOf('be-brussels')) state.provinces[land].owner = 'fr';
     expect(visibleProvinces(state, world, 'be').has('fr-nord')).toBe(true);
   });
 
@@ -73,11 +73,24 @@ describe('fog of war', () => {
     clearArmies(state);
     setWar(state, 'fr', 'de');
     place(state, 'fr', 'de-hesse', { infantry: 1 });
-    const german = place(state, 'de', 'de-berlin-land', { infantry: 1 });
     const seen = () => visibleProvinces(state, world, 'fr');
+    // A road from German land out of sight into German land in sight, between two regions (so not
+    // the way through a city).
+    const now = seen();
+    const road = world.scenario.connections.find(
+      (c) =>
+        c.kind === 'land' &&
+        world.regionOf[c.a] !== world.regionOf[c.b] &&
+        world.provinces[c.a].core === 'de' &&
+        world.provinces[c.b].core === 'de' &&
+        now.has(c.a) !== now.has(c.b),
+    )!;
+    const [from, to] = now.has(road.a) ? [road.b, road.a] : [road.a, road.b];
+    const german = place(state, 'de', from, { infantry: 1 });
+    expect(findPath(state, world, german, from, to)!.path).toEqual([to]);
     expect(isArmyVisible(german, 'fr', seen())).toBe(false);
-    const ticks = legTicks(state, world, german, 'de-berlin-land', 'de-saxony-land');
-    expect(applyCommand(state, world, { type: 'move', nation: 'de', armyId: german.id, to: 'de-saxony-land' }).ok).toBe(true);
+    const ticks = legTicks(state, world, german, from, to);
+    expect(applyCommand(state, world, { type: 'move', nation: 'de', armyId: german.id, to }).ok).toBe(true);
     run(state, Math.floor(ticks / 2) - 1);
     expect(isArmyVisible(german, 'fr', seen())).toBe(false);
     run(state, 2);

@@ -5,6 +5,7 @@ import {
   armyPower,
   captureTicks,
   createInitialState,
+  placeShare,
   roadBorder,
   scaledTicks,
   setAiOrderTrace,
@@ -15,7 +16,7 @@ import {
 } from '../src/sim';
 import { buildContext, observeForces } from '../src/sim/ai/context';
 import { attackNeed } from '../src/sim/ai/military';
-import { aiGame, clearArmies, place, run, setWar, world } from './helpers';
+import { aiGame, clearArmies, landOf, landsOf, place, run, setWar, world } from './helpers';
 
 /** A game in which only the given nation is run by the computer. */
 function soloAi(nation: NationId, seed = 5): GameState {
@@ -159,10 +160,10 @@ describe('AI personalities', () => {
         drawn.add(`${n}:${claims.join(',')}`);
         expect(new Set(claims).size).toBe(claims.length);
         for (const pid of claims) {
-          // A city whose land borders the AI's own.
+          // A city one of whose lands borders the AI's own.
           expect(world.provinces[pid].city).toBeDefined();
           expect(state.provinces[pid].owner).not.toBe(n);
-          expect(world.neighbors[world.provinces[pid].within!].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n)).toBe(true);
+          expect(landsOf(pid).some((land) => world.neighbors[land].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n))).toBe(true);
         }
       }
       // An island power has no land border to claim across.
@@ -233,8 +234,9 @@ describe('AI under the fog of war', () => {
     expect(ctx.seen.has('de-berlin')).toBe(false);
     expect(ctx.hostile.has('de-berlin')).toBe(false);
     expect(ctx.enemyArmour).toBe(0);
-    // Germany's military power is public, so France spreads it over the German provinces it cannot see.
-    const dark = world.provinceIds.filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p)).length;
+    // Germany's military power is public, so France spreads it over the German places it cannot see: each city one,
+    // and the land round it one more, shared between its lands.
+    const dark = world.provinceIds.filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p)).reduce((t, p) => t + placeShare(world, p), 0);
     expect(ctx.unseen.get('de')).toBeCloseTo(armyPower(state, tanks) / dark);
 
     // A French cavalry scout two provinces away finds it.
@@ -257,14 +259,14 @@ describe('AI under the fog of war', () => {
     const state = aiGame(5);
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    // Baden's land borders France and is in sight; Bavaria's, behind it, and Berlin are not.
-    const army = place(state, 'de', 'de-bavaria-land', { infantry: 10 });
-    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-land');
+    // Baden, by the Rhine, borders France and is in sight; Swabia, behind it, and Berlin are not.
+    const army = place(state, 'de', 'de-bavaria-w', { infantry: 10 });
+    const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-sw');
     const hidden = need();
     army.province = 'de-berlin';
     expect(need()).toBeCloseTo(hidden);
     // In plain sight next door, the same army raises the bar.
-    army.province = 'de-hesse-land';
+    army.province = 'de-hesse-w';
     expect(need()).toBeGreaterThan(hidden);
   });
 
@@ -285,8 +287,8 @@ describe('AI forward positions', () => {
     if (difficulty) state.settings.difficulty = difficulty;
     clearArmies(state);
     place(state, 'fr', 'fr-paris', { infantry: 6, artillery: 2 });
-    const guard = place(state, 'fr', 'fr-east-land', { infantry: 3 });
-    place(state, 'de', 'de-hesse-land', { infantry: 8, artillery: 2 });
+    const guard = place(state, 'fr', 'fr-east-w', { infantry: 3 });
+    place(state, 'de', 'de-hesse-w', { infantry: 8, artillery: 2 });
     setWar(state, 'fr', 'de');
     return { state, guard };
   }
@@ -301,11 +303,11 @@ describe('AI forward positions', () => {
       setAiOrderTrace(null);
     }
     const army = state.armies[guard.id];
-    expect(army.province).toBe('fr-east-land');
+    expect(army.province).toBe('fr-east-w');
     expect(army.move).toBeNull();
-    expect(army.road?.toward).toBe('de-hesse-land');
-    expect(army.road!.at).toBeLessThan(roadBorder(world, 'fr-east-land', 'de-hesse-land'));
-    expect(army.road!.at).toBeCloseTo(roadBorder(world, 'fr-east-land', 'de-hesse-land') * AI.forwardDepth, 2);
+    expect(army.road?.toward).toBe('de-hesse-w');
+    expect(army.road!.at).toBeLessThan(roadBorder(world, 'fr-east-w', 'de-hesse-w'));
+    expect(army.road!.at).toBeCloseTo(roadBorder(world, 'fr-east-w', 'de-hesse-w') * AI.forwardDepth, 2);
     // One order to go forward, and then it stays put.
     expect(orders.filter((o) => o.armyId === guard.id).map((o) => o.reason)).toEqual(['screen']);
   });
@@ -314,17 +316,17 @@ describe('AI forward positions', () => {
     // A little more in Baden than in Hesse: not enough to turn round, however long it waits.
     const little = front();
     run(little.state, 60);
-    place(little.state, 'de', 'de-baden-land', { infantry: 9 });
+    place(little.state, 'de', 'de-baden-sw', { infantry: 9 });
     run(little.state, AI.screenHold + 60);
-    expect(little.state.armies[little.guard.id].road?.toward).toBe('de-hesse-land');
+    expect(little.state.armies[little.guard.id].road?.toward).toBe('de-hesse-w');
     // A great deal more: it holds its facing for a while, then turns to face it.
     const { state, guard } = front();
     run(state, 60);
-    place(state, 'de', 'de-baden-land', { infantry: 24, artillery: 6 });
+    place(state, 'de', 'de-baden-sw', { infantry: 24, artillery: 6 });
     run(state, 60);
-    expect(state.armies[guard.id].road?.toward).toBe('de-hesse-land');
+    expect(state.armies[guard.id].road?.toward).toBe('de-hesse-w');
     run(state, AI.screenHold);
-    expect(state.armies[guard.id].road?.toward).toBe('de-baden-land');
+    expect(state.armies[guard.id].road?.toward).toBe('de-baden-sw');
     expect(state.nations.fr.ai!.screens?.[guard.id]).toBeDefined();
   });
 
@@ -339,18 +341,20 @@ describe('AI forward positions', () => {
     const state = soloAi('es');
     clearArmies(state);
     state.nations.es.ai!.aggression = 0.9;
-    place(state, 'es', 'es-castile-land', { infantry: 4 });
-    place(state, 'es', 'es-madrid-land', { infantry: 8, artillery: 3 });
+    const portugal = new Set(landsOf('pt-lisbon'));
+    place(state, 'es', landOf('es-castile', 'pt-lisbon'), { infantry: 4 });
+    place(state, 'es', landOf('es-madrid'), { infantry: 8, artillery: 3 });
     place(state, 'es', 'es-madrid', { infantry: 4 });
-    place(state, 'pt', 'pt-lisbon-land', { infantry: 3 });
+    place(state, 'pt', landOf('pt-lisbon', 'es-castile'), { infantry: 3 });
     setWar(state, 'es', 'pt');
     const orders: AiOrderTrace[] = [];
     const spots: string[] = [];
+    const taken = () => [...portugal].some((pid) => state.provinces[pid].owner === 'es');
     setAiOrderTrace((t) => orders.push(t));
     try {
-      for (let t = 0; t < 300 && state.provinces['pt-lisbon-land'].owner === 'pt'; t++) {
+      for (let t = 0; t < 300 && !taken(); t++) {
         run(state, 1);
-        for (const a of Object.values(state.armies)) if (a.owner === 'es' && a.road?.toward === 'pt-lisbon-land') spots.push(a.id);
+        for (const a of Object.values(state.armies)) if (a.owner === 'es' && a.road && portugal.has(a.road.toward)) spots.push(a.id);
       }
     } finally {
       setAiOrderTrace(null);
@@ -358,6 +362,6 @@ describe('AI forward positions', () => {
     // The build-up stood on the road into Portugal, and the attack went in from there.
     expect(spots.length).toBeGreaterThan(0);
     expect(orders.some((o) => o.reason === 'stage')).toBe(true);
-    expect(orders.some((o) => o.reason === 'attack' && o.to === 'pt-lisbon-land')).toBe(true);
+    expect(orders.some((o) => o.reason === 'attack' && portugal.has(o.to))).toBe(true);
   });
 });

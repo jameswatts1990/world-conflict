@@ -140,7 +140,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
                   {s.vp}
                 </td>
                 <td className="num score dc-score" data-label="Score">
-                  {s.score}
+                  {Math.round(s.score)}
                 </td>
                 <td className="actions">
                   {!me && !n.eliminated && rel.status === 'peace' && (
@@ -189,8 +189,8 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
         </tbody>
       </table>
       <p className="intro small">
-        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perCity} × cities + {VICTORY.score.perLand} × other provinces + {VICTORY.score.perTech} ×
-        technologies. The highest score wins when the campaign time limit is reached.
+        Score = {VICTORY.score.perVp} × VP + {VICTORY.score.perCity} × cities + {VICTORY.score.perLand} × the land round each city (shared
+        between its provinces) + {VICTORY.score.perTech} × technologies. The highest score wins when the campaign time limit is reached.
       </p>
 
       <h4>

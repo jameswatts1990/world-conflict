@@ -8,7 +8,7 @@ import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, isArmyAway, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import { NEUTRAL, type Army, type GameState, type MoveLeg, type ProvinceId, type RoadHalt, type UnitType } from '../types';
 import { provinceName } from '../text';
-import { connectionBetween, isCity, type World } from '../world';
+import { connectionBetween, isCity, isCityGate, type World } from '../world';
 import { withdrawArmy as withdrawUnderFire } from './combat';
 import { withdrawArmy } from './territory';
 
@@ -40,8 +40,7 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
     if (p.owner === army.owner && (p.buildings.railway ?? 0) > 0) rail++;
   }
   const railMult = rail === 0 ? 1 : rail === 1 ? 1 - BUILDING_EFFECTS.railwayLeg : 1 - BUILDING_EFFECTS.railwayLeg * 1.75;
-  const gate = world.provinces[from].within === to || world.provinces[to].within === from;
-  return Math.max(scaledTicks(state, gate ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
+  return Math.max(scaledTicks(state, isCityGate(world, from, to) ? MOVEMENT.minGateSeconds : MOVEMENT.minLegSeconds), Math.ceil(worst * railMult));
 }
 
 /**
