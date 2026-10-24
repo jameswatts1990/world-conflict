@@ -36,7 +36,18 @@ import {
   type World,
 } from '../../sim';
 import { slotsUsed } from '../../sim/config/buildings';
-import { CounterArt, citySprite, portSprite, unitSprite, type CitySprite, type CitySpriteProps, type PortSpriteProps, type SpriteImage } from '../art/adapters';
+import {
+  CounterArt,
+  citySprite,
+  onBitmapsBaked,
+  portSprite,
+  spriteHref,
+  unitSprite,
+  type CitySprite,
+  type CitySpriteProps,
+  type PortSpriteProps,
+  type SpriteImage,
+} from '../art/adapters';
 import { headingFor } from '../art/UnitModel';
 import { darken, lighten, ownerColor, strengthColor, vivid } from '../color';
 import { formatDuration } from '../format';
@@ -801,11 +812,17 @@ function Plate({ text, y, color, size = 10, className = '' }: { text: string; y:
   );
 }
 
+/**
+ * What a sprite is drawn with, `px` screen pixels to the model unit, where it stands on the map: a bitmap
+ * baked for the zoom near what is drawn, its SVG until then (see `spriteHref`).
+ */
+type SpriteSource = (image: { href: string; width: number; height: number }, px: number, at: readonly [number, number]) => string;
+
 /** One of a model's images (a city's, or its port's) at its anchor, `px` screen pixels to the model unit. */
-function ModelImage({ image, at: [x, y], k, px, fogged }: { image: SpriteImage; at: [number, number]; k: number; px: number; fogged?: boolean }) {
+function ModelImage({ image, at, k, px, src, fogged }: { image: SpriteImage; at: [number, number]; k: number; px: number; src: SpriteSource; fogged?: boolean }) {
   return (
-    <g transform={`translate(${x},${y}) scale(${1 / k})`} className={fogged ? 'fogged' : undefined}>
-      <image href={image.href} x={-image.cx * px} y={-image.cy * px} width={image.width * px} height={image.height * px} />
+    <g transform={`translate(${at[0]},${at[1]}) scale(${1 / k})`} className={fogged ? 'fogged' : undefined}>
+      <image href={src(image, px, at)} x={-image.cx * px} y={-image.cy * px} width={image.width * px} height={image.height * px} preserveAspectRatio="none" />
     </g>
   );
 }
@@ -821,6 +838,7 @@ function CityGroundLayer({
   ratio,
   cities,
   seen,
+  src,
 }: {
   geo: MapGeometry;
   world: World;
@@ -828,9 +846,10 @@ function CityGroundLayer({
   ratio: number;
   cities: Record<ProvinceId, CityFootprint>;
   seen: ReadonlySet<ProvinceId>;
+  src: SpriteSource;
 }) {
   const px = cityModelScale(ratio);
-  const streets = (id: ProvinceId) => <ModelImage key={id} image={cities[id].sprite!.ground} at={geo.anchors[id]} k={k} px={px} fogged={!seen.has(id)} />;
+  const streets = (id: ProvinceId) => <ModelImage key={id} image={cities[id].sprite!.ground} at={geo.anchors[id]} k={k} px={px} src={src} fogged={!seen.has(id)} />;
   return (
     <g className="city-ground" pointerEvents="none">
       {world.cityIds.filter((id) => !geo.reach[id]).map(streets)}
@@ -886,6 +905,7 @@ function CityLayer({
   cities,
   seen,
   handlers,
+  src,
 }: {
   geo: MapGeometry;
   state: GameState;
@@ -895,6 +915,7 @@ function CityLayer({
   cities: Record<ProvinceId, CityFootprint> | null;
   seen: ReadonlySet<ProvinceId>;
   handlers: ProvinceHandlers;
+  src: SpriteSource;
 }) {
   const s = 1 / k;
   const px = cityModelScale(ratio);
@@ -923,7 +944,7 @@ function CityLayer({
       {cities &&
         world.cityIds.map((id) => {
           const port = cities[id].port;
-          return port && <ModelImage key={`port-${id}`} image={port.image} at={[port.x, port.y]} k={k} px={px} fogged={!seen.has(id)} />;
+          return port && <ModelImage key={`port-${id}`} image={port.image} at={[port.x, port.y]} k={k} px={px} src={src} fogged={!seen.has(id)} />;
         })}
       {world.cityIds.map((id) => {
         const def = world.provinces[id];
@@ -947,7 +968,15 @@ function CityLayer({
           return (
             <g key={id} transform={`translate(${x},${y}) scale(${s})`} data-city-model={id} className={fogged ? 'fogged' : undefined}>
               <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="city-hit" {...hit(id)} />
-              <image href={st.href} x={-st.cx * px} y={-st.cy * px} width={st.width * px} height={st.height * px} pointerEvents="none" />
+              <image
+                href={src(st, px, geo.anchors[id])}
+                x={-st.cx * px}
+                y={-st.cy * px}
+                width={st.width * px}
+                height={st.height * px}
+                preserveAspectRatio="none"
+                pointerEvents="none"
+              />
               {capture && (
                 <g className="capture" pointerEvents="none">
                   <ellipse cx={cx} cy={cy} rx={rx} ry={ry} className="capture-track" />
@@ -1292,8 +1321,19 @@ function useArmyClock(ctrl: GameController, panning: RefObject<boolean>): void {
   });
 }
 
-/** While a pinch or wheel zoom lasts, the map is redrawn for the new scale at most this often (ms). */
-const RESCALE_MS = 120;
+/**
+ * While a drag, pinch or wheel zoom lasts, the drawing on screen is only moved and scaled (the compositor
+ * does that without redrawing it); it is redrawn for the view once the zoom has drifted this far from the
+ * one it was drawn at, either way, or the gesture pauses for RESCALE_MS.
+ */
+const RESCALE = 2;
+const RESCALE_MS = 220;
+
+/**
+ * How far past each edge of the screen the map is drawn (CSS pixels), so moving the drawing during a
+ * gesture shows map rather than blank. It is redrawn for the view before the margin runs out.
+ */
+const overscanFor = (width: number, height: number) => Math.round(Math.min(520, Math.max(120, 0.35 * Math.max(width, height))));
 
 /** How long an army takes to walk to a new spot (arriving, setting off, making room). */
 const SETTLE_MS = 450;
@@ -1445,6 +1485,7 @@ function ArmyModelLayer({
   onArmyClick,
   onArmyContext,
   onHover,
+  src,
 }: {
   ctrl: GameController;
   geo: MapGeometry;
@@ -1452,6 +1493,7 @@ function ArmyModelLayer({
   panning: RefObject<boolean>;
   /** Screen pixels per model unit. */
   px: number;
+  src: SpriteSource;
   cities: Record<ProvinceId, CityFootprint>;
   /** Layer under the cities, for models standing behind one (their badges stay on top). */
   back: SVGGElement | null;
@@ -1552,7 +1594,7 @@ function ArmyModelLayer({
         <rect x={-hw} y={Math.min(top, -26)} width={hw * 2} height={Math.max(top + h, room * 0.5) - Math.min(top, -26)} className="army-hit" />
         {p.model !== 'transport' && <ellipse rx={room} ry={room / 2} className="army-ring" fill={ownerColor(world, army.owner)} />}
         {sel && <ellipse rx={room * 1.22} ry={room * 0.61} className="army-select-ring" />}
-        <image href={sprite.href} x={left} y={top} width={w} height={h} />
+        <image href={src(sprite, px, [p.x, p.y])} x={left} y={top} width={w} height={h} preserveAspectRatio="none" />
       </g>,
     );
     badges.push([
@@ -1809,25 +1851,35 @@ function homeView(
 export function MapView(props: MapViewProps) {
   const { ctrl, geo } = props;
   const { world, state, human } = ctrl;
-  const svgRef = useRef<SVGSVGElement>(null);
-  const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  // The zoom behaviour listens on the stage, which stays put; the drawing inside it moves during a gesture.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const shieldRef = useRef<HTMLDivElement>(null);
+  const zoomRef = useRef<ZoomBehavior<HTMLDivElement, unknown> | null>(null);
   const insetRef = useRef(props.insetRight);
   insetRef.current = props.insetRight;
   const insetBottomRef = useRef(props.insetBottom);
   insetBottomRef.current = props.insetBottom;
   const compactRef = useRef(props.compact);
   compactRef.current = props.compact;
-  // The view the map is drawn for (`transform`), and the one on screen right now (`live`). A pan only
-  // moves the picture: the zoom handler sets the map group's transform itself, and React draws again
-  // when the gesture ends. A change of scale redraws the counters, labels and models for the new zoom
-  // as well, at most every RESCALE_MS while it lasts.
+  // The view the map is drawn for (`transform`; `drawn` once it is in the page), and the one on screen
+  // right now (`live`). During a gesture the zoom handler only moves and scales the drawing, a layer of its
+  // own that the compositor moves without drawing it again (`place`), with a margin of map drawn round the
+  // screen to move into (`overscanFor`). React draws the map again in the middle of a gesture when the
+  // margin is about to run out or the zoom has drifted (RESCALE), and once it ends if the zoom changed or
+  // the margin no longer covers the screen: a drag alone leaves the drawing where it was moved.
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
+  const drawn = useRef<ZoomTransform>(zoomIdentity);
   const live = useRef<ZoomTransform>(zoomIdentity);
-  const viewRef = useRef<SVGGElement>(null);
+  // Where the view came to rest after the last gesture (the overview map shows it).
+  const [rest, setRest] = useState<ZoomTransform>(zoomIdentity);
   // Whether a drag, pinch, wheel or animated move of the map is under way.
   const panning = useRef(false);
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
+  const overscan = overscanFor(size[0], size[1]);
+  const frame = useRef({ size, overscan });
+  frame.current = { size, overscan };
   const [hovered, setHovered] = useState<ProvinceId | null>(null);
   /** Pointing at one of the selected armies themselves: no route to preview. */
   const [hoverSelf, setHoverSelf] = useState(false);
@@ -1868,14 +1920,74 @@ export function MapView(props: MapViewProps) {
     return () => window.clearTimeout(timer);
   }, [ctrl, world, geo]);
 
+  // The map is drawn again as sprites' bitmaps are baked (see `spriteSrc`).
+  const [, bitmapsBaked] = useState(0);
+  useEffect(() => onBitmapsBaked(() => bitmapsBaked((n) => n + 1)), []);
+
+  /** Moves and scales the drawing on screen from the view it was drawn for to the live one. */
+  const place = useCallback(() => {
+    const layer = layerRef.current;
+    if (!layer) return;
+    const [d, l] = [drawn.current, live.current];
+    const s = l.k / d.k;
+    const [x, y] = [l.x - s * d.x, l.y - s * d.y];
+    // Never `none`, even at rest: going from none to a transform also lays out the map's text again.
+    layer.style.transform = `translate(${x}px,${y}px) scale(${s})`;
+    // So does finding what the pointer is over while the drawing is scaled (every wheel event does), so
+    // until it is drawn for its new zoom a bare shield over it takes the pointer.
+    if (shieldRef.current) shieldRef.current.style.display = s === 1 ? '' : 'block';
+  }, []);
+
+  /**
+   * Whether the drawing, moved to the live view, still covers the screen with room to spare, near enough the zoom
+   * it was drawn for. Zooming out it soon falls short of the edges, where the sea's colour shows through until it
+   * is drawn again (at half the zoom, or when the zoom ends), rather than being drawn again at every step.
+   */
+  const drawingFits = useCallback(() => {
+    const [d, l] = [drawn.current, live.current];
+    const {
+      size: [w, h],
+      overscan: m,
+    } = frame.current;
+    const s = l.k / d.k;
+    if (s > RESCALE || s * RESCALE < 1) return false;
+    const [x, y] = [l.x - s * d.x, l.y - s * d.y];
+    // How far each edge may fall short: by what the zoom shrank the screen's half, zooming out; never otherwise (with room to spare).
+    const [gx, gy] = s < 1 ? [((1 - s) * w) / 2, ((1 - s) * h) / 2] : [-m / 4, -m / 4];
+    return x - s * m <= gx && y - s * m <= gy && x + s * (w + m) >= w - gx && y + s * (h + m) >= h - gy;
+  }, []);
+
+  // A new drawing and the move that lines it up with the live view reach the screen together.
+  useLayoutEffect(() => {
+    drawn.current = transform;
+    place();
+  }, [transform, place]);
+  // A new size of screen: drawn again to fill it.
+  useEffect(() => setTransform(live.current), [size]);
+
   // Zoom & pan.
   useEffect(() => {
-    const svg = svgRef.current!;
-    const { width, height } = svg.getBoundingClientRect();
+    const stage = stageRef.current!;
+    const { width, height } = stage.getBoundingClientRect();
     const fit = fitFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
     const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
-    const behavior = zoom<SVGSVGElement, unknown>()
+    let rescale = 0;
+    const redraw = () => {
+      window.clearTimeout(rescale);
+      rescale = 0;
+      setTransform(live.current);
+      setRest(live.current);
+    };
+    /** At rest after a gesture or a jump: drawn again only if the zoom changed or the drawing no longer covers the screen. */
+    const settle = () => {
+      if (live.current.k !== drawn.current.k || !drawingFits()) return redraw();
+      window.clearTimeout(rescale);
+      rescale = 0;
+      place();
+      setRest(live.current);
+    };
+    const behavior = zoom<HTMLDivElement, unknown>()
       .scaleExtent([minK, Math.max(fit.k, MIN_ZOOM_BASE) * MAX_ZOOM])
       .translateExtent([
         [x0, y0],
@@ -1884,55 +1996,51 @@ export function MapView(props: MapViewProps) {
       .clickDistance(5)
       // Shift-drag draws a selection box instead of panning.
       .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
-      .on('zoom', (e: D3ZoomEvent<SVGSVGElement, unknown>) => {
+      .on('zoom', (e: D3ZoomEvent<HTMLDivElement, unknown>) => {
         live.current = e.transform;
-        viewRef.current?.setAttribute('transform', e.transform.toString());
-        if (!panning.current) commit();
-        else if (e.transform.k !== drawnK && !rescale) rescale = window.setTimeout(commit, RESCALE_MS);
+        // A jump (the opening view, an arrow key) comes to rest at once.
+        if (!panning.current) return settle();
+        place();
+        window.clearTimeout(rescale);
+        if (!drawingFits()) redraw();
+        // A zoom that pauses is drawn for its scale.
+        else if (e.transform.k !== drawn.current.k) rescale = window.setTimeout(redraw, RESCALE_MS);
       })
       .on('start', () => {
         panning.current = true;
       })
       .on('end', () => {
         panning.current = false;
-        commit();
+        settle();
       });
-    let drawnK = 0;
-    let rescale = 0;
-    const commit = () => {
-      window.clearTimeout(rescale);
-      rescale = 0;
-      drawnK = live.current.k;
-      setTransform(live.current);
-    };
     zoomRef.current = behavior;
     setFitK(fit.k);
     setSize([width, height]);
-    const sel = select(svg);
+    const sel = select(stage);
     sel.call(behavior).on('dblclick.zoom', null);
     const home = world.provinceIds.filter((id) => ctrl.state.provinces[id].owner === ctrl.human);
     const capital = world.nations[ctrl.human].capital;
     sel.call(behavior.transform, homeView(geo, home, capital, compactRef.current, width, height, insetRef.current, insetBottomRef.current));
     const ro = new ResizeObserver(() => {
-      const r = svg.getBoundingClientRect();
+      const r = stage.getBoundingClientRect();
       setSize([r.width, r.height]);
     });
-    ro.observe(svg);
+    ro.observe(stage);
     return () => {
       ro.disconnect();
       window.clearTimeout(rescale);
       sel.on('.zoom', null);
     };
-  }, [geo, world, ctrl]);
+  }, [geo, world, ctrl, place, drawingFits]);
 
   const centreOn = useCallback((x: number, y: number, k: number | null, duration: number) => {
-    const svg = svgRef.current;
+    const stage = stageRef.current;
     const behavior = zoomRef.current;
-    if (!svg || !behavior) return;
-    const { width, height } = svg.getBoundingClientRect();
+    if (!stage || !behavior) return;
+    const { width, height } = stage.getBoundingClientRect();
     const cx = Math.max(120, width - insetRef.current) / 2;
     const cy = Math.max(120, height - insetBottomRef.current) / 2;
-    const sel = select(svg);
+    const sel = select(stage);
     if (k === null) {
       if (duration) sel.transition().duration(duration).call(behavior.translateTo, x, y, [cx, cy]);
       else sel.call(behavior.translateTo, x, y, [cx, cy]);
@@ -1960,12 +2068,12 @@ export function MapView(props: MapViewProps) {
       if (!dir || e.ctrlKey || e.metaKey || e.altKey) return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA' || document.querySelector('.modal-backdrop, .tutorial-backdrop')) return;
-      const svg = svgRef.current;
+      const stage = stageRef.current;
       const behavior = zoomRef.current;
-      if (!svg || !behavior) return;
+      if (!stage || !behavior) return;
       e.preventDefault();
-      const step = (e.shiftKey ? 260 : 90) / zoomTransform(svg).k;
-      select(svg).call(behavior.translateBy, dir[0] * step, dir[1] * step);
+      const step = (e.shiftKey ? 260 : 90) / zoomTransform(stage).k;
+      select(stage).call(behavior.translateBy, dir[0] * step, dir[1] * step);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -1974,10 +2082,10 @@ export function MapView(props: MapViewProps) {
   // Shift-drag: a box that selects your armies inside it. A short drag is a Shift-click (adds one army).
   const [box, setBox] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
   const boxEnded = useRef(false);
-  const startBox = (e: React.MouseEvent<SVGSVGElement>) => {
+  const startBox = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!e.shiftKey || e.button !== 0 || props.touch || !props.onBoxSelect) return;
-    const svg = svgRef.current!;
-    const r = svg.getBoundingClientRect();
+    const layer = layerRef.current!;
+    const r = stageRef.current!.getBoundingClientRect();
     const [x0, y0] = [e.clientX - r.left, e.clientY - r.top];
     let end: [number, number] | null = null;
     const move = (ev: MouseEvent) => {
@@ -1996,7 +2104,7 @@ export function MapView(props: MapViewProps) {
       const [left, right] = [r.left + Math.min(x0, end[0]), r.left + Math.max(x0, end[0])];
       const [top, bottom] = [r.top + Math.min(y0, end[1]), r.top + Math.max(y0, end[1])];
       const ids = new Set<ArmyId>();
-      for (const g of svg.querySelectorAll('g[data-army]')) {
+      for (const g of layer.querySelectorAll('g[data-army]')) {
         const id = g.getAttribute('data-army')!;
         if (ctrl.state.armies[id]?.owner !== ctrl.human) continue;
         const b = g.getBoundingClientRect();
@@ -2011,13 +2119,13 @@ export function MapView(props: MapViewProps) {
   };
 
   const zoomBy = (factor: number) => {
-    if (svgRef.current && zoomRef.current) select(svgRef.current).transition().duration(220).call(zoomRef.current.scaleBy, factor);
+    if (stageRef.current && zoomRef.current) select(stageRef.current).transition().duration(220).call(zoomRef.current.scaleBy, factor);
   };
   const zoomFit = () => {
-    const svg = svgRef.current;
-    if (!svg || !zoomRef.current) return;
-    const { width, height } = svg.getBoundingClientRect();
-    select(svg).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current, insetBottomRef.current).transform);
+    const stage = stageRef.current;
+    if (!stage || !zoomRef.current) return;
+    const { width, height } = stage.getBoundingClientRect();
+    select(stage).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current, insetBottomRef.current).transform);
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
@@ -2071,7 +2179,16 @@ export function MapView(props: MapViewProps) {
 
   const k = transform.k;
   const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
-  const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
+  const view: [number, number, number, number] = [-rest.x / rest.k, -rest.y / rest.k, size[0] / rest.k, size[1] / rest.k];
+  // What the drawing covers: the screen it was drawn for and the margin round it.
+  const drawnView: [number, number, number, number] = [(-transform.x - overscan) / k, (-transform.y - overscan) / k, (size[0] + 2 * overscan) / k, (size[1] + 2 * overscan) / k];
+  // Sprites in what is drawn are baked into bitmaps for this zoom. As for the terrain, past 2 device pixels
+  // per screen pixel the extra sharpness is not worth the baking.
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const spriteSrc: SpriteSource = (image, px, [x, y]) => {
+    const [vx, vy, vw, vh] = drawnView;
+    return spriteHref(image, px * dpr, x > vx && x < vx + vw && y > vy && y < vy + vh);
+  };
   const showDetail = ratio >= ZOOM.detail;
   const modelPx = cityModelScale(ratio);
 
@@ -2207,10 +2324,15 @@ export function MapView(props: MapViewProps) {
 
   const owners: string[] = [...world.nationIds, 'neutral'];
   return (
-    <div className="map-stage">
-      <svg
-        ref={svgRef}
-        className={`map mode-${props.mapMode}${props.moveMode ? ' move-mode' : ''}`}
+    <div className="map-stage" ref={stageRef}>
+      {/*
+       * The screen and the margin round it, which `place` moves during a gesture. Moving this rather than the
+       * <svg> itself: a change to the <svg>'s own transform makes the browser lay out all its text again.
+       */}
+      <div
+        ref={layerRef}
+        className="map-layer"
+        style={{ left: -overscan, top: -overscan, width: size[0] + 2 * overscan, height: size[1] + 2 * overscan, transformOrigin: `${overscan}px ${overscan}px` }}
         onContextMenu={(e) => e.preventDefault()}
         onMouseDown={startBox}
         onClickCapture={(e) => {
@@ -2221,143 +2343,162 @@ export function MapView(props: MapViewProps) {
         onClick={(e) => {
           if (!(e.target as Element).closest('[data-province],[data-army]')) props.onSelectProvince(null);
         }}
-        data-zoom={k.toFixed(3)}
       >
-        <defs>
-          <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={MAP_WIDTH * 0.45} cy={MAP_HEIGHT * 0.5} r={MAP_WIDTH * 1.3}>
-            <stop offset="0" stopColor="#2c5d7c" />
-            <stop offset="0.45" stopColor="#1c425f" />
-            <stop offset="1" stopColor="#0c1f31" />
-          </radialGradient>
-          {/* Hatching keeps the same on-screen spacing at every zoom. */}
-          <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
-            <line x1="0" y1="0" x2="0" y2={7 / k} className="hatch-neutral-line" strokeWidth={1.3 / k} />
-          </pattern>
-          {/* The theatre's land: cities' streets stop at the coast. */}
-          <clipPath id="land-clip">
-            <path d={geo.land} />
-          </clipPath>
-          {owners.map((o) => {
-            const c = ownerColor(world, o);
-            return (
-              <linearGradient key={o} id={`ag-${o}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={lighten(c, 0.3)} />
-                <stop offset="0.5" stopColor={c} />
-                <stop offset="1" stopColor={darken(c, 0.35)} />
-              </linearGradient>
-            );
-          })}
-        </defs>
-        {/* Drawn at the live view: React may redraw in the middle of a pan (the game runs on). */}
-        <g ref={viewRef} transform={live.current.toString()}>
-          <SeaLayer geo={geo} glow={glow} />
-          <WorldLayer geo={geo} />
-          <TerrainLayer geo={geo} world={world} texture={texture} />
-          {texture && <TerrainDetail geo={geo} world={world} view={view} k={k} />}
-          <ProvinceLayer
-            geo={geo}
-            world={world}
-            owners={ownersSig}
-            supplied={suppliedSig}
-            values={valuesSig}
-            ownerOf={ownerOf}
-            human={human}
-            mode={props.mapMode}
-            onClick={onProvinceClick}
-            onContext={onProvinceContext}
-            onHover={onHover}
-          />
-          <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} human={human} enemies={enemiesSig} />
-          <OtherFrontsLayer geo={geo} human={human} owners={ownersSig} wars={warsSig} ownerOf={ownerOf} />
-          <FogLayer shape={fog.shape} edge={fog.edge} clouds={clouds} />
-          <g className="overlay-layer" pointerEvents="none">
-            {flashes.map((f) => (
-              <path
-                key={`${f.pid}-${f.id}`}
-                d={geo.provincePaths[f.pid]}
-                className="capture-flash"
-                style={{ '--flash': f.color } as React.CSSProperties}
-                onAnimationEnd={() => setFlashes((all) => all.filter((x) => x !== f))}
-              />
-            ))}
-            {preview?.provinces.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
-            {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
-            {props.selectedProvince && (
+        <svg
+          className={`map mode-${props.mapMode}${props.moveMode ? ' move-mode' : ''}`}
+          viewBox={`${-overscan} ${-overscan} ${size[0] + 2 * overscan} ${size[1] + 2 * overscan}`}
+          data-zoom={k.toFixed(3)}
+        >
+          <defs>
+            <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={MAP_WIDTH * 0.45} cy={MAP_HEIGHT * 0.5} r={MAP_WIDTH * 1.3}>
+              <stop offset="0" stopColor="#2c5d7c" />
+              <stop offset="0.45" stopColor="#1c425f" />
+              <stop offset="1" stopColor="#0c1f31" />
+            </radialGradient>
+            {/* Hatching keeps the same on-screen spacing at every zoom. */}
+            <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+              <line x1="0" y1="0" x2="0" y2={7 / k} className="hatch-neutral-line" strokeWidth={1.3 / k} />
+            </pattern>
+            {/* The theatre's land: cities' streets stop at the coast. */}
+            <clipPath id="land-clip">
+              <path d={geo.land} />
+            </clipPath>
+            {owners.map((o) => {
+              const c = ownerColor(world, o);
+              return (
+                <linearGradient key={o} id={`ag-${o}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={lighten(c, 0.3)} />
+                  <stop offset="0.5" stopColor={c} />
+                  <stop offset="1" stopColor={darken(c, 0.35)} />
+                </linearGradient>
+              );
+            })}
+          </defs>
+          <g transform={transform.toString()}>
+            <SeaLayer geo={geo} glow={glow} />
+            <WorldLayer geo={geo} />
+            <TerrainLayer geo={geo} world={world} texture={texture} />
+            {texture && <TerrainDetail geo={geo} world={world} view={drawnView} k={k} />}
+            <ProvinceLayer
+              geo={geo}
+              world={world}
+              owners={ownersSig}
+              supplied={suppliedSig}
+              values={valuesSig}
+              ownerOf={ownerOf}
+              human={human}
+              mode={props.mapMode}
+              onClick={onProvinceClick}
+              onContext={onProvinceContext}
+              onHover={onHover}
+            />
+            <BorderLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} human={human} enemies={enemiesSig} />
+            <OtherFrontsLayer geo={geo} human={human} owners={ownersSig} wars={warsSig} ownerOf={ownerOf} />
+            <FogLayer shape={fog.shape} edge={fog.edge} clouds={clouds} />
+            <g className="overlay-layer" pointerEvents="none">
+              {flashes.map((f) => (
+                <path
+                  key={`${f.pid}-${f.id}`}
+                  d={geo.provincePaths[f.pid]}
+                  className="capture-flash"
+                  style={{ '--flash': f.color } as React.CSSProperties}
+                  onAnimationEnd={() => setFlashes((all) => all.filter((x) => x !== f))}
+                />
+              ))}
+              {preview?.provinces.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
+              {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
+              {props.selectedProvince && (
+                <>
+                  <path d={geo.provincePaths[props.selectedProvince]} className="sel-casing" />
+                  <path d={geo.provincePaths[props.selectedProvince]} className="sel-line" />
+                </>
+              )}
+            </g>
+            {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
+            {showDetail && (
               <>
-                <path d={geo.provincePaths[props.selectedProvince]} className="sel-casing" />
-                <path d={geo.provincePaths[props.selectedProvince]} className="sel-line" />
+                <ConnectionLayer geo={geo} world={world} focusIds={focusIds} onRoad={roadsLive ? onRoad : null} />
+                <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} ratio={ratio} />
+                {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} src={spriteSrc} />}
+                {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
+                <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />
+                <CityLayer
+                  geo={geo}
+                  state={state}
+                  world={world}
+                  k={k}
+                  ratio={ratio}
+                  cities={cities}
+                  seen={seen}
+                  handlers={{ onClick: onProvinceClick, onContext: onProvinceContext, onHover }}
+                  src={spriteSrc}
+                />
               </>
             )}
           </g>
-          {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
-          {showDetail && (
-            <>
-              <ConnectionLayer geo={geo} world={world} focusIds={focusIds} onRoad={roadsLive ? onRoad : null} />
-              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} ratio={ratio} />
-              {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />}
-              {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
-              <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />
-              <CityLayer
-                geo={geo}
-                state={state}
-                world={world}
-                k={k}
-                ratio={ratio}
-                cities={cities}
-                seen={seen}
-                handlers={{ onClick: onProvinceClick, onContext: onProvinceContext, onHover }}
-              />
-              {cities ? (
-                <ArmyModelLayer
-                  ctrl={ctrl}
-                  geo={geo}
-                  k={k}
-                  panning={panning}
-                  px={unitModelScale(ratio)}
-                  cities={cities}
-                  back={armyBack}
-                  selectedArmies={props.selectedArmies}
-                  onArmyClick={onArmyClick}
-                  onArmyContext={onArmyContext}
-                  onHover={onHover}
-                />
-              ) : (
-                <ArmyLayer
-                  ctrl={ctrl}
-                  geo={geo}
-                  k={k}
-                  panning={panning}
-                  selectedArmies={props.selectedArmies}
-                  onArmyClick={onArmyClick}
-                  onArmyContext={onArmyContext}
-                  onHover={onHover}
-                />
-              )}
-              {cities && <CityNameLayer geo={geo} state={state} world={world} k={k} cities={cities} />}
-              {preview &&
-                (() => {
-                  const { target } = preview;
-                  const end = target.road ? roadPoint(geo, target.province, target.road) : geo.anchors[target.province];
-                  const line = preview.path && marchLine(geo, primaryArmy!, preview.path, target.road && { province: target.province, ...target.road });
-                  return (
-                    <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
-                      {line && <polyline points={line.map((p) => p.join(',')).join(' ')} />}
-                      <g transform={`translate(${end.join(',')}) scale(${1 / k})`}>
-                        {target.road && <circle r={4.5} className="road-spot" />}
-                        <Plate
-                          text={preview.path ? `${targetName(world, target)} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
-                          y={target.road ? -14 : -34}
-                          size={10.5}
-                          className="eta"
-                        />
+        </svg>
+        {/*
+         * What changes from frame to frame (armies on the march, routes, battles) on a layer of its own over the rest,
+         * with the cities' names above the armies, so it is drawn again without the terrain, borders and cities under it.
+         */}
+        <svg className="map-top" viewBox={`${-overscan} ${-overscan} ${size[0] + 2 * overscan} ${size[1] + 2 * overscan}`}>
+          <g transform={transform.toString()}>
+            {showDetail && (
+              <>
+                {cities ? (
+                  <ArmyModelLayer
+                    ctrl={ctrl}
+                    geo={geo}
+                    k={k}
+                    panning={panning}
+                    px={unitModelScale(ratio)}
+                    src={spriteSrc}
+                    cities={cities}
+                    back={armyBack}
+                    selectedArmies={props.selectedArmies}
+                    onArmyClick={onArmyClick}
+                    onArmyContext={onArmyContext}
+                    onHover={onHover}
+                  />
+                ) : (
+                  <ArmyLayer
+                    ctrl={ctrl}
+                    geo={geo}
+                    k={k}
+                    panning={panning}
+                    selectedArmies={props.selectedArmies}
+                    onArmyClick={onArmyClick}
+                    onArmyContext={onArmyContext}
+                    onHover={onHover}
+                  />
+                )}
+                {cities && <CityNameLayer geo={geo} state={state} world={world} k={k} cities={cities} />}
+                {preview &&
+                  (() => {
+                    const { target } = preview;
+                    const end = target.road ? roadPoint(geo, target.province, target.road) : geo.anchors[target.province];
+                    const line = preview.path && marchLine(geo, primaryArmy!, preview.path, target.road && { province: target.province, ...target.road });
+                    return (
+                      <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
+                        {line && <polyline points={line.map((p) => p.join(',')).join(' ')} />}
+                        <g transform={`translate(${end.join(',')}) scale(${1 / k})`}>
+                          {target.road && <circle r={4.5} className="road-spot" />}
+                          <Plate
+                            text={preview.path ? `${targetName(world, target)} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
+                            y={target.road ? -14 : -34}
+                            size={10.5}
+                            className="eta"
+                          />
+                        </g>
                       </g>
-                    </g>
-                  );
-                })()}
-            </>
-          )}
-        </g>
-      </svg>
+                    );
+                  })()}
+              </>
+            )}
+          </g>
+        </svg>
+      </div>
+      <div ref={shieldRef} className="map-shield" />
       {box && (
         <div
           className="select-box"

@@ -186,8 +186,18 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       strip of fixed height so repeated recruiting never moves the buttons, and a tapped unit shows its role,
       numbers, strengths, weaknesses and national bonus; panning no longer redraws the map's layers on every frame
       (on an emulated phone at a quarter of the CPU, script time while dragging fell from 8.3 s to 1.8 s)
-- [ ] Panning, next: the browser still repaints the whole map on every frame of a drag; measure on real phones
-      (`scripts/dev/pan-perf.mjs` emulates one) before moving the picture as a composited layer
+- [x] Panning and zooming on the graphics card: a drag, pinch or wheel zoom moves the map's drawing as a
+      composited layer instead of drawing it again on every frame (the time went into rasterising the SVG, not
+      script), with a margin of map drawn round the screen; a drag is not drawn again when it ends. City, port and
+      army models are drawn as bitmaps baked for the zoom instead of SVG images replayed shape by shape (34,000
+      drawing operations in one view became 7,000), and what moves every frame (armies, routes, battles) is on a
+      layer of its own, so a march no longer rasterises the terrain and borders under it. On an emulated phone at a
+      quarter of the CPU, frames reaching the screen while dragging went from 22 to 41 a second (52 on the desktop,
+      from 22); a mid-game map left alone rasterises a third as much. `scripts/dev/pan-perf.mjs` now counts the
+      frames that reach the screen and the raster time, for zooms and the desktop as well as phone drags
+- [ ] Map redraws, next: each one still rasterises the whole view; a quarter of that is the border layer's wide
+      strokes (each power's band, your glowing outline), a quarter the terrain bitmaps and the sea's gradient.
+      Measure on real devices (above) before restyling them
 - [x] Cities are provinces of their own, drawn tight round each city inside the land round it, which keeps the
       region's name (138 provinces in all). Cities hold the output, buildings, recruitment and objectives; the land
       is where armies march and fronts run, takes infrastructure, and cuts its city off when lost. Map labels show

@@ -537,8 +537,9 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   crane, battles smoke and fire. A seaside city keeps its buildings on land and its streets stop at the coast, and
   its port (a quay with a steamer alongside, gun pits for coastal batteries) sits on the nearest stretch of its real
   coast. Models are drawn in code (`src/ui/art/CityModel.ts`, `cityGround.ts`, `iso3d.ts`) and cached as two images
-  per city look (the streets, clipped to the land, and the buildings), so panning stays cheap; the name plate hangs in
-  front of the built-up area. The cursor tooltip lists the same buildings and free slots.
+  per city look (the streets, clipped to the land, and the buildings), each turned into a bitmap for the zoom in
+  idle moments, so the map is cheap to draw; the name plate hangs in front of the built-up area. The cursor tooltip
+  lists the same buildings and free slots.
 - **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
   formations, and strength and morale bars; Your armies have a white rim, armies of
   nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
@@ -571,12 +572,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   foot and horse bobbing; armies crossing the sea sail in a troopship with its wake. Arriving, leaving or making
   room, an army walks to its new spot rather than jumping, and a model behind a city stands on its streets but under
   its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings
-  and cached as one image per look.
+  and cached as one image per look (a bitmap for the zoom, like the cities').
 - **Camera.** The campaign opens framed on the player's own territory, above the field reports; the fit button shows
   the whole theatre. Selecting something never moves the map (only "show on the map" from an alert or a report
-  does). Panning only moves the picture: the map is redrawn for the new view when the drag ends, and for a new
-  scale at most every 120 ms while a pinch or wheel zoom lasts; marching armies wait while the map is being moved
-  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone). Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
+  does). A drag, pinch or wheel zoom only moves and scales the picture, which the graphics card does without
+  drawing the map again: the map is drawn with a margin round the screen to move into, and drawn again when the
+  zoom ends, when the zoom drifts past 2× either way or pauses, or when the margin is about to run out (a drag
+  alone is not drawn again when it ends; zooming out, the sea's colour may show at the edges for a moment instead
+  of the map being drawn again at every step). Marching armies wait while the map is being moved
+  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone or desktop). Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
   so zooming further spreads a crowded front out instead of magnifying it. Past the zoom where the session's relief
   texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
   match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
