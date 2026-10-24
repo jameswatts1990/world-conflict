@@ -101,10 +101,11 @@ Two rules hold for every area of the map (CLAUDE.md, *Map rules*), and the gener
   land, a bay); a sea crossing runs over each province's own land to its coast.
 
 The scenario tests fail a map that breaks them. When one names a road that strays, the shapes usually leave it no
-clean way: a land that touches its neighbour only through an exclave, or only across an estuary. Reshape the
-regions if you can (`province-sources.mjs`); if the geography really is that way, add the road to the test's
-`lastResort` list with the reason, as the Alcarria–Valencia road (the Rincón de Ademuz) and the Flanders–Brabant one
-(the Western Scheldt) are.
+clean way: a land that touches its neighbour only across an estuary, say. Reshape the regions if you can
+(`province-sources.mjs`); if the geography really is that way, add the road to the test's `lastResort` list with
+the reason, as the Flanders–Brabant one (the Western Scheldt) is. Exclaves of the admin units need nothing: the
+generator gives any part of a region with no coast away from its city to the region round it, so no province is an
+island inside another (a scenario test checks).
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the

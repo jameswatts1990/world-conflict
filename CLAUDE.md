@@ -120,6 +120,11 @@ These hold for every area of the map, today's and any added later; the generator
   border's ends, so lands, links and anchors stay as the division made them. The scenario test fails a border within
   a region that runs smoother than any natural one (turning under 10 degrees a leg for over 45 km). A city's border
   is drawn like the borders between its lands (`landBorders` in `ui/map/geo.ts`), not fainter.
+- **No province is an island inside another.** A province is in one piece, but for pieces that reach the sea (an
+  island, a coast cut off by a border), and never lies wholly inside one other province. The admin units the regions
+  are merged from have exclaves (Treviño, the Rincón de Ademuz, the Enclave des Papes): `city-provinces.ts` gives any
+  part of a region with no coast away from its city to the region it shares the most border with (`joinExclaves`),
+  before anything is drawn.
 - **Paths converge on each province's centre.** Every road between two provinces runs from one's anchor (its centre:
   its armies stand there and every road out of it starts there) to the other's, over those two provinces alone: it
   crosses their shared border once and never runs through a third province (the city between two lands, a land next
@@ -127,7 +132,7 @@ These hold for every area of the map, today's and any added later; the generator
   between the anchors would break this, or pass within 3 km of anything else, the road bends round it:
   `scripts/map/road-routes.ts` (run by `npm run map:build`) writes the bends (`via`) and where each road crosses its
   border into `scenario/europe/roads.ts`, and the map draws, walks and measures the bent road (`roadLine` in
-  `ui/map/geo.ts`). The scenario test lists the few roads the shapes leave no clean way (an exclave, an estuary) and
+  `ui/map/geo.ts`). The scenario test lists the few roads the shapes leave no clean way (an estuary) and
   fails on any other that strays: after changing the map, rerun `npm run map:build` (or `city-provinces.ts` then
   `road-routes.ts`) and fix whatever the test reports.
 

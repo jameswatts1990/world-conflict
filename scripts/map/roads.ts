@@ -456,12 +456,13 @@ function bent(s: Setting, A: Pt, B: Pt): Pt[] {
     }
     return way[j].over || !over;
   };
-  // Against the shapes: what the leg runs through, beside what the way's own steps between i and j do.
+  // Against the shapes: what the leg runs through, beside what the way's own steps between i and j do (a corner
+  // of a third province the way kept out of stays out: the grid's samples can step over one).
   const steps = pts.slice(1).map((p, k) => courseOf(s, [pts[k], p], way[k].over));
   const fits = (p: Pt, q: Pt, i: number, j: number) => {
     const c = courseOf(s, [p, q], way[i].over);
     const r = steps.slice(i, j).reduce((x, y) => ({ third: x.third + y.third, sea: x.sea + y.sea, back: x.back + y.back }));
-    return c.third <= r.third + CHECK_KM && (s.sea || c.sea <= r.sea + CHECK_KM * 5) && c.back <= r.back + CHECK_KM;
+    return c.third <= (r.third ? r.third + CHECK_KM : 0) && (s.sea || c.sea <= r.sea + CHECK_KM * 5) && c.back <= r.back + CHECK_KM;
   };
   const ok = (p: Pt, q: Pt, i: number, j: number) => sees(p, q, i, j) && fits(p, q, i, j);
   const idx = [0];

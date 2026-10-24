@@ -70,8 +70,7 @@ describe('scenario data', () => {
     // Where the shapes leave a road no way that keeps to its two provinces (it goes as briefly as it can through
     // what it must), and why. Any other road that strays is a map to fix or a road to route again.
     const lastResort: Record<string, string> = {
-      'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
-      'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
+      'be-brussels-w|nl-amsterdam-se':'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
     expect(strays.sort()).toEqual(Object.keys(lastResort).sort());
@@ -123,6 +122,39 @@ describe('scenario data', () => {
     }
     // A change to the map needs `npx vite-node scripts/map/city-provinces.ts` (npm run map:build runs it), which breaks them up.
     expect(long).toEqual([]);
+  });
+
+  it('no province is an island inside another: any piece of one apart from its largest reaches the sea', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    type Geom = { type: string | null; arcs: number[][] | number[][][]; properties: { pid?: string; iso?: string } };
+    const geoms: Geom[] = [...topo.objects.provinces.geometries, ...topo.objects.countries.geometries];
+    const polysOf = (g: Geom) => (g.type === 'Polygon' ? [g.arcs as number[][]] : g.type === 'MultiPolygon' ? (g.arcs as number[][][]) : []);
+    const arcOf = (a: number) => (a < 0 ? ~a : a);
+    // Who draws each arc, the provinces and the world beyond: an arc only one of them draws is coast.
+    const users = new Map<number, Set<number>>();
+    geoms.forEach((g, i) => polysOf(g).flat(2).forEach((a) => users.set(arcOf(a), (users.get(arcOf(a)) ?? new Set()).add(i))));
+    const pts: [number, number][][] = topo.arcs.map((arc: [number, number][]) => {
+      let [x, y] = [0, 0];
+      return arc.map(([dx, dy]): [number, number] => [(x += dx), (y += dy)]);
+    });
+    // Area on the map's grid, compared only between the pieces of one province.
+    const area = (ring: number[]) => {
+      const p = ring.flatMap((a) => (a < 0 ? [...pts[~a]].reverse() : pts[a]));
+      return Math.abs(p.reduce((s, [x, y], k) => s + x * p[(k + 1) % p.length][1] - p[(k + 1) % p.length][0] * y, 0));
+    };
+    const islands: string[] = [];
+    topo.objects.provinces.geometries.forEach((g: Geom, i: number) => {
+      const polys = polysOf(g);
+      const largest = Math.max(...polys.map((p) => area(p[0])));
+      for (const p of polys) {
+        if (p[0].some((a) => users.get(arcOf(a))!.size === 1)) continue;
+        const around = [...new Set(p[0].flatMap((a) => [...users.get(arcOf(a))!]))].filter((j) => j !== i);
+        if (around.length === 1 || area(p[0]) < largest) islands.push(`${g.properties.pid} in ${around.map((j) => geoms[j].properties.pid ?? geoms[j].properties.iso).join(', ')}`);
+      }
+    });
+    // The admin units it is drawn from have exclaves (Treviño, the Rincón de Ademuz, the Enclave des Papes):
+    // scripts/map/city-provinces.ts gives each to the region round it (`joinExclaves`) before dividing them.
+    expect(islands).toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {

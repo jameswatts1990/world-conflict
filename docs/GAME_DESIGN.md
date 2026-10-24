@@ -50,7 +50,9 @@ espionage, naval and air warfare, later eras, multiplayer.
   bent there. The borders between lands follow the departments, counties and provinces inside the region where
   those are under 9,000 km², and cut through bigger ones and round the city. An island of 4,000 km² or
   more is a land of its own (Corsica, Sardinia, Jutland), joined to the rest by a named crossing; islets join the
-  nearest land. Each land is keyed by its compass point from the city (`be-brussels-w`) and named for the country
+  nearest land. No province is an island inside another: a part of a region with no coast away from its city (an
+  exclave of its admin units, such as Treviño inside the Basque Country, the Rincón de Ademuz or the Enclave des
+  Papes) joins the region round it first. Each land is keyed by its compass point from the city (`be-brussels-w`) and named for the country
   it covers (Flanders, the Ardennes, the Welsh Marches, Val di Mazara, the Ribatejo). Each city is drawn tight
   round itself, 17 to 30 km across by size, keeping clear of every land border and following the coast where it
   reaches the sea. Every province looks like one, city or land: the borders the division draws itself (a city's
@@ -66,18 +68,17 @@ espionage, naval and air warfare, later eras, multiplayer.
   11 sea crossings. The generator turns them into links between provinces (`land.ts`): every two lands of
   neighbouring regions that share a border are linked (by land or a pass, as the connection says), a sea
   crossing joins the two lands with the nearest coasts, and inside a region every two lands that share a border
-  are linked, and the city to each land it touches, its only ways in or out (564 links: 142 from cities to their
-  lands, 137 within regions and 285 between them). Connections are authored data, separate from the map shapes:
+  are linked, and the city to each land it touches, its only ways in or out (563 links: 142 from cities to their
+  lands, 137 within regions and 284 between them). Connections are authored data, separate from the map shapes:
   the generator refuses a map where two regions share a border without a land or mountain connection, or have
   one without a border, and a test checks every link against the shapes (`scripts/map/check-borders.ts` prints
   the report for the regions). Every link is a road on the map that runs from one province's anchor (its centre,
   where its armies stand) to the other's over those two provinces alone, crossing their border once and never
   through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
   over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
-  within 3 km of anything else, the road bends round it (156 of the 564 do). Only two roads find no clean way, as
-  the shapes stand: the Alcarria, east of Madrid, reaches Valencia only at the Rincón de Ademuz, Valencia's exclave
-  beyond Aragon, and Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; the
-  scenario test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  within 3 km of anything else, the road bends round it (155 of the 563 do). Only one road finds no clean way, as
+  the shapes stand: Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; the
+  scenario test names it and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
   powers as neighbours, so France is not the only target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.

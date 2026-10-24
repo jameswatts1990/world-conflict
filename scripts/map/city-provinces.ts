@@ -12,7 +12,9 @@
 // meeting at it and none surrounds it. The road to a neighbour crosses the land on that side. The lands
 // follow the borders of the region's admin-1 units (departments, counties, provinces) where the units are
 // small enough, and cut straight through bigger ones and through the units round the city. An island big
-// enough is a land of its own; islets join the nearest land. A land is keyed `<row id>-<compass point>`
+// enough is a land of its own; islets join the nearest land. A part of a region with no coast away from its city
+// (an exclave, such as Treviño) is first given to the region round it, so no province is an island inside another
+// (`joinExclaves`). A land is keyed `<row id>-<compass point>`
 // (`be-brussels-w`). Once the division is made, the borders it drew itself (each city's ring, and the straight
 // cuts through the units) are broken up like the natural borders, keeping their ends (`roughen`): every province
 // looks like one, and nothing gameplay reads moves.
@@ -28,7 +30,7 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from 'geojson';
 import mapshaper from 'mapshaper';
-import { feature, mesh, neighbors } from 'topojson-client';
+import { feature, mergeArcs, mesh, neighbors } from 'topojson-client';
 import type { GeometryCollection, Topology } from 'topojson-specification';
 import { CONNECTIONS, CROSSINGS } from '../../src/sim/scenario/europe/connections';
 import { ROWS } from '../../src/sim/scenario/europe/provinces';
@@ -404,6 +406,94 @@ function compassKeys(anchors: Pt[]): string[] {
   });
 }
 
+/**
+ * Every part of a region with no coast, other than the part its city stands on (an exclave, such as Treviño, a
+ * piece of Castile inside the Basque Country), is given to the region it shares the most border with, and its
+ * units to the unit of that region it shares the most border with, so that no province is ever an island inside
+ * another. Works on the regions as build-map.mjs drew them, in place, before anything is cut; returns what moved.
+ */
+function joinExclaves(base: Base, rowOf: Map<string, Row>): string[] {
+  type Poly = number[][];
+  type Geom = { type: string; arcs: Poly | Poly[]; properties: Props & { name?: string } };
+  const arcs = decodeArcs(base);
+  // The same arrays, read loosely: a region or unit is a polygon or several.
+  const regions = base.objects.provinces.geometries as unknown as Geom[];
+  const units = base.objects.units.geometries as unknown as Geom[];
+  const users = arcUsers([...regions, ...base.objects.countries.geometries] as never);
+  const polysOf = (g: Geom): Poly[] => (g.type === 'Polygon' ? [g.arcs as Poly] : g.type === 'MultiPolygon' ? (g.arcs as Poly[]) : []);
+  const km = (arc: number) => lengthKm(arcs[arc], local(arcs[arc][0] as Pt).to);
+  /** A polygon by its arcs, which stay the same when a merge redraws the region round it. */
+  const arcsKey = (poly: Poly) => poly.flat().map((a) => (a < 0 ? ~a : a)).sort((x, y) => x - y).join(',');
+  const ringOf = (poly: Poly) => (feature(base, { type: 'Polygon', arcs: poly } as never) as unknown as Feature<Polygon>).geometry.coordinates.map((r) => r as Pt[]);
+  const areaKm2 = (poly: Poly) => {
+    const rings = ringOf(poly);
+    const flat = local(rings[0][0]);
+    return areaOf(rings.map((r) => r.map(flat.to)));
+  };
+  /** Which of `geoms` (by index) share the most border with a polygon's outline, by length. */
+  const mostBorder = (poly: Poly, geoms: Geom[], skip: (g: Geom) => boolean) => {
+    const length = new Map<number, number>();
+    for (const a of poly[0]) {
+      const arc = a < 0 ? ~a : a;
+      geoms.forEach((g, gi) => {
+        if (!skip(g) && polysOf(g).some((p) => p.some((ring) => ring.some((b) => (b < 0 ? ~b : b) === arc)))) length.set(gi, (length.get(gi) ?? 0) + km(arc));
+      });
+    }
+    return length.size ? [...length.entries()].reduce((x, y) => (y[1] > x[1] ? y : x))[0] : -1;
+  };
+  const exclaves: { from: number; poly: Poly }[] = [];
+  regions.forEach((g, gi) => {
+    const row = rowOf.get(g.properties.pid);
+    if (!row) return;
+    for (const poly of polysOf(g)) {
+      const coast = poly[0].some((a) => users.get(a < 0 ? ~a : a)!.length === 1);
+      if (!coast && !inPolygon(ringOf(poly), row.city.coord as Pt)) exclaves.push({ from: gi, poly });
+    }
+  });
+  const moved: string[] = [];
+  for (const { from, poly } of exclaves) {
+    const pid = regions[from].properties.pid;
+    const to = mostBorder(poly, regions, (g) => g === regions[from]);
+    if (to < 0) throw new Error(`${pid}: an exclave with no region round it to join`);
+    const toPid = regions[to].properties.pid;
+    // The units it is made of: those of its region with an arc on its outline, and those they enclose.
+    const outline = new Set(poly.flat().map((a) => (a < 0 ? ~a : a)));
+    const pieces: { unit: Geom; poly: Poly }[] = [];
+    for (let grew = true; grew; ) {
+      grew = false;
+      for (const unit of units) {
+        if (unit.properties.pid !== pid) continue;
+        for (const p of polysOf(unit)) {
+          if (pieces.some((x) => x.poly === p) || !p.flat().some((a) => outline.has(a < 0 ? ~a : a))) continue;
+          pieces.push({ unit, poly: p });
+          for (const a of p.flat()) outline.add(a < 0 ? ~a : a);
+          grew = true;
+        }
+      }
+    }
+    const into = mostBorder(poly, units, (u) => u.properties.pid !== toPid);
+    if (into < 0 || !pieces.length) throw new Error(`${pid}: no units for its exclave in ${toPid}`);
+    // Both regions and the unit it joins, with their shared borders dissolved.
+    const without = (g: Geom, drop: Poly[]): Geom => {
+      const gone = new Set(drop.map(arcsKey));
+      const left = polysOf(g).filter((p) => !gone.has(arcsKey(p)));
+      return { ...g, ...(left.length === 1 ? { type: 'Polygon', arcs: left[0] } : { type: 'MultiPolygon', arcs: left }) };
+    };
+    const merged = (g: Geom, add: Poly[]): Geom => ({ ...mergeArcs(base, [g, ...add.map((p) => ({ type: 'Polygon', arcs: p }))] as never), properties: g.properties });
+    moved.push(`${pid}'s exclave (${Math.round(areaKm2(poly))} km², ${pieces.map((x) => x.unit.properties.name).join(', ')}) to ${toPid} (${units[into].properties.name})`);
+    regions[to] = merged(regions[to], [poly]);
+    regions[from] = without(regions[from], [poly]);
+    units[into] = merged(units[into], pieces.map((x) => x.poly));
+    for (const unit of new Set(pieces.map((x) => x.unit))) {
+      const i = units.indexOf(unit);
+      const left = without(unit, pieces.map((x) => x.poly));
+      if (polysOf(left).length) units[i] = left;
+      else units.splice(i, 1);
+    }
+  }
+  return moved;
+}
+
 /** For each arc of a TopoJSON object, the geometries (by index) that use it. */
 function arcUsers(geoms: { type: string | null; arcs?: unknown }[]): Map<number, number[]> {
   const users = new Map<number, number[]>();
@@ -649,12 +739,14 @@ async function main() {
   const hints = process.argv.includes('--hints');
   // 1. The whole regions and their units, as build-map.mjs drew them.
   const base = JSON.parse(readFileSync(baseFile, 'utf8')) as Base;
+  const rowOf = new Map<string, Row>(ROWS.map((r) => [r.id, r]));
+  // Exclaves join the region round them first, so the regions are whole before anything is drawn.
+  const exclaves = joinExclaves(base, rowOf);
   const regions = feature(base, base.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, Props>;
   const unitFc = feature(base, base.objects.units) as FeatureCollection<Polygon | MultiPolygon, UnitProps>;
   const countries = feature(base, base.objects.countries) as FeatureCollection<Polygon | MultiPolygon>;
   const everything = { type: 'GeometryCollection', geometries: [...base.objects.provinces.geometries, ...base.objects.countries.geometries] } as GeometryCollection;
   const byId = new Map(regions.features.map((f) => [f.properties.pid, f]));
-  const rowOf = new Map<string, Row>(ROWS.map((r) => [r.id, r]));
   const seaward = new Map<string, boolean>();
 
   /** A region's land borders: arcs it shares with another region or country. The rest of its outline is coast. */
@@ -1338,6 +1430,7 @@ async function main() {
   console.log(
     `divided ${ROWS.length} regions into their cities and ${count} lands (${links.length} links), broke up ${rough.broken} borders; wrote map.topo.json (${(JSON.stringify(out).length / 1024).toFixed(0)} KB) and land.ts`,
   );
+  if (exclaves.length) console.log(`exclaves joined to the region round them: ${exclaves.join('; ')}`);
   if (rough.left.length) console.log(`left as drawn (too near another border, a town or an anchor): ${rough.left.join(', ')}`);
 }
 
