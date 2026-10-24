@@ -286,6 +286,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Stop and Hold halt on the spot on a road (in whichever land that stretch lies); only at sea or between a city
       and its land, where there is nowhere to stand, does the army turn back. An army walking back to its own land's
       crossroads on its way elsewhere passes through, so a broken army on a road may fall back either way
+- [x] An army walking within its land (out to a spot on a road, or back to its crossroads) has not left it: it fights
+      and holds the land as it walks, and pays for leaving a battle when it passes its crossroads. It used to count as
+      marching, so an enemy could take a land uncontested behind an army taking up its post on a road
 - [x] Computer opponents (Normal) use roads: an offensive masses on the roads into its target, short of the border,
       and strikes from there; idle armies at the front stand forward on the road towards the greatest danger next door,
       keep that facing for a few minutes and then turn to face another only when it is clearly greater

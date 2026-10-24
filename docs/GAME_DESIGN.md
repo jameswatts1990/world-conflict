@@ -254,10 +254,13 @@ Specialities are optional: a nation without one shows its bloc instead.
   their shapes on the map; the simulation knows the same spot for each road, see §12, and refuses a spot on the far
   side of it). There it is in that land for every rule (it fights, captures, is supplied and watches from there) but
   stands apart: merging needs armies at the same spot, and marching on along the road takes only the rest of the leg;
-  any other march sets out for whichever end of the road gets it there sooner. An army that walks back to its own
-  land's crossroads on its way somewhere else passes straight through: it never left the province, so it neither
-  stops to fight there again (a broken army falling back from a road leaves the battle behind it) nor takes it again.
-  Patrols run between provinces.
+  any other march sets out for whichever end of the road gets it there sooner. An army walking within its land (out
+  to a spot on one of its roads, or back along one to its crossroads, on its own side of the border) has not left
+  it: it fights there and holds or takes the land as it would standing still, so no enemy slips in behind it while it
+  takes up its post. It leaves when its march goes on past the crossroads or over the border, and if it leaves a
+  battle then, that is its withdrawal under fire: an army ordered elsewhere from a road (or a broken one falling back
+  from it) fights on as it walks back, and passes straight through its crossroads, paying the price there. Patrols
+  run between provinces.
 - **Merging on arrival.** An army of yours that ends its march in a city where another of your armies stands idle
   joins it (not one holding, nor out on the land or on a road): the army standing there keeps its orders and options,
   the merged army the senior (lowest-numbered) name, and the field reports say so. Computer opponents gather their

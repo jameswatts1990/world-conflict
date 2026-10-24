@@ -16,7 +16,7 @@ import {
   fortificationReduction,
   homeSoilMult,
   hostileArmiesIn,
-  isArmyInTransit,
+  isArmyAway,
   techEffects,
   unitStats,
   veterancyRank,
@@ -76,7 +76,7 @@ export function combatSystem(state: GameState, world: World): void {
   const byProvince = new Map<ProvinceId, Army[]>();
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
-    if (isArmyInTransit(a)) continue;
+    if (isArmyAway(world, a)) continue;
     const list = byProvince.get(a.province) ?? [];
     list.push(a);
     byProvince.set(a.province, list);
@@ -92,7 +92,7 @@ export function combatSystem(state: GameState, world: World): void {
     if (!state.battles[pid]) startBattle(state, world, pid, armies);
     else joinBattle(state, state.battles[pid], armies);
     resolveRound(state, world, pid, armies);
-    const survivors = armies.filter((a) => state.armies[a.id] && !isArmyInTransit(a));
+    const survivors = armies.filter((a) => state.armies[a.id] && !isArmyAway(world, a));
     if (!(survivors.length >= 2 && hasHostilePair(state, survivors))) endBattle(state, world, pid, survivors);
   }
 }
@@ -260,11 +260,12 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
   // usual price; with nowhere to go, or holding position, they fight on.
   for (const army of armies) {
     if (!state.armies[army.id] || !army.autoRetreat || army.holding || army.move?.leg) continue;
-    if (armyMorale(army) >= MORALE.autoRetreatAt || hostileArmiesIn(state, pid, army.owner).length === 0) continue;
+    if (armyMorale(army) >= MORALE.autoRetreatAt || hostileArmiesIn(state, world, pid, army.owner).length === 0) continue;
     const to = retreatTarget(state, world, army, pid);
     if (!to) continue;
     army.move = { path: [to], leg: null, mode: 'move' };
-    if (startLeg(state, world, army)) withdrawArmy(state, world, army, pid);
+    // From a spot on a road it first walks back through its land, still fighting, and pays as it leaves.
+    if (startLeg(state, world, army) && isArmyAway(world, army)) withdrawArmy(state, world, army, pid);
   }
 }
 
@@ -274,7 +275,7 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
   let best: { id: ProvinceId; score: number } | null = null;
   for (const n of world.neighbors[from]) {
     const p = state.provinces[n.id];
-    if (p.owner !== army.owner || hostileArmiesIn(state, n.id, army.owner).length > 0) continue;
+    if (p.owner !== army.owner || hostileArmiesIn(state, world, n.id, army.owner).length > 0) continue;
     let friends = 0;
     for (const a of Object.values(state.armies)) {
       if (a.owner === army.owner && a.province === n.id && a.id !== army.id) friends += armyPower(state, a);
@@ -291,7 +292,7 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
  * too weak to get away are left behind. Call once the army has started its leg.
  */
 export function withdrawArmy(state: GameState, world: World, army: Army, pid: ProvinceId): void {
-  const enemies = hostileArmiesIn(state, pid, army.owner);
+  const enemies = hostileArmiesIn(state, world, pid, army.owner);
   if (enemies.length === 0) return;
   const recon = army.units.some((u) => UNITS[u.type].recon);
   const loss = MORALE.retreatLoss * (recon ? 0.5 : 1);

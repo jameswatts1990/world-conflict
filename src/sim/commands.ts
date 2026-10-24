@@ -17,6 +17,7 @@ import {
   constructionCost,
   constructionTicks,
   hostileArmiesIn,
+  isArmyAway,
   isArmyInTransit,
   isBuildingUnlocked,
   isUnitUnlocked,
@@ -268,16 +269,18 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       // Mid-march it goes on or turns back, whichever is quicker; from a road, the same.
       const plan = planMarch(state, world, army, cmd.to, cmd.road)!;
       const standing = !army.move?.leg;
+      const present = !isArmyAway(world, army);
       army.holding = false;
       army.move = { path: plan.path, leg: plan.leg, mode };
       if (plan.halt) army.move.halt = plan.halt;
       if (mode === 'patrol') army.move.patrol = [plan.start === cmd.to && plan.leg ? plan.leg.from : plan.start, cmd.to];
-      if (!standing) return OK;
-      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
-      let departed = !!plan.leg;
-      if (departed) delete army.road;
-      else departed = startLeg(state, world, army);
-      if (departed) withdrawArmy(state, world, army, army.province);
+      if (standing) {
+        if (plan.leg) delete army.road;
+        else startLeg(state, world, army);
+      }
+      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price. Walking
+      // within its land it has not left yet: it pays when it does.
+      if (present && isArmyAway(world, army)) withdrawArmy(state, world, army, army.province);
       return OK;
     }
     case 'stop': {
@@ -350,7 +353,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (isArmyInTransit(army)) return fail('Cannot disband while marching.');
-      if (hostileArmiesIn(state, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
+      if (hostileArmiesIn(state, world, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
       const ids = cmd.unitIds ? new Set(cmd.unitIds) : null;
       const leaving = ids ? army.units.filter((u) => ids.has(u.id)) : army.units;
       if (leaving.length === 0 || (ids && leaving.length !== ids.size)) return fail('Select units of this army to disband.');

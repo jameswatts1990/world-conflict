@@ -107,7 +107,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
 
 /** Hostile armies standing in a province, if I can see it (the fog of war hides the rest). */
 function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
-  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, pid, ctx.me) : [];
+  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, ctx.world, pid, ctx.me) : [];
 }
 
 /**

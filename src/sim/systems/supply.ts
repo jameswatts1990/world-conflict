@@ -119,7 +119,7 @@ export function armyConditionSystem(state: GameState, world: World): void {
       for (const u of army.units) u.morale = u.morale > cap ? Math.max(cap, u.morale - MORALE.starvingDrain) : Math.min(cap, u.morale + rate);
       continue;
     }
-    const inBattle = hostileArmiesIn(state, army.province, army.owner).length > 0;
+    const inBattle = hostileArmiesIn(state, world, army.province, army.owner).length > 0;
     if (army.unsuppliedTicks >= attritionGrace(state, army.owner)) {
       for (const u of army.units) {
         u.strength -= SUPPLY.attritionPerStep;

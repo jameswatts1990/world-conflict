@@ -27,7 +27,7 @@ import {
   type UnitSelector,
   type UnitType,
 } from './types';
-import { specialityEffects, type World } from './world';
+import { isOpenRoad, roadBorder, specialityEffects, type World } from './world';
 
 export function emptyResources(): Resources {
   return { money: 0, materials: 0, fuel: 0, manpower: 0 };
@@ -291,8 +291,30 @@ export function armySpeedKmPerTick(state: GameState, army: Army): number {
   return speed === Infinity ? 1 / state.settings.durationScale : speed;
 }
 
+/** Is the army marching, on a leg between two places? */
 export function isArmyInTransit(army: Army): boolean {
   return army.move?.leg != null;
+}
+
+/**
+ * Is the army walking within the land it stands in: out to a spot on one of its roads, or back along one towards
+ * its crossroads, on its own side of the border? It has not left the land (see `isArmyAway`).
+ */
+export function walksWithin(world: World, army: Army): boolean {
+  const move = army.move;
+  const leg = move?.leg;
+  if (!move || !leg || !isOpenRoad(world, leg.from, leg.to)) return false;
+  const here = army.province;
+  if (leg.from === here) return move.path.length === 1 && move.halt?.province === here;
+  return leg.to === here && leg.elapsed / leg.duration >= roadBorder(world, leg.from, here);
+}
+
+/**
+ * Is the army away between places, out of every battle and capture? A marching army is, unless it only walks
+ * within its land: then it fights there and holds (or takes) the land as if it stood still.
+ */
+export function isArmyAway(world: World, army: Army): boolean {
+  return isArmyInTransit(army) && !walksWithin(world, army);
 }
 
 // ---------------------------------------------------------------------------
@@ -317,16 +339,16 @@ export function canEnterProvince(state: GameState, owner: OwnerId, province: Pro
   return p.owner === owner || areHostile(state, owner, p.owner);
 }
 
-export function hostileArmiesIn(state: GameState, province: ProvinceId, owner: OwnerId): Army[] {
+export function hostileArmiesIn(state: GameState, world: World, province: ProvinceId, owner: OwnerId): Army[] {
   const out: Army[] = [];
   for (const a of Object.values(state.armies)) {
-    if (a.province === province && !isArmyInTransit(a) && areHostile(state, owner, a.owner)) out.push(a);
+    if (a.province === province && !isArmyAway(world, a) && areHostile(state, owner, a.owner)) out.push(a);
   }
   return out;
 }
 
-export function armiesIn(state: GameState, province: ProvinceId): Army[] {
-  return Object.values(state.armies).filter((a) => a.province === province && !isArmyInTransit(a));
+export function armiesIn(state: GameState, world: World, province: ProvinceId): Army[] {
+  return Object.values(state.armies).filter((a) => a.province === province && !isArmyAway(world, a));
 }
 
 /** Ticks to capture a province (before the capturer's reconnaissance bonus). */

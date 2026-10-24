@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, armyName, hostileArmiesIn, legTicks, planMarch, roadBorder, spotOnRoad, stepState } from '../src/sim';
+import { applyCommand, armiesIn, armyName, hostileArmiesIn, legTicks, planMarch, roadBorder, spotOnRoad, stepState } from '../src/sim';
 import { makePeace } from '../src/sim/systems/diplomacy';
 import { aiGame, clearArmies, place, quietGame, run, setWar, world } from './helpers';
 
@@ -88,7 +88,7 @@ describe('halting on a road', () => {
     const army = place(state, 'fr', 'fr-east-land', { infantry: 2 });
     army.road = { toward: 'de-hesse-land', at: 0.3 };
     const enemy = place(state, 'de', 'fr-east-land', { infantry: 2 });
-    expect(hostileArmiesIn(state, 'fr-east-land', 'de')).toContain(army);
+    expect(hostileArmiesIn(state, world, 'fr-east-land', 'de')).toContain(army);
     run(state, 30);
     expect(state.battles['fr-east-land']).toBeTruthy();
     expect(enemy.units.some((u) => u.strength < 1)).toBe(true);
@@ -104,7 +104,7 @@ describe('halting on a road', () => {
     expect(applyCommand(state, world, { type: 'merge', nation: 'fr', armyIds: [out.id, half.id] }).ok).toBe(true);
   });
 
-  it("a broken army on a road falls back through its own land's crossroads without stopping to fight there again", () => {
+  it("a broken army on a road falls back through its own land's crossroads, and pays for leaving the battle there", () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
@@ -114,12 +114,39 @@ describe('halting on a road', () => {
     army.road = { toward: 'de-hesse-land', at: 0.3 };
     for (const u of army.units) u.morale = 0.1;
     place(state, 'de', 'fr-east-land', { infantry: 6 });
+    const routs = () => state.events.filter((e) => e.kind === 'rout').length;
     run(state, 1);
     expect(army.move?.leg).toMatchObject({ from: 'de-hesse-land', to: 'fr-east-land' });
     const refuge = army.move!.path[1];
     expect(state.provinces[refuge].owner).toBe('fr');
+    // Walking back within its land it is still in the battle, and has not paid for leaving it yet.
+    expect(hostileArmiesIn(state, world, 'fr-east-land', 'de')).toContain(army);
+    expect(routs()).toBe(0);
     run(state, army.move!.leg!.duration - army.move!.leg!.elapsed);
+    // It passes through its crossroads without stopping, out of the battle under fire.
     expect(army.move?.leg).toMatchObject({ from: 'fr-east-land', to: refuge });
+    expect(hostileArmiesIn(state, world, 'fr-east-land', 'de')).not.toContain(army);
+    expect(routs()).toBe(1);
+  });
+
+  it('an army walking out to a spot on a road of its land has not left it: it fights for it, and nobody takes it behind its back', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    const army = place(state, 'fr', 'fr-east-land', { infantry: 3 });
+    const at = roadBorder(world, 'fr-east-land', 'de-hesse-land') - 0.05;
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east-land', road: { toward: 'de-hesse-land', at } });
+    run(state, 1);
+    place(state, 'de', 'fr-east-land', { infantry: 2 });
+    run(state, 12);
+    expect(army.move?.leg).toBeTruthy();
+    expect(state.battles['fr-east-land']).toBeTruthy();
+    expect(state.provinces['fr-east-land'].capture).toBeFalsy();
+    // Marching on past its crossroads into the next land, it leaves (and the battle with it, at a price).
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-hesse-land' });
+    expect(hostileArmiesIn(state, world, 'fr-east-land', 'de')).toEqual([]);
+    expect(armiesIn(state, world, 'fr-east-land')).not.toContain(army);
+    expect(state.events.filter((e) => e.kind === 'rout').length).toBe(1);
   });
 
   it('only on roads over land between two lands, at a point between their ends, and not on patrol', () => {

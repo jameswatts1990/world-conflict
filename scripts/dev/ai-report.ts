@@ -58,7 +58,7 @@ for (let seed = 1; seed <= seeds; seed++) {
     const prev = last.get(t.armyId);
     last.set(t.armyId, t);
     if (s.provinces[t.from].capture?.by === t.nation) add('abandoned');
-    if (t.reason === 'attack' && s.provinces[t.to].capture?.by === t.nation && hostileArmiesIn(s, t.to, t.nation).length === 0) add('pileOn');
+    if (t.reason === 'attack' && s.provinces[t.to].capture?.by === t.nation && hostileArmiesIn(s, world, t.to, t.nation).length === 0) add('pileOn');
     if (!prev || t.tick - prev.tick > REVERSAL_WINDOW || prev.to !== t.from) return;
     if (t.reason === 'retreat' && (prev.reason === 'attack' || prev.reason === 'strike')) add('failedAttack');
     else if (t.to === prev.from && prev.reason !== 'retreat') add('reversal');
