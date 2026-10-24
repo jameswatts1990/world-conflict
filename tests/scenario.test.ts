@@ -86,6 +86,45 @@ describe('scenario data', () => {
     }
   });
 
+  it('every border within a region is jagged like the natural ones: no smooth ring round a city, no long straight cut', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const { scale, translate } = topo.transform;
+    const arcs: [number, number][][] = topo.arcs.map((arc: [number, number][]) => {
+      let [x, y] = [0, 0];
+      return arc.map(([dx, dy]): [number, number] => [(x += dx) * scale[0] + translate[0], (y += dy) * scale[1] + translate[1]]);
+    });
+    const users = new Map<number, Set<string>>();
+    for (const g of topo.objects.provinces.geometries) {
+      const walk = (a: unknown): void => {
+        if (typeof a === 'number') users.set(a < 0 ? ~a : a, (users.get(a < 0 ? ~a : a) ?? new Set()).add(g.properties.pid));
+        else if (Array.isArray(a)) a.forEach(walk);
+      };
+      walk(g.arcs);
+    }
+    // The longest stretch (km) over which a line turns less than 10 degrees from leg to leg. Natural borders run so
+    // for 20 km or so, 45 at the very most; a city's smooth ring or a straight cut through the units, for far longer.
+    const smooth = (pts: [number, number][]) => {
+      const km = ([x1, y1]: [number, number], [x2, y2]: [number, number]): [number, number] => [(x2 - x1) * 111.32 * Math.cos((y1 * Math.PI) / 180), (y2 - y1) * 110.57];
+      let [best, run] = [0, 0];
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const [dx, dy] = km(pts[k], pts[k + 1]);
+        const leg = Math.hypot(dx, dy);
+        const [px, py] = k ? km(pts[k - 1], pts[k]) : [dx, dy];
+        const turn = Math.abs(Math.atan2(px * dy - py * dx, px * dx + py * dy));
+        run = k && turn < (10 * Math.PI) / 180 ? run + leg : leg;
+        best = Math.max(best, run);
+      }
+      return best;
+    };
+    const long: string[] = [];
+    for (const [arc, pids] of users) {
+      const [a, b] = [...pids];
+      if (pids.size === 2 && world.regionOf[a] === world.regionOf[b] && smooth(arcs[arc]) > 45) long.push(`${a}|${b}`);
+    }
+    // A change to the map needs `npx vite-node scripts/map/city-provinces.ts` (npm run map:build runs it), which breaks them up.
+    expect(long).toEqual([]);
+  });
+
   it('movement graph is connected and uses only explicit connections', () => {
     const seen = new Set([world.provinceIds[0]]);
     const queue = [world.provinceIds[0]];

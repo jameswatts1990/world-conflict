@@ -93,8 +93,9 @@ These hold for every area of the map, today's and any added later; the generator
   kept as legs of about 10 km turning about 45 degrees), never a smooth ring or a long straight line. The borders
   `scripts/map/city-provinces.ts` draws itself (each city's outline, and the cuts between lands where they run
   through the admin units) are broken up to match (`roughen`), after the division is decided and without moving any
-  border's ends, so lands, links and anchors stay as the division made them. A city's border is drawn like the
-  borders between its lands (`landBorders` in `ui/map/geo.ts`), not fainter.
+  border's ends, so lands, links and anchors stay as the division made them. The scenario test fails a border within
+  a region that runs smoother than any natural one (turning under 10 degrees a leg for over 45 km). A city's border
+  is drawn like the borders between its lands (`landBorders` in `ui/map/geo.ts`), not fainter.
 - **Paths converge on each province's centre.** Every road between two provinces runs from one's anchor (its centre:
   its armies stand there and every road out of it starts there) to the other's, over those two provinces alone: it
   crosses their shared border once and never runs through a third province (the city between two lands, a land next
