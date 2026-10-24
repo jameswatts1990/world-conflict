@@ -273,17 +273,22 @@ Found by playing full campaigns in the browser and reading the code end to end.
 ### Movement pass (done)
 
 - [x] Orders to any spot on a road between two lands: the army halts there, in the land whose part of the road it is,
-      and goes on from there (the rest of the leg ahead, or back to where its land's roads meet first); the preview and
-      route lines end at the spot
+      and goes on from there (the rest of the leg ahead, or back along it, whichever is quicker); the preview and route
+      lines end at the spot
 - [x] Armies stand on the edge of their city's built-up area (empty plots no longer count), on the side away from
       crowding neighbours: Paris's garrison used to stand so far out that it looked as if it were in Rouen
 - [x] A player's army that ends its march in a city where another of theirs stands joins it, with a field report; the
       selection follows the merged army
 - [x] Orders given on the march turn the army back when that is quicker, rather than finishing the leg first
 - [x] Peace left armies marching through the other side's land standing there for good; they now go home
-- [ ] Computer opponents never halt on roads: forward screens along a quiet front could use them
-- [ ] Stop turns a marching army back; stopping on the spot, on the road, needs the simulation to know where roads
-      cross borders (today the map works that out and the simulation takes the province it is told)
+- [x] The simulation knows where each road crosses the border between its lands, generated from the map with
+      `npm run map:build` (the map used to work it out and the simulation took the province it was told)
+- [x] Stop and Hold halt on the spot on a road (in whichever land that stretch lies); only at sea or between a city
+      and its land, where there is nowhere to stand, does the army turn back. An army walking back to its own land's
+      crossroads on its way elsewhere passes through, so a broken army on a road may fall back either way
+- [x] Computer opponents (Normal) use roads: an offensive masses on the roads into its target, short of the border,
+      and strikes from there; idle armies at the front stand forward on the road towards the greatest danger next door,
+      keep that facing for a few minutes and then turn to face another only when it is clearly greater
 - [ ] Playtest merging on arrival: if players want stacks kept apart, an army option to opt out
 
 ## M4 — Fog of war and diplomacy

@@ -121,12 +121,17 @@ export function movementSystem(state: GameState, world: World): void {
       continue;
     }
     // Walking back within its own province, an army keeps the way it came (a landing stays a landing).
-    if (leg.to !== army.province) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
+    const walkedBack = leg.to === army.province;
+    if (!walkedBack) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
     if (army.move.path.length === 0 && !army.move.patrol) {
       army.move = null;
       mergeOnArrival(state, world, army);
+    } else if (walkedBack) {
+      // Back at its own land's crossroads on its way out, it passes through: it never left the province, so it
+      // does not stop there to fight a battle it has already left (paying the price) or to take it again.
+      startLeg(state, world, army);
     }
   }
 }

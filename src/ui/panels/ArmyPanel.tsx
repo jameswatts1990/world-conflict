@@ -311,7 +311,7 @@ export function ArmyPanel({
               title={
                 army.holding
                   ? 'Release the hold (G)'
-                  : 'Hold position: halt at once (an army on the road turns back to the province it set out from) and stay, never withdrawing on its own, until given a new order (G)'
+                  : 'Hold position: halt at once (on a road where it stands; at sea or in a city gateway it turns back) and stay, never withdrawing on its own, until given a new order (G)'
               }
               data-testid="hold"
             >
@@ -322,7 +322,7 @@ export function ArmyPanel({
               className="order-btn"
               disabled={stoppable.length === 0}
               onClick={() => stoppable.forEach((a) => ctrl.submit({ type: 'stop', nation: human, armyId: a.id }))}
-              title="Stop at once: an army on the road turns back to the province it set out from (S)"
+              title="Stop at once: on a road the army stands where it is; on a sea crossing or in a city gateway it turns back to where it set out (S)"
               data-testid="stop"
             >
               <Icon name="stop" size={18} />

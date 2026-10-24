@@ -273,8 +273,6 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
   if (army.owner === NEUTRAL) return null;
   let best: { id: ProvinceId; score: number } | null = null;
   for (const n of world.neighbors[from]) {
-    // From a spot on a road the only way out that does not lead back through the fighting is on along it.
-    if (army.road && army.province === from && n.id !== army.road.toward) continue;
     const p = state.provinces[n.id];
     if (p.owner !== army.owner || hostileArmiesIn(state, n.id, army.owner).length > 0) continue;
     let friends = 0;

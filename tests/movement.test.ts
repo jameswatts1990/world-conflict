@@ -75,20 +75,31 @@ describe('movement legality', () => {
     expect(perKmStrait).toBeGreaterThan(perKmLand * 1.5);
   });
 
-  it('stop turns a marching army back to where it set out; reversing returns to the origin', () => {
+  it('stop halts a marching army where it stands on the road; at a city gate it turns back; reversing returns to the origin', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris-land', { infantry: 1 });
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-nord-land' }); // one leg
     run(state, 5);
+    const at = army.move!.leg!.elapsed / army.move!.leg!.duration;
     expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(true);
-    expect(army.move!.leg!.to).toBe('fr-paris-land');
-    // Stopping again does not turn it round once more.
-    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(false);
-    expect(army.move!.leg!.to).toBe('fr-paris-land');
-    run(state, 5);
-    expect(army.province).toBe('fr-paris-land');
     expect(army.move).toBeNull();
+    expect(army.province).toBe('fr-paris-land');
+    expect(army.road).toEqual({ toward: 'fr-nord-land', at });
+    // Nothing left to stop.
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(false);
+    delete army.road;
+
+    // Between a city and its land there is no road to stand on: it turns back, and stopping again does not turn it round once more.
+    const gate = place(state, 'fr', 'fr-paris', { infantry: 1 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: gate.id, to: 'fr-paris-land' });
+    run(state, 2);
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: gate.id }).ok).toBe(true);
+    expect(gate.move!.leg!.to).toBe('fr-paris');
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: gate.id }).ok).toBe(false);
+    run(state, 5);
+    expect(gate.province).toBe('fr-paris');
+    expect(gate.move).toBeNull();
 
     // Stopped as it sets off, it never leaves.
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-west-land' });
@@ -153,7 +164,7 @@ describe('movement legality', () => {
     expect(state.armies[army.id].move).toBeNull();
   });
 
-  it('hold position halts a march at once and stays until a new order', () => {
+  it('hold position halts a march at once, where it stands on the road, and stays until a new order', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris-land', { infantry: 2 });
@@ -162,6 +173,7 @@ describe('movement legality', () => {
     expect(applyCommand(state, world, { type: 'hold', nation: 'fr', armyId: army.id, hold: true }).ok).toBe(true);
     run(state, 1500);
     expect(army.province).toBe('fr-paris-land');
+    expect(army.road?.toward).toBe('fr-east-land');
     expect(army.move).toBeNull();
     expect(army.holding).toBe(true);
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east-land', mode: 'move' });

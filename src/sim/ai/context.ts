@@ -66,7 +66,7 @@ export interface Ctx {
 }
 
 /** Which step of the AI's army handling gave an order (for tracing). */
-export type AiOrderReason = 'retreat' | 'resupply' | 'recover' | 'attack' | 'stage' | 'defend' | 'strike' | 'advance';
+export type AiOrderReason = 'retreat' | 'resupply' | 'recover' | 'attack' | 'stage' | 'defend' | 'strike' | 'advance' | 'screen';
 
 export interface AiOrderTrace {
   tick: number;
@@ -101,9 +101,16 @@ export function nationPower(state: GameState, nation: NationId): number {
   return p;
 }
 
-/** Where an army is, or will be at the end of its current leg. */
-export function armyLocation(army: Army): ProvinceId {
-  return army.move?.leg ? army.move.leg.to : army.province;
+/**
+ * Where an army is, or will be at the end of its current leg. For my own armies I also know where a march
+ * halts on that leg, short of its end (another nation's orders are its own: its armies count where they head).
+ */
+export function armyLocation(army: Army, mine = false): ProvinceId {
+  const move = army.move;
+  if (!move?.leg) return army.province;
+  const halt = move.halt;
+  if (mine && halt && move.path.length === 1 && (halt.province === move.leg.from || halt.province === move.leg.to)) return halt.province;
+  return move.leg.to;
 }
 
 export function buildContext(state: GameState, world: World, me: NationId): Ctx {
@@ -140,7 +147,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   let capitalDanger = 0;
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
-    const where = armyLocation(a);
+    const where = armyLocation(a, a.owner === me);
     const pw = armyPower(state, a);
     if (a.owner === me) {
       armies.push(a);

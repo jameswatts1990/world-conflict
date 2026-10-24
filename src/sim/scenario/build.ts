@@ -168,12 +168,16 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
 
 /**
  * The movement graph from connections written between rows: each one joins the two rows' lands (same kind,
- * same label), and every city is joined to its own land, its only way in or out.
+ * same label, and over land where it crosses their border, from `borders` keyed 'a|b'), and every city is
+ * joined to its own land, its only way in or out.
  */
-export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef[]): ConnectionDef[] {
+export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef[], borders: Record<string, number> = {}): ConnectionDef[] {
   return [
     ...rows.map((r): ConnectionDef => ({ a: r.id, b: landId(r.id), kind: 'land' })),
-    ...connections.map((c) => ({ ...c, a: landId(c.a), b: landId(c.b) })),
+    ...connections.map((c) => {
+      const border = c.kind === 'strait' ? undefined : borders[`${c.a}|${c.b}`];
+      return { ...c, a: landId(c.a), b: landId(c.b), ...(border === undefined ? {} : { border }) };
+    }),
   ];
 }
 

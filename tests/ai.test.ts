@@ -5,6 +5,7 @@ import {
   armyPower,
   captureTicks,
   createInitialState,
+  roadBorder,
   scaledTicks,
   setAiOrderTrace,
   type AiOpening,
@@ -274,5 +275,89 @@ describe('AI under the fog of war', () => {
     expect(buildContext(state, world, 'fr').seen.has('it-naples')).toBe(false);
     state.nations.fr.research.completed.push('liaisonOfficers');
     expect(buildContext(state, world, 'fr').seen.has('it-naples')).toBe(true);
+  });
+});
+
+describe('AI forward positions', () => {
+  /** France at war with Germany, which masses in Hesse; Paris is garrisoned, Alsace-Lorraine thinly held. */
+  function front(difficulty?: 'easy') {
+    const state = soloAi('fr');
+    if (difficulty) state.settings.difficulty = difficulty;
+    clearArmies(state);
+    place(state, 'fr', 'fr-paris', { infantry: 6, artillery: 2 });
+    const guard = place(state, 'fr', 'fr-east-land', { infantry: 3 });
+    place(state, 'de', 'de-hesse-land', { infantry: 8, artillery: 2 });
+    setWar(state, 'fr', 'de');
+    return { state, guard };
+  }
+
+  it('an army guarding a land at the front stands forward on the road towards the danger, short of the border', () => {
+    const { state, guard } = front();
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      run(state, 60);
+    } finally {
+      setAiOrderTrace(null);
+    }
+    const army = state.armies[guard.id];
+    expect(army.province).toBe('fr-east-land');
+    expect(army.move).toBeNull();
+    expect(army.road?.toward).toBe('de-hesse-land');
+    expect(army.road!.at).toBeLessThan(roadBorder(world, 'fr-east-land', 'de-hesse-land'));
+    expect(army.road!.at).toBeCloseTo(roadBorder(world, 'fr-east-land', 'de-hesse-land') * AI.forwardDepth, 2);
+    // One order to go forward, and then it stays put.
+    expect(orders.filter((o) => o.armyId === guard.id).map((o) => o.reason)).toEqual(['screen']);
+  });
+
+  it('a screen keeps its facing for a while, then turns to face a new danger only when it is clearly greater', () => {
+    // A little more in Baden than in Hesse: not enough to turn round, however long it waits.
+    const little = front();
+    run(little.state, 60);
+    place(little.state, 'de', 'de-baden-land', { infantry: 9 });
+    run(little.state, AI.screenHold + 60);
+    expect(little.state.armies[little.guard.id].road?.toward).toBe('de-hesse-land');
+    // A great deal more: it holds its facing for a while, then turns to face it.
+    const { state, guard } = front();
+    run(state, 60);
+    place(state, 'de', 'de-baden-land', { infantry: 24, artillery: 6 });
+    run(state, 60);
+    expect(state.armies[guard.id].road?.toward).toBe('de-hesse-land');
+    run(state, AI.screenHold);
+    expect(state.armies[guard.id].road?.toward).toBe('de-baden-land');
+    expect(state.nations.fr.ai!.screens?.[guard.id]).toBeDefined();
+  });
+
+  it('easy opponents keep to the crossroads', () => {
+    const { state, guard } = front('easy');
+    run(state, 90);
+    expect(state.armies[guard.id].road).toBeUndefined();
+  });
+
+  it('an offensive masses on the road into its target, just short of the border, then strikes from there', () => {
+    // Spain against Portugal: a small army at the border and a larger one behind it, together enough.
+    const state = soloAi('es');
+    clearArmies(state);
+    state.nations.es.ai!.aggression = 0.9;
+    place(state, 'es', 'es-castile-land', { infantry: 4 });
+    place(state, 'es', 'es-madrid-land', { infantry: 8, artillery: 3 });
+    place(state, 'es', 'es-madrid', { infantry: 4 });
+    place(state, 'pt', 'pt-lisbon-land', { infantry: 3 });
+    setWar(state, 'es', 'pt');
+    const orders: AiOrderTrace[] = [];
+    const spots: string[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      for (let t = 0; t < 300 && state.provinces['pt-lisbon-land'].owner === 'pt'; t++) {
+        run(state, 1);
+        for (const a of Object.values(state.armies)) if (a.owner === 'es' && a.road?.toward === 'pt-lisbon-land') spots.push(a.id);
+      }
+    } finally {
+      setAiOrderTrace(null);
+    }
+    // The build-up stood on the road into Portugal, and the attack went in from there.
+    expect(spots.length).toBeGreaterThan(0);
+    expect(orders.some((o) => o.reason === 'stage')).toBe(true);
+    expect(orders.some((o) => o.reason === 'attack' && o.to === 'pt-lisbon-land')).toBe(true);
   });
 });

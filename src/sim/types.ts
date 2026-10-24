@@ -191,6 +191,11 @@ export interface ConnectionDef {
   kind: ConnectionKind;
   /** Optional label shown on the map (e.g. "Strait of Dover"). */
   label?: string;
+  /**
+   * A road between two lands: how far from `a` towards `b` (0..1) it crosses into `b`, so a spot on it
+   * lies in one land or the other (absent: halfway). Generated from the map (scripts/map/road-borders.ts).
+   */
+  border?: number;
 }
 
 export interface NationSpeciality {
@@ -451,6 +456,11 @@ export interface AiMemory {
    * Absent until it first sees foreign troops, and in older saves.
    */
   armourSeen?: Record<NationId, number>;
+  /**
+   * Forward screens still holding the facing they took: the tick each was sent to it (Normal only; an entry is
+   * dropped once the hold is over or the army is gone; absent when there are none, and in older saves).
+   */
+  screens?: Record<ArmyId, number>;
 }
 
 /** strike: war as soon as it may; expand: minor powers (or neutral states) first; build: a longer peace to build up. */

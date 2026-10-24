@@ -1,6 +1,6 @@
 // Static, derived lookup tables for a scenario (adjacency, distances, objectives).
 import { MOVEMENT } from './config/rules';
-import type { ConnectionKind, Effect, NationDef, NationId, ProvinceDef, ProvinceId, ScenarioDef } from './types';
+import type { ConnectionKind, Effect, NationDef, NationId, ProvinceDef, ProvinceId, RoadSpot, ScenarioDef } from './types';
 
 export interface Neighbor {
   id: ProvinceId;
@@ -11,6 +11,8 @@ export interface Neighbor {
    */
   distanceKm: number;
   label?: string;
+  /** On a road between two lands: how far towards the neighbour (0..1) the road crosses into it. */
+  border?: number;
 }
 
 export interface World {
@@ -82,8 +84,9 @@ export function buildWorld(scenario: ScenarioDef): World {
     // lands' cities, as they did before cities were split out; a city and its own land are a short march apart.
     const gate = provinces[c.a].within === c.b || provinces[c.b].within === c.a;
     const distanceKm = gate ? MOVEMENT.cityGateKm : Math.round(greatCircleKm(hub(provinces, c.a), hub(provinces, c.b)));
-    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label });
-    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label });
+    const [there, back] = c.border === undefined ? [{}, {}] : [{ border: c.border }, { border: Math.round((1 - c.border) * 1000) / 1000 }];
+    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label, ...there });
+    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label, ...back });
   }
   for (const id of Object.keys(neighbors)) neighbors[id].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 
@@ -152,6 +155,16 @@ export function cityOf(world: World, pid: ProvinceId): ProvinceId | undefined {
 export function isOpenRoad(world: World, a: ProvinceId, b: ProvinceId): boolean {
   const conn = connectionBetween(world, a, b);
   return !!conn && conn.kind !== 'strait' && world.provinces[a].within !== b && world.provinces[b].within !== a;
+}
+
+/** How far from `a` towards `b` (0..1) the road between them crosses into `b`. */
+export function roadBorder(world: World, a: ProvinceId, b: ProvinceId): number {
+  return connectionBetween(world, a, b)?.border ?? 0.5;
+}
+
+/** A point `f` (0..1) of the way from `a` to `b` along the road between them: which land it lies in, and where on the road out of it. */
+export function spotOnRoad(world: World, a: ProvinceId, b: ProvinceId, f: number): { province: ProvinceId; road: RoadSpot } {
+  return f < roadBorder(world, a, b) ? { province: a, road: { toward: b, at: f } } : { province: b, road: { toward: a, at: 1 - f } };
 }
 
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {

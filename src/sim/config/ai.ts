@@ -35,6 +35,11 @@ export interface AiLevel {
    * armies between fronts.
    */
   interiorLines: boolean;
+  /**
+   * Uses forward positions on the roads: an offensive masses on the roads into its target, just short of the
+   * border, and the armies guarding a front stand forward on the road towards the most dangerous enemy land.
+   */
+  forwardPositions: boolean;
 }
 
 export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
@@ -51,6 +56,7 @@ export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
     targetNoise: 0.01,
     acceptPeaceRatio: 0.85,
     interiorLines: true,
+    forwardPositions: true,
   },
   // Slow to react, thin on the ground, cautious in attack, sloppy in defence,
   // late to fall back; later and rarer wars, no ganging up, quicker peace.
@@ -67,6 +73,7 @@ export const AI_LEVELS: Record<AiDifficulty, AiLevel> = {
     targetNoise: 0.3,
     acceptPeaceRatio: 1,
     interiorLines: false,
+    forwardPositions: false,
   },
 };
 
@@ -209,6 +216,17 @@ export const AI = {
   targetValue: { base: 5, perVp: 7, outputPer: 10, capital: 8, reclaimCore: 14, trapped: 10, oneEscape: 3, cityBehind: 0.5 },
   /** Massing for an offensive stops once this multiple of the strength needed is on its way. */
   massingMargin: 1.15,
+  /** Forward positions stand this share of the way from a land's crossroads to the border along the road. */
+  forwardDepth: 0.75,
+  /**
+   * A forward screen turns to face another enemy land only when the danger there is this many times the danger it
+   * faces, and than its own strength.
+   */
+  screenSwitch: 1.5,
+  /** Seconds a forward screen keeps the facing it took (march included) before it may turn to face another land. */
+  screenHold: 300,
+  /** The danger down a road counts the enemy land at its end and its city in full, and the lands behind it at this share. */
+  screenBeyond: 0.5,
   /** Research priority each doctrine adds to the tech branches. */
   doctrineResearch: {
     armour: { armour: 4, logistics: 1.5, industry: 1 },

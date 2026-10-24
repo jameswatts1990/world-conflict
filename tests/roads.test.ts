@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyCommand, armyName, hostileArmiesIn, legTicks, planMarch, stepState } from '../src/sim';
+import { applyCommand, armyName, hostileArmiesIn, legTicks, planMarch, roadBorder, spotOnRoad, stepState } from '../src/sim';
 import { makePeace } from '../src/sim/systems/diplomacy';
 import { aiGame, clearArmies, place, quietGame, run, setWar, world } from './helpers';
 
@@ -104,17 +104,22 @@ describe('halting on a road', () => {
     expect(applyCommand(state, world, { type: 'merge', nation: 'fr', armyIds: [out.id, half.id] }).ok).toBe(true);
   });
 
-  it('a broken army on a road falls back only along it', () => {
+  it("a broken army on a road falls back through its own land's crossroads without stopping to fight there again", () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const army = place(state, 'fr', 'fr-east-land', { infantry: 1 });
+    const army = place(state, 'fr', 'fr-east-land', { infantry: 2 });
     army.autoRetreat = true;
-    army.road = { toward: 'fr-nord-land', at: 0.5 };
+    // Facing Hesse, where no refuge lies: it walks back through the crossroads and out to one behind.
+    army.road = { toward: 'de-hesse-land', at: 0.3 };
     for (const u of army.units) u.morale = 0.1;
     place(state, 'de', 'fr-east-land', { infantry: 6 });
-    run(state, 10);
-    expect(army.move?.leg).toMatchObject({ from: 'fr-east-land', to: 'fr-nord-land' });
+    run(state, 1);
+    expect(army.move?.leg).toMatchObject({ from: 'de-hesse-land', to: 'fr-east-land' });
+    const refuge = army.move!.path[1];
+    expect(state.provinces[refuge].owner).toBe('fr');
+    run(state, army.move!.leg!.duration - army.move!.leg!.elapsed);
+    expect(army.move?.leg).toMatchObject({ from: 'fr-east-land', to: refuge });
   });
 
   it('only on roads over land between two lands, at a point between their ends, and not on patrol', () => {
@@ -134,27 +139,62 @@ describe('halting on a road', () => {
     expect(move('be-brussels-land', 'fr-nord-land', 0.5).ok).toBe(false);
   });
 
-  it('stopping turns a march for a spot on a road back to where it set out; walking back, it carries on', () => {
+  it('a spot on a road lies on one side of the border or the other, as the map draws it', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris-land', { infantry: 2 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-paris-land', road: { toward: 'fr-nord-land', at: 0.5 } });
-    run(state, 3);
-    applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id });
-    expect(army.move?.leg?.to).toBe('fr-paris-land');
-    run(state, 2000);
-    expect(army.province).toBe('fr-paris-land');
-    expect(army.road).toBeUndefined();
+    const border = roadBorder(world, 'fr-paris-land', 'fr-nord-land');
+    expect(border).toBeGreaterThan(0.05);
+    expect(border).toBeLessThan(0.95);
+    expect(roadBorder(world, 'fr-nord-land', 'fr-paris-land')).toBeCloseTo(1 - border, 3);
+    const order = (to: string, toward: string, at: number) =>
+      applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to, road: { toward, at } });
+    expect(order('fr-paris-land', 'fr-nord-land', border + 0.02).ok).toBe(false);
+    expect(order('fr-paris-land', 'fr-nord-land', border - 0.02).ok).toBe(true);
+    expect(spotOnRoad(world, 'fr-paris-land', 'fr-nord-land', border + 0.1)).toEqual({ province: 'fr-nord-land', road: { toward: 'fr-paris-land', at: 1 - border - 0.1 } });
+  });
 
+  it('stopping on a road leaves the army where it is: across the border, it stands in the land beyond', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    const army = place(state, 'fr', 'fr-east-land', { infantry: 4 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-hesse-land', mode: 'move' });
+    const leg = army.move!.leg!;
+    const border = roadBorder(world, 'fr-east-land', 'de-hesse-land');
+    run(state, Math.ceil((border + 0.1) * leg.duration));
+    const f = leg.elapsed / leg.duration;
+    expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id }).ok).toBe(true);
+    expect(army.move).toBeNull();
+    expect(army.province).toBe('de-hesse-land');
+    expect(army.road?.toward).toBe('fr-east-land');
+    expect(army.road?.at).toBeCloseTo(1 - f, 6);
+    expect(army.arrivedVia).toBe('land');
+    // Standing in enemy land, it takes it.
+    run(state, 400);
+    expect(state.provinces['de-hesse-land'].owner).toBe('fr');
+
+    // Walking back from a road into its own land, it stops where it is too.
     const back = place(state, 'fr', 'fr-paris-land', { infantry: 2 });
-    back.road = { toward: 'fr-nord-land', at: 0.5 };
+    back.road = { toward: 'fr-nord-land', at: 0.3 };
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: back.id, to: 'fr-normandy-land' });
     run(state, 2);
     expect(applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: back.id }).ok).toBe(true);
-    expect(back.move?.leg).toMatchObject({ from: 'fr-nord-land', to: 'fr-paris-land' });
-    run(state, 2000);
     expect(back.province).toBe('fr-paris-land');
-    expect(back.move).toBeNull();
+    expect(back.road?.toward).toBe('fr-nord-land');
+    expect(back.road!.at).toBeLessThan(0.3);
+  });
+
+  it('at sea there is nowhere to stand: stopping turns a crossing back', () => {
+    const state = quietGame();
+    clearArmies(state);
+    const army = place(state, 'uk', 'uk-london-land', { infantry: 2 });
+    setWar(state, 'uk', 'fr');
+    applyCommand(state, world, { type: 'move', nation: 'uk', armyId: army.id, to: 'fr-nord-land' });
+    run(state, 10);
+    expect(applyCommand(state, world, { type: 'stop', nation: 'uk', armyId: army.id }).ok).toBe(true);
+    expect(army.move?.leg?.to).toBe('uk-london-land');
+    expect(army.move?.halting).toBe(true);
   });
 });
 
