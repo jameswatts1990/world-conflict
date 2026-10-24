@@ -482,7 +482,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   **Morale** (civilian morale, red to green; unknown under the fog) and **Cities** (city tier).
 - **Labels.** Nation names are painted across their territory when zoomed out, as a translucent, widely spaced
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
-  cities and counters where possible. Closer in, the provinces without a city carry their names under their anchor.
+  cities and counters where possible. Closer in, only cities are named: the land round them carries no label, to keep
+  the map clear (its name shows in its panel).
   Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
   badges for objective VP and capture-progress rings. Secondary towns
   are unnamed dots. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an

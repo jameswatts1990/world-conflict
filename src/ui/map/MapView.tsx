@@ -88,7 +88,7 @@ export interface MapViewProps {
 }
 
 /** Zoom ratios (relative to the initial fit) at which labels change. */
-const ZOOM = { detail: 0.32, provinceNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, cityModels: 1.15 };
+const ZOOM = { detail: 0.32, nationNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, cityModels: 1.15 };
 /**
  * Closest zoom (relative to the fit). Counters, models and labels stop growing long before
  * it, so zooming in spreads a crowded front out; close-up terrain tiles keep the relief sharp.
@@ -648,48 +648,25 @@ function LabelLayer({
   world,
   owners,
   ownerOf,
-  k,
   ratio,
-  cities,
 }: {
   geo: MapGeometry;
   world: World;
   owners: string;
   ownerOf: Record<ProvinceId, string>;
-  k: number;
   ratio: number;
-  cities: Record<ProvinceId, CityFootprint> | null;
 }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const labels = useMemo(() => nationLabels(geo, world, ownerOf), [geo, world, owners]);
-  if (ratio < ZOOM.provinceNames) {
-    return (
-      <g className="label-layer" pointerEvents="none">
-        {labels.map((l) => (
-          <text key={l.id} x={l.x} y={l.y} fontSize={l.size} className={`nation-label${l.neutral ? ' neutral' : ''}`}>
-            {l.text}
-          </text>
-        ))}
-      </g>
-    );
-  }
-  // Closer in, the provinces without a city carry their names (cities have their name plates).
-  const s = 1 / k;
+  // Closer in, only cities are named (by their plates): unnamed land keeps the map clear.
+  if (ratio >= ZOOM.nationNames) return null;
   return (
     <g className="label-layer" pointerEvents="none">
-      {world.provinceIds
-        .filter((id) => !world.provinces[id].city)
-        .map((id) => {
-          const [x, y] = geo.anchors[id];
-          // Under the anchor, where its armies leave room for it (they stand round and above it).
-          const foot = cities?.[id];
-          const top = foot ? foot.below - 3 : 10;
-          return (
-            <text key={id} x={x} y={y + (top + LAND_NAME) * s} fontSize={LAND_NAME * s} strokeWidth={2.6 * s} className="province-label">
-              {world.provinces[id].name}
-            </text>
-          );
-        })}
+      {labels.map((l) => (
+        <text key={l.id} x={l.x} y={l.y} fontSize={l.size} className={`nation-label${l.neutral ? ' neutral' : ''}`}>
+          {l.text}
+        </text>
+      ))}
     </g>
   );
 }
@@ -716,16 +693,14 @@ export function VpMarker({ vp }: { vp: number }) {
 /** Width and height of a name plate, in screen pixels. */
 const plateSize = (text: string, size: number): [number, number] => [text.length * size * 0.56 + 12, size + 5];
 
-/** Size of the name a land carries at its anchor, in screen pixels. */
-const LAND_NAME = 10.5;
-
 /**
- * A city's name plate (shown with its model), or a land's name under its anchor, relative to the middle
- * of its built-up area (the anchor for land), in screen pixels.
+ * A city's name plate (shown with its model), relative to the middle of its built-up area, in screen
+ * pixels. Land carries no name, so armies there have nothing to keep clear of.
  */
-function plateBox(world: World, id: ProvinceId, city: CityFootprint): PlateBox {
-  const def = world.provinces[id];
-  const [w, h] = def.city ? plateSize(def.city.name, def.city.size === 'capital' ? 10.5 : 9.5) : plateSize(def.name, LAND_NAME);
+function plateBox(world: World, id: ProvinceId, city: CityFootprint): PlateBox | undefined {
+  const c = world.provinces[id].city;
+  if (!c) return undefined;
+  const [w, h] = plateSize(c.name, c.size === 'capital' ? 10.5 : 9.5);
   const top = city.below - 3 - city.mid[1];
   return { half: w / 2, top, bottom: top + h };
 }
@@ -1395,8 +1370,8 @@ function ArmyModelLayer({
   placed.sort((a, b) => a.y - b.y || byCreation(a.army, b.army));
   const room = armyRoom(px);
   // Every city's name plate on screen (map units), so a badge that lands on one can step clear of it.
-  const plates = world.provinceIds.map((id) => {
-    const b = plateBox(world, id, cities[id]);
+  const plates = world.cityIds.map((id) => {
+    const b = plateBox(world, id, cities[id])!;
     const [x, y] = [geo.anchors[id][0] + cities[id].mid[0] / k, geo.anchors[id][1] + cities[id].mid[1] / k];
     return { x0: x - b.half / k, x1: x + b.half / k, y0: y + b.top / k, y1: y + b.bottom / k };
   });
@@ -2118,7 +2093,7 @@ export function MapView(props: MapViewProps) {
           {showDetail && (
             <>
               <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
-              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} cities={cities} />
+              <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} ratio={ratio} />
               {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />}
               {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
               <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />

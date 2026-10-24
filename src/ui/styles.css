@@ -930,15 +930,6 @@ kbd {
   stroke: rgba(255, 250, 235, 0.45);
   stroke-width: 0.45;
 }
-.province-label {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  text-anchor: middle;
-  fill: rgba(255, 255, 255, 0.88);
-  paint-order: stroke;
-  stroke: rgba(10, 15, 20, 0.6);
-}
 .plate-bg {
   fill: rgba(10, 15, 21, 0.84);
   stroke: rgba(255, 255, 255, 0.14);
