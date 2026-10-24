@@ -212,14 +212,22 @@ export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef
   ];
 }
 
+/** Where a link's road runs on the map: its bends between the anchors, and on a road between two lands, where it crosses into the second. */
+export interface RoadData {
+  border?: number;
+  via?: [number, number][];
+}
+
 /**
- * The connections with where each road between two lands crosses their border, from the map (`borders`, keyed
- * 'a|b' as the connection is written; scripts/map/road-borders.ts writes them).
+ * The connections with where each road runs and, between two lands, where it crosses their border, from the map
+ * (`roads`, keyed 'a|b' as the connection is written; scripts/map/road-routes.ts writes them).
  */
-export function withRoadBorders(connections: ConnectionDef[], borders: Record<string, number>): ConnectionDef[] {
+export function withRoads(connections: ConnectionDef[], roads: Record<string, RoadData>): ConnectionDef[] {
   return connections.map((c) => {
-    const border = c.kind === 'strait' ? undefined : borders[`${c.a}|${c.b}`];
-    return border === undefined ? c : { ...c, border };
+    const road = roads[`${c.a}|${c.b}`];
+    if (!road) return c;
+    const border = c.kind === 'strait' ? undefined : road.border;
+    return { ...c, ...(border !== undefined ? { border } : {}), ...(road.via ? { via: road.via } : {}) };
   });
 }
 

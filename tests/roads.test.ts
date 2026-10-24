@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand, armiesIn, armyName, connectionBetween, hostileArmiesIn, legTicks, planMarch, roadBorder, spotOnRoad, stepState } from '../src/sim';
 import { makePeace } from '../src/sim/systems/diplomacy';
+import { alongRoad, buildMapGeometry, nearestOnRoad, roadLine, roadPart } from '../src/ui/map/geo';
 import { aiGame, clearArmies, linkBetween, place, quietGame, run, setWar, world } from './helpers';
 
 describe('halting on a road', () => {
@@ -313,5 +314,40 @@ describe('peace while marching', () => {
     run(state, 600);
     expect(army.province).toBe('fr-east-w');
     expect(state.events.some((e) => e.text.includes(`${armyName(world, army)} was refused entry`))).toBe(true);
+  });
+});
+
+describe('roads as the map draws them', () => {
+  const geo = buildMapGeometry(world);
+  const close = (p: { x: number; y: number }, q: [number, number]) => expect(Math.hypot(p.x - q[0], p.y - q[1])).toBeLessThan(1e-6);
+
+  it("run from one province's anchor to the other's through the scenario's bends, the same road either way", () => {
+    for (const c of world.scenario.connections) {
+      const [there, back] = [roadLine(geo, c.a, c.b), roadLine(geo, c.b, c.a)];
+      expect(there.pts, `${c.a}|${c.b}`).toHaveLength(2 + (c.via?.length ?? 0));
+      close(alongRoad(there, 0), geo.anchors[c.a]);
+      close(alongRoad(there, 1), geo.anchors[c.b]);
+      // A spot a share of the way from one end is the same spot from the other.
+      for (const f of [0.2, 0.5, 0.8]) close(alongRoad(there, f), [alongRoad(back, 1 - f).x, alongRoad(back, 1 - f).y]);
+    }
+    // The road between the lands round Rouen goes round the city, not through it.
+    expect(world.scenario.connections.find((c) => c.a === 'fr-normandy-sw' && c.b === 'fr-normandy-ne')?.via?.length).toBeGreaterThan(0);
+  });
+
+  it('measure a share of the way along the road as drawn, round its bends', () => {
+    const bent = world.scenario.connections.filter((c) => c.via && c.kind !== 'strait');
+    expect(bent.length).toBeGreaterThan(50);
+    for (const c of bent) {
+      const line = roadLine(geo, c.a, c.b);
+      for (const f of [0.1, 0.35, 0.6, 0.9]) {
+        const p = alongRoad(line, f);
+        // Pointing at a spot finds that spot again; a stretch of the road starts and ends at its two spots.
+        expect(nearestOnRoad(line, [p.x, p.y]).t, `${c.a}|${c.b} at ${f}`).toBeCloseTo(f, 6);
+        const part = roadPart(line, f, 1);
+        close(p, part[0]);
+        close(alongRoad(line, 1), part[part.length - 1]);
+        expect(part.length).toBe(2 + line.at.filter((t) => t > f && t < 1).length);
+      }
+    }
   });
 });

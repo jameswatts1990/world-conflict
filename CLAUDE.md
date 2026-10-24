@@ -99,12 +99,37 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   walking back from a road or has turned round). An army with `road` set stands on a road between two lands
   (`isOpenRoad`: not a sea crossing or a city's gate) and counts as in its land for every rule. Its `at` stays short
   of `roadBorder(world, land, toward)`, where the road crosses into the next land (generated into
-  `scenario/europe/roads.ts` by `scripts/map/road-borders.ts`, also run by `npm run map:build`); `spotOnRoad` turns a
-  fraction of the way along a road into the land and spot. An army walking within its land (to or from a spot on its
+  `scenario/europe/roads.ts` by `scripts/map/road-routes.ts`, also run by `npm run map:build`); `spotOnRoad` turns a
+  fraction of the way along a road into the land and spot. A fraction of the way along a road (`at`, `border`, a
+  leg's progress) is measured along the road as the map draws it (see Map rules), though march times go by the
+  straight distance between the anchors. An army walking within its land (to or from a spot on its
   road, `walksWithin`) has not left it: battles, captures and `hostileArmiesIn`/`armiesIn` go by `isArmyAway`, while
   merging, splitting and the like go by `isArmyInTransit` (any leg). Plan marches with `planMarch` (it starts from a province,
   a road or mid-leg); `findPath` is province to province. The AI reads where its own armies are going (a province,
   or the land a road halt lies in) through `armyLocation` in `ai/context.ts`.
+
+## Map rules
+
+These hold for every area of the map, today's and any added later; the generators keep them and
+`tests/scenario.test.ts` fails a map that breaks them.
+
+- **Every province looks like one, city or land.** Its borders are jagged like the natural ones (Natural Earth's,
+  kept as legs of about 10 km turning about 45 degrees), never a smooth ring or a long straight line. The borders
+  `scripts/map/city-provinces.ts` draws itself (each city's outline, and the cuts between lands where they run
+  through the admin units) are broken up to match (`roughen`), after the division is decided and without moving any
+  border's ends, so lands, links and anchors stay as the division made them. The scenario test fails a border within
+  a region that runs smoother than any natural one (turning under 10 degrees a leg for over 45 km). A city's border
+  is drawn like the borders between its lands (`landBorders` in `ui/map/geo.ts`), not fainter.
+- **Paths converge on each province's centre.** Every road between two provinces runs from one's anchor (its centre:
+  its armies stand there and every road out of it starts there) to the other's, over those two provinces alone: it
+  crosses their shared border once and never runs through a third province (the city between two lands, a land next
+  door) or over the sea. A sea crossing runs over each province's own land to its coast. Where the straight line
+  between the anchors would break this, or pass within 3 km of anything else, the road bends round it:
+  `scripts/map/road-routes.ts` (run by `npm run map:build`) writes the bends (`via`) and where each road crosses its
+  border into `scenario/europe/roads.ts`, and the map draws, walks and measures the bent road (`roadLine` in
+  `ui/map/geo.ts`). The scenario test lists the few roads the shapes leave no clean way (an exclave, an estuary) and
+  fails on any other that strays: after changing the map, rerun `npm run map:build` (or `city-provinces.ts` then
+  `road-routes.ts`) and fix whatever the test reports.
 
 ## How the computer opponents should behave
 

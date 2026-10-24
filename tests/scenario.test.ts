@@ -4,8 +4,7 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { BLOC_IDS, UNIT_GENS, UNIT_TYPES, isOpenRoad } from '../src/sim';
-import { ROAD_BORDERS } from '../src/sim/scenario/europe/roads';
-import { roadBorders } from '../scripts/map/roads';
+import { roadFaults } from '../scripts/map/roads';
 import { UNITS } from '../src/sim/config/units';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { world } from './helpers';
@@ -60,10 +59,24 @@ describe('scenario data', () => {
     expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
   });
 
-  it('every road between two lands knows where it crosses their border, as the map draws it', () => {
+  it('every road runs from one province\'s anchor to the other\'s over those two alone, and knows where it crosses their border', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
-    // A change to the map needs `npx vite-node scripts/map/road-borders.ts` (npm run map:build runs it).
-    expect(ROAD_BORDERS).toEqual(roadBorders(topo));
+    // A change to the map needs `npx vite-node scripts/map/road-routes.ts` (npm run map:build runs it), which bends
+    // every road round whatever lies between its anchors: a city, another land, the sea.
+    const anchors = Object.fromEntries(world.provinceIds.map((id) => [id, world.provinces[id].anchor]));
+    const connections = world.scenario.connections;
+    const roads = Object.fromEntries(connections.map((c) => [`${c.a}|${c.b}`, { via: c.via, border: c.border }]));
+    const faults = roadFaults(topo, connections, anchors, new Set(world.cityIds), roads);
+    // Where the shapes leave a road no way that keeps to its two provinces (it goes as briefly as it can through
+    // what it must), and why. Any other road that strays is a map to fix or a road to route again.
+    const lastResort: Record<string, string> = {
+      'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
+      'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
+    };
+    const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
+    expect(strays.sort()).toEqual(Object.keys(lastResort).sort());
+    // The crossing gameplay reads is where the drawn road crosses the border.
+    for (const f of faults) if (f.border !== undefined) expect(roads[f.link].border, f.link).toBe(f.border);
     for (const id of world.provinceIds) {
       for (const n of world.neighbors[id]) {
         if (!isOpenRoad(world, id, n.id)) continue;
@@ -71,6 +84,45 @@ describe('scenario data', () => {
         expect(n.border, `${id} → ${n.id}`).toBeLessThanOrEqual(0.95);
       }
     }
+  });
+
+  it('every border within a region is jagged like the natural ones: no smooth ring round a city, no long straight cut', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const { scale, translate } = topo.transform;
+    const arcs: [number, number][][] = topo.arcs.map((arc: [number, number][]) => {
+      let [x, y] = [0, 0];
+      return arc.map(([dx, dy]): [number, number] => [(x += dx) * scale[0] + translate[0], (y += dy) * scale[1] + translate[1]]);
+    });
+    const users = new Map<number, Set<string>>();
+    for (const g of topo.objects.provinces.geometries) {
+      const walk = (a: unknown): void => {
+        if (typeof a === 'number') users.set(a < 0 ? ~a : a, (users.get(a < 0 ? ~a : a) ?? new Set()).add(g.properties.pid));
+        else if (Array.isArray(a)) a.forEach(walk);
+      };
+      walk(g.arcs);
+    }
+    // The longest stretch (km) over which a line turns less than 10 degrees from leg to leg. Natural borders run so
+    // for 20 km or so, 45 at the very most; a city's smooth ring or a straight cut through the units, for far longer.
+    const smooth = (pts: [number, number][]) => {
+      const km = ([x1, y1]: [number, number], [x2, y2]: [number, number]): [number, number] => [(x2 - x1) * 111.32 * Math.cos((y1 * Math.PI) / 180), (y2 - y1) * 110.57];
+      let [best, run] = [0, 0];
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const [dx, dy] = km(pts[k], pts[k + 1]);
+        const leg = Math.hypot(dx, dy);
+        const [px, py] = k ? km(pts[k - 1], pts[k]) : [dx, dy];
+        const turn = Math.abs(Math.atan2(px * dy - py * dx, px * dx + py * dy));
+        run = k && turn < (10 * Math.PI) / 180 ? run + leg : leg;
+        best = Math.max(best, run);
+      }
+      return best;
+    };
+    const long: string[] = [];
+    for (const [arc, pids] of users) {
+      const [a, b] = [...pids];
+      if (pids.size === 2 && world.regionOf[a] === world.regionOf[b] && smooth(arcs[arc]) > 45) long.push(`${a}|${b}`);
+    }
+    // A change to the map needs `npx vite-node scripts/map/city-provinces.ts` (npm run map:build runs it), which breaks them up.
+    expect(long).toEqual([]);
   });
 
   it('movement graph is connected and uses only explicit connections', () => {

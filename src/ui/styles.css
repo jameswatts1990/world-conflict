@@ -747,8 +747,8 @@ kbd {
 }
 /* Borders, faint to bold: provinces, powers (a colour band inside each frontier), your
    own land (a glowing white outline) and the front (red). */
-/* Every province border is a light line over the land, as in Conflict of Nations: between regions, between
-   the lands round a city (running out from it) and round the city itself, a little fainter in turn.
+/* Every province border is a light line over the land, as in Conflict of Nations: between regions, and a little
+   fainter within one, round its city and between the lands round it (a city is a province like its lands).
    Solid on purpose: dashes on these long non-scaling paths are redrawn on every pan frame and cost a lot. */
 .province-border {
   fill: none;
@@ -882,9 +882,12 @@ kbd {
 .city-layer .fogged .plate {
   opacity: 0.8;
 }
+/* Each road runs from one province's anchor to the other's, bending round whatever lies between them. */
 .connection {
+  fill: none;
   stroke: rgba(25, 25, 25, 0.2);
   stroke-width: 1;
+  stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
 }
 /* Between two lands round the same city: the way round it, fainter than the roads out of it. */
@@ -5865,7 +5868,9 @@ body {
 }
 /* With one of your armies selected, a road over land takes the pointer: send it to any spot along it. */
 .road-hit {
+  fill: none;
   stroke: transparent;
+  stroke-linejoin: round;
   stroke-width: 12;
   vector-effect: non-scaling-stroke;
   pointer-events: stroke;

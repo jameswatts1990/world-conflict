@@ -13,7 +13,9 @@
 // follow the borders of the region's admin-1 units (departments, counties, provinces) where the units are
 // small enough, and cut straight through bigger ones and through the units round the city. An island big
 // enough is a land of its own; islets join the nearest land. A land is keyed `<row id>-<compass point>`
-// (`be-brussels-w`).
+// (`be-brussels-w`). Once the division is made, the borders it drew itself (each city's ring, and the straight
+// cuts through the units) are broken up like the natural borders, keeping their ends (`roughen`): every province
+// looks like one, and nothing gameplay reads moves.
 //
 // It reads the uncut regions and their units from scripts/map/base.topo.json, so running it twice
 // changes nothing, and writes src/assets/map/map.topo.json and src/sim/scenario/europe/land.ts: whether
@@ -79,6 +81,28 @@ const OFFSET_KM = 2;
 const EXTRA_LAND = 3;
 /** Another part of a region (an island) at least this big, in km², is a land of its own; smaller ones join the nearest land. */
 const OWN_LAND_KM2 = 4000;
+/**
+ * The borders this script draws (a city's outline, the cuts between lands where they run straight through the
+ * units) are broken up like the natural ones, which the map keeps as legs of 5 to 15 km turning 30 to 70 degrees:
+ * the middle of each stretch is pushed aside by up to JAG of its length (of JAG_SPAN_KM at most, so a long cut
+ * wanders but keeps its course), then the middle of each half, until the legs are shorter than JAG_KM. A city's
+ * outline first gets corners every RING_SIDE_KM or so, each up to CORNER_REACH nearer the city or farther out.
+ */
+const JAG = 0.25;
+const JAG_SPAN_KM = 16;
+const JAG_KM = 8;
+const RING_SIDE_KM = 10;
+const CORNER_REACH = 0.15;
+/**
+ * A border broken up keeps at least this far (km) from every other, but near its own ends, where others meet it, and
+ * from the region's towns and anchors (or as far as it was), so that each stays on its own side.
+ */
+const ROUGH_CLEAR_KM = 1.5;
+const PLACE_CLEAR_KM = 2.5;
+/** A stretch of border whose middle lies this close (km) to a unit's border follows it (the map rounds its points)... */
+const ON_UNIT_KM = 0.3;
+/** ...and one that cuts through them runs straight while it turns less than this (radians). */
+const STRAIGHT = 0.08;
 
 type Pt = [number, number];
 /** A half-plane, n · p ≤ c. */
@@ -168,6 +192,24 @@ function nearestOn(segments: [Pt, Pt][], [px, py]: Pt): Pt | null {
     if (d < bd) [bd, best] = [d, q];
   }
   return best;
+}
+
+/**
+ * The points between p and q of a border that would run straight between them, broken up the way the natural
+ * borders are (see JAG), each with how far along from p to q it stands for (0..1): its middle pushed aside, then
+ * each half's, while the legs are long enough. Aside is square to the stretch, or for an outline round the origin
+ * (`round`), straight out from it or in towards it, so the outline still goes round the origin once.
+ */
+function jagged(p: Pt, q: Pt, rand: () => number, round: boolean, from = 0, to = 1): { p: Pt; f: number }[] {
+  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+  if (len < JAG_KM) return [];
+  const off = (rand() * 2 - 1) * JAG * Math.min(len, JAG_SPAN_KM);
+  const mid: Pt = [(p[0] + q[0]) / 2, (p[1] + q[1]) / 2];
+  const away = Math.hypot(mid[0], mid[1]) || 1;
+  const [ux, uy] = round ? [mid[0] / away, mid[1] / away] : [-(q[1] - p[1]) / len, (q[0] - p[0]) / len];
+  const m: Pt = [mid[0] + ux * off, mid[1] + uy * off];
+  const f = (from + to) / 2;
+  return [...jagged(p, m, rand, round, from, f), { p: m, f }, ...jagged(m, q, rand, round, f, to)];
 }
 
 /** Whether segments pq and ab cross (touching at an end does not count). */
@@ -413,6 +455,196 @@ interface Land {
   units: Map<string, number>;
 }
 
+/** A region divided: its city's shape and its lands. */
+interface Division {
+  city: Feature<Polygon, Props>;
+  lands: Land[];
+}
+
+/** A border broken up: each point as it is drawn (`rough`), and the point of the border as the division drew it that it stands for (`plain`). */
+interface Rough {
+  rough: Pt[];
+  plain: Pt[];
+}
+
+/**
+ * The borders this script drew itself, broken up like the natural ones (see JAG): each city's outline where it
+ * meets the lands round it, and the cuts between those lands where they run straight through the units. Only the
+ * drawing changes: every border keeps its ends, and keeps clear of every other border (ROUGH_CLEAR_KM) and of the
+ * region's towns and anchors (PLACE_CLEAR_KM), or as clear as it was; where it would not, it is broken up less
+ * there (its points drawn back towards where they were), so the provinces meet as they did and nothing gameplay
+ * reads moves. Works on the finished map, in place: a border is an arc of it, shared by the provinces either side.
+ */
+function roughen(
+  topo: Topology<{ provinces: GeometryCollection<Props> }>,
+  done: Map<string, Division>,
+  rowOf: Map<string, Row>,
+  units: FeatureCollection<Polygon | MultiPolygon, UnitProps>,
+): { broken: number; left: string[] } {
+  const geoms = topo.objects.provinces.geometries;
+  const ids = geoms.map((g) => (g.properties as Props).pid);
+  const rowIdOf = (pid: string) => (rowOf.has(pid) ? pid : pid.slice(0, pid.lastIndexOf('-')));
+  const arcs = decodeArcs(topo);
+  const users = arcUsers(geoms as never);
+  // Every border round and within each region: what a border broken up keeps clear of.
+  const around = new Map<string, number[]>();
+  for (const [arc, list] of users) for (const row of new Set(list.map((g) => rowIdOf(ids[g])))) around.set(row, [...(around.get(row) ?? []), arc]);
+  // The borders of each region's units, which its lands follow where they do not cut through them.
+  const unitEdges = new Map<string, [Pt, Pt][]>();
+  const unitEdgesOf = (row: string, flat: ReturnType<typeof local>) => {
+    if (!unitEdges.has(row))
+      unitEdges.set(
+        row,
+        units.features
+          .filter((f) => f.properties.pid === row)
+          .flatMap((f) => ringsOf(f.geometry).flatMap((poly) => poly.flatMap((ring) => ring.slice(1).map((p, i) => [flat.to(ring[i]), flat.to(p)] as [Pt, Pt])))),
+      );
+    return unitEdges.get(row)!;
+  };
+  const changed: number[] = [];
+  const left: string[] = [];
+  for (const [arc, list] of [...users].sort((a, b) => a[0] - b[0])) {
+    if (list.length !== 2) continue;
+    const [a, b] = list.map((g) => ids[g]);
+    const row = rowIdOf(a);
+    if (rowIdOf(b) !== row) continue;
+    const r = rowOf.get(row)!;
+    const flat = local(r.city.coord);
+    const pts = arcs[arc].map(flat.to);
+    const rand = rngOf(`${row}|${keyOf(arcs[arc][0])}|${keyOf(arcs[arc][arcs[arc].length - 1])}`);
+    const shape = a === row || b === row ? roughRing(pts, rand) : roughCuts(pts, unitEdgesOf(row, flat), rand);
+    if (!shape) continue;
+    const { rough, plain } = shape;
+    const others = around
+      .get(row)!
+      .filter((o) => o !== arc)
+      .flatMap((o) => {
+        const line = arcs[o].map(flat.to);
+        return line.slice(1).map((p, i) => [line[i], p] as [Pt, Pt]);
+      });
+    const gap = (x: Pt, segs: [Pt, Pt][]) => Math.min(...segs.map(([u, v]) => distToSegment(x, u, v)));
+    const plainLegs = plain.slice(1).map((p, i) => [plain[i], p] as [Pt, Pt]);
+    const places = [r.city.coord, ...r.towns.map(([, lon, lat]) => [lon, lat] as Pt), ...done.get(row)!.lands.map((l) => l.anchor)].map((c) => {
+      const x = flat.to(c);
+      return { x, keep: Math.min(PLACE_CLEAR_KM, gap(x, plainLegs) * 0.9) };
+    });
+    const plainClear = plain.map((p) => gap(p, others));
+    const ends = [pts[0], pts[pts.length - 1]];
+    // The points of a line that come too near another border or a place, or whose legs cross another border.
+    const faults = (line: Pt[]) => {
+      const bad = new Set<number>();
+      for (let i = 0; i + 1 < line.length; i++) {
+        const [p, q] = [line[i], line[i + 1]];
+        if (others.some(([u, v]) => crosses(p, q, u, v)) || places.some(({ x, keep }) => distToSegment(x, p, q) < keep)) bad.add(i).add(i + 1);
+      }
+      for (let i = 1; i < line.length - 1; i++) {
+        const near = Math.min(...ends.map((e) => Math.hypot(e[0] - line[i][0], e[1] - line[i][1])));
+        if (gap(line[i], others) < Math.min(ROUGH_CLEAR_KM, near * 0.4, plainClear[i] * 0.9)) bad.add(i);
+      }
+      return bad;
+    };
+    // Each point drawn back halfway towards where it was, with its neighbours, wherever the line is at fault.
+    const t = rough.map(() => 1);
+    const drawn = () => rough.map((p, i): Pt => [plain[i][0] + (p[0] - plain[i][0]) * t[i], plain[i][1] + (p[1] - plain[i][1]) * t[i]]);
+    let line = drawn();
+    for (let pass = 0; pass < 8; pass++) {
+      const bad = faults(line);
+      if (!bad.size) break;
+      const near = new Set([...bad].flatMap((i) => [i - 1, i, i + 1]).filter((i) => i > 0 && i < t.length - 1));
+      for (const i of near) t[i] = pass < 6 ? t[i] / 2 : 0;
+      line = drawn();
+    }
+    if (faults(line).size) {
+      left.push(`${a}|${b}`);
+      continue;
+    }
+    arcs[arc] = [arcs[arc][0], ...line.slice(1, -1).map((p) => flat.from(p)), arcs[arc][arcs[arc].length - 1]];
+    changed.push(arc);
+  }
+  // Back into the map's integer grid, each point as a step from the one before; points that fall together, once.
+  const { scale, translate } = topo.transform!;
+  for (const arc of changed) {
+    const grid = arcs[arc].map(([x, y]) => [Math.round((x - translate[0]) / scale[0]), Math.round((y - translate[1]) / scale[1])]);
+    const kept = grid.filter((p, i) => i === 0 || p[0] !== grid[i - 1][0] || p[1] !== grid[i - 1][1]);
+    topo.arcs[arc] = kept.map((p, i) => (i ? [p[0] - kept[i - 1][0], p[1] - kept[i - 1][1]] : p)) as Topology['arcs'][number];
+  }
+  return { broken: changed.length, left };
+}
+
+/**
+ * A stretch of a city's outline (its points in km round the city, as the division drew it smooth) given corners
+ * every RING_SIDE_KM or so, each pushed out from the city or in towards it by up to CORNER_REACH of its distance,
+ * and the legs between them broken up. Its ends stay put. Null for a stretch too short to break up.
+ */
+function roughRing(pts: Pt[], rand: () => number): Rough | null {
+  const steps = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+  const length = steps.reduce((s, x) => s + x, 0);
+  const n = Math.round(length / RING_SIDE_KM);
+  if (n < 1 || length < JAG_KM) return null;
+  // The point `d` km along the stretch.
+  const along = (d: number): Pt => {
+    for (let i = 0; i < steps.length; i++) {
+      if (d <= steps[i] || i === steps.length - 1) {
+        const t = steps[i] ? Math.min(1, d / steps[i]) : 0;
+        return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t];
+      }
+      d -= steps[i];
+    }
+    return pts[pts.length - 1];
+  };
+  const at = (k: number) => (k <= 0 ? pts[0] : k >= n ? pts[pts.length - 1] : along((k / n) * length));
+  const corners = Array.from({ length: n + 1 }, (_, k): Pt => {
+    const [x, y] = at(k);
+    const f = k === 0 || k === n ? 1 : 1 + (rand() * 2 - 1) * CORNER_REACH;
+    return [x * f, y * f];
+  });
+  const out: Rough = { rough: [], plain: [] };
+  corners.forEach((c, k) => {
+    out.rough.push(c);
+    out.plain.push(at(k));
+    if (k === n) return;
+    for (const { p, f } of jagged(c, corners[k + 1], rand, true)) {
+      out.rough.push(p);
+      out.plain.push(at(k + f));
+    }
+  });
+  return out;
+}
+
+/**
+ * A border between two lands (its points in km round their city) with every straight stretch of it that cuts
+ * through the units broken up; the rest, which follows the units' own borders (`unitEdges`), stays as it is.
+ * Null where no stretch cuts through for long enough.
+ */
+function roughCuts(pts: Pt[], unitEdges: [Pt, Pt][], rand: () => number): Rough | null {
+  const cuts = (i: number) => {
+    const mid: Pt = [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2];
+    return unitEdges.every(([u, v]) => distToSegment(mid, u, v) >= ON_UNIT_KM);
+  };
+  const heading = (i: number) => Math.atan2(pts[i + 1][1] - pts[i][1], pts[i + 1][0] - pts[i][0]);
+  const turn = (i: number, j: number) => Math.abs((((heading(j) - heading(i)) % TAU) + TAU + Math.PI) % TAU - Math.PI);
+  const out: Rough = { rough: [pts[0]], plain: [pts[0]] };
+  let changed = false;
+  for (let i = 0; i < pts.length - 1; ) {
+    // The longest run of legs from point i that cut through in a straight line, or that follow the units.
+    const cutting = cuts(i);
+    let j = i + 1;
+    while (j < pts.length - 1 && cuts(j) === cutting && (!cutting || turn(i, j) < STRAIGHT)) j++;
+    const breaks = cutting ? jagged(pts[i], pts[j], rand, false) : [];
+    if (breaks.length) changed = true;
+    for (const { p, f } of breaks) {
+      out.rough.push(p);
+      out.plain.push([pts[i][0] + (pts[j][0] - pts[i][0]) * f, pts[i][1] + (pts[j][1] - pts[i][1]) * f]);
+    }
+    for (const p of [...(breaks.length ? [] : pts.slice(i + 1, j)), pts[j]]) {
+      out.rough.push(p);
+      out.plain.push(p);
+    }
+    i = j;
+  }
+  return changed ? out : null;
+}
+
 async function main() {
   const hints = process.argv.includes('--hints');
   // 1. The whole regions and their units, as build-map.mjs drew them.
@@ -480,7 +712,7 @@ async function main() {
    * other part big enough (an island), and the islets joined to the land nearest them. Returns the city's
    * shape (with every point where a land border meets it) and the lands.
    */
-  const divide = async (row: Row, city: Feature<Polygon, Props>): Promise<{ city: Feature<Polygon, Props>; lands: Land[] }> => {
+  const divide = async (row: Row, city: Feature<Polygon, Props>): Promise<Division> => {
     const flat = local(row.city.coord);
     const region = byId.get(row.id)!;
     const R = ringsOf(region.geometry).map((p) => p.map((r) => r.map(flat.to)));
@@ -892,7 +1124,7 @@ async function main() {
   //    region's land (clipping can leave a hair along a coast that meets a border), it is drawn a little
   //    smaller and divided again.
   const scale = new Map(ROWS.map((r) => [r.id, 1]));
-  const done = new Map<string, { city: Feature<Polygon, Props>; lands: Land[] }>();
+  const done = new Map<string, Division>();
   let out: Topology<{ provinces: GeometryCollection<Props>; countries: GeometryCollection }> | null = null;
   for (let attempt = 0; attempt < 8; attempt++) {
     for (const row of ROWS) {
@@ -932,6 +1164,8 @@ async function main() {
     }
   }
   if (!out) throw new Error('No map');
+  // The borders the division drew itself broken up like the natural ones, leaving everything else as it is.
+  const rough = roughen(out, done, rowOf, unitFc);
 
   // 3. The links: every shared border (as the rows' connection says), the sea crossings between the
   //    nearest coasts, and a crossing to any land its row's other provinces cannot reach on foot.
@@ -1030,11 +1264,15 @@ async function main() {
   }
 
   // 4. What gameplay needs of each row: whether its city reaches the sea, and each land's anchor, coast and towns.
+  // The lands as the map draws them, their borders broken up: where the towns lie.
+  const drawn = new Map(
+    (feature(out, out.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, Props>).features.map((f) => [f.properties.pid, f.geometry]),
+  );
   const landData = ROWS.map((row) => {
     const { lands } = done.get(row.id)!;
     const towns = new Map<string, string[]>(lands.map((l) => [l.key, []]));
     const flat = local(row.city.coord);
-    const polysOf = (l: Land) => ringsOf(l.feature.geometry).map((poly) => poly.map((r) => r.map(flat.to)));
+    const polysOf = (l: Land) => ringsOf(drawn.get(l.feature.properties.pid)!).map((poly) => poly.map((r) => r.map(flat.to)));
     for (const [name, lon, lat] of row.towns) {
       const p = flat.to([lon, lat]);
       // A town inside the city's own ring goes with the land nearest it.
@@ -1098,8 +1336,9 @@ async function main() {
   );
   const count = landData.reduce((s, d) => s + d.lands.length, 0);
   console.log(
-    `divided ${ROWS.length} regions into their cities and ${count} lands (${links.length} links); wrote map.topo.json (${(JSON.stringify(out).length / 1024).toFixed(0)} KB) and land.ts`,
+    `divided ${ROWS.length} regions into their cities and ${count} lands (${links.length} links), broke up ${rough.broken} borders; wrote map.topo.json (${(JSON.stringify(out).length / 1024).toFixed(0)} KB) and land.ts`,
   );
+  if (rough.left.length) console.log(`left as drawn (too near another border, a town or an anchor): ${rough.left.join(', ')}`);
 }
 
 await main();

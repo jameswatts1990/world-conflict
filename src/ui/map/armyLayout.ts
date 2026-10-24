@@ -106,14 +106,15 @@ function edge(dx: number, dy: number, [hx, hy]: Offset, room: number): Offset {
 }
 
 /**
- * Where a march between two cities `length` pixels apart in direction (dx, dy)
- * starts and ends, as offsets from the middle of each city's built-up area: at its
- * edges, so armies do not walk across the cities. On a short road the ends are
- * pulled in, so an army never walks backwards.
+ * Where a march between two cities along a road `length` pixels long starts and ends,
+ * as offsets from the middle of each city's built-up area: at its edges, so armies do
+ * not walk across the cities. The road leaves the first city in direction (dx, dy) and
+ * reaches the second in direction `arrive` (the same, for a straight road). On a short
+ * road the ends are pulled in, so an army never walks backwards.
  */
-export function roadEnds(dx: number, dy: number, halfFrom: Offset, halfTo: Offset, room: number, length: number): [Offset, Offset] {
+export function roadEnds(dx: number, dy: number, halfFrom: Offset, halfTo: Offset, room: number, length: number, arrive: Offset = [dx, dy]): [Offset, Offset] {
   const start = edge(dx, dy, halfFrom, room);
-  const end = edge(-dx, -dy, halfTo, room);
+  const end = edge(-arrive[0], -arrive[1], halfTo, room);
   const used = Math.hypot(...start) + Math.hypot(...end);
   const f = used > length * 0.8 ? (length * 0.8) / used : 1;
   return [
