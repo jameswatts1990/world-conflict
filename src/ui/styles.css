@@ -665,13 +665,37 @@ kbd {
 }
 
 /* ---------------------------------------------------------------- Map */
+/* The map's drawing on a layer of its own: during a drag or pinch the compositor only moves it (MapView's `place`). */
+.map-layer {
+  position: absolute;
+  will-change: transform;
+  user-select: none;
+  font-family: var(--font-display);
+}
+/* What changes from frame to frame, on a layer of its own over the rest: only what it draws takes the pointer. */
+.map-top {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  pointer-events: none;
+}
+.map-top > g {
+  pointer-events: auto;
+}
+/* Over the map while its drawing is scaled for a zoom under way: it takes the pointer instead. */
+.map-shield {
+  position: absolute;
+  inset: 0;
+  display: none;
+  cursor: grab;
+}
 .map {
   width: 100%;
   height: 100%;
   display: block;
   cursor: grab;
-  user-select: none;
-  font-family: var(--font-display);
 }
 .map:active {
   cursor: grabbing;
@@ -740,8 +764,9 @@ kbd {
   stroke: rgba(255, 253, 245, 0.42);
   stroke-width: 0.8;
 }
+/* Hit areas take the pointer over their whole shape without painting anything. */
 .city-hit {
-  fill: transparent;
+  fill: none;
   pointer-events: all;
   cursor: pointer;
 }
@@ -4905,7 +4930,8 @@ button.chip.queued:hover {
   cursor: pointer;
 }
 .army-hit {
-  fill: transparent;
+  fill: none;
+  pointer-events: all;
 }
 /* Clicking an army behind a city focuses this layer; its focus ring would frame every army in it. */
 .army-back:focus {
@@ -5035,7 +5061,7 @@ body {
   text-size-adjust: 100%;
 }
 /* d3-zoom handles every gesture on the map: no browser scrolling or page zoom there. */
-.map {
+.map-stage {
   touch-action: none;
 }
 /* Notches and home indicators (the page uses viewport-fit=cover). */
