@@ -1,0 +1,58 @@
+{
+  "schema": "sinnon.assetgen.provenance/1",
+  "asset": {
+    "id": "aiq737zc",
+    "name": "WWI Infantry",
+    "kind": "model3d",
+    "project_id": "world-conflict"
+  },
+  "version": 1,
+  "branch": "main",
+  "method": "procedural-script",
+  "how_made": "Geometry, materials and procedural textures built in Blender by a Python script (asset.py) that an AI coding agent wrote while looking at its renders; the renders and exports are Blender's output of that script.",
+  "claims": {
+    "script_built": true,
+    "agent_written_script": true,
+    "no_neural_mesh": true,
+    "no_image_model_pixels": true
+  },
+  "agent": {
+    "provider": "codex",
+    "provider_name": "Codex",
+    "model": "gpt-6.1-sol",
+    "effort": "standard",
+    "billing": "subscription"
+  },
+  "lineage": [
+    {
+      "version": 1,
+      "step": "first made",
+      "branch": "main",
+      "agent": {
+        "provider": "codex",
+        "provider_name": "Codex",
+        "model": "gpt-6.1-sol",
+        "effort": "standard",
+        "billing": "subscription"
+      },
+      "request": "WWI line infantry",
+      "requested_by": "ui",
+      "queued_at": "2026-10-24T13:39:01.5826236Z",
+      "finished_at": "2026-10-24T13:49:13.1860371Z"
+    }
+  ],
+  "timestamps": {
+    "queued_at": "2026-10-24T13:39:01.5826236Z",
+    "started_at": "2026-10-24T13:39:01.5836721Z",
+    "finished_at": "2026-10-24T13:49:13.1860371Z"
+  },
+  "script": {
+    "file": "asset.py",
+    "sha256": "6c9633179fb88e188949d201b644a49c2c481d4baefebf85ea46e1f327245e7f"
+  },
+  "harness_version": "h-c290473d40e9",
+  "app_version": "1.9.34",
+  "suggested_disclosure": "Some of this game's art assets were made with an AI coding agent: in SINNON.NET Asset Generator, an AI agent (such as Claude Code) wrote Python scripts that build the models, textures, sprites and effects procedurally in Blender and Python, and a person directed, reviewed and selected the results. No image- or 3D-generation model produced their pixels or geometry; the agent's work is in the scripts.",
+  "note": "A factual record of how these files were made, written by the SINNON.NET Asset Generator. It is not legal advice. The outputs are yours to use; the AI provider's terms apply to its use (docs/LICENSING.md).",
+  "written_at": "2026-10-24T13:49:14.0584753Z"
+}

@@ -9,6 +9,7 @@ import { flagStripes } from '../flags';
 import { CitySkyline } from './CitySkyline';
 import { NATIONAL_STYLES, UnitArt, type ArtNation } from './UnitArt';
 import { buildUnitModel, type UnitModelKind } from './UnitModel';
+import { infantrySprite } from './InfantryAsset';
 
 /**
  * How an owner's units are drawn: in its own look if it has one, otherwise in
@@ -25,7 +26,7 @@ export function TechUnitIcon({ world, type, gen, nation, title }: { world: World
   return <UnitArt type={type} gen={gen} {...artOf(world, nation)} variant="icon" width={34} title={title} />;
 }
 
-/** Large side-view illustration for unit cards. */
+/** Large illustration for unit cards. */
 export function UnitPicture({ world, type, gen, nation, width = 96 }: { world: World; type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
   return (
     <span className="unit-picture">
@@ -213,8 +214,10 @@ const UNIT_SPRITE_CACHE = 480;
 /**
  * An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings.
  * A nation drawn in its bloc's look flies its own flag (or one in its colour) and is cached as itself.
+ * WWI line infantry shares baked sprites; its national flag is on the map's army badge.
  */
 export function unitSprite(world: World, type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
+  if (type === 'infantry' && gen === 'ww1') return infantrySprite(heading);
   const art = artOf(world, nation);
   const look = art.accent ? nation : art.nation;
   return cached(

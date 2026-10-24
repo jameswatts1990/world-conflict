@@ -556,7 +556,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   On touch screens the move banner offers **Declare war…** in place of Confirm. The army panel's **Move**, **Attack** and **Patrol**
   buttons (M, A, P) pick the kind of order for the next click, **Hold** (G) holds or releases, and its **Fall back
   when broken** box sets that option for every selected army.
-- **3D armies.** Wherever the cities are 3D models, so are the armies: each is a low-poly model of its main unit, in
+- **3D armies.** WWI line infantry uses the supplied WWI Infantry v1 model, baked into sixteen directional squad
+  images at the map's camera angle. Its single khaki uniform is shared by all nations; the ownership ring and flag
+  badge identify the army. Unit cards, recruitment rows, research icons and distant counters use its portrait.
+  Interwar and 1940 infantry keep their national artwork. Wherever the cities are 3D models, so are the armies: each is a model of its main unit, in
   its generation's equipment and its nation's uniform, headgear, paint (and camouflage) and flag: a squad advancing
   under its colours, assault troops with a flamethrower, mountain troops with a pack mule, a lorry and its riflemen,
   horsemen with lances or sabres, field, heavy and anti-tank guns with their crews, armoured cars, and tanks from the
@@ -621,7 +624,9 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner brings it
   back. The main menu shows the theatre map with the chosen nation lit up and its speciality, and sets the
   campaign speed, the opponents' difficulty and the seed.
-- **Assets.** Everything is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
+- **Assets.** WWI line infantry uses bundled transparent PNGs rendered from a supplied textured GLB; the source
+  model is retained for rebuilding the images and is not shipped to the browser (see `docs/ATTRIBUTION.md`).
+  Other artwork is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
   neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched from other
   sites at run time; the sound files load from the game's own files when first needed.
