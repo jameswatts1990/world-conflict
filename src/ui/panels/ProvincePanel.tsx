@@ -53,7 +53,7 @@ import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
-import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName } from '../labels';
+import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName, roadEndName } from '../labels';
 import { Cost, MoraleMeter, Progress, Section } from './Common';
 import { CLASS_LABEL, UnitInfo } from './UnitInfo';
 
@@ -828,7 +828,10 @@ function ArmiesTab({
                   title={`${countOf(a.units.length, 'formation')} · strength ${Math.round(c.strength * 100)}% · morale ${Math.round(morale * 100)}%`}
                 >
                   <OwnerFlag world={world} owner={a.owner} province={a.province} size={13} />
-                  <span className="ar-name">{name}</span>
+                  <span className="ar-name">
+                    {name}
+                    {a.road && <span className="muted small"> · road to {roadEndName(world, a.road.toward)}</span>}
+                  </span>
                   <CompositionIcons world={world} state={state} army={a} size={20} />
                   <span className="ar-bars">
                     <span className="ar-str">

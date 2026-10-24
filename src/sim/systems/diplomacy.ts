@@ -1,7 +1,7 @@
 // War and peace between nations.
 import { DIPLOMACY, MORALE } from '../config/rules';
 import { pushEvent } from '../events';
-import { isArmyInTransit, scaledTicks } from '../queries';
+import { scaledTicks } from '../queries';
 import { nationName, sentence } from '../text';
 import type { GameState, NationId } from '../types';
 import type { World } from '../world';
@@ -28,10 +28,10 @@ export function makePeace(state: GameState, world: World, a: NationId, b: Nation
     subject: b,
     severity: 'good',
   });
-  // Armies standing in the other side's territory withdraw home.
+  // Armies standing or marching in the other side's territory withdraw home (one setting out
+  // from its own land into theirs is turned back at the border instead).
   for (const id of Object.keys(state.armies).sort()) {
     const army = state.armies[id];
-    if (isArmyInTransit(army)) continue;
     const owner = state.provinces[army.province].owner;
     if ((army.owner === a && owner === b) || (army.owner === b && owner === a)) withdrawArmy(state, world, army);
   }

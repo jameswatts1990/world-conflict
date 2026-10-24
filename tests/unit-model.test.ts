@@ -72,13 +72,16 @@ describe('3D army layout', () => {
     [[90, 45], 29],
   ];
 
-  it('stands every army around its city, clear of the city, the name plate and each other', () => {
+  it('stands every army at its city, on the edge of the built-up area, clear of the name plate and each other', () => {
     for (const [[hx, hy], room] of cases) {
       const spots = citySpots([hx, hy], room, 16);
       expect(spots).toHaveLength(16);
+      // The first army stands right beside the city, not off on its own.
+      expect(Math.abs(spots[0][0])).toBeLessThanOrEqual(hx + room * 0.5);
+      expect(spots[0][1]).toBeCloseTo(0);
       spots.forEach(([x, y], i) => {
-        // Outside the built-up area, with room to stand.
-        expect(Math.hypot(x / (hx + room), y / (hy + room * 0.7)), `spot ${i} of ${hx}x${hy}/${room}`).toBeGreaterThanOrEqual(0.999);
+        // On the edge of the built-up area at the closest, never in the middle of the town.
+        expect(Math.hypot(x / (hx * 0.8 + room * 0.3), y / (hy * 0.8 + room * 0.2)), `spot ${i} of ${hx}x${hy}/${room}`).toBeGreaterThanOrEqual(0.999);
         // Not on the name plate under the city.
         if (y > 0) expect(Math.abs(x), `spot ${i} of ${hx}x${hy}/${room}`).toBeGreaterThan(hx * 0.5);
         for (const [sx, sy] of spots.slice(0, i)) {

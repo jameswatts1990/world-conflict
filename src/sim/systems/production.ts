@@ -47,7 +47,7 @@ export function recruitmentSystem(state: GameState, world: World): void {
   }
 }
 
-/** New units join the largest idle army of the owner in the province, or form a new army. */
+/** New units join the largest idle army of the owner in the city, or form a new army. */
 export function spawnUnit(state: GameState, owner: NationId, province: ProvinceId, type: UnitType): void {
   const unit = createUnit(state, owner, type, {
     xp: recruitXp(state, owner, province, type),
@@ -58,6 +58,7 @@ export function spawnUnit(state: GameState, owner: NationId, province: ProvinceI
       (a) =>
         a.owner === owner &&
         a.province === province &&
+        !a.road &&
         !isArmyInTransit(a) &&
         a.move === null &&
         a.units.length < ARMY_RULES.maxUnitsPerArmy,

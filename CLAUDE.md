@@ -57,13 +57,18 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   replays and the determinism tests depend on it.
 - Everything a player or AI does goes through the validated commands in `src/sim/commands.ts`.
 - New state fields are optional with a sensible default when absent, so older saves still load; otherwise add a
-  migration in `src/sim/save.ts`.
+  migration in `src/sim/save.ts`. Clear an optional field with `delete` rather than writing `null` over an absent
+  one: a field that appears changes the state hash even when play is identical.
 - Every city is a province of its own (the row's id, e.g. `fr-paris`) inside a province of land round it
   (`fr-paris-land`, named for the region): one row in `scenario/europe/provinces.ts` makes both. Connections are
   written between rows and join their lands; a city's only neighbour is its land. `def.city` is absent on land, so
   use `world.cityIds`, `landOf`/`cityOf`, `world.nearbyCities` and `world.vicinity` rather than assuming a city.
   Cities hold output, slots, recruitment and objectives; land takes only infrastructure. City shapes and land
   anchors come from `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`).
+- An army's `province` is where it stands; on a leg, where it last stood (the leg's `from`, or its `to` when it is
+  walking back from a road or has turned round). An army with `road` set stands on a road between two lands
+  (`isOpenRoad`: not a sea crossing or a city's gate) and counts as in its land for every rule. Plan marches with
+  `planMarch` (it starts from a province, a road or mid-leg); `findPath` is province to province.
 
 ## How the computer opponents should behave
 

@@ -57,8 +57,8 @@ export function tutorialSteps(
       icon: 'swords',
       body: `${
         touch
-          ? 'Tap an army counter to select it, press Move, Attack or Patrol, then tap a province or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army. Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there.'
-          : 'Click an army counter to select it, then right-click a province or an enemy army to march there (or press Move, Attack or Patrol, then click). Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there. The route and arrival time show as you point.'
+          ? 'Tap an army counter to select it, press Move, Attack or Patrol, then tap a province, a spot on a road or an enemy army: the route and arrival time appear, and a second tap (or Confirm) sends the army. Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there. An army ending its march in a city where another of yours stands joins it.'
+          : 'Click an army counter to select it, then right-click a province, a spot on a road or an enemy army to march there (or press Move, Attack or Patrol, then click). Move marches straight there; Attack halts to capture each hostile province on the way; Patrol goes back and forth until stopped; Hold halts the army and keeps it there. The route and arrival time show as you point. An army ending its march in a city where another of yours stands joins it.'
       } Battles wear down strength and morale, and armies fight to the death: pull one out under fire and every unit pays in strength, so encircle the enemy and leave it nowhere to go. Infantry holds, artillery breaks lines from the second rank, tanks smash through open ground, anti-tank guns stop them, mountain troops own the passes. Veterans fight better.`,
     },
     {
@@ -141,7 +141,7 @@ export const CONTROLS: [string, string][] = [
   ['Left-click army counter', 'Select an army (Shift-click adds more of your armies)'],
   ['Shift-drag', 'Select every army of yours inside the box'],
   [', / .', 'Previous / next of your armies'],
-  ['Right-click', 'Send the selected armies to the province or enemy army under the cursor (Attack into foreign land, Move within your own)'],
+  ['Right-click', 'Send the selected armies to the province, spot on a road or enemy army under the cursor (Attack into foreign land, Move within your own)'],
   ['M / A / P', 'Move, Attack or Patrol: the next left-click sets the destination'],
   ['G', 'Hold position: halt and stay, never withdrawing on its own, until given a new order (again to release)'],
   ['S', 'Stop the selected armies at once: one on the road turns back to the province it left'],
@@ -164,7 +164,7 @@ export const TOUCH_CONTROLS: [string, string][] = [
   ['Tap province', 'Open the land round a city: morale, infrastructure, forces present'],
   ['Tap a unit (Recruit)', 'Its role, numbers, strengths and weaknesses'],
   ['Tap army counter', 'Select the army'],
-  ['Move / Attack / Patrol, then tap', 'Preview the route and arrival time; tap the same place again (or Confirm) to march'],
+  ['Move / Attack / Patrol, then tap', 'Preview the route and arrival time to a province, a spot on a road or an enemy army; tap the same place again (or Confirm) to march'],
   ['Stop', 'Halt the selected armies at once: one on the road turns back to the province it left'],
   ['Split', 'Split the army in two, or tick formations first to choose which go'],
   ['Drag / Pinch', 'Pan / zoom the map; the fit button shows the whole theatre'],

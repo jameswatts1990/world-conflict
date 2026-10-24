@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { MORALE, SUPPLY } from '../../sim/config/rules';
 import { UNITS } from '../../sim/config/units';
 import {
-  armiesIn,
   armyMorale,
   armyName,
   armySpeedKmPerTick,
   currentModel,
-  findPath,
   formationName,
   hostileArmiesIn,
+  marchTicksLeft,
   provinceName,
   rankName,
   scaledTicks,
+  standTogether,
   unitGen,
   unitStats,
   veterancyRank,
@@ -28,7 +28,7 @@ import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { countOf, formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
-import { ORDER, composition, ownerShortName } from '../labels';
+import { ORDER, composition, ownerShortName, roadEndName } from '../labels';
 import { MoraleMeter, Progress, Section, moraleClass } from './Common';
 import { UnitInfo } from './UnitInfo';
 
@@ -98,7 +98,8 @@ export function ArmyPanel({
 
   let status: string;
   let statusIcon: IconName;
-  const here = provinceName(world, army.province);
+  // On a road it stands out in the open, still in the province whose part of the road it is.
+  const here = army.road && !leg ? `${provinceName(world, army.province)}, on the road to ${roadEndName(world, army.road.toward)}` : provinceName(world, army.province);
   if (army.holding && !leg) {
     status = hostiles.length > 0 ? `Holding ${here} under attack` : `Holding position in ${here}`;
     statusIcon = 'lock';
@@ -123,12 +124,13 @@ export function ArmyPanel({
     statusIcon = 'shield';
   }
 
-  let eta: number | null = null;
-  if (army.move && dest) {
-    const from = leg ? leg.to : army.province;
-    const rest = from === dest ? 0 : (findPath(state, world, army, from, dest)?.ticks ?? 0);
-    eta = (leg ? leg.duration - leg.elapsed : 0) + rest;
-  }
+  const eta = army.move && dest ? marchTicksLeft(state, world, army) : null;
+  const halt = army.move?.halt;
+  const destName = halt
+    ? `${roadEndName(world, halt.province)}–${roadEndName(world, halt.toward)} road`
+    : dest
+      ? world.provinces[dest].name
+      : '';
 
   const selectedOwn = armyIds.map((id) => state.armies[id]).filter((a) => a && a.owner === human);
   const setRetreat = (on: boolean) => {
@@ -149,9 +151,11 @@ export function ArmyPanel({
   const splittable = settled.filter((a) => a.units.length > 1 && ticked(a).length < a.units.length);
   const disbandable = settled.filter((a) => hostileArmiesIn(state, a.province, a.owner).length === 0);
   // Several selected: those standing together, province by province. One: all of yours where it stands.
+  // Armies stand together in a province, or at one spot on a road out of it.
+  const spot = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
   const mergeGroups = multi
-    ? [...groupBy(settled, (a) => a.province).values()].filter((g) => g.length > 1)
-    : settled.map((a) => armiesIn(state, a.province).filter((b) => b.owner === human)).filter((g) => g.length > 1);
+    ? [...groupBy(settled, spot).values()].filter((g) => g.length > 1)
+    : settled.map((a) => Object.values(state.armies).filter((b) => b.owner === human && standTogether(a, b))).filter((g) => g.length > 1);
 
   const split = () => {
     const before = new Set(Object.keys(state.armies));
@@ -249,7 +253,7 @@ export function ArmyPanel({
             {leg && <Progress value={leg.elapsed / leg.duration} label={`→ ${world.provinces[leg.to].name}`} tone="blue" />}
             <div className="march-meta">
               <span>
-                <Icon name="target" size={13} /> {world.provinces[dest].name}
+                <Icon name="target" size={13} /> {destName}
               </span>
               {eta !== null && (
                 <span>
@@ -348,8 +352,10 @@ export function ArmyPanel({
               onClick={merge}
               title={
                 multi
-                  ? 'Merge the selected armies that stand in the same province, each group into its senior army'
-                  : 'Merge all your armies in this province into the senior one'
+                  ? 'Merge the selected armies that stand together (in one province, or at one spot on a road), each group into its senior army'
+                  : army.road
+                    ? 'Merge all your armies at this spot on the road into the senior one'
+                    : 'Merge all your armies in this province into the senior one'
               }
               data-testid="merge"
             >
