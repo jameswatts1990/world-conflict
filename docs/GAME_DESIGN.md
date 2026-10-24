@@ -495,7 +495,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   save gains the land round each city, held by whoever held the old province, and its marches stop where they are.
   Schema 7 divided that land into the lands round each city: each takes over the old land as it stood (owner, mood,
   supply), its works, armies and battle going to the largest, and marches stop where they are.
-  Older saves are upgraded step by step on load (`save.ts`); saves from before cities, morale and the research tree,
+  Older saves are upgraded step by step on load (`save.ts`), and an army a save left halted on a road past where that
+  road now crosses its border (a redrawn map moves the crossings) stands at the border, on its own side
+  (`settleRoads`); saves from before cities, morale and the research tree,
   from a newer version, another scenario or another program are refused with a message.
 - **Messages** are written by the simulation (`text.ts`): names that read with "the" in running text (the United
   Kingdom, the Netherlands, the Ardennes) carry the article in scenario data. Rule numbers quoted in descriptions and

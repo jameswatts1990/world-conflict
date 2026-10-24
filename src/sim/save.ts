@@ -8,7 +8,7 @@ import { LAND } from './scenario/europe/land';
 import { SCHEMA_VERSION, createInitialState, newId, nextSerial } from './state';
 import { nationName, sentence } from './text';
 import type { GameState, NationId, UnitType } from './types';
-import type { World } from './world';
+import { roadBorder, type World } from './world';
 
 export const SAVE_FORMAT = 'world-conflict-save';
 
@@ -206,4 +206,21 @@ export function joinNewcomers(state: GameState, world: World): NationId[] {
     pushEvent(state, 'join', sentence(`${list} ${names.length === 1 ? 'joins' : 'join'} the campaign, fresh from 1914.`), { severity: 'system' });
   }
   return newNations;
+}
+
+/**
+ * Brings a save's armies halted on roads into line with where the roads cross their borders now: one that stands
+ * past its road's border (the map was redrawn since the save, moving the crossing) stands at the border instead,
+ * on its own side. Returns how many moved.
+ */
+export function settleRoads(state: GameState, world: World): number {
+  let moved = 0;
+  for (const army of Object.values(state.armies)) {
+    if (!army.road) continue;
+    const border = roadBorder(world, army.province, army.road.toward);
+    if (army.road.at <= border) continue;
+    army.road.at = border;
+    moved++;
+  }
+  return moved;
 }

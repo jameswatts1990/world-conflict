@@ -7,6 +7,7 @@ import {
   deserializeGame,
   hashState,
   joinNewcomers,
+  settleRoads,
   replay,
   serializeGame,
   stepState,
@@ -236,6 +237,22 @@ describe('save / load', () => {
 
     run(old, 1200);
     expect(old.nations.hu.research.completed.length + old.nations.hu.research.active.length).toBeGreaterThan(0);
+  });
+
+  it('an army halted on a road past where its border now lies stands at the border, on its own side', () => {
+    const state = aiGame(34);
+    const road = world.scenario.connections.find((c) => c.border !== undefined && c.border < 0.9)!;
+    const army = Object.values(state.armies)[0];
+    army.province = road.a;
+    army.move = null;
+    army.road = { toward: road.b, at: road.border! + 0.05 };
+    const hash = hashState(state);
+    expect(settleRoads(state, world)).toBe(1);
+    expect(army.road).toEqual({ toward: road.b, at: road.border });
+    expect(hashState(state)).not.toBe(hash);
+    // A save made on today's map has nothing to settle.
+    expect(settleRoads(state, world)).toBe(0);
+    expect(settleRoads(aiGame(35), world)).toBe(0);
   });
 
   it('refuses a save from a redrawn map', () => {
