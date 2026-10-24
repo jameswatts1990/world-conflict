@@ -9,17 +9,21 @@
 //   npm run balance:tune                          the default space (war and peace), ~1.5 h on 4 cores
 //   npm run balance:tune -- --quick               a few minutes, to see it work
 //   npm run balance:tune -- --space military --generations 8 --games 48
-//   npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
+//   npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=1..1.6 --knob AI.warChance=0.005..0.06
 //   npm run balance:tune -- --set UNITS.tank.cost.money=260     tune the AI around a rules change
+//   npm run balance:tune -- --weight doctrines=0 --weight decisive=1.5    goals weighted for this run
 //
 // Options: --population 8, --generations 6, --games 32 (campaigns per setting per generation),
 // --validate 200 (campaigns each for the final check), --seed 1, --workers, --out DIR.
+// --weight GOAL=W reweighs a goal in goals.ts for this run (0 leaves it out): for instance to keep
+// the AI from making up for a rules problem it should not hide.
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { renderComparison } from './compare';
 import { workingTree } from './git';
 import { describeOverrides, parseOverride } from './overrides';
+import { parseWeight, reweigh, type FunReport } from './goals';
 import { defaultWorkers } from './pool';
 import { num, table } from './report';
 import { makeMeta, newRunDir, playBatches, positiveInt, saveRun, type Batch } from './run';
@@ -41,6 +45,7 @@ const { values } = parseArgs({
     seed: { type: 'string' },
     workers: { type: 'string' },
     set: { type: 'string', multiple: true },
+    weight: { type: 'string', multiple: true },
     out: { type: 'string' },
     quick: { type: 'boolean' },
   },
@@ -54,6 +59,8 @@ const validate = Math.max(1, positiveInt(values.validate, quick ? 12 : 200, 'val
 const tunerSeed = Math.max(1, positiveInt(values.seed, 1, 'seed'));
 const workers = Math.max(1, positiveInt(values.workers, defaultWorkers(), 'workers'));
 const fixed = (values.set ?? []).map(parseOverride);
+const weights = Object.fromEntries((values.weight ?? []).map(parseWeight).map((w) => [w.id, w.weight]));
+const penaltyOf = (s: { fun: FunReport }) => reweigh(s.fun, weights);
 const out = values.out ?? newRunDir('tune');
 
 const head = workingTree();
@@ -104,7 +111,7 @@ for (let g = 0; g < generations; g++) {
   const results = await playBatches(batches, 0, workers, `campaigns, generation ${g + 1} of ${generations}`);
   const scored = results.map((r, i) => {
     const summary = summarise(r.records, makeMeta(`generation ${g + 1}, setting ${i + 1}`, head.commit, batches[i], 0, workers, started, r.catalogue));
-    return { x: xs[i], penalty: summary.fun.total, terms: summary.fun.terms };
+    return { x: xs[i], penalty: penaltyOf(summary), terms: summary.fun.terms };
   });
   for (const [i, s] of scored.entries()) {
     const settings = Object.fromEntries(knobs.map((k, d) => [k.path, knobValue(k, s.x[d])]));
@@ -134,12 +141,12 @@ const summaryA = summarise(a.records, makeMeta("today's settings", head.commit, 
 const summaryB = summarise(b.records, makeMeta('proposed settings', head.commit, checks[1], 0, workers, started, b.catalogue));
 saveRun(join(out, 'check', 'today'), a.records, summaryA);
 saveRun(join(out, 'check', 'proposed'), b.records, summaryB);
-writeFileSync(join(out, 'best.json'), JSON.stringify({ overrides: proposal, fixed, penalty: { today: summaryA.fun.total, proposed: summaryB.fun.total } }, null, 2) + '\n');
+writeFileSync(join(out, 'best.json'), JSON.stringify({ overrides: proposal, fixed, weights, penalty: { today: penaltyOf(summaryA), proposed: penaltyOf(summaryB) } }, null, 2) + '\n');
 
 // How sure is the change? Resample each side's campaigns and recompute the penalties.
 function changeInterval(today: GameRecord[], metaToday: RunMeta, proposed: GameRecord[], metaProposed: RunMeta, reps = 200): [number, number] {
   const pick = (xs: GameRecord[]) => xs.map(() => xs[Math.floor(random() * xs.length)]);
-  const diffs = Array.from({ length: reps }, () => summarise(pick(proposed), metaProposed).fun.total - summarise(pick(today), metaToday).fun.total);
+  const diffs = Array.from({ length: reps }, () => penaltyOf(summarise(pick(proposed), metaProposed)) - penaltyOf(summarise(pick(today), metaToday)));
   return [quantile(diffs, 0.025), quantile(diffs, 0.975)];
 }
 const [low, high] = changeInterval(a.records, summaryA.meta, b.records, summaryB.meta);
@@ -150,14 +157,15 @@ const verdict =
       ? "The proposal does worse on fresh campaigns than today's settings: keep today's."
       : `The check cannot tell the proposal from today's settings: run a bigger check (--validate ${Math.max(validate * 2, 200)}) or a longer search before adopting it.`;
 const describeKnob = (k: Knob) => `${k.min}–${k.max}${k.log ? ' (by ratio)' : ''}${k.integer ? ' (whole)' : ''}`;
+const describeWeights = Object.keys(weights).length ? Object.entries(weights).map(([id, w]) => `${id} ${w}`).join(', ') : 'as in goals.ts';
 const report: string[] = ['# AI tuning', ''];
 report.push(
-  `${values.knob ? `${knobs.length} settings given by --knob` : `Space "${spaceName}": ${SPACES[spaceName].description}`}. ${generations} generations of ${population} settings × ${games} campaigns, then ${validate} fresh campaigns each to check · commit \`${head.commit}\` · fixed overrides: ${describeOverrides(fixed)} · tuner seed ${tunerSeed}`,
+  `${values.knob ? `${knobs.length} settings given by --knob` : `Space "${spaceName}": ${SPACES[spaceName].description}`}. ${generations} generations of ${population} settings × ${games} campaigns, then ${validate} fresh campaigns each to check · commit \`${head.commit}\` · fixed overrides: ${describeOverrides(fixed)} · goal weights: ${describeWeights} · tuner seed ${tunerSeed}`,
   '',
 );
 report.push('## Result', '');
 report.push(
-  `Goal penalty on ${validate} campaigns the tuner never saw: today's settings **${num(summaryA.fun.total, 2)}**, proposed **${num(summaryB.fun.total, 2)}** (lower is better; the change is ${num(low, 2)} to ${num(high, 2)} at 95% confidence).`,
+  `Goal penalty${Object.keys(weights).length ? ' (with the weights above)' : ''} on ${validate} campaigns the tuner never saw: today's settings **${num(penaltyOf(summaryA), 2)}**, proposed **${num(penaltyOf(summaryB), 2)}** (lower is better; the change is ${num(low, 2)} to ${num(high, 2)} at 95% confidence).${Object.keys(weights).length ? " The comparison below uses goals.ts's own weights." : ''}`,
   '',
   verdict,
   '',
