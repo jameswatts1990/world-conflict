@@ -49,6 +49,8 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Veterancy: Green → Regular → Veteran → Elite from combat experience
 - [x] National specialities: one small, flavourful edge per nation
 - [x] Artwork: drawn silhouettes per unit type and generation, national palettes and insignia
+- [x] Supplied WWI line infantry model: sixteen map directions and a portrait for cards, rows and counters;
+      one shared uniform, with nation identity retained through badges and ownership rings
 
 ### 2.2 Morale
 

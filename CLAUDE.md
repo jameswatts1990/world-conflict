@@ -21,6 +21,9 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   - `ai/`: computer opponents. They act only through the same validated commands as a human.
   - `config/`: tuning numbers (`ai.ts`, `rules.ts`, `units.ts`, `buildings.ts`).
 - `src/ui`: rendering and input.
+  - WWI line infantry uses baked PNGs in `src/assets/units/wwi-infantry`, selected in `art/InfantryAsset.ts`.
+    Rebuild with `blender --background --threads 4 --python scripts/art/render-infantry.py`; the source GLB and
+    provenance are in `scripts/art/sources/wwi-infantry`. Later generations keep the procedural artwork.
 - `tests/`: Vitest suite; `tests/helpers.ts` has `quietGame` (no AI), `aiGame`, `place`, `run`, `setWar`.
 
 ## Balance lab (docs/BALANCE.md)

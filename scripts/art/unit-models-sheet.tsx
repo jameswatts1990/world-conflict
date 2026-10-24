@@ -2,15 +2,22 @@
 //
 //   npx vite-node scripts/art/unit-models-sheet.tsx /tmp/unit-art/units.html [scale]
 //   node scripts/art/screenshot-city.mjs /tmp/unit-art/units.html /tmp/unit-art/units.png
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { UNIT_HEADINGS, buildUnitModel, type UnitModelProps } from '../../src/ui/art/UnitModel';
 import { ART_NATIONS, ART_UNIT_TYPES, UNIT_GENS } from '../../src/ui/art/UnitArt';
+import { infantrySprite } from '../../src/ui/art/InfantryAsset';
 
 const out = resolve(process.argv[2] ?? '/tmp/unit-art/units.html');
 const SCALE = Number(process.argv[3] ?? 7);
 
 function card(caption: string, props: UnitModelProps, scale = SCALE): string {
+  if (props.type === 'infantry' && props.gen === 'ww1') {
+    const m = infantrySprite(props.heading);
+    const heading = ((Math.round(props.heading) % UNIT_HEADINGS) + UNIT_HEADINGS) % UNIT_HEADINGS;
+    const png = readFileSync(new URL(`../../src/assets/units/wwi-infantry/heading-${String(heading).padStart(2, '0')}.png`, import.meta.url));
+    return `<figure><img src="data:image/png;base64,${png.toString('base64')}" width="${(m.width * scale).toFixed(0)}" height="${(m.height * scale).toFixed(0)}"><figcaption>${caption} <small>baked WWI model</small></figcaption></figure>`;
+  }
   const t0 = performance.now();
   const m = buildUnitModel(props);
   const ms = (performance.now() - t0).toFixed(1);
