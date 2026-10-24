@@ -273,6 +273,8 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
   if (army.owner === NEUTRAL) return null;
   let best: { id: ProvinceId; score: number } | null = null;
   for (const n of world.neighbors[from]) {
+    // From a spot on a road the only way out that does not lead back through the fighting is on along it.
+    if (army.road && army.province === from && n.id !== army.road.toward) continue;
     const p = state.provinces[n.id];
     if (p.owner !== army.owner || hostileArmiesIn(state, n.id, army.owner).length > 0) continue;
     let friends = 0;
@@ -310,7 +312,8 @@ export function withdrawArmy(state: GameState, world: World, army: Army, pid: Pr
   if (lost > 0 && enemyOwners.length === 1 && enemyOwners[0] !== NEUTRAL) state.nations[enemyOwners[0]].stats.unitsDestroyed += lost;
   const city = provinceName(world, pid);
   const name = armyName(world, army, pid);
-  const dest = army.move?.leg?.to;
+  // Walking back within its own province, an army is not withdrawing anywhere.
+  const dest = army.move?.leg && army.move.leg.to !== pid ? army.move.leg.to : undefined;
   const conn = dest ? connectionBetween(world, pid, dest) : null;
   const to = dest ? ` to ${provinceName(world, dest)}${conn?.kind === 'strait' ? ' by sea' : ''}` : '';
   const left = lost > 0 ? `, leaving ${lost} unit${lost === 1 ? '' : 's'} behind` : '';

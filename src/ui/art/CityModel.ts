@@ -1292,10 +1292,8 @@ export function buildCityModel(props: CityModelProps): CityModel {
     else MODELS[b](raised, level(b), ctxFor(b));
     drawn.push(diamond(at, PAD));
   }
-  for (const at of lay.plots) {
-    emptyPlot(s, at);
-    drawn.push(diamond(at, PAD));
-  }
+  // Empty plots are flat ground: armies may camp on them, so they do not count towards the built-up area.
+  for (const at of lay.plots) emptyPlot(s, at);
 
   // Work in progress elsewhere: a crane beside an upgrade, at the station site or by the walls.
   const job = props.construction;

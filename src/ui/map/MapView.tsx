@@ -16,10 +16,12 @@ import {
   buildingSlots,
   checkDeclareWar,
   connectionBetween,
-  findPath,
   isArmyInTransit,
+  isCity,
+  isOpenRoad,
   isArmyVisible,
   nationName,
+  planMarch,
   unitGen,
   type Army,
   type ArmyId,
@@ -27,6 +29,8 @@ import {
   type NationId,
   type OwnerId,
   type ProvinceId,
+  type RoadHalt,
+  type RoadSpot,
   type UnitType,
   type World,
 } from '../../sim';
@@ -38,9 +42,9 @@ import { formatDuration } from '../format';
 import type { GameController } from '../game/GameController';
 import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
-import { composition, mainUnitType } from '../labels';
+import { composition, mainUnitType, roadEndName } from '../labels';
 import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
-import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, type MapGeometry } from './geo';
+import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, roadPoint, roadSpotAt, type MapGeometry } from './geo';
 import {
   DETAIL_LEVELS,
   TERRAIN_BASE,
@@ -56,6 +60,25 @@ import {
 } from './terrain';
 
 export type MapMode = 'political' | 'terrain' | 'supply' | 'morale' | 'development';
+
+/** Where a march order sends an army: a province's city, or a spot on a road out of it. */
+export interface MarchTarget {
+  province: ProvinceId;
+  road?: RoadSpot;
+}
+
+/** Two targets close enough to be the same order (a second tap on a road need not land on the very same spot). */
+export function sameTarget(a: MarchTarget | null, b: MarchTarget | null): boolean {
+  if (!a || !b || a.province !== b.province) return false;
+  if (!a.road || !b.road) return !a.road && !b.road;
+  return a.road.toward === b.road.toward && Math.abs(a.road.at - b.road.at) < 0.06;
+}
+
+/** What an order's destination is called: the province, or the stretch of road (named for the cities it runs between). */
+export function targetName(world: World, t: MarchTarget): string {
+  if (!t.road) return world.provinces[t.province].name;
+  return `${roadEndName(world, t.province)}–${roadEndName(world, t.road.toward)} road`;
+}
 
 export interface MapViewProps {
   ctrl: GameController;
@@ -76,13 +99,13 @@ export interface MapViewProps {
    * destination previews the route (`moveTarget`) and a second tap on it gives the order.
    */
   touch: boolean;
-  moveTarget: ProvinceId | null;
-  onPickTarget: (pid: ProvinceId) => void;
+  moveTarget: MarchTarget | null;
+  onPickTarget: (target: MarchTarget) => void;
   onSelectProvince: (pid: ProvinceId | null) => void;
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
   /** Shift-drag (desktop): your armies inside the box. */
   onBoxSelect?: (ids: ArmyId[]) => void;
-  onOrderMove: (pid: ProvinceId) => void;
+  onOrderMove: (target: MarchTarget) => void;
   /** Province under the cursor, and the army counter if pointing at one. */
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }
@@ -203,9 +226,11 @@ export const moraleRamp = (morale: number) => rampColor((morale - 20) / 65);
 export const TIER_COLORS = ['', '#d9d2bd', '#c8b27a', '#c08a48', '#a8573a', '#7a2f3a'];
 
 export interface RoutePreview {
-  to: ProvinceId;
-  /** Provinces from the army's next stop to the destination, or null when it cannot get there. */
+  target: MarchTarget;
+  /** Cities still to reach, the last one only approached when the march ends on the road to it; null when it cannot get there. */
   path: ProvinceId[] | null;
+  /** The provinces the march passes through and ends in. */
+  provinces: ProvinceId[];
   ticks: number;
   /** Why there is no route. */
   blocked: string;
@@ -213,19 +238,23 @@ export interface RoutePreview {
   warOn?: NationId;
 }
 
-/** The route an army would take to a province, with its arrival time (null for where it already is). */
-export function routePreview(state: GameState, world: World, human: NationId, army: Army, to: ProvinceId): RoutePreview | null {
-  const from = army.move?.leg ? army.move.leg.to : army.province;
-  if (to === from) return null;
-  const route = findPath(state, world, army, from, to);
-  if (!route) {
-    const owner = state.provinces[to].owner;
-    if (owner === human || owner === 'neutral' || atWar(state, human, owner)) return { to, path: null, ticks: 0, blocked: 'No route' };
-    if (!checkDeclareWar(state, human, owner).ok) return { to, path: null, ticks: 0, blocked: `Truce with ${nationName(world, owner)}` };
-    return { to, path: null, ticks: 0, blocked: `At peace with ${nationName(world, owner)}: declare war to enter`, warOn: owner };
+/** The route an army would take to a city or a spot on a road, with its arrival time (null for where it already is). */
+export function routePreview(state: GameState, world: World, human: NationId, army: Army, target: MarchTarget): RoutePreview | null {
+  const to = target.province;
+  const road = target.road;
+  if (!army.move?.leg && army.province === to && (road ? sameTarget(target, { province: to, road: army.road }) : !army.road)) return null;
+  const owner = state.provinces[to].owner;
+  const open = to === army.province || owner === human || owner === 'neutral' || atWar(state, human, owner);
+  const plan = open ? planMarch(state, world, army, to, road) : null;
+  if (!plan) {
+    const none = { target, path: null, provinces: [], ticks: 0 };
+    if (open) return { ...none, blocked: 'No route' };
+    if (!checkDeclareWar(state, human, owner).ok) return { ...none, blocked: `Truce with ${nationName(world, owner)}` };
+    return { ...none, blocked: `At peace with ${nationName(world, owner)}: declare war to enter`, warOn: owner };
   }
-  const legLeft = army.move?.leg ? army.move.leg.duration - army.move.leg.elapsed : 0;
-  return { to, path: [from, ...route.path], ticks: route.ticks + legLeft, blocked: '' };
+  const reached = plan.halt ? plan.path.slice(0, -1) : plan.path;
+  const provinces = [...new Set([army.province, ...reached, to])];
+  return { target, path: plan.path, provinces, ticks: plan.ticks, blocked: '' };
 }
 
 // ---------------------------------------------------------------------------
@@ -520,19 +549,71 @@ const OtherFrontsLayer = memo(function OtherFrontsLayer({
   return d ? <path d={d} className="front-line other" pointerEvents="none" /> : null;
 });
 
-const ConnectionLayer = memo(function ConnectionLayer({ geo, world, focusIds }: { geo: MapGeometry; world: World; focusIds: string }) {
+/** What the pointer does on a road: points along it, clicks, right-clicks, or leaves it. */
+type RoadAction = 'point' | 'click' | 'order' | 'leave';
+
+const ConnectionLayer = memo(function ConnectionLayer({
+  geo,
+  world,
+  focusIds,
+  onRoad,
+}: {
+  geo: MapGeometry;
+  world: World;
+  focusIds: string;
+  /** With one of your armies selected, the roads over land take the pointer: an army can be sent to any spot on one. */
+  onRoad: ((action: RoadAction, e: React.MouseEvent<SVGLineElement>) => void) | null;
+}) {
   const focus = new Set(focusIds ? focusIds.split(',') : []);
   return (
-    <g className="connection-layer" pointerEvents="none">
-      {world.scenario.connections.map((c) => {
-        const [x1, y1] = geo.anchors[c.a];
-        const [x2, y2] = geo.anchors[c.b];
-        const active = focus.has(c.a) || focus.has(c.b);
-        const sibling = world.provinces[c.a].around !== undefined && world.provinces[c.a].around === world.provinces[c.b].around;
-        return (
-          <line key={`${c.a}|${c.b}`} x1={x1} y1={y1} x2={x2} y2={y2} className={`connection ${c.kind}${sibling ? ' sibling' : ''}${active ? ' active' : ''}`} />
-        );
-      })}
+    <g className="connection-layer">
+      <g pointerEvents="none">
+        {world.scenario.connections.map((c) => {
+          const [x1, y1] = geo.anchors[c.a];
+          const [x2, y2] = geo.anchors[c.b];
+          const active = focus.has(c.a) || focus.has(c.b);
+          const sibling = world.provinces[c.a].around !== undefined && world.provinces[c.a].around === world.provinces[c.b].around;
+          return (
+            <line
+              key={`${c.a}|${c.b}`}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              className={`connection ${c.kind}${sibling ? ' sibling' : ''}${active ? ' active' : ''}`}
+            />
+          );
+        })}
+      </g>
+      {onRoad &&
+        world.scenario.connections
+          .filter((c) => isOpenRoad(world, c.a, c.b))
+          .map((c) => {
+            const [x1, y1] = geo.anchors[c.a];
+            const [x2, y2] = geo.anchors[c.b];
+            return (
+              <line
+                key={`hit-${c.a}|${c.b}`}
+                x1={x1}
+                y1={y1}
+                x2={x2}
+                y2={y2}
+                className="road-hit"
+                data-road={`${c.a}|${c.b}`}
+                onMouseMove={(e) => onRoad('point', e)}
+                onMouseLeave={(e) => onRoad('leave', e)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRoad('click', e);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onRoad('order', e);
+                }}
+              />
+            );
+          })}
     </g>
   );
 });
@@ -939,11 +1020,21 @@ function CityLayer({
 
 function armyPosition(geo: MapGeometry, army: Army, alpha: number): [number, number] {
   const leg = army.move?.leg;
-  if (!leg) return geo.anchors[army.province];
+  if (!leg) return army.road ? roadPoint(geo, army.province, army.road) : geo.anchors[army.province];
   const t = Math.min(1, (leg.elapsed + alpha) / leg.duration);
   const [x1, y1] = geo.anchors[leg.from];
   const [x2, y2] = geo.anchors[leg.to];
   return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
+}
+
+/**
+ * The points of a march from where the army is through the cities on its path, ending at the
+ * spot on a road where it halts, if it does: there, short of the last city.
+ */
+function marchLine(geo: MapGeometry, army: Army, path: ProvinceId[], halt?: RoadHalt, from = armyPosition(geo, army, 0)): [number, number][] {
+  const pts: [number, number][] = [from, ...path.map((pid) => geo.anchors[pid])];
+  if (halt && path.length > 0) pts[pts.length - 1] = roadPoint(geo, halt.province, halt);
+  return pts;
 }
 
 function starburst(outer: number, inner: number, points: number): string {
@@ -963,6 +1054,16 @@ function armyTarget(army: Army): ProvinceId {
   return army.move?.leg ? army.move.leg.to : army.province;
 }
 
+/** Marching on an army: to the spot where it stands (on a road, perhaps), or where it is about to arrive. */
+function armyMarchTarget(army: Army): MarchTarget {
+  return army.move?.leg || !army.road ? { province: armyTarget(army) } : { province: army.province, road: army.road };
+}
+
+/** Where a standing army is: its city, or its spot on a road out of it. */
+function spotKey(army: Army): string {
+  return army.road ? `${army.province}>${army.road.toward}@${army.road.at}` : army.province;
+}
+
 /** Stationary counters sit above their city in rows of two (screen pixels). */
 const STACK = { base: 19, row: 27, half: 23 };
 
@@ -971,10 +1072,9 @@ function byCreation(a: Army, b: Army): number {
   return Number(a.id.slice(1)) - Number(b.id.slice(1)) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
 }
 
-/** A marching army's remaining road, from where it is now, with an arrowhead at the destination. */
+/** A marching army's remaining road, from where it is now, with an arrowhead at the destination (a city, or a spot on a road). */
 function Route({ geo, army, x, y, k, own, selected }: { geo: MapGeometry; army: Army; x: number; y: number; k: number; own: boolean; selected: boolean }) {
-  const pts: [number, number][] = [[x, y]];
-  for (const pid of army.move?.path ?? []) pts.push(geo.anchors[pid]);
+  const pts = marchLine(geo, army, army.move?.path ?? [], army.move?.halt, [x, y]);
   if (pts.length < 2) return null;
   const [ex, ey] = pts[pts.length - 1];
   const [px, py] = pts[pts.length - 2];
@@ -1104,14 +1204,14 @@ function ArmyLayer({
     .filter((a) => isArmyVisible(a, human, seen))
     .sort(byCreation);
 
-  // Armies standing in a province fill rows of two above its city, yours first, so a
-  // crowded province grows a short pyramid rather than a tower over its neighbours.
-  const stacks = new Map<ProvinceId, Army[]>();
+  // Armies standing in a city (or at one spot on a road) fill rows of two above it, yours first,
+  // so a crowded province grows a short pyramid rather than a tower over its neighbours.
+  const stacks = new Map<string, Army[]>();
   for (const a of armies) {
     if (isArmyInTransit(a)) continue;
-    const list = stacks.get(a.province) ?? [];
+    const list = stacks.get(spotKey(a)) ?? [];
     list.push(a);
-    stacks.set(a.province, list);
+    stacks.set(spotKey(a), list);
   }
   const offsets = new Map<ArmyId, [number, number]>();
   for (const [, list] of stacks) {
@@ -1232,10 +1332,11 @@ function placeArmies(
   const room = armyRoom(px);
   const stands = new Map<ProvinceId, Army[]>();
   const roads = new Map<string, Army[]>();
+  const halted = new Map<string, Army[]>();
   for (const a of Object.values(state.armies).sort(byCreation)) {
     if (!isArmyVisible(a, human, seen)) continue;
     const leg = a.move?.leg;
-    const [map, key] = leg ? [roads, `${leg.from}>${leg.to}`] : [stands, a.province];
+    const [map, key] = leg ? [roads, `${leg.from}>${leg.to}`] : a.road ? [halted, spotKey(a)] : [stands, a.province];
     const list = map.get(key) ?? [];
     list.push(a);
     map.set(key, list);
@@ -1248,11 +1349,45 @@ function placeArmies(
     const battle = !!state.battles[pid];
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
     const spots = citySpots(cities[pid].half, room, list.length, plateBox(world, pid, cities[pid]));
+    // The spots start on the left; a city crowded on that side starts on the right.
+    const side = -geo.campSide[pid];
     list.forEach((army, i) => {
-      const [ox, oy] = spots[i];
+      const [ox, oy] = [spots[i][0] * side, spots[i][1]];
       // At rest they face out of the screen, to whichever side they stand; in a battle, the fighting.
       const heading = battle ? headingFor(-ox, -oy) : ox < 0 ? 4 : 0;
       out.push({ army, x: ax + (mx + ox) / k, y: ay + (my + oy) / k, heading, model: mainModel(army), key: `${pid}#${i}`, marching: false, near: pid });
+    });
+  }
+  // Halted on a road: where the order put it, but never inside a city's built-up area; several abreast.
+  for (const [spot, list] of halted) {
+    list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
+    list.forEach((army, i) => {
+      const province = army.province;
+      const road = army.road!;
+      const [x1, y1] = geo.anchors[province];
+      const [x2, y2] = geo.anchors[road.toward];
+      const [dx, dy] = [x2 - x1, y2 - y1];
+      const len = Math.hypot(dx, dy) * k || 1;
+      const [from, to] = [cities[province], cities[road.toward]];
+      const [[sx, sy], [ex, ey]] = roadEnds(dx, dy, from.half, to.half, room, len);
+      // How far along the road (0..1) each city's edge lies.
+      const near = Math.hypot(from.mid[0] + sx, from.mid[1] + sy) / len;
+      const far = 1 - Math.hypot(to.mid[0] + ex, to.mid[1] + ey) / len;
+      const t = Math.min(Math.max(road.at, near), Math.max(near, far));
+      const side = (i - (list.length - 1) / 2) * room * 1.4;
+      const battle = !!state.battles[province];
+      // Looking on down the road, or back to the fighting in its province.
+      const heading = battle ? headingFor(-dx, -dy) : headingFor(dx, dy);
+      out.push({
+        army,
+        x: x1 + dx * t - (dy * side) / len,
+        y: y1 + dy * t + (dx * side) / len,
+        heading,
+        model: mainModel(army),
+        key: `${spot}#${i}/${list.length}`,
+        marching: false,
+        near: t < 0.5 ? province : road.toward,
+      });
     });
   }
   for (const [road, list] of roads) {
@@ -1693,6 +1828,10 @@ export function MapView(props: MapViewProps) {
   const [fitK, setFitK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
   const [hovered, setHovered] = useState<ProvinceId | null>(null);
+  /** Pointing at one of the selected armies themselves: no route to preview. */
+  const [hoverSelf, setHoverSelf] = useState(false);
+  /** The spot on a road under the pointer (or the city at its end), while one of your armies is selected. */
+  const [hoverRoad, setHoverRoad] = useState<MarchTarget | null>(null);
   const [texture, setTexture] = useState<TerrainTexture | null>(null);
   const [glow, setGlow] = useState<TerrainTexture | null>(null);
   const [clouds, setClouds] = useState<TerrainTexture | null>(null);
@@ -1929,48 +2068,108 @@ export function MapView(props: MapViewProps) {
   // Movement connections of the selected army (or the selected province) are highlighted.
   const focusIds = primaryArmy ? (primaryArmy.move?.leg?.to ?? primaryArmy.province) : (props.selectedProvince ?? '');
 
-  // Route preview for the selected own army towards the hovered province (on touch, the picked target).
-  const previewTo = props.touch ? (props.moveMode ? props.moveTarget : null) : hovered;
+  const k = transform.k;
+  const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
+  const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
+  const showDetail = ratio >= ZOOM.detail;
+  const modelPx = cityModelScale(ratio);
+
+  // Route preview for the selected own army towards the hovered province or spot on a road (on touch, the picked target).
+  const hoverTarget: MarchTarget | null = hoverRoad ?? (hovered ? { province: hovered } : null);
+  const previewTo = props.touch ? (props.moveMode ? props.moveTarget : null) : hoverSelf ? null : hoverTarget;
+  const previewKey = previewTo ? `${previewTo.province}>${previewTo.road?.toward ?? ''}@${previewTo.road?.at.toFixed(3) ?? ''}` : '';
   const preview = useMemo(() => {
     if (!ownArmySelected || !previewTo) return null;
     return routePreview(state, world, human, primaryArmy!, previewTo);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ownArmySelected, previewTo, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
+  }, [ownArmySelected, previewKey, primaryArmy?.id, primaryArmy?.move?.leg?.to, ownersSig, ctrl.version]);
 
   /** A destination chosen in move mode: on touch, the first tap previews and the second orders. */
-  const pickDestination = (pid: ProvinceId) => {
-    if (props.touch && props.moveTarget !== pid) props.onPickTarget(pid);
-    else props.onOrderMove(pid);
+  const pickDestination = (target: MarchTarget) => {
+    if (props.touch && !sameTarget(props.moveTarget, target)) props.onPickTarget(target);
+    else props.onOrderMove(target);
   };
   const onProvinceClick = useStableCallback((pid: ProvinceId) => {
-    if (props.moveMode && ownArmySelected) pickDestination(pid);
+    if (props.moveMode && ownArmySelected) pickDestination({ province: pid });
     else props.onSelectProvince(pid);
   });
   const onProvinceContext = useStableCallback((pid: ProvinceId, e: React.MouseEvent) => {
     e.preventDefault();
-    if (ownArmySelected) props.onOrderMove(pid);
+    if (ownArmySelected) props.onOrderMove({ province: pid });
   });
   const onHover = useStableCallback((pid: ProvinceId | null, army?: ArmyId) => {
     setHovered(pid);
+    setHoverSelf(!!army && props.selectedArmies.includes(army));
     props.onHover(pid, army);
   });
   // Clicking another army's counter in move mode, or right-clicking it, marches there.
   const ordersTo = (army: Army) => ownArmySelected && !props.selectedArmies.includes(army.id);
   const onArmyClick = useStableCallback((army: Army, additive: boolean) => {
-    if (props.moveMode && ordersTo(army)) pickDestination(armyTarget(army));
+    if (props.moveMode && ordersTo(army)) pickDestination(armyMarchTarget(army));
     else props.onSelectArmy(army.id, additive);
   });
   const onArmyContext = useStableCallback((army: Army) => {
-    if (ordersTo(army)) props.onOrderMove(armyTarget(army));
+    if (ordersTo(army)) props.onOrderMove(armyMarchTarget(army));
   });
 
-  const k = transform.k;
-  const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
-  const view: [number, number, number, number] = [-transform.x / k, -transform.y / k, size[0] / k, size[1] / k];
-  const showDetail = ratio >= ZOOM.detail;
+  /**
+   * The spot on a road under the pointer: on the road nearest it (roads into one land run close
+   * together), where it would stop; or the province itself when the pointer is over a city the road
+   * crosses, or over the end of the road.
+   */
+  const roadTargetAt = (e: React.MouseEvent<SVGLineElement>): MarchTarget | null => {
+    // A road running across a city gives way to it: pointing at the city means the city.
+    const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => el.hasAttribute('data-province'));
+    const city = under?.getAttribute('data-province');
+    if (city && isCity(world, city)) return { province: city };
+    const m = e.currentTarget.getScreenCTM();
+    if (!m) return null;
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse());
+    let best: { a: ProvinceId; b: ProvinceId; f: number; d: number } | null = null;
+    for (const c of world.scenario.connections) {
+      if (!isOpenRoad(world, c.a, c.b)) continue;
+      const [ax, ay] = geo.anchors[c.a];
+      const [bx, by] = geo.anchors[c.b];
+      const [dx, dy] = [bx - ax, by - ay];
+      const f = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.y - ay) * dy) / (dx * dx + dy * dy || 1)));
+      const d = Math.hypot(ax + dx * f - p.x, ay + dy * f - p.y);
+      if (!best || d < best.d) best = { a: c.a, b: c.b, f, d };
+    }
+    if (!best) return null;
+    const { a, b, f } = best;
+    const [dx, dy] = [geo.anchors[b][0] - geo.anchors[a][0], geo.anchors[b][1] - geo.anchors[a][1]];
+    const len = Math.hypot(dx, dy) * k || 1;
+    // How far the city reaches along the road (its built-up area is wider than it is deep), as a share of the road.
+    const reach = (pid: ProvinceId) => {
+      if (!cities) return 9 / len;
+      const [hx, hy] = cities[pid].half;
+      return Math.max(10, 1 / Math.hypot((dx * k) / len / Math.max(hx, 1), (dy * k) / len / Math.max(hy, 1))) / len;
+    };
+    if (f < reach(a)) return { province: a };
+    if (f > 1 - reach(b)) return { province: b };
+    return roadSpotAt(geo, a, b, f);
+  };
+  const onRoad = useStableCallback((action: RoadAction, e: React.MouseEvent<SVGLineElement>) => {
+    const target = action === 'leave' ? null : roadTargetAt(e);
+    if (!target) {
+      setHoverRoad(null);
+      onHover(null);
+      return;
+    }
+    if (action === 'point') {
+      setHoverRoad(target);
+      if (hovered !== target.province) onHover(target.province);
+    } else if (action === 'order') props.onOrderMove(target);
+    else if (props.moveMode && ownArmySelected) pickDestination(target);
+    else props.onSelectProvince(target.province);
+  });
+  // The roads take the pointer only while one of your armies is selected; leaving that, forget the spot.
+  const roadsLive = ownArmySelected && showDetail;
+  useEffect(() => {
+    if (!roadsLive) setHoverRoad(null);
+  }, [roadsLive]);
 
   // Each city's model, rebuilt only when what it shows changes (sprites are cached by look).
-  const modelPx = cityModelScale(ratio);
   const cities = useMemo(() => {
     if (!modelPx) return null;
     const out: Record<ProvinceId, CityFootprint> = {};
@@ -2080,7 +2279,7 @@ export function MapView(props: MapViewProps) {
                 onAnimationEnd={() => setFlashes((all) => all.filter((x) => x !== f))}
               />
             ))}
-            {preview?.path?.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
+            {preview?.provinces.map((pid) => <path key={pid} d={geo.provincePaths[pid]} className="reach" />)}
             {hovered && !props.touch && <path d={geo.provincePaths[hovered]} className="hover-outline" />}
             {props.selectedProvince && (
               <>
@@ -2092,7 +2291,7 @@ export function MapView(props: MapViewProps) {
           {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
           {showDetail && (
             <>
-              <ConnectionLayer geo={geo} world={world} focusIds={focusIds} />
+              <ConnectionLayer geo={geo} world={world} focusIds={focusIds} onRoad={roadsLive ? onRoad : null} />
               <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} ratio={ratio} />
               {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} />}
               {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
@@ -2134,19 +2333,26 @@ export function MapView(props: MapViewProps) {
                 />
               )}
               {cities && <CityNameLayer geo={geo} state={state} world={world} k={k} cities={cities} />}
-              {preview && (
-                <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
-                  {preview.path && <polyline points={preview.path.map((pid) => geo.anchors[pid].join(',')).join(' ')} />}
-                  <g transform={`translate(${geo.anchors[preview.to].join(',')}) scale(${1 / k})`}>
-                    <Plate
-                      text={preview.path ? `${world.provinces[preview.to].name} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
-                      y={-34}
-                      size={10.5}
-                      className="eta"
-                    />
-                  </g>
-                </g>
-              )}
+              {preview &&
+                (() => {
+                  const { target } = preview;
+                  const end = target.road ? roadPoint(geo, target.province, target.road) : geo.anchors[target.province];
+                  const line = preview.path && marchLine(geo, primaryArmy!, preview.path, target.road && { province: target.province, ...target.road });
+                  return (
+                    <g className={`route-preview${props.moveMode ? ' strong' : ''}${preview.path ? '' : ' blocked'}`} pointerEvents="none">
+                      {line && <polyline points={line.map((p) => p.join(',')).join(' ')} />}
+                      <g transform={`translate(${end.join(',')}) scale(${1 / k})`}>
+                        {target.road && <circle r={4.5} className="road-spot" />}
+                        <Plate
+                          text={preview.path ? `${targetName(world, target)} · ${formatDuration(preview.ticks, state)}` : preview.blocked}
+                          y={target.road ? -14 : -34}
+                          size={10.5}
+                          className="eta"
+                        />
+                      </g>
+                    </g>
+                  );
+                })()}
             </>
           )}
         </g>

@@ -281,6 +281,22 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] With several armies selected, Split, Merge and Disband acted on the first army only (Merge on every army in its
       province): they now act on the selection, Merge joining the selected armies that stand together
 
+### Movement pass (done)
+
+- [x] Orders to any spot on a road between two lands: the army halts there, in the land whose part of the road it is,
+      and goes on from there (the rest of the leg ahead, or back to where its land's roads meet first); the preview and
+      route lines end at the spot
+- [x] Armies stand on the edge of their city's built-up area (empty plots no longer count), on the side away from
+      crowding neighbours: Paris's garrison used to stand so far out that it looked as if it were in Rouen
+- [x] A player's army that ends its march in a city where another of theirs stands joins it, with a field report; the
+      selection follows the merged army
+- [x] Orders given on the march turn the army back when that is quicker, rather than finishing the leg first
+- [x] Peace left armies marching through the other side's land standing there for good; they now go home
+- [ ] Computer opponents never halt on roads: forward screens along a quiet front could use them
+- [ ] Stop turns a marching army back; stopping on the spot, on the road, needs the simulation to know where roads
+      cross borders (today the map works that out and the simulation takes the province it is told)
+- [ ] Playtest merging on arrival: if players want stacks kept apart, an army option to opt out
+
 ## M4 — Fog of war and diplomacy
 
 - [x] Fog of war: provinces and armies see one province around them, reconnaissance units two over open land

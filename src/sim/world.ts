@@ -164,6 +164,12 @@ export function isCityGate(world: World, a: ProvinceId, b: ProvinceId): boolean 
   return isGate(world.provinces, a, b);
 }
 
+/** Is a road over land, between two lands (rather than a sea crossing, or a city's gate to the land round it)? */
+export function isOpenRoad(world: World, a: ProvinceId, b: ProvinceId): boolean {
+  const conn = connectionBetween(world, a, b);
+  return !!conn && conn.kind !== 'strait' && !isCityGate(world, a, b);
+}
+
 export function connectionBetween(world: World, a: ProvinceId, b: ProvinceId): Neighbor | undefined {
   return world.neighbors[a]?.find((n) => n.id === b);
 }

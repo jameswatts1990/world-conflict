@@ -82,7 +82,8 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
   },
   // 7: the land round each city became two or more provinces of land all round it. Each of them takes over
   // the old land as it stood (owner, mood, supply); its infrastructure, its armies and its battle go to the
-  // largest. Marches stop where they are, since the roads they planned now pass through other provinces.
+  // largest. Marches stop where they are, since the roads they planned now pass through other provinces, and
+  // an army halted on a road stands where its new land's roads meet.
   6: (state) => {
     const moved = new Map<string, string>();
     for (const [row, map] of Object.entries(LAND)) {
@@ -109,6 +110,7 @@ const MIGRATIONS: Record<number, (state: GameState) => void> = {
       a.province = to(a.province);
       a.move = null;
       a.arrivedVia = null;
+      delete a.road;
     }
     state.battles = Object.fromEntries(Object.values(state.battles).map((b) => [to(b.province), { ...b, province: to(b.province) }]));
     for (const e of state.events) if (e.province) e.province = to(e.province);

@@ -17,12 +17,21 @@ function violations(state: GameState): string[] {
     if (a.owner !== 'neutral' && state.nations[a.owner].eliminated) out.push(`army ${a.id} of eliminated ${a.owner}`);
     for (const u of a.units) if (!(u.strength > 0 && u.strength <= 1)) out.push(`unit ${u.id} strength ${u.strength}`);
     if (a.move) {
-      if (a.move.leg && (a.move.leg.from !== a.province || a.move.path[0] !== a.move.leg.to)) out.push(`army ${a.id} leg out of step`);
-      let at = a.province;
+      const leg = a.move.leg;
+      // On the way, an army belongs to one end of its road (it set out from it, or is walking back to it).
+      if (leg && ((leg.from !== a.province && leg.to !== a.province) || a.move.path[0] !== leg.to)) out.push(`army ${a.id} leg out of step`);
+      let at = leg ? leg.from : a.province;
       for (const next of a.move.path) {
         if (!world.neighbors[at].some((n) => n.id === next)) out.push(`army ${a.id} path jumps ${at} -> ${next}`);
         at = next;
       }
+      const halt = a.move.halt;
+      if (halt && !world.neighbors[halt.province].some((n) => n.id === halt.toward && n.kind !== 'strait')) out.push(`army ${a.id} halts off the roads`);
+    }
+    if (a.road) {
+      if (a.move?.leg) out.push(`army ${a.id} marching and standing on a road`);
+      if (!world.neighbors[a.province].some((n) => n.id === a.road!.toward && n.kind !== 'strait')) out.push(`army ${a.id} on a road that is not there`);
+      if (!(a.road.at > 0 && a.road.at < 1)) out.push(`army ${a.id} off the end of its road (${a.road.at})`);
     }
   }
   for (const p of Object.values(state.provinces)) {
@@ -43,8 +52,14 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
   const cities = provinces.filter((p) => world.provinces[p].city);
   const city = cities.length && rnd() < 0.8 ? pick(cities) : province;
   switch (Math.floor(rnd() * 12)) {
-    case 0:
-      return army ? { type: 'move', nation: me, armyId: army.id, to: pick(world.provinceIds) } : null;
+    case 0: {
+      if (!army) return null;
+      // Half the time a spot on a road nearby (sea crossings included, which are refused).
+      const nearby = rnd() < 0.5;
+      const to = nearby ? pick([army.province, ...world.neighbors[army.province].map((n) => n.id)]) : pick(world.provinceIds);
+      const road = nearby ? { toward: pick(world.neighbors[to]).id, at: rnd() } : undefined;
+      return { type: 'move', nation: me, armyId: army.id, to, road, mode: pick(['move', 'attack', 'patrol'] as const) };
+    }
     case 1:
       return army ? { type: 'stop', nation: me, armyId: army.id } : null;
     case 2:

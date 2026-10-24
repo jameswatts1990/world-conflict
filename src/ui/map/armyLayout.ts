@@ -31,19 +31,27 @@ const ANGLES = [180, 0, 150, 30, 210, 330, 240, 300, 270];
 const OUTER = [...ANGLES, 125, 55, 165, 15, 195, 345, 225, 315, 255, 285];
 /** Rings tried before spots are simply stacked on the last one. */
 const RINGS = 6;
+/**
+ * The first ring stands on the edge of the built-up area (the outer building plots, where an
+ * army in a city would camp), not clear of it: this share of the area in, plus this much room out.
+ */
+const EDGE_IN = 0.8;
+const EDGE_OUT = [0.45, 0.3];
 
 /** Two armies whose ground points are closer than this (in rooms, across and up the screen) overlap. */
 const CLEAR_X = 2.1;
 const CLEAR_Y = 1.5;
+/** The first ring's least reach, in rooms: the two armies beside it then stand clear of each other. */
+const MIN_OUT = [CLEAR_X / 2 + 0.05, 0.75];
 
 const spotCache = new Map<string, Offset[]>();
 
 /**
  * The first `n` spots around a city whose built-up area reaches `half` pixels
  * (across, and up and down the screen) from its middle, for armies taking `room`
- * pixels each. Spots fill rings round the city, each one clear of it, of its name
- * plate (figures and badge alike) and of the spots before it; adding an army never
- * moves the others (spot i depends only on i).
+ * pixels each. Spots fill rings round the city, the first on the edge of its
+ * built-up area, each clear of its name plate (figures and badge alike) and of the
+ * spots before it; adding an army never moves the others (spot i depends only on i).
  */
 export function citySpots(half: Offset, room: number, n: number, plate?: PlateBox): Offset[] {
   const [hx, hy] = half.map((h) => Math.round(h * 2) / 2);
@@ -71,8 +79,9 @@ function layoutSpots(hx: number, hy: number, room: number, n: number, plate?: Pl
     spots.every(([sx, sy]) => Math.hypot((spot[0] - sx) / (CLEAR_X * room), (spot[1] - sy) / (CLEAR_Y * room)) >= 1);
   let ring = 0;
   for (; ring < RINGS && spots.length < n; ring++) {
-    const rx = hx + room * (1.15 + 2 * ring);
-    const ry = hy + room * (0.75 + 1.4 * ring);
+    // Never so close in that two armies cannot stand side by side (a land's anchor has no built-up area).
+    const rx = Math.max(hx * EDGE_IN + room * EDGE_OUT[0], room * MIN_OUT[0]) + room * 2 * ring;
+    const ry = Math.max(hy * EDGE_IN + room * EDGE_OUT[1], room * MIN_OUT[1]) + room * 1.4 * ring;
     for (const deg of ring === 0 ? ANGLES : OUTER) {
       const a = (deg * Math.PI) / 180;
       const spot: Offset = [Math.cos(a) * rx, Math.sin(a) * ry];
@@ -82,7 +91,7 @@ function layoutSpots(hx: number, hy: number, room: number, n: number, plate?: Pl
   }
   // A crowd beyond every ring: queue up in rows to the left.
   for (let i = 0; spots.length < n; i++) {
-    const rx = hx + room * (1.15 + 2 * ring);
+    const rx = Math.max(hx * EDGE_IN + room * EDGE_OUT[0], room * MIN_OUT[0]) + room * 2 * ring;
     spots.push([-rx - (i % 4) * CLEAR_X * room, (Math.floor(i / 4) - 1) * CLEAR_Y * room]);
   }
   return spots;

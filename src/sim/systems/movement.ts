@@ -6,9 +6,10 @@ import { pushEvent } from '../events';
 import { armyName } from '../names';
 import { findPath } from '../pathfinding';
 import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
-import type { Army, GameState, ProvinceId, UnitType } from '../types';
+import { NEUTRAL, type Army, type GameState, type MoveLeg, type ProvinceId, type RoadHalt, type UnitType } from '../types';
 import { provinceName } from '../text';
-import { connectionBetween, isCityGate, type World } from '../world';
+import { connectionBetween, isCity, isCityGate, type World } from '../world';
+import { withdrawArmy } from './territory';
 
 /**
  * Ticks needed for this army to travel one connection. Every unit type has
@@ -53,15 +54,21 @@ export function mustHold(state: GameState, army: Army): boolean {
   return owner !== army.owner && areHostile(state, army.owner, owner);
 }
 
-/** Begins the next leg of the army's path. Returns false (and clears the order) if it is no longer legal. */
+/**
+ * Begins the next leg of the army's path. From a spot on a road it carries on along the road
+ * or walks back first to where its land's roads meet. Returns false (and clears the order) if it is no longer legal.
+ */
 export function startLeg(state: GameState, world: World, army: Army): boolean {
   const move = army.move;
   if (!move || move.path.length === 0) {
     army.move = null;
     return false;
   }
+  const road = army.road;
+  if (road && move.path[0] !== road.toward && move.path[0] !== army.province) move.path.unshift(army.province);
   const next = move.path[0];
-  if (!connectionBetween(world, army.province, next) || !canEnterProvince(state, army.owner, next)) {
+  const from = road && next === army.province ? road.toward : army.province;
+  if (!connectionBetween(world, from, next) || !canEnterProvince(state, army.owner, next)) {
     army.move = null;
     pushEvent(state, 'move', `The ${armyName(world, army)} halted: the route to ${provinceName(world, next)} is closed.`, {
       nations: army.owner === 'neutral' ? [] : [army.owner],
@@ -69,8 +76,18 @@ export function startLeg(state: GameState, world: World, army: Army): boolean {
     });
     return false;
   }
-  move.leg = { from: army.province, to: next, elapsed: 0, duration: legTicks(state, world, army, army.province, next) };
+  const duration = legTicks(state, world, army, from, next);
+  const done = road ? (next === road.toward ? road.at : 1 - road.at) : 0;
+  move.leg = { from, to: next, elapsed: Math.round(done * duration), duration };
+  delete army.road;
   return true;
+}
+
+/** How far along a leg the march's halt lies (0..1), or null when the leg does not run along its road. */
+function haltOn(leg: MoveLeg, halt: RoadHalt): number | null {
+  if (leg.from === halt.province && leg.to === halt.toward) return halt.at;
+  if (leg.from === halt.toward && leg.to === halt.province) return 1 - halt.at;
+  return null;
 }
 
 export function movementSystem(state: GameState, world: World): void {
@@ -88,24 +105,79 @@ export function movementSystem(state: GameState, world: World): void {
     }
     const leg = army.move.leg!;
     leg.elapsed += 1;
+    const halt = army.move.halt;
+    const stop = halt && army.move.path.length === 1 ? haltOn(leg, halt) : null;
+    if (halt && stop !== null && leg.elapsed >= Math.round(stop * leg.duration)) {
+      haltOnRoad(state, world, army, leg, halt);
+      continue;
+    }
     if (leg.elapsed < leg.duration) continue;
 
     // Arrival
     army.move.leg = null;
     if (!canEnterProvince(state, army.owner, leg.to)) {
-      // Diplomacy changed mid-march (e.g. peace signed): turn back.
-      army.move = null;
-      pushEvent(state, 'move', `The ${armyName(world, army)} was refused entry to ${provinceName(world, leg.to)} and turned back.`, {
-        nations: army.owner === 'neutral' ? [] : [army.owner],
-        province: leg.from,
-      });
+      refuseEntry(state, world, army, leg.to);
       continue;
     }
-    army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
+    // Walking back within its own province, an army keeps the way it came (a landing stays a landing).
+    if (leg.to !== army.province) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
-    if (army.move.path.length === 0 && !army.move.patrol) army.move = null;
+    if (army.move.path.length === 0 && !army.move.patrol) {
+      army.move = null;
+      mergeOnArrival(state, world, army);
+    }
   }
+}
+
+/** The march ends on a road: the army stands there, in the province whose part of the road it is. */
+function haltOnRoad(state: GameState, world: World, army: Army, leg: MoveLeg, halt: RoadHalt): void {
+  army.move = null;
+  if (halt.province !== army.province) {
+    if (!canEnterProvince(state, army.owner, halt.province)) {
+      refuseEntry(state, world, army, halt.province);
+      return;
+    }
+    army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
+    army.province = halt.province;
+  }
+  army.road = { toward: halt.toward, at: halt.at };
+}
+
+/**
+ * Diplomacy changed mid-march (peace signed): the army turns back to the province it set out from,
+ * or, standing in land it may no longer be in, withdraws home.
+ */
+function refuseEntry(state: GameState, world: World, army: Army, to: ProvinceId): void {
+  army.move = null;
+  pushEvent(state, 'move', `The ${armyName(world, army)} was refused entry to ${provinceName(world, to)} and turned back.`, {
+    nations: army.owner === 'neutral' ? [] : [army.owner],
+    province: army.province,
+  });
+  if (!canEnterProvince(state, army.owner, army.province)) withdrawArmy(state, world, army);
+}
+
+/**
+ * A player's army that ends its march in a city where another of their armies stands idle joins
+ * it: the army standing there keeps its orders and options, the merged army the senior name.
+ * Computer opponents gather their armies with their own merge orders when they think.
+ */
+function mergeOnArrival(state: GameState, world: World, army: Army): void {
+  if (!isCity(world, army.province) || army.owner === NEUTRAL || state.nations[army.owner].controller !== 'human' || army.holding) return;
+  let host: Army | null = null;
+  for (const id of Object.keys(state.armies).sort()) {
+    const a = state.armies[id];
+    if (a === army || a.owner !== army.owner || a.province !== army.province || a.move || a.road) continue;
+    if (!host || a.serial < host.serial) host = a;
+  }
+  if (!host) return;
+  pushEvent(state, 'merge', `The ${armyName(world, army)} joined the ${armyName(world, host)} in ${provinceName(world, army.province)}.`, {
+    nations: [army.owner],
+    province: army.province,
+  });
+  host.serial = Math.min(host.serial, army.serial);
+  host.units.push(...army.units);
+  delete state.armies[army.id];
 }
 
 /** A patrol at the end of its beat turns for the other end; false once no route is left. */

@@ -316,6 +316,20 @@ export interface MoveLeg {
  */
 export type MoveMode = 'move' | 'attack' | 'patrol';
 
+/**
+ * A spot on a road between two lands (a land or mountain connection, not a sea crossing or a
+ * city's gate to its land): `at` of the way (0..1, exclusive) from this land towards `toward`.
+ */
+export interface RoadSpot {
+  toward: ProvinceId;
+  at: number;
+}
+
+/** Where a march ends when it stops on a road rather than at a province: on the road out of `province`. */
+export interface RoadHalt extends RoadSpot {
+  province: ProvinceId;
+}
+
 export interface ArmyMove {
   /** Remaining destinations in order; path[0] is the current/next leg target. */
   path: ProvinceId[];
@@ -324,6 +338,8 @@ export interface ArmyMove {
   mode: MoveMode;
   /** Patrol ends; the army turns for the other end each time it reaches one. */
   patrol?: [ProvinceId, ProvinceId];
+  /** The march ends at this spot on a road: its last leg (towards path[0], the final entry) stops there. */
+  halt?: RoadHalt;
   /** Halted mid-march (Stop or Hold): walking back to the province it set out from, where it stops. */
   halting?: boolean;
 }
@@ -333,8 +349,13 @@ export interface Army {
   owner: OwnerId;
   /** Army number within its owner, e.g. 3 for "3rd Army". */
   serial: number;
-  /** Province the army is in, or departed from while a leg is in progress. */
+  /**
+   * Province the army is in. While a leg is in progress, the one it last stood in: where it set
+   * out from, or, turned back or walking back from a road, the one it is returning to.
+   */
   province: ProvinceId;
+  /** Halted on a road out of its land, out in the open rather than where the land's roads meet (absent: there). */
+  road?: RoadSpot;
   units: Unit[];
   move: ArmyMove | null;
   supplied: boolean;
