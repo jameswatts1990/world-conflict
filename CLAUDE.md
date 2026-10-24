@@ -138,8 +138,9 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
   France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
   in about half.
-- **Challenge**: when war comes to an idle player and when they fall (an idle France: currently 7–13 and about 27
-  minutes at Normal, 14–64 and about 58 at Easy). An idle player should lose, just not at once.
+- **Challenge**: when war comes to an idle player and when they fall (an idle France, over 10 seeds of 90 minutes:
+  currently war at 7–10 minutes and a fall in 7 of 10, at 40–83 minutes, at Normal; war at 14–46 and a fall in 2 of 10
+  at Easy). An idle player should lose, just not at once.
 
 Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather
 than retuning silently, and recommend human playtests for anything about feel.
