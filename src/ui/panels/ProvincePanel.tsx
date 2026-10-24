@@ -79,7 +79,7 @@ const refundTitle = (what: string, started: boolean) =>
 function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const { state, world } = ctrl;
   const battle = state.battles[pid];
-  const armies = armiesIn(state, pid);
+  const armies = armiesIn(state, world, pid);
   const defender = state.provinces[pid].owner;
   const owners = [...new Set(armies.map((a) => a.owner))].sort((a, b) => Number(a === defender) - Number(b === defender));
   const sides = owners.map((owner: OwnerId) => {
@@ -170,7 +170,7 @@ export function ProvincePanel({
   // Under the fog of war only the map is known: who holds it, its city and its ground.
   const seen = ctrl.sight();
   const known = seen.has(pid);
-  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
+  const armies = armiesIn(state, world, pid).filter((a) => isArmyVisible(a, human, seen));
   const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
   const nationalCapital = city?.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
@@ -812,7 +812,7 @@ function ArmiesTab({
 }) {
   const { state, world, human } = ctrl;
   const seen = ctrl.sight();
-  const armies = armiesIn(state, pid).filter((a) => isArmyVisible(a, human, seen));
+  const armies = armiesIn(state, world, pid).filter((a) => isArmyVisible(a, human, seen));
   return (
     <>
       {!seen.has(pid) && <p className="muted small fog-text">Under the fog of war: armies here cannot be seen.</p>}

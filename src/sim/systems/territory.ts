@@ -4,7 +4,7 @@ import { MORALE } from '../config/rules';
 import { ARMY_RULES, UNITS } from '../config/units';
 import { pushEvent } from '../events';
 import { armyName } from '../names';
-import { areHostile, armyPower, captureTicks, hostileArmiesIn, isArmyInTransit } from '../queries';
+import { areHostile, armyPower, captureTicks, hostileArmiesIn, isArmyAway } from '../queries';
 import { nationName, provinceName, sentence } from '../text';
 import { NEUTRAL, type Army, type GameState, type NationId, type ProvinceId } from '../types';
 import type { World } from '../world';
@@ -15,7 +15,7 @@ export function captureSystem(state: GameState, world: World): void {
   const stationed = new Map<ProvinceId, Army[]>();
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
-    if (isArmyInTransit(a)) continue;
+    if (isArmyAway(world, a)) continue;
     const list = stationed.get(a.province) ?? [];
     list.push(a);
     stationed.set(a.province, list);
@@ -35,7 +35,7 @@ export function captureSystem(state: GameState, world: World): void {
     let capturer: NationId = attackers[0].owner;
     for (const [n, pw] of power) if (pw > (power.get(capturer) ?? 0)) capturer = n;
 
-    if (hostileArmiesIn(state, pid, capturer).length > 0) continue; // contested: battle first
+    if (hostileArmiesIn(state, world, pid, capturer).length > 0) continue; // contested: battle first
 
     if (!p.capture || p.capture.by !== capturer) {
       p.capture = { by: capturer, progress: 0, required: captureTicks(state, world, pid) };
@@ -103,7 +103,7 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   // Armies of nations at peace with the new owner cannot stay.
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
-    if (a.province !== pid || isArmyInTransit(a) || a.owner === newOwner) continue;
+    if (a.province !== pid || isArmyAway(world, a) || a.owner === newOwner) continue;
     if (!areHostile(state, a.owner, newOwner)) withdrawArmy(state, world, a);
   }
 }

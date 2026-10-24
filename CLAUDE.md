@@ -73,8 +73,14 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   (`scripts/map/check-borders.ts` reports borders between regions).
 - An army's `province` is where it stands; on a leg, where it last stood (the leg's `from`, or its `to` when it is
   walking back from a road or has turned round). An army with `road` set stands on a road between two lands
-  (`isOpenRoad`: not a sea crossing or a city's gate) and counts as in its land for every rule. Plan marches with
-  `planMarch` (it starts from a province, a road or mid-leg); `findPath` is province to province.
+  (`isOpenRoad`: not a sea crossing or a city's gate) and counts as in its land for every rule. Its `at` stays short
+  of `roadBorder(world, land, toward)`, where the road crosses into the next land (generated into
+  `scenario/europe/roads.ts` by `scripts/map/road-borders.ts`, also run by `npm run map:build`); `spotOnRoad` turns a
+  fraction of the way along a road into the land and spot. An army walking within its land (to or from a spot on its
+  road, `walksWithin`) has not left it: battles, captures and `hostileArmiesIn`/`armiesIn` go by `isArmyAway`, while
+  merging, splitting and the like go by `isArmyInTransit` (any leg). Plan marches with `planMarch` (it starts from a province,
+  a road or mid-leg); `findPath` is province to province. The AI reads where its own armies are going (a province,
+  or the land a road halt lies in) through `armyLocation` in `ai/context.ts`.
 
 ## How the computer opponents should behave
 

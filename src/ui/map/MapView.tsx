@@ -22,6 +22,7 @@ import {
   isArmyVisible,
   nationName,
   planMarch,
+  spotOnRoad,
   unitGen,
   type Army,
   type ArmyId,
@@ -44,7 +45,7 @@ import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType, roadEndName } from '../labels';
 import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
-import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, roadPoint, roadSpotAt, type MapGeometry } from './geo';
+import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, roadPoint, type MapGeometry } from './geo';
 import {
   DETAIL_LEVELS,
   TERRAIN_BASE,
@@ -2147,7 +2148,7 @@ export function MapView(props: MapViewProps) {
     };
     if (f < reach(a)) return { province: a };
     if (f > 1 - reach(b)) return { province: b };
-    return roadSpotAt(geo, a, b, f);
+    return spotOnRoad(world, a, b, f);
   };
   const onRoad = useStableCallback((action: RoadAction, e: React.MouseEvent<SVGLineElement>) => {
     const target = action === 'leave' ? null : roadTargetAt(e);

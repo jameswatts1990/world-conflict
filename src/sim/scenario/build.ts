@@ -213,6 +213,17 @@ export function buildConnections(rows: ProvinceRow[], connections: ConnectionDef
 }
 
 /**
+ * The connections with where each road between two lands crosses their border, from the map (`borders`, keyed
+ * 'a|b' as the connection is written; scripts/map/road-borders.ts writes them).
+ */
+export function withRoadBorders(connections: ConnectionDef[], borders: Record<string, number>): ConnectionDef[] {
+  return connections.map((c) => {
+    const border = c.kind === 'strait' ? undefined : borders[`${c.a}|${c.b}`];
+    return border === undefined ? c : { ...c, border };
+  });
+}
+
+/**
  * The land a row's field units take at the start: the one facing the most foreign land (by its links), and
  * among those one at the city's gate, or else the first of its lands.
  */

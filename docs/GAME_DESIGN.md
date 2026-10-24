@@ -248,9 +248,11 @@ Specialities are optional: a nation without one shows its bloc instead.
   enemy army bars the way, and takes the destination itself (provinces passed through stay the enemy's, so the
   army may march itself out of supply). **Attack** also holds to capture each hostile province on the route, then
   continues (the computer's orders are all attacks). **Patrol** marches back and forth between the army's position
-  and the destination until stopped, fighting and capturing like Attack. **Stop** halts the army at once: one on
-  the road turns back to the province it set out from, taking as long as it has marched (stopping it again does not
-  turn it round once more; one already walking back into its own land carries on there). **Hold position** halts it
+  and the destination until stopped, fighting and capturing like Attack. **Stop** halts the army at once: on a road
+  between two lands it stands where it is (in whichever land that stretch of road lies, if it may stand there), and
+  where there is nowhere to stand (at sea, or between a city and its land) it turns back to the province it set out
+  from, taking as long as it has marched (stopping it again does not turn it round once more; one already walking back
+  into its own land carries on there). **Hold position** halts it
   the same way and keeps it there, never withdrawing on its own, until it is given a new march order or released.
   Right-clicking attacks into foreign land and moves within your own. An explicit new order leaves immediately, even
   from a battle (a withdrawal under fire, see §7); given on the march, the army goes on to the province ahead or turns
@@ -262,11 +264,17 @@ Specialities are optional: a nation without one shows its bloc instead.
   is not marching or in battle; ticking formations needs a single army.
 - **Halting on a road.** A march can end at any spot on a road between two lands (not a sea crossing, nor the short
   way between a city and a land round it), not only where the land's roads meet: the army stops there and stands in the land
-  whose part of the road it is (the map draws the border where the straight road between the two lands' anchors
-  crosses it). There it is in that land for every rule (it fights, captures, is supplied and watches from there) but
+  whose part of the road it is (the border lies where the straight road between the two lands' anchors crosses
+  their shapes on the map; the simulation knows the same spot for each road, see §12, and refuses a spot on the far
+  side of it). There it is in that land for every rule (it fights, captures, is supplied and watches from there) but
   stands apart: merging needs armies at the same spot, and marching on along the road takes only the rest of the leg;
-  any other march first walks back to where its land's roads meet. A broken army on a road falls back only along it,
-  onward (going back would lead into the fighting). Patrols run between provinces.
+  any other march sets out for whichever end of the road gets it there sooner. An army walking within its land (out
+  to a spot on one of its roads, or back along one to its crossroads, on its own side of the border) has not left
+  it: it fights there and holds or takes the land as it would standing still, so no enemy slips in behind it while it
+  takes up its post. It leaves when its march goes on past the crossroads or over the border, and if it leaves a
+  battle then, that is its withdrawal under fire: an army ordered elsewhere from a road (or a broken one falling back
+  from it) fights on as it walks back, and passes straight through its crossroads, paying the price there. Patrols
+  run between provinces.
 - **Merging on arrival.** An army of yours that ends its march in a city where another of your armies stands idle
   joins it (not one holding, nor out on the land or on a road): the army standing there keeps its orders and options,
   the merged army the senior (lowest-numbered) name, and the field reports say so. Computer opponents gather their
@@ -420,6 +428,15 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   half of what the city is worth on top of its own value, since taking it is the way in; threatened provinces are covered by
   the nearest free armies; the rest moves up to the front. An enemy stack only counts fully against one province, so
   a single army cannot tie down a whole frontier.
+- **Forward positions** (Normal only): an offensive masses on the roads into its target rather than at the crossroads
+  behind them, halfway to the border (`AI.forwardDepth`), so a build-up shows on the map where it will strike and the
+  attack has less ground to cover. (Three-quarters of the way struck so much sooner that Serbia and Romania fell
+  noticeably more often.) An idle army guarding a land at the front stands
+  forward on the road towards the greatest danger next door, short of the border: the enemy armies it can see in that
+  land and its city, or its estimate of those it cannot, and half of those in the lands behind it (`AI.screenBeyond`).
+  A screen keeps its facing for five minutes (`AI.forwardHold`) and then turns to face another land only for a danger
+  half as great again as both the one it faces and itself (`AI.screenSwitch`), so screens do not swing about after
+  every enemy march. Easy opponents keep to the crossroads.
 - **Interior lines:** at war on several fronts, it picks a main enemy (a power about to win; otherwise the weakest
   against it, the one holding its home provinces or its claims, kept unless another looks clearly better). It
   attacks only the main enemy, holds the other fronts with the armies already there, sends its reserves to the
@@ -456,8 +473,10 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   anchored, its coast and towns, which cities reach the sea and the links between all provinces are generated once
   from the shapes into `scenario/europe/land.ts` by `scripts/map/city-provinces.ts`, which cuts the cities out of the
   uncut regions in `scripts/map/base.topo.json` (written by `npm run map:build`, with the admin-1 units inside them)
-  and divides the rest. Distances are rounded to whole kilometres, so timing never depends on floating-point
-  trigonometry.
+  and divides the rest. Where each road between two lands crosses their border (how far along the straight line
+  between their anchors one land's outline gives way to the other's) is generated the same way into
+  `scenario/europe/roads.ts` by `scripts/map/road-borders.ts`; a test checks it against the shapes. Distances are
+  rounded to whole kilometres, so timing never depends on floating-point trigonometry.
 - **Saves** are versioned (`schemaVersion`, now 7) and tied to a scenario id. Schema 6 split the cities out: an older
   save gains the land round each city, held by whoever held the old province, and its marches stop where they are.
   Schema 7 divided that land into the lands round each city: each takes over the old land as it stood (owner, mood,

@@ -13,9 +13,11 @@ import {
   atWar,
   buildingSlots,
   canAfford,
+  canEnterProvince,
   constructionCost,
   constructionTicks,
   hostileArmiesIn,
+  isArmyAway,
   isArmyInTransit,
   isBuildingUnlocked,
   isUnitUnlocked,
@@ -32,7 +34,7 @@ import { startLeg } from './systems/movement';
 import { startQueuedResearch } from './systems/production';
 import type { Army, ArmyId, BuildingType, GameState, MoveLeg, MoveMode, NationId, ProvinceId, RoadSpot, TechId, UnitId, UnitType } from './types';
 import { durationText, nationName, provinceName, sentence } from './text';
-import { isOpenRoad, type World } from './world';
+import { connectionBetween, isOpenRoad, roadBorder, spotOnRoad, type World } from './world';
 
 export type Command =
   /**
@@ -94,6 +96,7 @@ export function checkMove(
   if (road) {
     if (!isOpenRoad(world, to, road.toward)) return fail('Armies halt only on roads over land, between two lands.');
     if (!(road.at > 0 && road.at < 1)) return fail('That is not a point on the road.');
+    if (road.at > roadBorder(world, to, road.toward) + 1e-9) return fail('That stretch of road lies across the border.');
     if (mode === 'patrol') return fail('Patrols march between cities.');
   }
   if (!army.move?.leg && army.province === to && sameSpot(army.road, road)) return fail('The army is already there.');
@@ -266,16 +269,18 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       // Mid-march it goes on or turns back, whichever is quicker; from a road, the same.
       const plan = planMarch(state, world, army, cmd.to, cmd.road)!;
       const standing = !army.move?.leg;
+      const present = !isArmyAway(world, army);
       army.holding = false;
       army.move = { path: plan.path, leg: plan.leg, mode };
       if (plan.halt) army.move.halt = plan.halt;
       if (mode === 'patrol') army.move.patrol = [plan.start === cmd.to && plan.leg ? plan.leg.from : plan.start, cmd.to];
-      if (!standing) return OK;
-      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price.
-      let departed = !!plan.leg;
-      if (departed) delete army.road;
-      else departed = startLeg(state, world, army);
-      if (departed) withdrawArmy(state, world, army, army.province);
+      if (standing) {
+        if (plan.leg) delete army.road;
+        else startLeg(state, world, army);
+      }
+      // An explicit order departs immediately, even from a battle: a withdrawal under fire, at a price. Walking
+      // within its land it has not left yet: it pays when it does.
+      if (present && isArmyAway(world, army)) withdrawArmy(state, world, army, army.province);
       return OK;
     }
     case 'stop': {
@@ -285,7 +290,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (!army.move) return fail('The army is not moving.');
       if (army.move.halting) return fail('The army is already turning back.');
-      halt(army);
+      halt(state, world, army);
       return OK;
     }
     case 'hold': {
@@ -294,7 +299,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       army.holding = cmd.hold;
-      if (cmd.hold && army.move) halt(army);
+      if (cmd.hold && army.move) halt(state, world, army);
       return OK;
     }
     case 'setAutoRetreat': {
@@ -348,7 +353,7 @@ export function applyCommand(state: GameState, world: World, cmd: Command): Comm
       const army = state.armies[cmd.armyId];
       if (!army || army.owner !== cmd.nation) return fail('Not your army.');
       if (isArmyInTransit(army)) return fail('Cannot disband while marching.');
-      if (hostileArmiesIn(state, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
+      if (hostileArmiesIn(state, world, army.province, army.owner).length > 0) return fail('Cannot disband in battle: order a retreat instead.');
       const ids = cmd.unitIds ? new Set(cmd.unitIds) : null;
       const leaving = ids ? army.units.filter((u) => ids.has(u.id)) : army.units;
       if (leaving.length === 0 || (ids && leaving.length !== ids.size)) return fail('Select units of this army to disband.');
@@ -511,17 +516,32 @@ function turnBack(army: Army, leg: MoveLeg, mode: MoveMode): void {
 }
 
 /**
- * Stop and Hold halt an army at once: one on the road turns back to the province it set out from (one already
- * walking back into its own province, from a spot on a road or turned round, carries on there).
+ * Stop and Hold halt an army at once. On a road between two lands it stands where it is, in whichever land that
+ * stretch of road lies; on a sea crossing, or the short way between a city and its land, it turns back to the
+ * province it set out from (one already walking back into its own province carries on there).
  */
-function halt(army: Army): void {
+function halt(state: GameState, world: World, army: Army): void {
   const leg = army.move?.leg;
-  if (!leg || leg.elapsed === 0) army.move = null;
-  else if (!army.move!.halting) {
-    if (leg.to === army.province) army.move = { path: [leg.to], leg, mode: 'move' };
-    else turnBack(army, leg, 'move');
-    army.move!.halting = true;
+  if (!leg || leg.elapsed === 0) {
+    army.move = null;
+    return;
   }
+  if (army.move!.halting) return;
+  if (isOpenRoad(world, leg.from, leg.to)) {
+    const spot = spotOnRoad(world, leg.from, leg.to, leg.elapsed / leg.duration);
+    if (spot.province === army.province || canEnterProvince(state, army.owner, spot.province)) {
+      if (spot.province !== army.province) {
+        army.arrivedVia = connectionBetween(world, leg.from, leg.to)!.kind;
+        army.province = spot.province;
+      }
+      army.road = spot.road;
+      army.move = null;
+      return;
+    }
+  }
+  if (leg.to === army.province) army.move = { path: [leg.to], leg, mode: 'move' };
+  else turnBack(army, leg, 'move');
+  army.move!.halting = true;
 }
 
 /** Share of a job's price returned on cancel: all of it until work has started. */

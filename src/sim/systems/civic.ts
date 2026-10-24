@@ -5,7 +5,7 @@ import { BUILDING_EFFECTS, CITY } from '../config/buildings';
 import { MORALE } from '../config/rules';
 import { INTERVALS } from '../config/timing';
 import { pushEvent } from '../events';
-import { areHostile, atWar, isArmyInTransit, techEffects } from '../queries';
+import { areHostile, atWar, isArmyAway, techEffects } from '../queries';
 import { NEUTRAL, type Army, type GameState, type NationId, type ProvinceId } from '../types';
 import { provinceName } from '../text';
 import type { World } from '../world';
@@ -35,7 +35,7 @@ export function buildMoraleContext(state: GameState, world: World): MoraleContex
   const stationed = new Map<ProvinceId, Army[]>();
   for (const id of Object.keys(state.armies).sort()) {
     const a = state.armies[id];
-    if (isArmyInTransit(a)) continue;
+    if (isArmyAway(world, a)) continue;
     const list = stationed.get(a.province) ?? [];
     list.push(a);
     stationed.set(a.province, list);

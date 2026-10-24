@@ -10,10 +10,15 @@
 //      preferring targets whose defenders would be cut off;
 //   6. threatened provinces are covered, nearest armies moving in, and free
 //      armies take any neighbouring target they can manage alone;
-//   7. anything left moves up to the front.
+//   7. anything left moves up to the front;
+//   8. armies guarding a land at the front stand forward on the road towards the
+//      most dangerous enemy land next door, a screen just short of the border.
 // On several fronts (interior lines) it attacks only its main enemy, holds the
 // other fronts with the armies already there, and sends its reserves to the
-// main front, counting its railways when it reckons distances.
+// main front, counting its railways when it reckons distances. An offensive
+// masses on the roads into its target, just short of the border, where the
+// build-up shows and the strike has least ground to cover (forward positions:
+// Normal only).
 import { AI } from '../config/ai';
 import { BUILDING_EFFECTS } from '../config/buildings';
 import { MORALE, SUPPLY } from '../config/rules';
@@ -31,15 +36,30 @@ import {
 } from '../queries';
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
-import { NEUTRAL, type Army, type ArmyId, type ProvinceId } from '../types';
-import { isCityGate } from '../world';
+import { NEUTRAL, type Army, type ArmyId, type ProvinceId, type RoadSpot } from '../types';
+import { cityOf, isCity, isCityGate, isOpenRoad, roadBorder } from '../world';
 import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
+/** Where an army stands: its province, or its spot on a road out of it. */
+const spotOf = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
+
+/** A forward position on the road from a land towards a neighbour, just short of the border (null where there is no such road). */
+function forwardSpot(ctx: Ctx, from: ProvinceId, toward: ProvinceId): RoadSpot | null {
+  if (!isOpenRoad(ctx.world, from, toward)) return null;
+  return { toward, at: Math.round(roadBorder(ctx.world, from, toward) * AI.forwardDepth * 1000) / 1000 };
+}
+
+/** Sends an army to a forward position in the land it stands in, unless it is there already. */
+function goForward(ctx: Ctx, army: Army, spot: RoadSpot, reason: 'stage' | 'screen'): boolean {
+  if (army.road?.toward === spot.toward && army.road.at === spot.at) return false;
+  return issue(ctx, { type: 'move', nation: ctx.me, armyId: army.id, to: army.province, road: spot, mode: 'move' }, reason);
+}
 
 function mergeIdle(ctx: Ctx): void {
-  const byProvince = new Map<ProvinceId, Army[]>();
-  for (const a of idleArmies(ctx)) byProvince.set(a.province, [...(byProvince.get(a.province) ?? []), a]);
-  for (const [, list] of byProvince) {
+  // Only armies standing together merge: in one province, or at one spot on a road.
+  const bySpot = new Map<string, Army[]>();
+  for (const a of idleArmies(ctx)) bySpot.set(spotOf(a), [...(bySpot.get(spotOf(a)) ?? []), a]);
+  for (const [, list] of bySpot) {
     if (list.length < 2) continue;
     list.sort((a, b) => b.units.length - a.units.length || (a.id < b.id ? -1 : 1));
     let group: Army[] = [];
@@ -88,7 +108,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
 
 /** Hostile armies standing in a province, if I can see it (the fog of war hides the rest). */
 function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
-  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, pid, ctx.me) : [];
+  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, ctx.world, pid, ctx.me) : [];
 }
 
 /**
@@ -300,6 +320,10 @@ export function handleMilitary(ctx: Ctx): void {
   //    threat that remains once the target's defenders are engaged.
   const ready = () => idleArmies(ctx).filter((a) => !committed.has(a.id) && battleReady(a));
   const available = ready().reduce((s, a) => s + power(a), 0);
+  /** Attackers waiting for an offensive to gather: they keep their place on the road into its target. */
+  const staged = new Set<ArmyId>();
+  // Armies at forward positions keep the facing they took for a while (forward positions: Normal only).
+  const holds = ctx.level.forwardPositions ? forwardHolds(ctx) : null;
   const campaigns = ctx.enemies.length > 0 || neutralTargetsAllowed(ctx) ? chooseCampaigns(ctx, available) : [];
   ctx.mem.campaigns = campaigns.map((c) => c.target);
   for (const c of campaigns) {
@@ -328,16 +352,27 @@ export function handleMilitary(ctx: Ctx): void {
       for (const a of attackers) if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.target }, 'attack')) committed.add(a.id);
       continue;
     }
-    // Not enough yet: hold the attackers where they are and bring up reinforcements.
-    for (const a of attackers) committed.add(a.id);
-    let gathered = attackPower + incoming(ctx, c.staging);
+    // Not enough yet: hold the attackers where they are (with forward positions, on the road into the target,
+    // just short of the border) and bring up reinforcements.
+    const forward = ctx.level.forwardPositions;
+    for (const a of attackers) {
+      committed.add(a.id);
+      staged.add(a.id);
+      // One already forward on another road into enemy land keeps it for a while, rather than shuffling from
+      // road to road as the target moves between the lands next door.
+      if (!holds || keepsFacing(ctx, a, holds)) continue;
+      const spot = forwardSpot(ctx, a.province, c.target);
+      if (spot && goForward(ctx, a, spot, 'stage')) holds[a.id] = state.tick;
+    }
+    let gathered = attackPower + incoming(ctx, c.staging) + movingUp(ctx, c.target, c.staging);
+    const stagingSpot = forward ? forwardSpot(ctx, c.staging, c.target) : null;
     const dist = distancesFrom(ctx, c.staging, true);
     const donors = ready()
       .filter((a) => dist.has(a.province) && (ctx.threat.get(a.province) ?? 0) === 0)
       .sort((a, b) => dist.get(a.province)! - dist.get(b.province)! || (a.id < b.id ? -1 : 1));
     for (const a of donors) {
       if (gathered >= c.need * AI.massingMargin) break;
-      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging }, 'stage')) {
+      if (issue(ctx, { type: 'move', nation: me, armyId: a.id, to: c.staging, ...(stagingSpot ? { road: stagingSpot } : {}) }, 'stage')) {
         committed.add(a.id);
         gathered += power(a);
       }
@@ -407,13 +442,90 @@ export function handleMilitary(ctx: Ctx): void {
   const mainFront = new Set(main ? ctx.owned.filter((pid) => world.neighbors[pid].some((n) => state.provinces[n.id].owner === main)) : []);
   const front = mainFront.size > 0 ? mainFront : ctx.frontier;
   const fronts = [...front].sort((a, b) => (ctx.threat.get(b) ?? 0) - (ctx.threat.get(a) ?? 0) || (a < b ? -1 : 1));
-  if (fronts.length === 0) return;
-  for (const army of free()) {
-    if (front.has(army.province) || ctx.frontier.has(army.province)) continue;
-    const dist = distancesFrom(ctx, army.province, true);
-    const dest = fronts.slice(0, 4).sort((a, b) => (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity))[0];
-    if (dest && dist.has(dest)) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'advance');
+  if (fronts.length > 0) {
+    for (const army of free()) {
+      if (front.has(army.province) || ctx.frontier.has(army.province)) continue;
+      const dist = distancesFrom(ctx, army.province, true);
+      const dest = fronts.slice(0, 4).sort((a, b) => (dist.get(a) ?? Infinity) - (dist.get(b) ?? Infinity))[0];
+      if (dest && dist.has(dest)) issue(ctx, { type: 'move', nation: me, armyId: army.id, to: dest }, 'advance');
+    }
   }
+
+  if (holds) {
+    screens(ctx, staged, holds);
+    if (Object.keys(holds).length > 0) ctx.mem.forwardHolds = holds;
+    else delete ctx.mem.forwardHolds;
+  }
+}
+
+/** Armies at forward positions still holding the facing they took (those whose hold is over, or which are gone, dropped). */
+function forwardHolds(ctx: Ctx): Record<ArmyId, number> {
+  const holds = ctx.mem.forwardHolds ?? {};
+  for (const id of Object.keys(holds)) if (!ctx.state.armies[id] || ctx.state.tick - holds[id] >= AI.forwardHold) delete holds[id];
+  return holds;
+}
+
+/** Does the army stand forward on a road into enemy land, still holding the facing it took? */
+function keepsFacing(ctx: Ctx, army: Army, holds: Record<ArmyId, number>): boolean {
+  return holds[army.id] !== undefined && !!army.road && ctx.enemies.includes(ctx.state.provinces[army.road.toward].owner);
+}
+
+/**
+ * 8. Forward screens. An army guarding a land of mine at war's edge (not fighting, not waiting for an offensive)
+ * stands on the road towards the most dangerous enemy land next door, just short of the border, rather than at
+ * the land's crossroads: the front shows on the map, and a counter-stroke has least ground to cover. A screen
+ * keeps its facing for a while, and then turns to face another land only for a danger clearly greater than the
+ * one it faces and than itself, so it does not shuffle about after every enemy march.
+ */
+function screens(ctx: Ctx, staged: Set<ArmyId>, holds: Record<ArmyId, number>): void {
+  const { state, world, me } = ctx;
+  const enemyHeld = (pid: ProvinceId) => ctx.enemies.includes(state.provinces[pid].owner);
+  // Hostile power in a province, as far as I can see or guess.
+  const held = (pid: ProvinceId): number => {
+    if (!enemyHeld(pid)) return 0;
+    return ctx.seen.has(pid) ? (ctx.hostile.get(pid) ?? 0) : (ctx.unseen.get(state.provinces[pid].owner) ?? 0);
+  };
+  // What an enemy land next door could send down the road: the land and its city, and part of the lands behind
+  // it (not those beside it, next to mine as well, which a screen weighs on their own roads).
+  const danger = (land: ProvinceId, from: ProvinceId): number => {
+    if (!enemyHeld(land)) return 0;
+    const city = cityOf(world, land);
+    let d = held(land) + (city && city !== land ? held(city) : 0);
+    for (const n of world.neighbors[land]) {
+      if (n.id === from || isCity(world, n.id) || world.neighbors[from].some((m) => m.id === n.id)) continue;
+      d += held(n.id) * AI.screenBeyond;
+    }
+    return d;
+  };
+  for (const army of idleArmies(ctx)) {
+    const pid = army.province;
+    if (staged.has(army.id) || isCity(world, pid) || state.provinces[pid].owner !== me || !battleReady(army)) continue;
+    if (hostilesInSight(ctx, pid).length > 0) continue;
+    let best: { id: ProvinceId; danger: number } | null = null;
+    for (const n of world.neighbors[pid]) {
+      if (!isOpenRoad(world, pid, n.id)) continue;
+      const d = danger(n.id, pid);
+      if (d > 0 && (!best || d > best.danger)) best = { id: n.id, danger: d };
+    }
+    if (!best || army.road?.toward === best.id) continue;
+    // Facing an enemy land, it holds for a while, and then unless the new danger could overwhelm both what it
+    // faces and itself.
+    const toward = army.road?.toward;
+    const facing = toward && enemyHeld(toward) ? Math.max(danger(toward, pid), armyPower(state, army)) : 0;
+    if (facing > 0 && (keepsFacing(ctx, army, holds) || best.danger < facing * AI.screenSwitch)) continue;
+    const spot = forwardSpot(ctx, pid, best.id);
+    if (spot && goForward(ctx, army, spot, 'screen')) holds[army.id] = state.tick;
+  }
+}
+
+/** My power marching to forward positions on the roads into a target, from lands other than the staging one. */
+function movingUp(ctx: Ctx, target: ProvinceId, staging: ProvinceId): number {
+  let p = 0;
+  for (const a of ctx.armies) {
+    const halt = a.move?.halt;
+    if (halt && halt.toward === target && halt.province !== staging) p += armyPower(ctx.state, a);
+  }
+  return p;
 }
 
 /** My power already marching towards a province. */
@@ -421,7 +533,8 @@ function incoming(ctx: Ctx, pid: ProvinceId): number {
   let p = 0;
   for (const a of ctx.armies) {
     if (!a.move) continue;
-    const dest = a.move.path[a.move.path.length - 1];
+    // A march to a spot on a road ends in the province whose part of the road it is.
+    const dest = a.move.halt?.province ?? a.move.path[a.move.path.length - 1];
     if (dest === pid) p += armyPower(ctx.state, a);
   }
   return p;

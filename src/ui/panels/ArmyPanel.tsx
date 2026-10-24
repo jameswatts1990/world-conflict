@@ -91,7 +91,7 @@ export function ArmyPanel({
   const title = armyName(world, army);
   const leg = army.move?.leg;
   const dest = army.move ? army.move.path[army.move.path.length - 1] : null;
-  const hostiles = hostileArmiesIn(state, army.province, army.owner);
+  const hostiles = hostileArmiesIn(state, world, army.province, army.owner);
   const p = state.provinces[army.province];
   const c = composition(army);
   const morale = armyMorale(army);
@@ -149,7 +149,7 @@ export function ArmyPanel({
   // Only armies standing in a province can reorganise.
   const settled = multi ? selectedOwn.filter((a) => !a.move?.leg) : own && !leg ? [army] : [];
   const splittable = settled.filter((a) => a.units.length > 1 && ticked(a).length < a.units.length);
-  const disbandable = settled.filter((a) => hostileArmiesIn(state, a.province, a.owner).length === 0);
+  const disbandable = settled.filter((a) => hostileArmiesIn(state, world, a.province, a.owner).length === 0);
   // Several selected: those standing together, province by province. One: all of yours where it stands.
   // Armies stand together in a province, or at one spot on a road out of it.
   const spot = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
@@ -311,7 +311,7 @@ export function ArmyPanel({
               title={
                 army.holding
                   ? 'Release the hold (G)'
-                  : 'Hold position: halt at once (an army on the road turns back to the province it set out from) and stay, never withdrawing on its own, until given a new order (G)'
+                  : 'Hold position: halt at once (on a road where it stands; at sea or in a city gateway it turns back) and stay, never withdrawing on its own, until given a new order (G)'
               }
               data-testid="hold"
             >
@@ -322,7 +322,7 @@ export function ArmyPanel({
               className="order-btn"
               disabled={stoppable.length === 0}
               onClick={() => stoppable.forEach((a) => ctrl.submit({ type: 'stop', nation: human, armyId: a.id }))}
-              title="Stop at once: an army on the road turns back to the province it set out from (S)"
+              title="Stop at once: on a road the army stands where it is; on a sea crossing or in a city gateway it turns back to where it set out (S)"
               data-testid="stop"
             >
               <Icon name="stop" size={18} />

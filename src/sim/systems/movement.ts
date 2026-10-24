@@ -5,10 +5,11 @@ import { UNITS } from '../config/units';
 import { pushEvent } from '../events';
 import { armyName } from '../names';
 import { findPath } from '../pathfinding';
-import { areHostile, canEnterProvince, hostileArmiesIn, scaledTicks, unitSpeedKmPerTick } from '../queries';
+import { areHostile, canEnterProvince, hostileArmiesIn, isArmyAway, scaledTicks, unitSpeedKmPerTick } from '../queries';
 import { NEUTRAL, type Army, type GameState, type MoveLeg, type ProvinceId, type RoadHalt, type UnitType } from '../types';
 import { provinceName } from '../text';
 import { connectionBetween, isCity, isCityGate, type World } from '../world';
+import { withdrawArmy as withdrawUnderFire } from './combat';
 import { withdrawArmy } from './territory';
 
 /**
@@ -47,8 +48,8 @@ export function legTicks(state: GameState, world: World, army: Army, from: Provi
  * is only moving, while it is capturing the hostile province it stands in; it
  * then continues its path.
  */
-export function mustHold(state: GameState, army: Army): boolean {
-  if (hostileArmiesIn(state, army.province, army.owner).length > 0) return true;
+export function mustHold(state: GameState, world: World, army: Army): boolean {
+  if (hostileArmiesIn(state, world, army.province, army.owner).length > 0) return true;
   if (army.move?.mode === 'move') return false;
   const owner = state.provinces[army.province].owner;
   return owner !== army.owner && areHostile(state, army.owner, owner);
@@ -100,7 +101,7 @@ export function movementSystem(state: GameState, world: World): void {
         army.move = null;
         continue;
       }
-      if (mustHold(state, army)) continue;
+      if (mustHold(state, world, army)) continue;
       if (!startLeg(state, world, army)) continue;
     }
     const leg = army.move.leg!;
@@ -120,12 +121,17 @@ export function movementSystem(state: GameState, world: World): void {
       continue;
     }
     // Walking back within its own province, an army keeps the way it came (a landing stays a landing).
-    if (leg.to !== army.province) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
+    const walkedBack = leg.to === army.province;
+    if (!walkedBack) army.arrivedVia = connectionBetween(world, leg.from, leg.to)?.kind ?? null;
     army.province = leg.to;
     army.move.path.shift();
     if (army.move.path.length === 0 && !army.move.patrol) {
       army.move = null;
       mergeOnArrival(state, world, army);
+    } else if (walkedBack) {
+      // Back at its own land's crossroads on its way on, it passes through: it never left the land, so it does not
+      // stop to take it again, and if it leaves a battle there, that is its withdrawal under fire.
+      if (startLeg(state, world, army) && isArmyAway(world, army)) withdrawUnderFire(state, world, army, army.province);
     }
   }
 }

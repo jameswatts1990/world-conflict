@@ -3,7 +3,9 @@ import { geoContains } from 'd3-geo';
 import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
-import { BLOC_IDS, UNIT_GENS, UNIT_TYPES } from '../src/sim';
+import { BLOC_IDS, UNIT_GENS, UNIT_TYPES, isOpenRoad } from '../src/sim';
+import { ROAD_BORDERS } from '../src/sim/scenario/europe/roads';
+import { roadBorders } from '../scripts/map/roads';
 import { UNITS } from '../src/sim/config/units';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { world } from './helpers';
@@ -56,6 +58,19 @@ describe('scenario data', () => {
     // scripts/map/check-borders.ts prints the same report while you work.
     expect([...borders].filter((k) => !links.has(k)), 'borders without a link').toEqual([]);
     expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
+  });
+
+  it('every road between two lands knows where it crosses their border, as the map draws it', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    // A change to the map needs `npx vite-node scripts/map/road-borders.ts` (npm run map:build runs it).
+    expect(ROAD_BORDERS).toEqual(roadBorders(topo));
+    for (const id of world.provinceIds) {
+      for (const n of world.neighbors[id]) {
+        if (!isOpenRoad(world, id, n.id)) continue;
+        expect(n.border, `${id} → ${n.id}`).toBeGreaterThanOrEqual(0.05);
+        expect(n.border, `${id} → ${n.id}`).toBeLessThanOrEqual(0.95);
+      }
+    }
   });
 
   it('movement graph is connected and uses only explicit connections', () => {

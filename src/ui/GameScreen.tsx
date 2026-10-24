@@ -817,7 +817,7 @@ function HoverCard({ ctrl, pid, armyId }: { ctrl: GameController; pid: ProvinceI
     const known = seen.has(pid);
     // Units standing here by owner, yours first.
     const units = new Map<OwnerId, number>();
-    for (const a of armiesIn(state, pid)
+    for (const a of armiesIn(state, world, pid)
       .filter((a) => isArmyVisible(a, human, seen))
       .sort((x, y) => Number(y.owner === human) - Number(x.owner === human))) {
       units.set(a.owner, (units.get(a.owner) ?? 0) + a.units.length);
