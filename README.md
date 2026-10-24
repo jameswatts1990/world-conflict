@@ -39,9 +39,10 @@ What is in it (Milestone 2, Depth):
   buildings and morale are hidden. Powers fighting a common enemy are **co-belligerents** (not allies: there are no
   treaties): research **Liaison Officers** and you also see everything they see. The computer opponents play under the
   same fog.
-- A **map that reads at a glance**: natural relief under light national colours, your own land lit up inside a
-  glowing white outline, each power's colour along the inside of its border, and the **front** (your border with a
-  power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
+- A **map that reads at a glance**: natural relief under light national colours, every province (cities too) with
+  jagged, natural borders, roads that run from each province's centre to its neighbours' and never through a third,
+  your own land lit up inside a glowing white outline, each power's colour along the inside of its border, and the
+  **front** (your border with a power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
   long before that, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
 - **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
   manage morale, fight wars on several fronts one enemy at a time and gang up on a power close to victory, each with
