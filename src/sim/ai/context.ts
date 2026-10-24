@@ -106,6 +106,24 @@ export function armyLocation(army: Army): ProvinceId {
   return army.move?.leg ? army.move.leg.to : army.province;
 }
 
+const rings = new WeakMap<World, Map<ProvinceId, { ring1: Set<ProvinceId>; ring2: Set<ProvinceId> }>>();
+
+/**
+ * Where danger to a capital is reckoned, by region (a city with the lands round it): the capital's own region and
+ * the regions next to it, then the regions beyond. The map never changes, so each is worked out once.
+ */
+function ringsRound(world: World, capital: ProvinceId): { ring1: Set<ProvinceId>; ring2: Set<ProvinceId> } {
+  let byCapital = rings.get(world);
+  if (!byCapital) rings.set(world, (byCapital = new Map()));
+  let r = byCapital.get(capital);
+  if (!r) {
+    const ring1 = new Set(world.vicinity[capital]);
+    const ring2 = new Set([...ring1].flatMap((id) => world.vicinity[id]).filter((id) => id !== capital && !ring1.has(id)));
+    byCapital.set(capital, (r = { ring1, ring2 }));
+  }
+  return r;
+}
+
 export function buildContext(state: GameState, world: World, me: NationId): Ctx {
   const owned = world.provinceIds.filter((id) => state.provinces[id].owner === me);
   const ownedSet = new Set(owned);
@@ -120,10 +138,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   const total = new Map<NationId, number>();
   const inSight = new Map<NationId, number>();
   const capital = world.nations[me].capital;
-  // Danger is reckoned by region (a city with the lands round it): the capital's own region and the regions next
-  // to it, then the regions beyond.
-  const ring1 = new Set(world.vicinity[capital]);
-  const ring2 = new Set([...ring1].flatMap((id) => world.vicinity[id]).filter((id) => id !== capital && !ring1.has(id)));
+  const { ring1, ring2 } = ringsRound(world, capital);
   const reach = (pid: ProvinceId) => (pid === capital || ring1.has(pid) ? 1 : ring2.has(pid) ? AI.capitalDepth : 0);
   // Enemies count in full; powers at peace could declare war, except minor powers, which never start one.
   const menace = (owner: NationId) => (areHostile(state, me, owner) ? 1 : isContender(world, owner) ? AI.peacetimeVigilance : 0);
@@ -147,11 +162,15 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
       if (a.owner !== NEUTRAL) striking.set(where, (striking.get(where) ?? 0) + pw);
     }
   }
+  const dark = new Map<string, number>();
+  for (const pid of world.provinceIds) {
+    const o = state.provinces[pid].owner;
+    if (o !== me && !seen.has(pid)) dark.set(o, (dark.get(o) ?? 0) + 1);
+  }
   const unseen = new Map<NationId, number>();
   for (const n of world.nationIds) {
-    if (n === me) continue;
-    const dark = world.provinceIds.filter((pid) => state.provinces[pid].owner === n && !seen.has(pid)).length;
-    if (dark > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / dark);
+    const count = n === me ? 0 : (dark.get(n) ?? 0);
+    if (count > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / count);
   }
   // Out of sight near the capital, a nation's estimated strength in each hidden province stands in.
   if (guardCapital) {

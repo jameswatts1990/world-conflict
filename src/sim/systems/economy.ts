@@ -1,15 +1,16 @@
 // Resource income, upkeep and shortages. Runs every tick.
 import { ECONOMY } from '../config/rules';
 import { pushEvent } from '../events';
-import { nationEconomy, perTick } from '../queries';
+import { nationEconomies, perTick } from '../queries';
 import { RESOURCE_KEYS, type GameState } from '../types';
 import type { World } from '../world';
 
 export function economySystem(state: GameState, world: World): void {
+  const economies = nationEconomies(state, world);
   for (const id of world.nationIds) {
     const nation = state.nations[id];
     if (nation.eliminated) continue;
-    const eco = nationEconomy(state, world, id);
+    const eco = economies.get(id)!;
     for (const k of RESOURCE_KEYS) nation.resources[k] += perTick(eco.net[k], state);
 
     const moneyShort = nation.resources.money < 0;

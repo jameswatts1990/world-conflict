@@ -387,6 +387,8 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   const out = emptyResources();
   if (ps.owner === NEUTRAL) return out;
   const b = ps.buildings;
+  // Land without output of its own (all the land round the cities) yields nothing whatever its owner's bonuses.
+  if (!b.refinery && RESOURCE_KEYS.every((k) => !def.production[k])) return out;
   const E = BUILDING_EFFECTS;
   const industry = b.industry ?? 0;
   const power = (b.powerPlant ?? 0) > 0 ? E.powerPlantLocal : 0;
@@ -445,6 +447,27 @@ export function nationEconomy(state: GameState, world: World, nation: NationId):
   const net = emptyResources();
   for (const k of RESOURCE_KEYS) net[k] = income[k] - upkeep[k];
   return { income, upkeep, net };
+}
+
+/** Every nation's economy, as `nationEconomy` gives each, in one pass over the provinces and armies. */
+export function nationEconomies(state: GameState, world: World): Map<OwnerId, NationEconomy> {
+  const all = new Map<OwnerId, NationEconomy>(world.nationIds.map((id) => [id, { income: emptyResources(), upkeep: emptyResources(), net: emptyResources() }]));
+  for (const id of world.provinceIds) {
+    const eco = all.get(state.provinces[id].owner);
+    if (!eco) continue;
+    const o = provinceOutput(state, world, id);
+    for (const k of RESOURCE_KEYS) eco.income[k] += o[k];
+  }
+  for (const a of Object.values(state.armies)) {
+    const eco = all.get(a.owner);
+    if (!eco) continue;
+    for (const u of a.units) {
+      const up = UNITS[u.type].upkeepPerMinute;
+      for (const k of RESOURCE_KEYS) eco.upkeep[k] += up[k] ?? 0;
+    }
+  }
+  for (const eco of all.values()) for (const k of RESOURCE_KEYS) eco.net[k] = eco.income[k] - eco.upkeep[k];
+  return all;
 }
 
 export function perTick(perMinute: number, state: GameState): number {
