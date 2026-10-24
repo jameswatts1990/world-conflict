@@ -535,6 +535,11 @@ export function landShare(world: World, pid: ProvinceId): number {
   return city ? 1 / (world.provinces[city].lands?.length ?? 1) : 1;
 }
 
+/** How much of a place a province is: a city one, and the land round it one between its lands. */
+export function placeShare(world: World, pid: ProvinceId): number {
+  return world.provinces[pid].city ? 1 : landShare(world, pid);
+}
+
 /** Great and major powers contend for victory; minor powers can be conquered but never win. */
 export function isContender(world: World, nation: NationId): boolean {
   return POWERS[world.nations[nation].power].playable;

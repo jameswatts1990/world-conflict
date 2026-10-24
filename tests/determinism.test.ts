@@ -52,6 +52,7 @@ describe('determinism', () => {
     expect(hashState(a)).not.toBe(hashState(b));
   });
 
+  // Four campaigns of 50 minutes each: more than the usual time limit allows on a slow machine.
   it('rendering frame rate does not change simulation outcomes', () => {
     const targetTicks = 3000; // 50 game-minutes
     const frameProfiles: Record<string, () => number> = {
@@ -93,7 +94,7 @@ describe('determinism', () => {
       hashes[name] = hashState(state);
     }
     expect(new Set(Object.values(hashes)).size).toBe(1);
-  });
+  }, 120000);
 
   it('a recorded command log replays to the same state', () => {
     const sim = new Simulation(world, scriptedGame());

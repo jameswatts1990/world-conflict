@@ -26,6 +26,7 @@ import {
   fortificationReduction,
   homeSoilMult,
   hostileArmiesIn,
+  placeShare,
   scaledTicks,
 } from '../queries';
 import { random } from '../rng';
@@ -104,7 +105,7 @@ function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      if (!ctx.seen.has(n.id)) p += guess * AI.reinforcementShare;
+      if (!ctx.seen.has(n.id)) p += guess * placeShare(world, n.id) * AI.reinforcementShare;
       for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * AI.reinforcementShare;
     }
   }

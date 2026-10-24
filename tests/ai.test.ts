@@ -5,6 +5,7 @@ import {
   armyPower,
   captureTicks,
   createInitialState,
+  placeShare,
   scaledTicks,
   setAiOrderTrace,
   type AiOpening,
@@ -232,8 +233,9 @@ describe('AI under the fog of war', () => {
     expect(ctx.seen.has('de-berlin')).toBe(false);
     expect(ctx.hostile.has('de-berlin')).toBe(false);
     expect(ctx.enemyArmour).toBe(0);
-    // Germany's military power is public, so France spreads it over the German provinces it cannot see.
-    const dark = world.provinceIds.filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p)).length;
+    // Germany's military power is public, so France spreads it over the German places it cannot see: each city one,
+    // and the land round it one more, shared between its lands.
+    const dark = world.provinceIds.filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p)).reduce((t, p) => t + placeShare(world, p), 0);
     expect(ctx.unseen.get('de')).toBeCloseTo(armyPower(state, tanks) / dark);
 
     // A French cavalry scout two provinces away finds it.

@@ -15,6 +15,7 @@ import {
   isArmyInTransit,
   isContender,
   nationEconomy,
+  placeShare,
   scaledTicks,
   type NationEconomy,
 } from '../queries';
@@ -43,8 +44,9 @@ export interface Ctx {
   /** Provinces in sight (fog of war): the only places where other nations' armies are known. */
   seen: ReadonlySet<ProvinceId>;
   /**
-   * For a province out of sight, a guess at the strength there of the nation holding it: the part
-   * of its army that is out of sight (its total is public), spread evenly over its unseen provinces.
+   * For a province out of sight, a guess at the strength there of the nation holding it: the part of its army
+   * that is out of sight (its total is public), spread evenly over what it holds out of sight (a city one place,
+   * the land round it one more between its lands).
    */
   unseen: Map<NationId, number>;
   /** Power of armies at war with me (stationed or arriving) per province, as far as I can see; neutral garrisons included. */
@@ -162,22 +164,24 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
       if (a.owner !== NEUTRAL) striking.set(where, (striking.get(where) ?? 0) + pw);
     }
   }
+  // Spread over what each nation holds out of sight: a city one place and the land round it one more, shared
+  // between its lands, so dividing the land does not thin a nation's armies out.
   const dark = new Map<string, number>();
   for (const pid of world.provinceIds) {
     const o = state.provinces[pid].owner;
-    if (o !== me && !seen.has(pid)) dark.set(o, (dark.get(o) ?? 0) + 1);
+    if (o !== me && !seen.has(pid)) dark.set(o, (dark.get(o) ?? 0) + placeShare(world, pid));
   }
   const unseen = new Map<NationId, number>();
   for (const n of world.nationIds) {
     const count = n === me ? 0 : (dark.get(n) ?? 0);
     if (count > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / count);
   }
-  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in.
+  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in (a land its share).
   if (guardCapital) {
     for (const pid of [...ring1, ...ring2]) {
       const o = state.provinces[pid].owner;
       if (seen.has(pid) || o === me || o === NEUTRAL) continue;
-      capitalDanger += (unseen.get(o) ?? 0) * reach(pid) * menace(o);
+      capitalDanger += (unseen.get(o) ?? 0) * placeShare(world, pid) * reach(pid) * menace(o);
     }
   }
   // What the enemy fields: each enemy's armour share as last seen, weighted by its strength.
