@@ -197,10 +197,15 @@ export interface ConnectionDef {
   /** For a sea crossing: how wide the sea is, coast to coast, in km (how far one shore sees the other). */
   seaKm?: number;
   /**
-   * A road between two lands: how far from `a` towards `b` (0..1) it crosses into `b`, so a spot on it
-   * lies in one land or the other (absent: halfway). Generated from the map (scripts/map/road-borders.ts).
+   * A road between two lands: how far from `a` towards `b` (0..1, along the road) it crosses into `b`, so a
+   * spot on it lies in one land or the other (absent: halfway). Generated from the map (scripts/map/road-routes.ts).
    */
   border?: number;
+  /**
+   * Where the road bends on its way from `a`'s anchor to `b`'s, [longitude, latitude] (absent: it runs straight),
+   * keeping to the two provinces. Generated from the map with `border`; only the map draws it.
+   */
+  via?: [number, number][];
 }
 
 export interface NationSpeciality {

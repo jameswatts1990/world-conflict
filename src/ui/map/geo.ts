@@ -45,12 +45,10 @@ export interface MapGeometry {
   /** All the theatre's land as one shape, without the borders inside it (cheap to clip with). */
   land: string;
   graticule: string;
-  /** Borders between the lands round one city, running out from it. */
+  /** Borders within a region: round its city, and between the lands round it, running out from it. */
   landBorders: string;
   /** Borders between the regions (a city with the lands round it), within a country or across one. */
   provinceBorders: string;
-  /** Each city's own border, where it meets the lands round it. */
-  cityBorders: string;
   worldBounds: [[number, number], [number, number]];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
@@ -64,6 +62,8 @@ export interface MapGeometry {
   union: (test: (pid: ProvinceId) => boolean) => string;
   /** Screen directions (radians) from each city towards the cities next door over land: the roads out of town (none for land). */
   roads: Record<ProvinceId, number[]>;
+  /** Every road between two provinces as the map draws it, keyed `a>b` both ways: from a's anchor through its bends to b's. */
+  roadLines: Record<string, RoadLine>;
   /**
    * How far the theatre's land reaches from each city, in map units, in REACH_DIRECTIONS
    * directions clockwise from east (at most REACH_CAP); null where it reaches that far all round.
@@ -75,11 +75,66 @@ export interface MapGeometry {
   campSide: Record<ProvinceId, -1 | 1>;
 }
 
+/**
+ * A road as the map draws it, from one province's anchor to the other's, bending where the scenario says it
+ * must to keep to the two provinces: its points (map units), how far along it each lies (0..1 of its length,
+ * which is what a fraction of the way along a road means everywhere: a spot on it, an army on its leg), and
+ * its length.
+ */
+export interface RoadLine {
+  pts: [number, number][];
+  at: number[];
+  length: number;
+}
+
+function lineThrough(pts: [number, number][]): RoadLine {
+  const steps = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+  const length = steps.reduce((s, x) => s + x, 0);
+  let gone = 0;
+  return { pts, at: [0, ...steps.map((s) => (gone += s) / (length || 1))], length };
+}
+
+/** The road from one province's anchor to a neighbour's (straight, should they not be neighbours). */
+export function roadLine(geo: MapGeometry, from: ProvinceId, to: ProvinceId): RoadLine {
+  return geo.roadLines[`${from}>${to}`] ?? lineThrough([geo.anchors[from], geo.anchors[to]]);
+}
+
+/** The point `t` (0..1) of the way along a road, and which way the road runs there (a unit vector). */
+export function alongRoad(line: RoadLine, t: number): { x: number; y: number; dx: number; dy: number } {
+  const { pts, at } = line;
+  let i = 1;
+  while (i < pts.length - 1 && at[i] < t) i++;
+  const [p, q] = [pts[i - 1], pts[i]];
+  const f = Math.max(0, Math.min(1, (t - at[i - 1]) / (at[i] - at[i - 1] || 1)));
+  const len = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+  return { x: p[0] + (q[0] - p[0]) * f, y: p[1] + (q[1] - p[1]) * f, dx: (q[0] - p[0]) / len, dy: (q[1] - p[1]) / len };
+}
+
+/** The points of a road from `t0` of the way along it to `t1` (backwards where `t1` is the lesser), both ends included. */
+export function roadPart(line: RoadLine, t0: number, t1: number): [number, number][] {
+  const [lo, hi] = [Math.min(t0, t1), Math.max(t0, t1)];
+  const [start, end] = [alongRoad(line, lo), alongRoad(line, hi)];
+  const pts: [number, number][] = [[start.x, start.y], ...line.pts.filter((_, i) => line.at[i] > lo && line.at[i] < hi), [end.x, end.y]];
+  return t1 < t0 ? pts.reverse() : pts;
+}
+
+/** The point of a road nearest `p`: how far along the road it lies (0..1), and how far it is from `p` (map units). */
+export function nearestOnRoad(line: RoadLine, [x, y]: [number, number]): { t: number; d: number } {
+  let best = { t: 0, d: Infinity };
+  for (let i = 1; i < line.pts.length; i++) {
+    const [p, q] = [line.pts[i - 1], line.pts[i]];
+    const [ex, ey] = [q[0] - p[0], q[1] - p[1]];
+    const f = Math.max(0, Math.min(1, ((x - p[0]) * ex + (y - p[1]) * ey) / (ex * ex + ey * ey || 1)));
+    const d = Math.hypot(p[0] + ex * f - x, p[1] + ey * f - y);
+    if (d < best.d) best = { t: line.at[i - 1] + (line.at[i] - line.at[i - 1]) * f, d };
+  }
+  return best;
+}
+
 /** A spot on a road, in map units. */
 export function roadPoint(geo: MapGeometry, province: ProvinceId, road: RoadSpot): [number, number] {
-  const [x1, y1] = geo.anchors[province];
-  const [x2, y2] = geo.anchors[road.toward];
-  return [x1 + (x2 - x1) * road.at, y1 + (y2 - y1) * road.at];
+  const { x, y } = alongRoad(roadLine(geo, province, road.toward), road.at);
+  return [x, y];
 }
 
 /** How far `reach` looks from a city, in map units, and in how many directions. */
@@ -267,6 +322,15 @@ export function buildMapGeometry(world: World): MapGeometry {
     });
   }
 
+  // Every road both ways, from one anchor through its bends to the other: a fraction of the way along it is the same
+  // spot from either end, measured along the road as drawn (the simulation's crossings are measured the same way).
+  const roadLines: Record<string, RoadLine> = {};
+  for (const c of world.scenario.connections) {
+    const pts: [number, number][] = [anchors[c.a], ...(c.via ?? []).map((p) => projection(p) as [number, number]), anchors[c.b]];
+    roadLines[`${c.a}>${c.b}`] = lineThrough(pts);
+    roadLines[`${c.b}>${c.a}`] = lineThrough([...pts].reverse());
+  }
+
   const countryShapes: CountryShape[] = countries.features.map((f) => ({
     iso: f.properties.iso,
     name: f.properties.name,
@@ -279,11 +343,8 @@ export function buildMapGeometry(world: World): MapGeometry {
   const coastline = path(outline) ?? '';
   const land = path(merge(topo, geoms.geometries as (TopoPolygon | TopoMultiPolygon)[])) ?? '';
   const region = (g: { properties?: unknown }) => world.regionOf[pidOf(g)] ?? pidOf(g);
-  const isCityEdge = (a: { properties?: unknown }, b: { properties?: unknown }) =>
-    world.provinces[pidOf(a)]?.around === pidOf(b) || world.provinces[pidOf(b)]?.around === pidOf(a);
-  const landBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) === region(b) && !isCityEdge(a, b))) ?? '';
+  const landBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) === region(b))) ?? '';
   const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) !== region(b))) ?? '';
-  const cityBorders = path(mesh(topo, geoms, (a, b) => a !== b && isCityEdge(a, b))) ?? '';
   const graticule =
     path(
       geoGraticule()
@@ -345,9 +406,9 @@ export function buildMapGeometry(world: World): MapGeometry {
     graticule,
     landBorders,
     provinceBorders,
-    cityBorders,
     worldBounds,
     ...cities,
+    roadLines,
     campSide,
     nationBorders: (ownerOf) =>
       path(

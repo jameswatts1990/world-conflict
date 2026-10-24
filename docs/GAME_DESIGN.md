@@ -46,14 +46,18 @@ espionage, naval and air warfare, later eras, multiplayer.
   every city stands where two or three lands meet, the borders between them running out from it, and a road out
   of town crosses the land on that side. The division (`scripts/map/city-provinces.ts`) gives a region about one
   land per 20,000 km², compact and of much the same size (a centroidal Voronoi division), and where one land
-  would wrap round its city it cuts it in two at the city, with two borders running out from it, straight or
+  would wrap round its city it cuts it in two at the city, with two borders running out from it, in line or
   bent there. The borders between lands follow the departments, counties and provinces inside the region where
-  those are under 9,000 km², and run straight through bigger ones and round the city. An island of 4,000 km² or
+  those are under 9,000 km², and cut through bigger ones and round the city. An island of 4,000 km² or
   more is a land of its own (Corsica, Sardinia, Jutland), joined to the rest by a named crossing; islets join the
   nearest land. Each land is keyed by its compass point from the city (`be-brussels-w`) and named for the country
   it covers (Flanders, the Ardennes, the Welsh Marches, Val di Mazara, the Ribatejo). Each city is drawn tight
-  round itself, an irregular ring of 17 to 30 km by size that keeps clear of every land border and follows the
-  coast where it reaches the sea. A city has a population, starting tier, terrain, base output, a coastline flag
+  round itself, 17 to 30 km across by size, keeping clear of every land border and following the coast where it
+  reaches the sea. Every province looks like one, city or land: the borders the division draws itself (a city's
+  outline, the cuts through the departments) are broken up like the natural borders, which the map keeps as legs of
+  about 10 km turning about 45 degrees, so a city reads as a small province of its own rather than a ring dropped
+  into its land; the division is decided first and the borders roughened afterwards, keeping their ends, so this
+  changes no land, link or anchor. A city has a population, starting tier, terrain, base output, a coastline flag
   and optionally an oil field or objective value; its lands have a terrain (never urban: round a capital it is
   the plain or hills it stands in), the region's secondary towns that lie in them (dots at close zoom) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
@@ -66,7 +70,14 @@ espionage, naval and air warfare, later eras, multiplayer.
   lands, 137 within regions and 285 between them). Connections are authored data, separate from the map shapes:
   the generator refuses a map where two regions share a border without a land or mountain connection, or have
   one without a border, and a test checks every link against the shapes (`scripts/map/check-borders.ts` prints
-  the report for the regions). The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  the report for the regions). Every link is a road on the map that runs from one province's anchor (its centre,
+  where its armies stand) to the other's over those two provinces alone, crossing their border once and never
+  through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
+  over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
+  within 3 km of anything else, the road bends round it (156 of the 564 do). Only two roads find no clean way, as
+  the shapes stand: Madrid's eastern land reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon,
+  and Flanders meets the Dutch land only at Zeelandic Flanders, across the Western Scheldt; the scenario test names
+  them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
   powers as neighbours, so France is not the only target for Britain, Italy and Spain.
 - The rest of the world is drawn hatched grey as context.
@@ -239,8 +250,9 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 - An army is a stack of units. Leg time is set by the **slowest unit for that leg**: each type has its own speed and
   its own factors for passes, straits and terrain (mountain troops climb, lorries bog down). Owned railway
-  junctions speed legs up. A leg is as long as the road between the anchors of its two provinces, where their
-  armies stand; the minimum leg is 15 s, except out of a city into a land round it, or back, at least 5 s. A city
+  junctions speed legs up. A leg is as long as the straight line between the anchors of its two provinces, where
+  their armies stand (the road drawn between them may bend round a city or a bay; time goes by the straight
+  distance, so going round a city is never slower than through it); the minimum leg is 15 s, except out of a city into a land round it, or back, at least 5 s. A city
   is the way between the lands round it only for whoever holds it: anyone else marches round it through the lands,
   or makes it the destination.
 - Orders use Dijkstra over legal provinces: own territory, nations at war, and any neutral states.
@@ -264,8 +276,8 @@ Specialities are optional: a nation without one shows its bloc instead.
   is not marching or in battle; ticking formations needs a single army.
 - **Halting on a road.** A march can end at any spot on a road between two lands (not a sea crossing, nor the short
   way between a city and a land round it), not only where the land's roads meet: the army stops there and stands in the land
-  whose part of the road it is (the border lies where the straight road between the two lands' anchors crosses
-  their shapes on the map; the simulation knows the same spot for each road, see §12, and refuses a spot on the far
+  whose part of the road it is (the border lies where the road, as the map draws it from one land's anchor to the
+  other's, crosses from one into the other; the simulation knows the same spot for each road, see §12, and refuses a spot on the far
   side of it). There it is in that land for every rule (it fights, captures, is supplied and watches from there) but
   stands apart: merging needs armies at the same spot, and marching on along the road takes only the rest of the leg;
   any other march sets out for whichever end of the road gets it there sooner. An army walking within its land (out
@@ -473,9 +485,11 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   anchored, its coast and towns, which cities reach the sea and the links between all provinces are generated once
   from the shapes into `scenario/europe/land.ts` by `scripts/map/city-provinces.ts`, which cuts the cities out of the
   uncut regions in `scripts/map/base.topo.json` (written by `npm run map:build`, with the admin-1 units inside them)
-  and divides the rest. Where each road between two lands crosses their border (how far along the straight line
-  between their anchors one land's outline gives way to the other's) is generated the same way into
-  `scenario/europe/roads.ts` by `scripts/map/road-borders.ts`; a test checks it against the shapes. Distances are
+  and divides the rest. Where each road runs (its bends round whatever lies between its anchors) and, between two
+  lands, where it crosses their border (how far along the road one land's outline gives way to the other's) are
+  generated the same way into `scenario/europe/roads.ts` by `scripts/map/road-routes.ts`; a test checks every road
+  against the shapes. A fraction of the way along a road means the same to the map and the simulation: measured
+  along the road as drawn. Distances are
   rounded to whole kilometres, so timing never depends on floating-point trigonometry.
 - **Saves** are versioned (`schemaVersion`, now 7) and tied to a scenario id. Schema 6 split the cities out: an older
   save gains the land round each city, held by whoever held the old province, and its marches stop where they are.
@@ -504,9 +518,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 - **Colour on the map** is kept for what the player needs to tell apart, so the land still looks like land. Each power
   washes its territory lightly in its colour (the relief reads through) and runs a band of it along the inside of its
   border; borders between powers are a light line on a dark casing, and every province border is a light line over
-  the land, as in Conflict of Nations: between regions, between the lands round a city (running out from it) and round
-  the city itself, a little fainter in turn. Roads between provinces are faint dark lines, those between two lands
-  round the same city fainter still. The
+  the land, as in Conflict of Nations: between regions, and a little fainter within one, round its city and between
+  the lands round it alike (a city is a province like its lands). Roads between provinces are faint dark lines from
+  one province's centre to the next, bending round whatever lies between (§3), those between two lands round the
+  same city fainter still. The
   player's own land is lit up: a brighter, richer wash of its colour inside a glowing white outline. The **front**,
   where the player's land meets a power at war with them, is red, as are the rims of enemy armies; other powers' fronts
   with each other are a faint dotted line. A province changing hands flashes in its new owner's colour. Unseen land lies
@@ -567,7 +582,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   on the side with more room from the places nearby (a city's garrison stays clear of the armies gathered at the anchors
   of its lands, a land's of its city), then its corners, then wider rings, each clear of the others and of a city's name plate, and an army keeps its spot when others
   arrive. An army halted on a road stands where the order put it, clear of any city, looking on down the road. They face the viewer, or the fighting when there is a battle. Marching armies
-  walk from the edge of one city to the edge of the next (abreast when several share a road), facing the way they go,
+  walk from the edge of one city to the edge of the next along the road as drawn (abreast when several share a road),
+  facing the way they go and turning where it bends,
   foot and horse bobbing; armies crossing the sea sail in a troopship with its wake. Arriving, leaving or making
   room, an army walks to its new spot rather than jumping, and a model behind a city stands on its streets but under
   its buildings. The models come from the cities' renderer (`src/ui/art/UnitModel.ts`), turned to one of 16 headings

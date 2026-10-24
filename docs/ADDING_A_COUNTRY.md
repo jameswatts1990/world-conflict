@@ -88,7 +88,23 @@ UI knows which countries the theatre covers. No list needs updating by hand. Its
 cuts each row's city out of its region, divides the rest into the lands round it and writes
 `src/sim/scenario/europe/land.ts` (with the links between all provinces); it needs the rows (step 2) and their
 connections (step 3), so run it again once they are in. With `--hints` it prints what each land holds (its admin
-units, towns and neighbours), to name it.
+units, towns and neighbours), to name it. Its third step (`scripts/map/road-routes.ts`) lays out every road and
+writes `src/sim/scenario/europe/roads.ts`.
+
+Two rules hold for every area of the map (CLAUDE.md, *Map rules*), and the generators keep them for you:
+
+- **Every province looks like one.** The new country's cities and the lands round them get jagged borders like the
+  natural ones: the generator roughens each city's outline and every cut it makes through the admin units, so no
+  city is a smooth ring dropped into its land and no land border runs dead straight.
+- **Roads converge on each province's centre.** Every road runs from one province's anchor to the other's over those
+  two alone, crossing their border once, bent round whatever lies between (the city between two lands, another
+  land, a bay); a sea crossing runs over each province's own land to its coast.
+
+The scenario tests fail a map that breaks them. When one names a road that strays, the shapes usually leave it no
+clean way: a land that touches its neighbour only through an exclave, or only across an estuary. Reshape the
+regions if you can (`province-sources.mjs`); if the geography really is that way, add the road to the test's
+`lastResort` list with the reason, as Madrid–Valencia (the Rincón de Ademuz) and Flanders–Zeeland (the Western
+Scheldt) are.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
@@ -169,7 +185,8 @@ country: nations, tiers and content all come from the scenario.
 
 The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
 inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the
-simplified shapes), that every shared border has a link, that the movement graph is connected and every city stands
+simplified shapes), that every shared border has a link, that every road keeps to its two provinces and knows where
+it crosses their border, that the movement graph is connected and every city stands
 among two or more lands, that every nation
 matches its tier (output, starting army, objective VP, capital size, province count), and that every unit has a
 name.

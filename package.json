@@ -18,7 +18,7 @@
     "balance:tune": "vite-node scripts/balance/tune.ts",
     "balance:techs": "vite-node scripts/balance/techs.ts",
     "map:fetch": "node scripts/map/fetch-natural-earth.mjs",
-    "map:build": "node scripts/map/build-map.mjs && vite-node scripts/map/city-provinces.ts && vite-node scripts/map/road-borders.ts",
+    "map:build": "node scripts/map/build-map.mjs && vite-node scripts/map/city-provinces.ts && vite-node scripts/map/road-routes.ts",
     "audio:fetch": "node scripts/audio/fetch.mjs",
     "audio:build": "node scripts/audio/build.mjs",
     "e2e": "node scripts/e2e/playthrough.mjs",

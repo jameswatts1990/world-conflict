@@ -252,9 +252,10 @@ try {
   step('tapped an army (and a formation, for its details), Move, a destination (preview) and Confirm', { preview: banner.replace(/(Confirm|Cancel)/g, '').trim(), path });
 
   // An attack on a nation at peace asks to declare war first; cancelling leaves the peace and the march alone.
+  // (Portugal's south-eastern land: on this screen its northern one lies under its army and the roads out of it.)
   await page.tap('[data-testid="move-mode"]');
   await settle();
-  await tapAt(await provincePoint('pt-lisbon-nne'));
+  await tapAt(await provincePoint('pt-lisbon-se'));
   await settle();
   const warBanner = await page.textContent('[data-testid="move-confirm"]');
   if (!warBanner.includes('At peace with Portugal')) throw new Error(`no peace warning: "${warBanner}"`);

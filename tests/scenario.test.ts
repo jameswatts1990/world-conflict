@@ -4,8 +4,7 @@ import type { Feature, MultiPolygon, Polygon } from 'geojson';
 import { feature, neighbors } from 'topojson-client';
 import { describe, expect, it } from 'vitest';
 import { BLOC_IDS, UNIT_GENS, UNIT_TYPES, isOpenRoad } from '../src/sim';
-import { ROAD_BORDERS } from '../src/sim/scenario/europe/roads';
-import { roadBorders } from '../scripts/map/roads';
+import { roadFaults } from '../scripts/map/roads';
 import { UNITS } from '../src/sim/config/units';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
 import { world } from './helpers';
@@ -60,10 +59,24 @@ describe('scenario data', () => {
     expect([...links].filter((k) => !borders.has(k)), 'links without a border').toEqual([]);
   });
 
-  it('every road between two lands knows where it crosses their border, as the map draws it', () => {
+  it('every road runs from one province\'s anchor to the other\'s over those two alone, and knows where it crosses their border', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
-    // A change to the map needs `npx vite-node scripts/map/road-borders.ts` (npm run map:build runs it).
-    expect(ROAD_BORDERS).toEqual(roadBorders(topo));
+    // A change to the map needs `npx vite-node scripts/map/road-routes.ts` (npm run map:build runs it), which bends
+    // every road round whatever lies between its anchors: a city, another land, the sea.
+    const anchors = Object.fromEntries(world.provinceIds.map((id) => [id, world.provinces[id].anchor]));
+    const connections = world.scenario.connections;
+    const roads = Object.fromEntries(connections.map((c) => [`${c.a}|${c.b}`, { via: c.via, border: c.border }]));
+    const faults = roadFaults(topo, connections, anchors, new Set(world.cityIds), roads);
+    // Where the shapes leave a road no way that keeps to its two provinces (it goes as briefly as it can through
+    // what it must), and why. Any other road that strays is a map to fix or a road to route again.
+    const lastResort: Record<string, string> = {
+      'es-madrid-e|es-valencia-n': 'Valencia reaches the Cuenca land only at the Rincón de Ademuz, its exclave beyond Aragon',
+      'be-brussels-w|nl-amsterdam-se': 'Flanders meets the Dutch land only at Zeelandic Flanders, across the Western Scheldt',
+    };
+    const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
+    expect(strays.sort()).toEqual(Object.keys(lastResort).sort());
+    // The crossing gameplay reads is where the drawn road crosses the border.
+    for (const f of faults) if (f.border !== undefined) expect(roads[f.link].border, f.link).toBe(f.border);
     for (const id of world.provinceIds) {
       for (const n of world.neighbors[id]) {
         if (!isOpenRoad(world, id, n.id)) continue;

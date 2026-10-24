@@ -45,7 +45,7 @@ import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType, roadEndName } from '../labels';
 import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
-import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, roadPoint, type MapGeometry } from './geo';
+import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, alongRoad, nearestOnRoad, roadLine, roadPart, roadPoint, type MapGeometry } from './geo';
 import {
   DETAIL_LEVELS,
   TERRAIN_BASE,
@@ -472,7 +472,6 @@ const BorderLayer = memo(function BorderLayer({
         ))}
       </defs>
       <path d={geo.landBorders} className="province-border land" />
-      <path d={geo.cityBorders} className="province-border city" />
       <path d={geo.provinceBorders} className="province-border" />
       {outlines.map((o) => (
         <g key={o.id} clipPath={`url(#clip-own-${o.id})`}>
@@ -563,58 +562,42 @@ const ConnectionLayer = memo(function ConnectionLayer({
   world: World;
   focusIds: string;
   /** With one of your armies selected, the roads over land take the pointer: an army can be sent to any spot on one. */
-  onRoad: ((action: RoadAction, e: React.MouseEvent<SVGLineElement>) => void) | null;
+  onRoad: ((action: RoadAction, e: React.MouseEvent<SVGPolylineElement>) => void) | null;
 }) {
   const focus = new Set(focusIds ? focusIds.split(',') : []);
+  // Each road from one anchor to the other, round whatever lies between them (see RoadLine).
+  const points = (c: { a: ProvinceId; b: ProvinceId }) => roadLine(geo, c.a, c.b).pts.join(' ');
   return (
     <g className="connection-layer">
       <g pointerEvents="none">
         {world.scenario.connections.map((c) => {
-          const [x1, y1] = geo.anchors[c.a];
-          const [x2, y2] = geo.anchors[c.b];
           const active = focus.has(c.a) || focus.has(c.b);
           const sibling = world.provinces[c.a].around !== undefined && world.provinces[c.a].around === world.provinces[c.b].around;
-          return (
-            <line
-              key={`${c.a}|${c.b}`}
-              x1={x1}
-              y1={y1}
-              x2={x2}
-              y2={y2}
-              className={`connection ${c.kind}${sibling ? ' sibling' : ''}${active ? ' active' : ''}`}
-            />
-          );
+          return <polyline key={`${c.a}|${c.b}`} points={points(c)} className={`connection ${c.kind}${sibling ? ' sibling' : ''}${active ? ' active' : ''}`} />;
         })}
       </g>
       {onRoad &&
         world.scenario.connections
           .filter((c) => isOpenRoad(world, c.a, c.b))
-          .map((c) => {
-            const [x1, y1] = geo.anchors[c.a];
-            const [x2, y2] = geo.anchors[c.b];
-            return (
-              <line
-                key={`hit-${c.a}|${c.b}`}
-                x1={x1}
-                y1={y1}
-                x2={x2}
-                y2={y2}
-                className="road-hit"
-                data-road={`${c.a}|${c.b}`}
-                onMouseMove={(e) => onRoad('point', e)}
-                onMouseLeave={(e) => onRoad('leave', e)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRoad('click', e);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onRoad('order', e);
-                }}
-              />
-            );
-          })}
+          .map((c) => (
+            <polyline
+              key={`hit-${c.a}|${c.b}`}
+              points={points(c)}
+              className="road-hit"
+              data-road={`${c.a}|${c.b}`}
+              onMouseMove={(e) => onRoad('point', e)}
+              onMouseLeave={(e) => onRoad('leave', e)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRoad('click', e);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRoad('order', e);
+              }}
+            />
+          ))}
     </g>
   );
 });
@@ -1022,19 +1005,30 @@ function CityLayer({
 function armyPosition(geo: MapGeometry, army: Army, alpha: number): [number, number] {
   const leg = army.move?.leg;
   if (!leg) return army.road ? roadPoint(geo, army.province, army.road) : geo.anchors[army.province];
-  const t = Math.min(1, (leg.elapsed + alpha) / leg.duration);
-  const [x1, y1] = geo.anchors[leg.from];
-  const [x2, y2] = geo.anchors[leg.to];
-  return [x1 + (x2 - x1) * t, y1 + (y2 - y1) * t];
+  const { x, y } = alongRoad(roadLine(geo, leg.from, leg.to), Math.min(1, (leg.elapsed + alpha) / leg.duration));
+  return [x, y];
 }
 
 /**
- * The points of a march from where the army is through the cities on its path, ending at the
- * spot on a road where it halts, if it does: there, short of the last city.
+ * The points of a march from where the army is (`from`), along the roads through the provinces on its path, ending
+ * at the spot on a road where it halts, if it does: there, short of the last province.
  */
 function marchLine(geo: MapGeometry, army: Army, path: ProvinceId[], halt?: RoadHalt, from = armyPosition(geo, army, 0)): [number, number][] {
-  const pts: [number, number][] = [from, ...path.map((pid) => geo.anchors[pid])];
-  if (halt && path.length > 0) pts[pts.length - 1] = roadPoint(geo, halt.province, halt);
+  const pts: [number, number][] = [from];
+  // Where the army is on a road now (on its leg, or halted on one): the march goes on along it, or back.
+  const leg = army.move?.leg;
+  let on = leg ? { a: leg.from, b: leg.to, t: Math.min(1, leg.elapsed / leg.duration) } : army.road ? { a: army.province, b: army.road.toward, t: army.road.at } : null;
+  let at = army.province;
+  path.forEach((next, i) => {
+    // This stretch: along the road it is on, or from the province it has reached to the next.
+    const [a, b, t0] = on && (next === on.b || next === on.a) ? [on.a, on.b, on.t] : [at, next, 0];
+    let t1 = next === a ? 0 : 1;
+    if (halt && i === path.length - 1 && ((halt.province === a && halt.toward === b) || (halt.province === b && halt.toward === a)))
+      t1 = halt.province === a ? halt.at : 1 - halt.at;
+    pts.push(...roadPart(roadLine(geo, a, b), t0, t1).slice(1));
+    on = null;
+    at = next;
+  });
   return pts;
 }
 
@@ -1359,30 +1353,38 @@ function placeArmies(
       out.push({ army, x: ax + (mx + ox) / k, y: ay + (my + oy) / k, heading, model: mainModel(army), key: `${pid}#${i}`, marching: false, near: pid });
     });
   }
+  /**
+   * The road from one province to another as armies use it: its line, its length on screen, and where on it (in
+   * pixels from each end's anchor) the built-up areas at its ends stop, the road leaving one and reaching the other.
+   */
+  const walk = (a: ProvinceId, b: ProvinceId) => {
+    const line = roadLine(geo, a, b);
+    const len = line.length * k || 1;
+    const [first, last] = [alongRoad(line, 0), alongRoad(line, 1)];
+    const [from, to] = [cities[a], cities[b]];
+    const [start, end] = roadEnds(first.dx, first.dy, from.half, to.half, room, len, [last.dx, last.dy]);
+    return { line, len, start: [from.mid[0] + start[0], from.mid[1] + start[1]] as Offset, end: [to.mid[0] + end[0], to.mid[1] + end[1]] as Offset };
+  };
   // Halted on a road: where the order put it, but never inside a city's built-up area; several abreast.
   for (const [spot, list] of halted) {
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
     list.forEach((army, i) => {
       const province = army.province;
       const road = army.road!;
-      const [x1, y1] = geo.anchors[province];
-      const [x2, y2] = geo.anchors[road.toward];
-      const [dx, dy] = [x2 - x1, y2 - y1];
-      const len = Math.hypot(dx, dy) * k || 1;
-      const [from, to] = [cities[province], cities[road.toward]];
-      const [[sx, sy], [ex, ey]] = roadEnds(dx, dy, from.half, to.half, room, len);
+      const { line, len, start, end } = walk(province, road.toward);
       // How far along the road (0..1) each city's edge lies.
-      const near = Math.hypot(from.mid[0] + sx, from.mid[1] + sy) / len;
-      const far = 1 - Math.hypot(to.mid[0] + ex, to.mid[1] + ey) / len;
+      const near = Math.hypot(...start) / len;
+      const far = 1 - Math.hypot(...end) / len;
       const t = Math.min(Math.max(road.at, near), Math.max(near, far));
-      const side = (i - (list.length - 1) / 2) * room * 1.4;
+      const { x, y, dx, dy } = alongRoad(line, t);
+      const side = ((i - (list.length - 1) / 2) * room * 1.4) / k;
       const battle = !!state.battles[province];
       // Looking on down the road, or back to the fighting in its province.
       const heading = battle ? headingFor(-dx, -dy) : headingFor(dx, dy);
       out.push({
         army,
-        x: x1 + dx * t - (dy * side) / len,
-        y: y1 + dy * t + (dx * side) / len,
+        x: x - dy * side,
+        y: y + dx * side,
         heading,
         model: mainModel(army),
         key: `${spot}#${i}/${list.length}`,
@@ -1395,23 +1397,18 @@ function placeArmies(
     list.forEach((army, i) => {
       const leg = army.move!.leg!;
       const t = Math.min(1, (leg.elapsed + alpha) / leg.duration);
-      const [x1, y1] = geo.anchors[leg.from];
-      const [x2, y2] = geo.anchors[leg.to];
-      const [dx, dy] = [x2 - x1, y2 - y1];
-      const len = Math.hypot(dx, dy) * k || 1;
-      // From the edge of one built-up area to the edge of the next.
-      const [from, to] = [cities[leg.from], cities[leg.to]];
-      const [[sx, sy], [ex, ey]] = roadEnds(dx, dy, from.half, to.half, room, len);
-      const [fx, fy, tx, ty] = [from.mid[0] + sx, from.mid[1] + sy, to.mid[0] + ex, to.mid[1] + ey];
+      // From the edge of one built-up area to the edge of the next, turning where the road bends.
+      const { line, start, end } = walk(leg.from, leg.to);
+      const { x, y, dx, dy } = alongRoad(line, t);
       // Several armies on one road march abreast.
       const side = (i - (list.length - 1) / 2) * room * 1.4;
-      const ox = fx + (tx - fx) * t - (dy * k * side) / len;
-      const oy = fy + (ty - fy) * t + (dx * k * side) / len;
+      const ox = start[0] + (end[0] - start[0]) * t - dy * side;
+      const oy = start[1] + (end[1] - start[1]) * t + dx * side;
       const sea = connectionBetween(world, leg.from, leg.to)?.kind === 'strait';
       out.push({
         army,
-        x: x1 + dx * t + ox / k,
-        y: y1 + dy * t + oy / k,
+        x: x + ox / k,
+        y: y + oy / k,
         heading: headingFor(dx, dy),
         model: sea ? 'transport' : mainModel(army),
         key: `${road}#${i}/${list.length}`,
@@ -2118,7 +2115,7 @@ export function MapView(props: MapViewProps) {
    * together), where it would stop; or the province itself when the pointer is over a city the road
    * crosses, or over the end of the road.
    */
-  const roadTargetAt = (e: React.MouseEvent<SVGLineElement>): MarchTarget | null => {
+  const roadTargetAt = (e: React.MouseEvent<SVGPolylineElement>): MarchTarget | null => {
     // A road running across a city gives way to it: pointing at the city means the city.
     const under = document.elementsFromPoint(e.clientX, e.clientY).find((el) => el.hasAttribute('data-province'));
     const city = under?.getAttribute('data-province');
@@ -2129,28 +2126,25 @@ export function MapView(props: MapViewProps) {
     let best: { a: ProvinceId; b: ProvinceId; f: number; d: number } | null = null;
     for (const c of world.scenario.connections) {
       if (!isOpenRoad(world, c.a, c.b)) continue;
-      const [ax, ay] = geo.anchors[c.a];
-      const [bx, by] = geo.anchors[c.b];
-      const [dx, dy] = [bx - ax, by - ay];
-      const f = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.y - ay) * dy) / (dx * dx + dy * dy || 1)));
-      const d = Math.hypot(ax + dx * f - p.x, ay + dy * f - p.y);
-      if (!best || d < best.d) best = { a: c.a, b: c.b, f, d };
+      const { t, d } = nearestOnRoad(roadLine(geo, c.a, c.b), [p.x, p.y]);
+      if (!best || d < best.d) best = { a: c.a, b: c.b, f: t, d };
     }
     if (!best) return null;
     const { a, b, f } = best;
-    const [dx, dy] = [geo.anchors[b][0] - geo.anchors[a][0], geo.anchors[b][1] - geo.anchors[a][1]];
-    const len = Math.hypot(dx, dy) * k || 1;
+    const line = roadLine(geo, a, b);
+    const len = line.length * k || 1;
     // How far the city reaches along the road (its built-up area is wider than it is deep), as a share of the road.
-    const reach = (pid: ProvinceId) => {
+    const reach = (pid: ProvinceId, t: number) => {
       if (!cities) return 9 / len;
       const [hx, hy] = cities[pid].half;
-      return Math.max(10, 1 / Math.hypot((dx * k) / len / Math.max(hx, 1), (dy * k) / len / Math.max(hy, 1))) / len;
+      const { dx, dy } = alongRoad(line, t);
+      return Math.max(10, 1 / Math.hypot(dx / Math.max(hx, 1), dy / Math.max(hy, 1))) / len;
     };
-    if (f < reach(a)) return { province: a };
-    if (f > 1 - reach(b)) return { province: b };
+    if (f < reach(a, 0)) return { province: a };
+    if (f > 1 - reach(b, 1)) return { province: b };
     return spotOnRoad(world, a, b, f);
   };
-  const onRoad = useStableCallback((action: RoadAction, e: React.MouseEvent<SVGLineElement>) => {
+  const onRoad = useStableCallback((action: RoadAction, e: React.MouseEvent<SVGPolylineElement>) => {
     const target = action === 'leave' ? null : roadTargetAt(e);
     if (!target) {
       setHoverRoad(null);
