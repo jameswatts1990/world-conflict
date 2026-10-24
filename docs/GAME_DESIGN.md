@@ -416,8 +416,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
 - **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
   military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
   (§6.7), and its co-belligerents' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot
-  see is spread evenly over that power's unseen provinces, and counts that when sizing an attack whose reinforcements
-  could come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
+  see is spread evenly over the places that power holds out of sight (each city one, and the land round it one more,
+  shared between its lands, so dividing the land does not thin an army out), and counts that when sizing an attack
+  whose reinforcements could come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
   30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
   are noticed once they cross the middle of their road. It values Liaison Officers once it has co-belligerents.
   All of this lives in the context the AI builds each think (`src/sim/ai/context.ts`).

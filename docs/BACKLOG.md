@@ -196,6 +196,13 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       250 provinces): no land wraps round a city, every city stands where two or more lands meet, the borders between
       lands follow the departments, counties and provinces inside each region, and every province border is a light
       line over the land
+- [ ] Rebalance after dividing the land. Over 200 all-AI campaigns against main (same seeds), wins hardly move, but
+      conquest is slower: minor powers stand longer (77% at 30 minutes instead of 71%), fewer campaigns end on
+      objectives (14% instead of 21%), and France, Germany and Romania last the campaign more often (81%, 79%, 75%
+      instead of 69%, 68%, 58%), while Hungary (65% instead of 79%) and Serbia (29% instead of 42%) fall more often.
+      An idle France on Easy now survives 90 minutes in 8 of 10 campaigns (3 on main): it has 40 provinces to take
+      instead of 18. Look at how the AI defends a frontier of several lands (small regions spread its armies thin),
+      and at the pace of taking land (whether a nation with no city left should fight on)
 - [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
       entrenchments; and provinces with no city at all where the map needs them
 - [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal
