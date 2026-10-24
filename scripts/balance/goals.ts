@@ -171,6 +171,19 @@ export interface Flag {
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+/** "decisive=1.5": a goal's weight for one tuning run (0 leaves the goal out). */
+export function parseWeight(text: string): { id: string; weight: number } {
+  const m = /^\s*(\w+)\s*=\s*([\d.]+)\s*$/.exec(text);
+  if (!m || !Number.isFinite(Number(m[2]))) throw new Error(`--weight "${text}" should look like decisive=1.5`);
+  if (!FUN.some((t) => t.id === m[1])) throw new Error(`--weight: no goal "${m[1]}" (goals: ${FUN.map((t) => t.id).join(', ')})`);
+  return { id: m[1], weight: Number(m[2]) };
+}
+
+/** The goal penalty with some goals weighted differently. */
+export function reweigh(fun: FunReport, weights: Record<string, number>): number {
+  return fun.terms.reduce((sum, t) => sum + (weights[t.id] ?? t.weight) * t.penalty, 0);
+}
+
 export function evaluate(s: Core): { fun: FunReport; flags: Flag[] } {
   const terms = FUN.map((t) => {
     const value = t.value(s);

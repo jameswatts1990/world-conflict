@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { EUROPE_SCENARIO, Simulation, buildWorld, createInitialState, heldVp, UNIT_TYPES } from '../src/sim';
 import { compareTests, renderComparison } from '../scripts/balance/compare';
 import { armyAround, labGrounds, REFERENCE, runLabCell, techLevels } from '../scripts/balance/lab';
+import { parseWeight, reweigh, type FunReport } from '../scripts/balance/goals';
 import { applyOverrides, parseOverride } from '../scripts/balance/overrides';
 import { playGame, type GameRecord } from '../scripts/balance/record';
 import { renderReport } from '../scripts/balance/report';
@@ -77,6 +78,20 @@ describe('balance tuning knobs', () => {
     expect(knobPosition(ratio, 0.02)).toBeCloseTo(0.5);
     expect(knobValue(whole, 0.6)).toBe(2);
     expect(knobValue(linear, 2)).toBe(2);
+  });
+
+  it('reweighs goals for a run, and refuses goals that do not exist', () => {
+    const fun: FunReport = {
+      total: 2,
+      terms: [
+        { id: 'decisive', label: '', goal: '', unit: 'percent', weight: 0.5, value: 0.1, penalty: 2 },
+        { id: 'doctrines', label: '', goal: '', unit: 'ratio', weight: 1, value: 2, penalty: 1 },
+      ],
+    };
+    expect(reweigh(fun, {})).toBe(2);
+    expect(reweigh(fun, { [parseWeight('doctrines=0').id]: 0, decisive: parseWeight('decisive=1.5').weight })).toBe(3);
+    expect(() => parseWeight('doctrine=0')).toThrow(/no goal/);
+    expect(() => parseWeight('decisive')).toThrow(/should look like/);
   });
 });
 
