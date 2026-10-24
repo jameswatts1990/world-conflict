@@ -15,9 +15,11 @@
 //
 // Options: --population 8, --generations 6, --games 32 (campaigns per setting per generation),
 // --validate 200 (campaigns each for the final check), --seed 1, --workers, --out DIR.
+// --resume picks up a run that stopped (a reclaimed machine, say) from its --out directory: the
+// generations in its history.jsonl are replayed rather than played again, so give the same options.
 // --weight GOAL=W reweighs a goal in goals.ts for this run (0 leaves it out): for instance to keep
 // the AI from making up for a rules problem it should not hide.
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { renderComparison } from './compare';
@@ -48,6 +50,7 @@ const { values } = parseArgs({
     weight: { type: 'string', multiple: true },
     out: { type: 'string' },
     quick: { type: 'boolean' },
+    resume: { type: 'boolean' },
   },
 });
 
@@ -91,6 +94,10 @@ const trainingSeeds = (g: number) => range(tunerSeed * 1_000_000 + g * games + 1
 const checkSeeds = range(tunerSeed * 1_000_000 + 900_001, validate);
 
 mkdirSync(out, { recursive: true });
+interface HistoryRow { generation: number; setting: number; penalty: number; settings: Record<string, number> }
+const historyFile = join(out, 'history.jsonl');
+if (!values.resume && existsSync(historyFile)) throw new Error(`${out} already holds a tuning run: pass --resume to carry it on, or another --out`);
+const history: HistoryRow[] = values.resume && existsSync(historyFile) ? readFileSync(historyFile, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l) as HistoryRow) : [];
 const started = new Date();
 const total = population * generations * games + 2 * validate;
 console.error(`Tuning ${knobs.length} settings: ${generations} generations of ${population} × ${games} campaigns, then ${validate} × 2 to check (${total} campaigns) on ${workers} workers…`);
@@ -108,14 +115,25 @@ for (let g = 0; g < generations; g++) {
   }
   const seeds = trainingSeeds(g);
   const batches: Batch[] = xs.map((x) => ({ simRoot: head.simRoot, overrides: [...fixed, ...knobOverrides(knobs, x)], seeds }));
-  const results = await playBatches(batches, 0, workers, `campaigns, generation ${g + 1} of ${generations}`);
-  const scored = results.map((r, i) => {
-    const summary = summarise(r.records, makeMeta(`generation ${g + 1}, setting ${i + 1}`, head.commit, batches[i], 0, workers, started, r.catalogue));
-    return { x: xs[i], penalty: penaltyOf(summary), terms: summary.fun.terms };
-  });
-  for (const [i, s] of scored.entries()) {
-    const settings = Object.fromEntries(knobs.map((k, d) => [k.path, knobValue(k, s.x[d])]));
-    appendFileSync(join(out, 'history.jsonl'), JSON.stringify({ generation: g + 1, setting: i + 1, guess: i === 0, penalty: s.penalty, settings, terms: Object.fromEntries(s.terms.map((t) => [t.id, t.value])) }) + '\n');
+  const settingsOf = (x: number[]) => Object.fromEntries(knobs.map((k, d) => [k.path, knobValue(k, x[d])]));
+  const done = history.filter((h) => h.generation === g + 1);
+  let scored: { x: number[]; penalty: number }[];
+  if (done.length === population) {
+    // Replayed from a stopped run: the same dice give the same settings, which must match what it played.
+    scored = xs.map((x, i) => {
+      const row = done.find((h) => h.setting === i + 1);
+      if (!row || JSON.stringify(row.settings) !== JSON.stringify(settingsOf(x))) throw new Error(`--resume: generation ${g + 1} in ${historyFile} does not match these options`);
+      return { x, penalty: row.penalty };
+    });
+    console.error(`  generation ${g + 1}: replayed from ${historyFile}`);
+  } else {
+    const results = await playBatches(batches, 0, workers, `campaigns, generation ${g + 1} of ${generations}`);
+    scored = results.map((r, i) => {
+      const summary = summarise(r.records, makeMeta(`generation ${g + 1}, setting ${i + 1}`, head.commit, batches[i], 0, workers, started, r.catalogue));
+      const penalty = penaltyOf(summary);
+      appendFileSync(historyFile, JSON.stringify({ generation: g + 1, setting: i + 1, guess: i === 0, penalty, settings: settingsOf(xs[i]), terms: Object.fromEntries(summary.fun.terms.map((t) => [t.id, t.value])) }) + '\n');
+      return { x: xs[i], penalty };
+    });
   }
   const guessPenalty = scored[0].penalty;
   const ranked = [...scored].sort((a, b) => a.penalty - b.penalty);

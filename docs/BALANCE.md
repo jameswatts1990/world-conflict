@@ -163,7 +163,9 @@ interval is below zero. `tune.md` has:
 - the `--set` flags to try it;
 - the full comparison.
 
-`best.json` holds the overrides and `history.jsonl` every setting tried. Nothing in the code changes: copy the values
+`best.json` holds the overrides and `history.jsonl` every setting tried. If a run stops (the machine is reclaimed,
+say), run it again with the same options and `--resume`: the generations in its `history.jsonl` are replayed rather
+than played again. Nothing in the code changes: copy the values
 you like into `src/sim/config/ai.ts`, run `npm run balance -- --vs main`, and play it.
 
 The tuner optimises the goals as written, so read the comparison for side effects, and do not use the AI to hide a
