@@ -723,20 +723,22 @@ kbd {
 }
 /* Borders, faint to bold: provinces, powers (a colour band inside each frontier), your
    own land (a glowing white outline) and the front (red). */
-/* Solid on purpose: dashes on these long non-scaling paths are redrawn on every pan frame and cost a lot. */
+/* Every province border is a light line over the land, as in Conflict of Nations: between regions, between
+   the lands round a city (running out from it) and round the city itself, a little fainter in turn.
+   Solid on purpose: dashes on these long non-scaling paths are redrawn on every pan frame and cost a lot. */
 .province-border {
   fill: none;
-  stroke: rgba(255, 252, 240, 0.3);
-  stroke-width: 0.75;
+  stroke: rgba(255, 253, 245, 0.66);
+  stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
-/* A city's own border, tight round it: a little brighter than the borders between lands, and dashed. */
-.city-border {
-  fill: none;
-  stroke: rgba(255, 248, 225, 0.55);
-  stroke-width: 1;
-  stroke-dasharray: 3 2;
-  vector-effect: non-scaling-stroke;
+.province-border.land {
+  stroke: rgba(255, 253, 245, 0.58);
+  stroke-width: 0.9;
+}
+.province-border.city {
+  stroke: rgba(255, 253, 245, 0.42);
+  stroke-width: 0.8;
 }
 .city-hit {
   fill: transparent;
@@ -856,9 +858,13 @@ kbd {
   opacity: 0.8;
 }
 .connection {
-  stroke: rgba(25, 25, 25, 0.16);
+  stroke: rgba(25, 25, 25, 0.2);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
+}
+/* Between two lands round the same city: the way round it, fainter than the roads out of it. */
+.connection.sibling {
+  stroke: rgba(25, 25, 25, 0.09);
 }
 .connection.mountain {
   stroke: rgba(105, 62, 20, 0.55);
@@ -923,15 +929,6 @@ kbd {
   fill: rgba(70, 58, 32, 0.85);
   stroke: rgba(255, 250, 235, 0.45);
   stroke-width: 0.45;
-}
-.province-label {
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  text-anchor: middle;
-  fill: rgba(255, 255, 255, 0.88);
-  paint-order: stroke;
-  stroke: rgba(10, 15, 20, 0.6);
 }
 .plate-bg {
   fill: rgba(10, 15, 21, 0.84);
@@ -1875,6 +1872,14 @@ kbd {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-2);
+}
+/* The region the province lies in (a city and the lands round it), after its owner. */
+.hero-region {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.7;
 }
 .hero-top .close-btn {
   margin-left: auto;

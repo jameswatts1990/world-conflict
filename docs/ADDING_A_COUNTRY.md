@@ -85,8 +85,10 @@ its whole country:
 Then `npm run map:build`. It fails if a rule matches nothing, and it tags every province with its country so the
 UI knows which countries the theatre covers. No list needs updating by hand. Its second step
 (`scripts/map/city-provinces.ts`, which runs on the committed `scripts/map/base.topo.json` without the raw data)
-cuts each row's city out of its province and writes `src/sim/scenario/europe/land.ts`; it needs the row (step 2)
-to exist, so run it again once the rows are in.
+cuts each row's city out of its region, divides the rest into the lands round it and writes
+`src/sim/scenario/europe/land.ts` (with the links between all provinces); it needs the rows (step 2) and their
+connections (step 3), so run it again once they are in. With `--hints` it prints what each land holds (its admin
+units, towns and neighbours), to name it.
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
@@ -94,10 +96,14 @@ opening zoom. Merging two regions fixed it. The tiers' province ranges keep smal
 
 ### 2. Province rows ★ — `src/sim/scenario/europe/provinces.ts`
 
-One row per province: name, terrain, role, principal city with coordinates, population, two to five towns, and
-optionally `oil`. Each row becomes two provinces: the city, drawn tight round it and keyed by the row's id, and the
-land round it, keyed `<id>-land` and named after the row (`land: { name, article, terrain }` overrides that, as for
-the countryside round a capital). The role is `capital`, `industrial`, `city` or `town`; every nation needs exactly one
+One row per region: name, terrain, role, principal city with coordinates, population, two to five towns, a name
+for each land round the city, and optionally `oil`. Each row becomes a city, drawn tight round it and keyed by the
+row's id, and two or more lands all round it, keyed by compass point from the city (`<id>-<point>`, such as
+`be-brussels-w`) as the generator divides the region (step 1): name each in `lands: { w: { name, article } }`, for
+the country it covers (its `--hints` list the admin units and towns in it). A row whose division changes gets new
+keys, and the scenario refuses a row whose names do not match its lands. `landTerrain` sets the lands' terrain
+where the row's would not do (never urban: round a capital it is the plain or hills it stands in). The role is
+`capital`, `industrial`, `city` or `town`; every nation needs exactly one
 `capital`, and great and major powers one `industrial` heartland. Roles only set relative weights: output is
 scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
 
@@ -108,10 +114,12 @@ directly.
 ### 3. Connections ★ — `src/sim/scenario/europe/connections.ts`
 
 Internal links, plus links to whatever the country borders in the theatre: `land`, `mountain` (with a pass
-name), or `strait` for sea crossings. They are written between rows and join the rows' lands; every city is linked
-to its own land automatically. Every pair of provinces that share a border needs a land or mountain link,
-and every land or mountain link a shared border; a scenario test enforces both. While you work, list what is
-missing:
+name), or `strait` for sea crossings. They are written between rows; the generator turns them into links between
+provinces (every two lands of the rows that share a border; for a strait, the two lands with the nearest coasts),
+and links the lands within a row and every city to the lands that touch it automatically. An island of a row that
+is a land of its own needs its crossing named in `CROSSINGS`. Every pair of regions that share a border needs a
+land or mountain connection, and every land or mountain connection a shared border; the generator refuses a map
+without, and a scenario test checks every link. While you work, list what is missing:
 
 ```bash
 npx vite-node scripts/map/check-borders.ts ro rs   # only pairs involving these countries
@@ -161,7 +169,8 @@ country: nations, tiers and content all come from the scenario.
 
 The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
 inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the
-simplified shapes), that every shared border has a link, that the movement graph is connected, that every nation
+simplified shapes), that every shared border has a link, that the movement graph is connected and every city stands
+among two or more lands, that every nation
 matches its tier (output, starting army, objective VP, capital size, province count), and that every unit has a
 name.
 

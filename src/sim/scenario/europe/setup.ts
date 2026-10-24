@@ -5,7 +5,8 @@
 // hand on the rows; Hungary's are dealt out over its border provinces.
 import { buildStartingSetup } from '../build';
 import { CONNECTIONS } from './connections';
+import { LAND, LINKS } from './land';
 import { NATIONS } from './nations';
 import { ROWS } from './provinces';
 
-export const { startingBuildings: STARTING_BUILDINGS, startingArmies: STARTING_ARMIES } = buildStartingSetup(ROWS, NATIONS, CONNECTIONS);
+export const { startingBuildings: STARTING_BUILDINGS, startingArmies: STARTING_ARMIES } = buildStartingSetup(ROWS, NATIONS, CONNECTIONS, LAND, LINKS);

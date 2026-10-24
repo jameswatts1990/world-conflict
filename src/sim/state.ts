@@ -22,9 +22,9 @@ import {
   type Unit,
   type UnitType,
 } from './types';
-import type { World } from './world';
+import { landsOf, type World } from './world';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export interface NewGameOptions {
   seed: number;
@@ -98,7 +98,7 @@ function drawClaims(state: GameState, world: World, nation: NationId): ProvinceI
   const options = world.cityIds.filter(
     (pid) =>
       state.provinces[pid].owner !== nation &&
-      world.neighbors[world.provinces[pid].within ?? pid].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation),
+      landsOf(world, pid).some((land) => world.neighbors[land].some((n) => n.kind !== 'strait' && state.provinces[n.id].owner === nation)),
   );
   const claims: ProvinceId[] = [];
   while (claims.length < AI.claims && options.length > 0) claims.push(options.splice(Math.floor(random(state) * options.length), 1)[0]);

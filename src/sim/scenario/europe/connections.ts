@@ -1,9 +1,12 @@
 // Explicit movement connections between rows. Land links were seeded from shared
 // borders in the map data and then curated by hand; straits are sea crossings for
-// land units (no naval combat in this milestone). Each one joins the two rows'
-// lands; every city is joined only to the land round it (buildConnections in
-// ../build.ts). This list is authoritative for movement — the map shapes are
-// never consulted for adjacency at runtime.
+// land units (no naval combat in this milestone). scripts/map/city-provinces.ts
+// turns them into links between provinces (land.ts, generated): a land or mountain
+// connection joins every pair of the two rows' lands that share a border, a strait
+// the two lands with the nearest coasts, and every city is joined only to the lands
+// round it. Every shared border between rows needs a land or mountain connection
+// here, and every such connection a shared border. The map shapes are never
+// consulted for adjacency at runtime.
 import type { ConnectionDef } from '../../types';
 
 const land = (a: string, b: string): ConnectionDef => ({ a, b, kind: 'land' });
@@ -196,3 +199,10 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('at-vienna', 'cz-prague'),
   mountain('at-vienna', 'ch-bern', 'Arlberg'),
 ];
+
+/** Names of the crossings that join a region's island land to the rest of it (the generator adds them). */
+export const CROSSINGS: Record<string, string> = {
+  'fr-midi': 'Ligurian crossing',
+  'it-islands': 'Tyrrhenian crossing',
+  'dk-copenhagen': 'Little Belt',
+};

@@ -4,11 +4,14 @@
 //   npm run map:build   # writes scripts/map/base.topo.json, then city-provinces.ts cuts each
 //                       # city out of its province into src/assets/map/map.topo.json
 //
-// Output is one TopoJSON file with two objects: `provinces` (the playable theatre,
-// each tagged with its country's code) and `countries` (world context). Both come from the same 10m admin-1 source and
-// are simplified together, so every coast and border they share is the same arc:
-// the world underlay can never show slivers beside, or gaps under, the provinces.
-// Only geometry and ids are emitted; all gameplay data lives in src/sim/.
+// Output is one TopoJSON file with three objects: `provinces` (the playable theatre,
+// each tagged with its country's code), `units` (the admin-1 units each province is
+// merged from: departments, counties, voivodeships; city-provinces.ts divides the land
+// round each city along their borders) and `countries` (world context). All come from
+// the same 10m admin-1 source and are simplified together, so every coast and border
+// they share is the same arc: the world underlay can never show slivers beside, or gaps
+// under, the provinces. Only geometry, ids and unit names are emitted; all gameplay
+// data lives in src/sim/.
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import mapshaper from 'mapshaper';
@@ -109,13 +112,14 @@ async function buildMap() {
   const admin1 = JSON.parse(await readFile(join(srcDir, 'ne_10m_admin_1_states_provinces.geojson'), 'utf8'));
   const used = new Map();
   const features = [];
+  let unit = 0;
   for (const f of admin1.features) {
     const p = f.properties;
     if (p.adm0_a3 === 'ATA') continue;
     const pid = matchRule(p);
     if (pid) used.set(pid, (used.get(pid) ?? 0) + 1);
     if (pid) {
-      features.push({ type: 'Feature', properties: { key: pid, kind: 'provinces', pid, iso: p.adm0_a3, ivl: intervalFor(0) }, geometry: f.geometry });
+      features.push({ type: 'Feature', properties: { key: `u${unit++}`, kind: 'units', pid, iso: p.adm0_a3, name: p.name, ivl: intervalFor(0) }, geometry: f.geometry });
       continue;
     }
     // Units of theatre countries that no province claims (overseas territories,
@@ -141,8 +145,10 @@ async function buildMap() {
     '-filter-islands min-area=120km2 remove-empty',
     '-clean',
     '-split kind',
-    '-filter-fields target=provinces pid,iso',
+    '-filter-fields target=units pid,iso,name',
     '-filter-fields target=countries iso,name',
+    // Each province is its units merged, so their outlines are the very same arcs.
+    '-dissolve pid copy-fields=iso target=units name=provinces +',
     // One file, one quantisation grid: shared arcs stay identical in both objects.
     '-o target=* map.topo.json format=topojson quantization=100000',
   ].join(' ');
@@ -155,7 +161,7 @@ async function buildMap() {
 
 await mkdir(outDir, { recursive: true });
 const map = await buildMap();
-// The provinces whole: scripts/map/city-provinces.ts cuts the cities out of them for the game.
+// The provinces whole: scripts/map/city-provinces.ts divides them into cities and the land round them.
 await writeFile(join(root, 'scripts', 'map', 'base.topo.json'), map);
 // Older builds wrote the theatre and the world as two files on different grids.
 await rm(join(outDir, 'theatre.topo.json'), { force: true });

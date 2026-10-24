@@ -64,13 +64,15 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   delete p.buildings.garrisonHq;
   state.nations[newOwner].stats.provincesCaptured += 1;
 
-  // Civilians greet liberators and resent occupiers; the loser's nearby land is shaken.
+  // Civilians greet liberators and resent occupiers; the loser's nearby land is shaken (by a share of the
+  // shock for each of the lands round a city, so the loss of all of them shakes it as the old land did).
   p.morale = def.core === newOwner ? MORALE.capturedLiberated : MORALE.capturedOccupied;
   p.growth = Math.max(0, p.growth - CITY.captureGrowthLoss);
   if (oldOwner !== NEUTRAL) {
+    const share = def.around ? 1 / (world.provinces[def.around].lands?.length ?? 1) : 1;
     for (const id of world.vicinity[pid]) {
       const np = state.provinces[id];
-      if (np.owner === oldOwner) np.morale = Math.max(0, np.morale + MORALE.captureNeighbourShock);
+      if (np.owner === oldOwner) np.morale = Math.max(0, np.morale + MORALE.captureNeighbourShock * share);
     }
     if (world.nations[oldOwner].capital === pid) shockNation(state, world, oldOwner, MORALE.capitalLostShock, true);
   }

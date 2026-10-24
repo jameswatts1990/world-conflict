@@ -38,6 +38,7 @@ const row = (id: string, core: string | null, tier: ProvinceRow['tier'], extra: 
   city: { name: id, coord: [(lon += 1.5), 48], size: tier === 'capital' ? 'capital' : 'town' },
   pop: 100,
   towns: [],
+  lands: { land: { name: `${id} land` } },
   ...extra,
 });
 
@@ -69,18 +70,26 @@ const CONNECTIONS = [
   land('mm-cap', 'nt-x'),
 ];
 
-/** Each city's land is anchored a little north of it. */
+/** Each city has one land round it (`<id>-land`), anchored a little north of it. */
 const landData = (r: ProvinceRow[]): LandData =>
-  Object.fromEntries(r.map((x) => [x.id, { anchor: [x.city.coord[0], x.city.coord[1] + 0.5] as [number, number], coast: false }]));
+  Object.fromEntries(
+    r.map((x) => [x.id, { coast: false, lands: [{ key: 'land', anchor: [x.city.coord[0], x.city.coord[1] + 0.5] as [number, number], coastal: false, towns: [] }] }]),
+  );
+
+function setup(r: ProvinceRow[]) {
+  const land = landData(r);
+  return buildStartingSetup(r, NATIONS, CONNECTIONS, land, buildConnections(r, CONNECTIONS, land));
+}
 
 function scenario(r = rows()): ScenarioDef {
+  const land = landData(r);
   return {
     id: 'powers-test',
     name: 'Powers test',
     nations: NATIONS,
-    provinces: buildProvinces(r, NATIONS, landData(r)),
-    connections: buildConnections(r, CONNECTIONS),
-    ...buildStartingSetup(r, NATIONS, CONNECTIONS),
+    provinces: buildProvinces(r, NATIONS, land),
+    connections: buildConnections(r, CONNECTIONS, land),
+    ...setup(r),
     startingTechs: [],
   };
 }
@@ -127,8 +136,8 @@ describe('power tiers', () => {
   });
 
   it('refuse a nation that lacks a province its tier needs', () => {
-    expect(() => buildStartingSetup(rows({ 'aa-ind': { tier: 'city' } }), NATIONS, CONNECTIONS)).toThrow(/needs an industrial province/);
-    expect(() => buildStartingSetup(rows({ 'mm-cap': { tier: 'town' } }), NATIONS, CONNECTIONS)).toThrow(/no capital/);
+    expect(() => setup(rows({ 'aa-ind': { tier: 'city' } }))).toThrow(/needs an industrial province/);
+    expect(() => setup(rows({ 'mm-cap': { tier: 'town' } }))).toThrow(/no capital/);
   });
 
   it('leave neutral states open to invasion without war, defended by their own garrison', () => {

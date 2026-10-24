@@ -33,7 +33,7 @@ for (let i = 0; i < 150; i++) {
   }
   await new Promise((r) => setTimeout(r, 200));
 }
-const browser = await chromium.launch();
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const context = await browser.newContext(
   phone
     ? { viewport: phone, deviceScaleFactor: 2, isMobile: true, hasTouch: true }

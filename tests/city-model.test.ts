@@ -112,9 +112,13 @@ describe('cities on the map', () => {
   it('lead roads out of town towards the cities next door over land', () => {
     for (const id of world.provinceIds) {
       const def = world.provinces[id];
-      // Land has no model, so no roads of its own.
-      const overLand = def.within ? world.neighbors[def.within].filter((n) => n.kind !== 'strait' && world.provinces[n.id].contains) : [];
-      expect(geo.roads[id], id).toHaveLength(overLand.length);
+      // Land has no model, so no roads of its own; a city's lead to each city whose lands border its own.
+      const next = new Set(
+        (def.lands ?? []).flatMap((land) => world.neighbors[land].filter((n) => n.kind !== 'strait').map((n) => world.provinces[n.id].around)),
+      );
+      next.delete(id);
+      next.delete(undefined);
+      expect(geo.roads[id], id).toHaveLength(next.size);
     }
   });
 

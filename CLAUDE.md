@@ -59,12 +59,18 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
 - New state fields are optional with a sensible default when absent, so older saves still load; otherwise add a
   migration in `src/sim/save.ts`. Clear an optional field with `delete` rather than writing `null` over an absent
   one: a field that appears changes the state hash even when play is identical.
-- Every city is a province of its own (the row's id, e.g. `fr-paris`) inside a province of land round it
-  (`fr-paris-land`, named for the region): one row in `scenario/europe/provinces.ts` makes both. Connections are
-  written between rows and join their lands; a city's only neighbour is its land. `def.city` is absent on land, so
-  use `world.cityIds`, `landOf`/`cityOf`, `world.nearbyCities` and `world.vicinity` rather than assuming a city.
-  Cities hold output, slots, recruitment and objectives; land takes only infrastructure. City shapes and land
-  anchors come from `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`).
+- Every city is a province of its own (the row's id, e.g. `fr-paris`) among two to seven provinces of land round it
+  (`<row>-<compass point>`, e.g. `be-brussels-w`, named in the row's `lands`): one row in
+  `scenario/europe/provinces.ts` makes them all, a region. Connections are written between rows; the generator turns
+  them into links between provinces (`land.ts`), and a city's only neighbours are the lands that touch it (two or
+  more). `def.city` is absent on land, so use `world.cityIds`, `landsOf`/`cityOf`, `world.regionOf`,
+  `world.nearbyCities` and `world.vicinity` rather than assuming a city (`def.lands` lists a city's lands,
+  `def.around` a land's city). Cities hold output, slots, recruitment and objectives; land takes only
+  infrastructure, and where the land round a city counts as one (score, war aims, capture shock) it is shared
+  between its lands (`landShare`). The division, shapes, anchors and links come from
+  `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`; `--hints` lists what each land
+  holds). A changed division changes land keys: rename the lands in `provinces.ts` to match, and look at the result
+  (`scripts/map/check-borders.ts` reports borders between regions).
 - An army's `province` is where it stands; on a leg, where it last stood (the leg's `from`, or its `to` when it is
   walking back from a road or has turned round). An army with `road` set stands on a road between two lands
   (`isOpenRoad`: not a sea crossing or a city's gate) and counts as in its land for every rule. Plan marches with
@@ -137,8 +143,9 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
   France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
   in about half.
-- **Challenge**: when war comes to an idle player and when they fall (an idle France: currently 7–13 and about 27
-  minutes at Normal, 14–64 and about 58 at Easy). An idle player should lose, just not at once.
+- **Challenge**: when war comes to an idle player and when they fall (an idle France, over 10 seeds of 90 minutes:
+  currently war at 7–10 minutes and a fall in 7 of 10, at 40–83 minutes, at Normal; war at 14–46 and a fall in 2 of 10
+  at Easy). An idle player should lose, just not at once.
 
 Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather
 than retuning silently, and recommend human playtests for anything about feel.

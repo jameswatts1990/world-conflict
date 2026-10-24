@@ -62,3 +62,23 @@ export function setWar(state: GameState, a: NationId, b: NationId): void {
 export function richen(state: GameState, nation: NationId): void {
   state.nations[nation].resources = { money: 100000, materials: 100000, fuel: 100000, manpower: 100000 };
 }
+
+/** The lands round a city, largest first. */
+export function landsOf(city: ProvinceId): ProvinceId[] {
+  return world.provinces[city].lands!;
+}
+
+/** Two linked lands, one round each city (the first such link in the scenario). */
+export function linkBetween(a: ProvinceId, b: ProvinceId): [ProvinceId, ProvinceId] {
+  for (const c of world.scenario.connections) {
+    const [ra, rb] = [world.provinces[c.a].around, world.provinces[c.b].around];
+    if (ra === a && rb === b) return [c.a, c.b];
+    if (ra === b && rb === a) return [c.b, c.a];
+  }
+  throw new Error(`No link between the lands of ${a} and ${b}`);
+}
+
+/** A land round `city`: the one linked to a land round `toward`, or else its largest. */
+export function landOf(city: ProvinceId, toward?: ProvinceId): ProvinceId {
+  return toward ? linkBetween(city, toward)[0] : landsOf(city)[0];
+}

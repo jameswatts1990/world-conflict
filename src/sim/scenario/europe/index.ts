@@ -1,16 +1,16 @@
 import type { ScenarioDef } from '../../types';
-import { buildConnections } from '../build';
-import { CONNECTIONS } from './connections';
+import { buildProvinces } from '../build';
+import { LAND, LINKS } from './land';
 import { NATIONS } from './nations';
-import { PROVINCES, ROWS } from './provinces';
+import { ROWS } from './provinces';
 import { STARTING_ARMIES, STARTING_BUILDINGS } from './setup';
 
 export const EUROPE_SCENARIO: ScenarioDef = {
   id: 'europe-modern-borders',
   name: 'European Theatre — Modern Borders, 1914 Technology',
   nations: NATIONS,
-  provinces: PROVINCES,
-  connections: buildConnections(ROWS, CONNECTIONS),
+  provinces: buildProvinces(ROWS, NATIONS, LAND),
+  connections: LINKS,
   startingBuildings: STARTING_BUILDINGS,
   startingArmies: STARTING_ARMIES,
   startingTechs: [],

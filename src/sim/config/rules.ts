@@ -115,8 +115,7 @@ export const MOVEMENT = {
   routeFactor: 1.15,
   /** A leg never takes less than this many seconds... */
   minLegSeconds: 15,
-  /** ...except out of a city into the land round it, or back: this short march (km), at least this long. */
-  cityGateKm: 12,
+  /** ...except out of a city into a land round it, or back: at least this long. */
   minGateSeconds: 5,
 };
 
@@ -135,8 +134,8 @@ export const SIGHT = {
   army: 1,
   /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far over land (mountains and seas stop it). */
   recon: 2,
-  /** Sea crossings up to this long (city to city) are watched like a mountain border: the far shore, nothing beyond. Wider seas hide everything. */
-  seaKm: 350,
+  /** Sea crossings up to this wide (coast to coast) are watched like a mountain border: the far shore, nothing beyond. Wider seas hide everything. */
+  seaKm: 110,
 };
 
 export const DIPLOMACY = {
@@ -154,6 +153,6 @@ export const VICTORY = {
   objectiveShare: 0.4,
   /** Objective threshold must be held continuously this long. */
   holdSeconds: 90,
-  /** A city and the land round it together score what one province did before cities were split out. */
+  /** A city and the land round it together score what one province did before cities were split out (each of its lands a share of perLand). */
   score: { perVp: 10, perCity: 2, perLand: 1, perTech: 2 },
 };
