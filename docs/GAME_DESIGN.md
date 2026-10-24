@@ -434,7 +434,7 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   noticeably more often.) An idle army guarding a land at the front stands
   forward on the road towards the greatest danger next door, short of the border: the enemy armies it can see in that
   land and its city, or its estimate of those it cannot, and half of those in the lands behind it (`AI.screenBeyond`).
-  A screen keeps its facing for five minutes (`AI.screenHold`) and then turns to face another land only for a danger
+  A screen keeps its facing for five minutes (`AI.forwardHold`) and then turns to face another land only for a danger
   half as great again as both the one it faces and itself (`AI.screenSwitch`), so screens do not swing about after
   every enemy march. Easy opponents keep to the crossroads.
 - **Interior lines:** at war on several fronts, it picks a main enemy (a power about to win; otherwise the weakest

@@ -317,7 +317,7 @@ describe('AI forward positions', () => {
     const little = front();
     run(little.state, 60);
     place(little.state, 'de', 'de-baden-sw', { infantry: 9 });
-    run(little.state, AI.screenHold + 60);
+    run(little.state, AI.forwardHold + 60);
     expect(little.state.armies[little.guard.id].road?.toward).toBe('de-hesse-w');
     // A great deal more: it holds its facing for a while, then turns to face it.
     const { state, guard } = front();
@@ -325,9 +325,9 @@ describe('AI forward positions', () => {
     place(state, 'de', 'de-baden-sw', { infantry: 24, artillery: 6 });
     run(state, 60);
     expect(state.armies[guard.id].road?.toward).toBe('de-hesse-w');
-    run(state, AI.screenHold);
+    run(state, AI.forwardHold);
     expect(state.armies[guard.id].road?.toward).toBe('de-baden-sw');
-    expect(state.nations.fr.ai!.screens?.[guard.id]).toBeDefined();
+    expect(state.nations.fr.ai!.forwardHolds?.[guard.id]).toBeDefined();
   });
 
   it('easy opponents keep to the crossroads', () => {

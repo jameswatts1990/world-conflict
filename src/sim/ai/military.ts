@@ -322,6 +322,8 @@ export function handleMilitary(ctx: Ctx): void {
   const available = ready().reduce((s, a) => s + power(a), 0);
   /** Attackers waiting for an offensive to gather: they keep their place on the road into its target. */
   const staged = new Set<ArmyId>();
+  // Armies at forward positions keep the facing they took for a while (forward positions: Normal only).
+  const holds = ctx.level.forwardPositions ? forwardHolds(ctx) : null;
   const campaigns = ctx.enemies.length > 0 || neutralTargetsAllowed(ctx) ? chooseCampaigns(ctx, available) : [];
   ctx.mem.campaigns = campaigns.map((c) => c.target);
   for (const c of campaigns) {
@@ -356,8 +358,11 @@ export function handleMilitary(ctx: Ctx): void {
     for (const a of attackers) {
       committed.add(a.id);
       staged.add(a.id);
-      const spot = forward ? forwardSpot(ctx, a.province, c.target) : null;
-      if (spot) goForward(ctx, a, spot, 'stage');
+      // One already forward on another road into enemy land keeps it for a while, rather than shuffling from
+      // road to road as the target moves between the lands next door.
+      if (!holds || keepsFacing(ctx, a, holds)) continue;
+      const spot = forwardSpot(ctx, a.province, c.target);
+      if (spot && goForward(ctx, a, spot, 'stage')) holds[a.id] = state.tick;
     }
     let gathered = attackPower + incoming(ctx, c.staging) + movingUp(ctx, c.target, c.staging);
     const stagingSpot = forward ? forwardSpot(ctx, c.staging, c.target) : null;
@@ -446,7 +451,23 @@ export function handleMilitary(ctx: Ctx): void {
     }
   }
 
-  if (ctx.level.forwardPositions) screens(ctx, staged);
+  if (holds) {
+    screens(ctx, staged, holds);
+    if (Object.keys(holds).length > 0) ctx.mem.forwardHolds = holds;
+    else delete ctx.mem.forwardHolds;
+  }
+}
+
+/** Armies at forward positions still holding the facing they took (those whose hold is over, or which are gone, dropped). */
+function forwardHolds(ctx: Ctx): Record<ArmyId, number> {
+  const holds = ctx.mem.forwardHolds ?? {};
+  for (const id of Object.keys(holds)) if (!ctx.state.armies[id] || ctx.state.tick - holds[id] >= AI.forwardHold) delete holds[id];
+  return holds;
+}
+
+/** Does the army stand forward on a road into enemy land, still holding the facing it took? */
+function keepsFacing(ctx: Ctx, army: Army, holds: Record<ArmyId, number>): boolean {
+  return holds[army.id] !== undefined && !!army.road && ctx.enemies.includes(ctx.state.provinces[army.road.toward].owner);
 }
 
 /**
@@ -456,10 +477,8 @@ export function handleMilitary(ctx: Ctx): void {
  * keeps its facing for a while, and then turns to face another land only for a danger clearly greater than the
  * one it faces and than itself, so it does not shuffle about after every enemy march.
  */
-function screens(ctx: Ctx, staged: Set<ArmyId>): void {
+function screens(ctx: Ctx, staged: Set<ArmyId>, holds: Record<ArmyId, number>): void {
   const { state, world, me } = ctx;
-  const holding = ctx.mem.screens ?? {};
-  for (const id of Object.keys(holding)) if (!state.armies[id] || state.tick - holding[id] >= AI.screenHold) delete holding[id];
   const enemyHeld = (pid: ProvinceId) => ctx.enemies.includes(state.provinces[pid].owner);
   // Hostile power in a province, as far as I can see or guess.
   const held = (pid: ProvinceId): number => {
@@ -493,12 +512,10 @@ function screens(ctx: Ctx, staged: Set<ArmyId>): void {
     // faces and itself.
     const toward = army.road?.toward;
     const facing = toward && enemyHeld(toward) ? Math.max(danger(toward, pid), armyPower(state, army)) : 0;
-    if (facing > 0 && (holding[army.id] !== undefined || best.danger < facing * AI.screenSwitch)) continue;
+    if (facing > 0 && (keepsFacing(ctx, army, holds) || best.danger < facing * AI.screenSwitch)) continue;
     const spot = forwardSpot(ctx, pid, best.id);
-    if (spot && goForward(ctx, army, spot, 'screen')) holding[army.id] = state.tick;
+    if (spot && goForward(ctx, army, spot, 'screen')) holds[army.id] = state.tick;
   }
-  if (Object.keys(holding).length > 0) ctx.mem.screens = holding;
-  else delete ctx.mem.screens;
 }
 
 /** My power marching to forward positions on the roads into a target, from lands other than the staging one. */

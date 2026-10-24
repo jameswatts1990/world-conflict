@@ -462,10 +462,11 @@ export interface AiMemory {
    */
   armourSeen?: Record<NationId, number>;
   /**
-   * Forward screens still holding the facing they took: the tick each was sent to it (Normal only; an entry is
-   * dropped once the hold is over or the army is gone; absent when there are none, and in older saves).
+   * Armies at forward positions (screens, and offensives massing on the roads) still holding the facing they took:
+   * the tick each was sent to it (Normal only; an entry is dropped once the hold is over or the army is gone;
+   * absent when there are none, and in older saves).
    */
-  screens?: Record<ArmyId, number>;
+  forwardHolds?: Record<ArmyId, number>;
 }
 
 /** strike: war as soon as it may; expand: minor powers (or neutral states) first; build: a longer peace to build up. */

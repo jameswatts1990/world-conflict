@@ -226,8 +226,11 @@ export const AI = {
    * faces, and than its own strength.
    */
   screenSwitch: 1.5,
-  /** Seconds a forward screen keeps the facing it took (march included) before it may turn to face another land. */
-  screenHold: 300,
+  /**
+   * Seconds an army at a forward position (a screen, or an offensive massing on a road) keeps the facing it took,
+   * march included, before it may turn to another road.
+   */
+  forwardHold: 300,
   /** The danger down a road counts the enemy land at its end and its city in full, and the lands behind it at this share. */
   screenBeyond: 0.5,
   /** Research priority each doctrine adds to the tech branches. */
