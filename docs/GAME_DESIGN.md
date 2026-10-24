@@ -410,8 +410,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   the nearest free armies; the rest moves up to the front. An enemy stack only counts fully against one province, so
   a single army cannot tie down a whole frontier.
 - **Forward positions** (Normal only): an offensive masses on the roads into its target rather than at the crossroads
-  behind them, three-quarters of the way to the border (`AI.forwardDepth`), so a build-up shows on the map where it
-  will strike and the attack has only the last stretch to march. An idle army guarding a land at the front stands
+  behind them, halfway to the border (`AI.forwardDepth`), so a build-up shows on the map where it will strike and the
+  attack has less ground to cover. (Three-quarters of the way struck so much sooner that Serbia and Romania fell
+  noticeably more often.) An idle army guarding a land at the front stands
   forward on the road towards the greatest danger next door, short of the border: the enemy armies it can see in that
   land and its city, or its estimate of those it cannot, and half of those in the lands behind it (`AI.screenBeyond`).
   A screen keeps its facing for five minutes (`AI.screenHold`) and then turns to face another land only for a danger

@@ -216,8 +216,11 @@ export const AI = {
   targetValue: { base: 5, perVp: 7, outputPer: 10, capital: 8, reclaimCore: 14, trapped: 10, oneEscape: 3, cityBehind: 0.5 },
   /** Massing for an offensive stops once this multiple of the strength needed is on its way. */
   massingMargin: 1.15,
-  /** Forward positions stand this share of the way from a land's crossroads to the border along the road. */
-  forwardDepth: 0.75,
+  /**
+   * Forward positions stand this share of the way from a land's crossroads to the border along the road (at 0.75,
+   * offensives struck so much sooner that the weakest powers fell more often).
+   */
+  forwardDepth: 0.5,
   /**
    * A forward screen turns to face another enemy land only when the danger there is this many times the danger it
    * faces, and than its own strength.
