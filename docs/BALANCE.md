@@ -133,8 +133,9 @@ price with a low value here.
 npm run balance:tune                       # the "ai" space: war and peace appetite, attack caution
 npm run balance:tune -- --quick            # a few minutes, to see it work
 npm run balance:tune -- --space military --generations 8 --games 48
-npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=0.9..1.6 --knob AI.warChance=0.005..0.06
+npm run balance:tune -- --knob AI_LEVELS.normal.attackRatio=1..1.6 --knob AI.warChance=0.005..0.06
 npm run balance:tune -- --set UNITS.tank.cost.money=260   # tune the AI around a rules change
+npm run balance:tune -- --weight doctrines=0 --weight decisive=1.5   # goals weighted for this run
 ```
 
 The tuner is an evolution strategy. Each generation plays a population of settings around its current guess on the
@@ -145,6 +146,10 @@ are in `scripts/balance/space.ts`:
 - `ai`: the AI's appetite for war and peace and the strength it wants before attacking.
 - `diplomacy`: war and peace only.
 - `military`: attack sizing, garrisons and army size.
+
+The bounds keep the design, not just what runs: the AI attacks only with the edge (`attackRatio` at least 1), and
+`maxWarsOnTarget` is not searched, because ganging up on a power about to win is wanted. The first full run pushed
+both to the floor of their old ranges, trading wars for its score.
 
 `--knob PATH=MIN..MAX` searches any number in config. Defaults are 8 settings, 6 generations and 32 campaigns
 each, about 1,900 campaigns with the check.
@@ -158,11 +163,15 @@ interval is below zero. `tune.md` has:
 - the `--set` flags to try it;
 - the full comparison.
 
-`best.json` holds the overrides and `history.jsonl` every setting tried. Nothing in the code changes: copy the values
+`best.json` holds the overrides and `history.jsonl` every setting tried. If a run stops (the machine is reclaimed,
+say), run it again with the same options and `--resume`: the generations in its `history.jsonl` are replayed rather
+than played again. Nothing in the code changes: copy the values
 you like into `src/sim/config/ai.ts`, run `npm run balance -- --vs main`, and play it.
 
 The tuner optimises the goals as written, so read the comparison for side effects, and do not use the AI to hide a
 rules problem: a unit that is too strong should be fixed in its stats or price, not by making the AI avoid it.
+`--weight GOAL=W` reweighs a goal from `goals.ts` for one run (0 leaves it out), for instance `doctrines=0` while
+infantry's edge is a unit problem; the verdict uses those weights, the comparison the usual ones.
 
 ## The tech lab: `npm run balance:techs`
 

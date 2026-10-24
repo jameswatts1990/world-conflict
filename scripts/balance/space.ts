@@ -2,6 +2,10 @@
 // live in AI_LEVELS; the spaces tune Normal, the reference AI. Each space is a set of config
 // values ("knobs"), searched between their bounds; log-scaled knobs are searched by ratio
 // (as useful at 0.01 as at 0.05). Add a space here, or pass --knob PATH=MIN..MAX for a one-off.
+//
+// The bounds hold the design, not just what runs: the AI attacks only when it has the edge
+// (attackRatio ≥ 1), and maxWarsOnTarget stays out of the search because ganging up on a power
+// about to win is wanted behaviour (CLAUDE.md). A first full run pushed both to their floors.
 import type { Override } from './overrides';
 
 export interface Knob {
@@ -22,12 +26,11 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
       { path: 'AI.warStrengthRatio', min: 0.8, max: 1.8 },
       { path: 'AI.secondWarRatio', min: 0.2, max: 1.2 },
       { path: 'AI.minorTargetWeight', min: 0.2, max: 1.5 },
-      { path: 'AI_LEVELS.normal.maxWarsOnTarget', min: 1, max: 3, integer: true },
       { path: 'AI_LEVELS.normal.peaceGraceSeconds', min: 180, max: 900, log: true },
       { path: 'AI_LEVELS.normal.acceptPeaceRatio', min: 0.6, max: 1.1 },
       { path: 'AI.acceptPeaceMorale', min: 25, max: 55 },
       { path: 'AI.warWearinessSeconds', min: 600, max: 3000, log: true },
-      { path: 'AI_LEVELS.normal.attackRatio', min: 0.9, max: 1.6 },
+      { path: 'AI_LEVELS.normal.attackRatio', min: 1, max: 1.6 },
     ],
   },
   diplomacy: {
@@ -46,7 +49,7 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
   military: {
     description: 'How the AI sizes attacks, garrisons and its army',
     knobs: [
-      { path: 'AI_LEVELS.normal.attackRatio', min: 0.9, max: 1.6 },
+      { path: 'AI_LEVELS.normal.attackRatio', min: 1, max: 1.6 },
       { path: 'AI.attackMargin', min: 0, max: 15 },
       { path: 'AI_LEVELS.normal.defenceFactor', min: 0.6, max: 1.3 },
       { path: 'AI.upkeepShare', min: 0.3, max: 0.65 },
@@ -57,10 +60,10 @@ export const SPACES: Record<string, { description: string; knobs: Knob[] }> = {
   },
 };
 
-/** "AI_LEVELS.normal.attackRatio=0.9..1.6": a knob for one tuning run. Whole-number bounds on a whole-number value make an integer knob; a wide range of positive values is searched by ratio. */
+/** "AI_LEVELS.normal.attackRatio=1..1.6": a knob for one tuning run. Whole-number bounds on a whole-number value make an integer knob; a wide range of positive values is searched by ratio. */
 export function parseKnob(text: string, current: (path: string) => unknown): Knob {
   const m = /^\s*([\w.]+)\s*=\s*(-?[\d.]+)\s*\.\.\s*(-?[\d.]+)\s*$/.exec(text);
-  if (!m) throw new Error(`--knob "${text}" should look like AI_LEVELS.normal.attackRatio=0.9..1.6`);
+  if (!m) throw new Error(`--knob "${text}" should look like AI_LEVELS.normal.attackRatio=1..1.6`);
   const [path, min, max] = [m[1], Number(m[2]), Number(m[3])];
   if (!(min < max)) throw new Error(`--knob ${path}: the minimum should be below the maximum`);
   const now = current(path);
