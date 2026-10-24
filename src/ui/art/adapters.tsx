@@ -9,6 +9,7 @@ import { flagStripes } from '../flags';
 import { CitySkyline } from './CitySkyline';
 import { NATIONAL_STYLES, UnitArt, type ArtNation } from './UnitArt';
 import { buildUnitModel, type UnitModelKind } from './UnitModel';
+import { infantrySprite } from './InfantryAsset';
 
 /**
  * How an owner's units are drawn: in its own look if it has one, otherwise in
@@ -25,7 +26,7 @@ export function TechUnitIcon({ world, type, gen, nation, title }: { world: World
   return <UnitArt type={type} gen={gen} {...artOf(world, nation)} variant="icon" width={34} title={title} />;
 }
 
-/** Large side-view illustration for unit cards. */
+/** Large illustration for unit cards. */
 export function UnitPicture({ world, type, gen, nation, width = 96 }: { world: World; type: UnitType; gen: UnitGen; nation: OwnerId; width?: number }) {
   return (
     <span className="unit-picture">
@@ -136,9 +137,126 @@ function imageOf(layer: ModelLayer): SpriteImage {
   return { href: svgHref(layer.svg), width: layer.width, height: layer.height, cx: layer.cx, cy: layer.cy };
 }
 
-/** Lets an image's blob go. */
+/** Lets an image's blob go, and its bitmaps. */
 function release(image: { href: string }): void {
   if (image.href.startsWith('blob:')) URL.revokeObjectURL(image.href);
+  for (const url of bitmaps.get(image.href)?.values() ?? []) URL.revokeObjectURL(url);
+  bitmaps.delete(image.href);
+  wanted.delete(image.href);
+}
+
+// ---------------------------------------------------------------------------
+// Bitmaps of the sprites
+// ---------------------------------------------------------------------------
+
+/**
+ * The browser draws an SVG image by replaying every shape in it each time it paints the stretch of map it lies
+ * on (a city's model has hundreds), and lays it out again whenever its size changes, as it does on every zoom.
+ * So the map draws its sprites as bitmaps, baked from the SVG in idle moments at a power of two of device
+ * pixels per model unit: the smallest at or above what the zoom needs, so a bitmap is never stretched.
+ */
+const bitmaps = new Map<string, Map<number, string>>();
+/** The level each sprite was last asked for at: a bake queued for another one is skipped. */
+const wanted = new Map<string, number>();
+const bakeQueue: { href: string; width: number; height: number; level: number }[] = [];
+const queued = new Set<string>();
+const bakeListeners = new Set<() => void>();
+/** Largest bitmap side (pixels): past it the sprite stays an SVG image. */
+const MAX_BITMAP = 2048;
+let baking = false;
+let announce = 0;
+
+/** Hears when new bitmaps are ready (at most a few times a second). */
+export function onBitmapsBaked(listener: () => void): () => void {
+  bakeListeners.add(listener);
+  return () => bakeListeners.delete(listener);
+}
+
+/**
+ * What to draw a sprite with at `pxPerUnit` device pixels per model unit: a bitmap sharp enough if one is
+ * baked, otherwise its SVG. With `want`, a missing bitmap is queued for baking.
+ */
+export function spriteHref(image: { href: string; width: number; height: number }, pxPerUnit: number, want: boolean): string {
+  const level = 2 ** Math.max(0, Math.ceil(Math.log2(pxPerUnit)));
+  const have = bitmaps.get(image.href);
+  for (let l = level; l <= level * 4; l *= 2) {
+    const url = have?.get(l);
+    if (url) return url;
+  }
+  const key = `${image.href}@${level}`;
+  if (want) wanted.set(image.href, level);
+  if (want && !queued.has(key) && Math.max(image.width, image.height) * level <= MAX_BITMAP && typeof document !== 'undefined') {
+    queued.add(key);
+    bakeQueue.push({ href: image.href, width: image.width, height: image.height, level });
+    if (!baking) scheduleBake();
+  }
+  return image.href;
+}
+
+/** One bake per idle moment long enough for it, so a drag or a zoom under way keeps its frames. */
+function scheduleBake(): void {
+  baking = true;
+  if (typeof requestIdleCallback !== 'function') setTimeout(() => void bakeNext(), 30);
+  else requestIdleCallback((idle) => (idle.timeRemaining() >= 8 || idle.didTimeout ? void bakeNext() : scheduleBake()), { timeout: 1000 });
+}
+
+async function bakeNext(): Promise<void> {
+  let job = bakeQueue.shift();
+  // Wanted at another zoom since (the map was zoomed on): not worth baking.
+  while (job && wanted.get(job.href) !== job.level) {
+    queued.delete(`${job.href}@${job.level}`);
+    job = bakeQueue.shift();
+  }
+  if (!job) {
+    baking = false;
+    return;
+  }
+  try {
+    const url = await bake(job.href, Math.ceil(job.width * job.level), Math.ceil(job.height * job.level));
+    // The sprite may have been dropped from its cache meanwhile.
+    if (url && isLive(job.href)) {
+      const levels = bitmaps.get(job.href) ?? new Map<number, string>();
+      levels.set(job.level, url);
+      bitmaps.set(job.href, levels);
+      if (!announce) announce = window.setTimeout(tell, 120);
+    } else if (url) URL.revokeObjectURL(url);
+  } catch {
+    // An SVG that will not draw stays an SVG image.
+  }
+  queued.delete(`${job.href}@${job.level}`);
+  if (bakeQueue.length) scheduleBake();
+  else {
+    baking = false;
+    tell();
+  }
+}
+
+function tell(): void {
+  window.clearTimeout(announce);
+  announce = 0;
+  for (const l of bakeListeners) l();
+}
+
+async function bake(href: string, width: number, height: number): Promise<string | null> {
+  const img = new Image();
+  img.src = href;
+  await img.decode();
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.drawImage(img, 0, 0, width, height);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  return blob && URL.createObjectURL(blob);
+}
+
+/** Whether a sprite's SVG is still in one of the caches. */
+function isLive(href: string): boolean {
+  for (const s of sprites.values()) if (s.ground.href === href || s.structures.href === href) return true;
+  for (const p of ports.values()) if (p.href === href) return true;
+  for (const u of unitSprites.values()) if (u.href === href) return true;
+  return false;
 }
 
 /** Least-recently-used cache of sprites by look; dropped sprites release their blobs. */
@@ -213,8 +331,10 @@ const UNIT_SPRITE_CACHE = 480;
 /**
  * An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings.
  * A nation drawn in its bloc's look flies its own flag (or one in its colour) and is cached as itself.
+ * WWI line infantry shares baked sprites; its national flag is on the map's army badge.
  */
 export function unitSprite(world: World, type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
+  if (type === 'infantry' && gen === 'ww1') return infantrySprite(heading);
   const art = artOf(world, nation);
   const look = art.accent ? nation : art.nation;
   return cached(

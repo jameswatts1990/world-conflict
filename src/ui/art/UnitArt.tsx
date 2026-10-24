@@ -1,12 +1,14 @@
-// Hand-drawn unit artwork: a side-view illustration for unit cards ('full')
+// Unit artwork: an illustration for unit cards ('full')
 // and a bold single silhouette for map counters ('icon'), coloured per nation
-// and redrawn per technology generation.
+// and redrawn per technology generation. WWI line infantry uses the supplied
+// model's baked portrait, with the owning nation's badge on full-size cards.
 import type { JSX, ReactElement } from 'react';
 import { makeCtx, type Ctx } from './context';
 import { drawCavalry } from './cavalryArt';
 import { drawAntiTank, drawArtillery, drawHeavyArtillery } from './gunsArt';
 import { ICONS } from './iconsArt';
-import { drawInfantry, drawMountain, drawStormtroopers } from './infantryArt';
+import { CornerBadge, drawInfantry, drawMountain, drawStormtroopers } from './infantryArt';
+import { INFANTRY_PORTRAIT } from './InfantryAsset';
 import { drawHeavyTank, drawLightTank, drawTank, drawTankDestroyer } from './tanksArt';
 import { resolveArtGen, type ArtGen, type ArtNation, type ArtUnitType } from './types';
 import { drawArmouredCar, drawMotorised } from './vehiclesArt';
@@ -63,7 +65,12 @@ export function UnitArt({ type, gen, nation, accent, width, variant = 'full', cl
       aria-label={title ?? `${nation} ${type} (${drawGen})`}
     >
       {title && <title>{title}</title>}
-      {(icon ? ICONS : FULL)[type](ctx)}
+      {type === 'infantry' && drawGen === 'ww1' ? (
+        <g data-infantry-asset="wwi-v1">
+          <image href={INFANTRY_PORTRAIT} x={0} y={0} width={vw} height={vh} />
+          {!icon && <CornerBadge ctx={ctx} />}
+        </g>
+      ) : (icon ? ICONS : FULL)[type](ctx)}
     </svg>
   );
 }

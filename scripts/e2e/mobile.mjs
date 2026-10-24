@@ -110,7 +110,12 @@ async function cityPoint(pid) {
   return p;
 }
 
-const mapView = () => page.evaluate(() => document.querySelector('svg.map > g').getAttribute('transform'));
+// Where the map is on screen: the zoom behaviour's view (a drag may only move the drawing, not draw it again).
+const mapView = () =>
+  page.evaluate(() => {
+    const t = document.querySelector('.map-stage').__zoom;
+    return `${t.x},${t.y},${t.k}`;
+  });
 
 /** Fails if the briefing's text or buttons reach past the dialog or the screen. */
 async function checkBriefingFits(label) {

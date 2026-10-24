@@ -21,6 +21,9 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   - `ai/`: computer opponents. They act only through the same validated commands as a human.
   - `config/`: tuning numbers (`ai.ts`, `rules.ts`, `units.ts`, `buildings.ts`).
 - `src/ui`: rendering and input.
+  - WWI line infantry uses baked PNGs in `src/assets/units/wwi-infantry`, selected in `art/InfantryAsset.ts`.
+    Rebuild with `blender --background --threads 4 --python scripts/art/render-infantry.py`; the source GLB and
+    provenance are in `scripts/art/sources/wwi-infantry`. Later generations keep the procedural artwork.
 - `tests/`: Vitest suite; `tests/helpers.ts` has `quietGame` (no AI), `aiGame`, `place`, `run`, `setWar`.
 
 ## Balance lab (docs/BALANCE.md)
@@ -47,8 +50,29 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
 - `npx vite-node scripts/dev/batch.ts <seeds> <minutes>`: headless campaign summaries (captures, wars, outcomes).
 - `npx vite-node scripts/dev/ai-moves.ts <seeds> <minutes>`: every AI move order with its reason; armies sent back
   and forth.
-- `node scripts/dev/pan-perf.mjs [dist-e2e] [cpu slowdown] [paused]` (after `npm run build:e2e`): main-thread time
-  while dragging the map on an emulated phone; compare with a build of main before and after map changes.
+- `node scripts/dev/pan-perf.mjs [dist-e2e] [cpu slowdown] [paused] [zoom] [desktop]` (after `npm run build:e2e`):
+  frames shown and dropped, raster and main-thread time while dragging (or zooming) the map on an emulated phone
+  (or desktop); compare with a build of main before and after map changes. Run the variants one at a time: they
+  share the CPU.
+
+## Map rendering
+
+The map is drawn in SVG; what makes it slow is the browser rasterising it (drawing it into tiles), not script.
+- During a drag, pinch or wheel zoom, `MapView` only moves and scales `.map-layer`, a composited layer the GPU moves
+  without drawing it again (`place`); the SVG is drawn with a margin round the screen (`overscanFor`) and drawn again
+  only when the zoom changes, the margin runs out or the gesture pauses. Keep it that way: anything that changes the
+  map's drawing on every frame of a gesture undoes it (the army layers already wait while `panning` is set).
+- The drawing is two SVGs on two layers: `svg.map` (terrain, provinces, borders, fog, cities) and `svg.map-top`
+  (armies, routes, battles, cities' names), so what moves or animates every frame is drawn again without what lies
+  under it. Anything new that changes from frame to frame goes in the top one.
+- Chrome lays out all SVG text again when the `<svg>` element's own transform changes, when a transform goes from
+  `none` to something, and when it hit-tests the SVG while it is scaled. Hence the transform on the wrapper, never
+  `none`, and the shield that takes the pointer while the drawing is scaled.
+- City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
+  raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
+  `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.
+- Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
+  (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 
 ## Simulation rules
 
