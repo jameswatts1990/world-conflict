@@ -63,7 +63,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   the plain or hills it stands in), the region's secondary towns that lie in them (place names only: the map does not draw them, and the generator keeps borders clear of them) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
   none yet.
-- **Movement connections** are written between rows (a city with its lands): 148 land, 39 mountain passes and
+- **Movement connections** are written between rows (a city with its lands): 149 land, 38 mountain passes and
   16 sea crossings, including the Irish Sea crossing to Wales, the Strait of Otranto and the Ionian crossing from Italy. The generator turns them
   into links between provinces (`land.ts`): every two lands of
   neighbouring regions that share a border are linked (by land or a pass, as the connection says), a sea
@@ -231,7 +231,8 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields named eq
 **Western** (French and British exports: Renault FT, Vickers 6-ton, the 75), **Central** (Škoda guns and German
 armour) and **Eastern** (Russian and Soviet designs: T-26, BT-7, T-34). Each supplies a complete identity and a
 unit look (uniform colours, headgear, insignia). A nation names its bloc and overrides any part: the original six
-override nearly everything, Hungary only its hussars and five armour designs, and Romania and Serbia nothing.
+override nearly everything, Hungary its hussars and five armour designs, Bulgaria its assault formations, and
+Greece its mountain units and formations (Evzones). Romania and Serbia use their bloc identities unchanged.
 Within a bloc, nations are told apart by counter colour and by the bloc insignia drawn in each nation's colour.
 Blocs are equipment, not alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
 
@@ -683,15 +684,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 25 VP / 90 s reachable for a human in 2–3 hours? The Balkan expansion raises the objective threshold;
-  the three 200-campaign route experiments and minor-power fall times are recorded in [BALANCE.md](BALANCE.md).
+- Does the campaign stay engaging through its 150-minute limit? Score wins are intended: in the combined
+  Ireland/Balkans reference build (`5ff0a56`, 200 campaigns), 6% end on objectives and 94% on score. These figures
+  will be re-measured after review fixes; no victory-rule change is planned.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
 - Is one region of sight around your land and armies the right amount of fog? Mountains and seas over 110 km now
   stop it: is that tight enough, or should provinces see only across land borders and leave scouting to armies?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
-- Positions differ in AI-only campaigns (see the 200-campaign Balkan comparisons in [BALANCE.md](BALANCE.md)).
-  Poland remains strong, while the major powers rarely win; adding Balkan routes does not by itself solve this.
-  Which differences are acceptable strengths and weaknesses of a position, and how should the lower objective-end
-  rate and Romania's survival regression be addressed?
+- Positions differ in the combined reference run: Poland wins 33%; Serbia and Bulgaria win none. Serbia lasts
+  29% of campaigns, Bulgaria 47%, Romania 63% and Greece 77%. Which differences feel fair to a human player?
+  Balance is a separate follow-up using general mechanics.

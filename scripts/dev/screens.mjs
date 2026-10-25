@@ -7,6 +7,7 @@
 // --phone and --phone-landscape use a 390 × 844 touch screen, upright or on its side; --hidpi renders at 2×.
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { stripVTControlCharacters } from 'node:util';
 import { chromium } from 'playwright';
 
 const flags = process.argv.slice(2).filter((a) => a.startsWith('--'));
@@ -16,17 +17,40 @@ mkdirSync(out, { recursive: true });
 const PORT = Number(process.env.SCREEN_PORT ?? 5199);
 const URL = `http://localhost:${PORT}/`;
 // Launch Vite directly: works on Windows without a .cmd wrapper and leaves no child server behind.
-const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', windowsHide: true });
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
 const stopServer = () => server.exitCode === null && server.kill('SIGTERM');
 process.on('exit', stopServer);
+// Wait for this process to bind its port; an HTTP response alone might belong to another session.
+let startupOutput = '';
+let startupTimer;
+const serverFailure = () => new Error(`Vite exited before screenshot capture (code ${server.exitCode}, signal ${server.signalCode}). Port ${PORT} may already be in use; choose another SCREEN_PORT.\n${startupOutput.trim()}`);
+const ensureServer = () => {
+  if (server.exitCode !== null || server.signalCode !== null) throw serverFailure();
+};
+await new Promise((resolve, reject) => {
+  startupTimer = setTimeout(() => reject(new Error(`Vite did not start on port ${PORT} within 30 seconds.\n${startupOutput.trim()}`)), 30000);
+  server.stdout.on('data', (chunk) => {
+    startupOutput = (startupOutput + chunk).slice(-4000);
+    if (stripVTControlCharacters(startupOutput).includes('Local:')) resolve();
+  });
+  server.stderr.on('data', (chunk) => { startupOutput = (startupOutput + chunk).slice(-4000); });
+  server.once('error', (error) => reject(new Error(`Could not start Vite: ${error.message}`)));
+  server.once('exit', () => reject(serverFailure()));
+}).finally(() => clearTimeout(startupTimer));
+let ready = false;
 for (let i = 0; i < 150; i++) {
+  ensureServer();
   try {
-    if ((await fetch(URL)).ok) break;
+    ready = (await fetch(URL, { signal: AbortSignal.timeout(2000) })).ok;
   } catch {
     // starting
   }
+  ensureServer();
+  if (ready) break;
   await new Promise((r) => setTimeout(r, 200));
 }
+if (!ready) throw new Error(`Vite started but did not respond on port ${PORT}.`);
+ensureServer();
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
 const context = await browser.newContext(
   phone

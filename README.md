@@ -235,10 +235,10 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been measured with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human
-  playtesting is still needed. In 200 campaigns with Otranto and Ionian routes, 8.5% end on objectives and the
-  median reaches the 150-minute limit. Poland wins 32.5%; Serbia wins none but survives 29% (up from 17.5%
-  before the Balkan expansion). Romania survives 62.5%, below the 69.5% baseline. The three route experiments
-  and their remaining balance concerns are documented in the balance lab.
+  playtesting is still needed. The combined Ireland/Balkans build (`5ff0a56`, 200 campaigns) ends 6% on objectives
+  and 94% on score at the 150-minute limit; score wins are an intended outcome. Poland wins 33%; Serbia wins
+  none and survives 29%. Bulgaria survives 47%, Romania 63% and Greece 77%. Balance changes are a separate
+  follow-up using general mechanics. These reference figures will be re-measured after the review fixes.
 - There are no alliances yet: powers fighting a common enemy are only co-belligerents, and all that does is share
   sight through Liaison Officers.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
@@ -249,5 +249,6 @@ tests/              Simulation tests
   loaded.
 - The theatre includes the western Balkans, Bulgaria and Greece, including Crete and the larger Aegean islands.
   Turkey and everything east of Romania remain context only. Kosovo is part of Serbia's southern region.
-- Redrawing southern Serbia and Croatia changes some land ids: older saves whose provinces no longer exist are
-  refused by the existing map-compatibility check; new-country saves on an unchanged map still migrate normally.
+- Saves from before the Balkans expansion cannot be loaded. Every save contains the renamed lands
+  `hr-zagreb-sw` → `hr-zagreb-se` and `rs-south-s` → `rs-south-sw`, so all such saves are refused. There is no
+  migration for these renames; start a new campaign.

@@ -192,7 +192,7 @@ npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the b
 npm run balance -- --vs main   # 200 campaigns each, before and after: how the newcomer and its neighbours fare
 ```
 
-On Windows use `npm.cmd` and `npx.cmd`. The screenshot helper launches Vite directly on every platform;
+If PowerShell blocks `npm.ps1` or `npx.ps1`, use `npm.cmd` and `npx.cmd`. The screenshot helper launches Vite directly;
 set `SCREEN_PORT` if another session is using its default port 5199.
 
 The balance run ([BALANCE.md](BALANCE.md)) is the check the tests cannot make: whether the newcomer survives and wins

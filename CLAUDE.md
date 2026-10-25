@@ -29,11 +29,6 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
 
 ## Balance lab (docs/BALANCE.md)
 
-The current theatre has 26 nations: seven great, four major (Romania, Serbia, Bulgaria and Greece), and fifteen
-minor powers. Its 86 city regions generate 215 lands (301 provinces); 62 objective VP require 25 to win. Kosovo
-belongs to `rs-south`, with SRB ISO tags throughout the map. Bulgaria uses Central equipment and Na nozh!;
-Greece uses Western equipment and Evzones. See `docs/BALANCE.md` for the three 200-campaign sea-route experiments.
-
 - `npm run balance` plays all-AI campaigns in parallel and reports on balance, pace and content use; `--vs main`
   compares with another commit on the same seeds and `--set PATH=VALUE` tries a config value. `npm run balance:units`
   prices units in staged battles; `npm run balance:techs` measures what each technology is worth (same campaigns with
@@ -206,10 +201,11 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently about a third of campaigns end on objectives within 150 minutes. Counting wins on score, Poland
-  (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
-  France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
-  in about half.
+  limit). Reference: the combined Ireland/Balkans build (`5ff0a56`, 200 campaigns), to be re-measured after
+  review fixes. Objectives decide 6%, with a 150-minute median; score wins at the limit are intended. Win rates:
+  Poland 33%, Italy 19%, Hungary 16%, France 13%, Spain 8%, Germany 6%, Britain 3%, Romania 3%, Greece 1%,
+  Bulgaria and Serbia 0%. Campaign survival: Serbia 29%, Bulgaria 47%, Romania 63%, Greece 77%. Balance is
+  a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
   Normal brings war at 7–11 minutes and a fall in 10 of 10, at 32–83 minutes; Easy brings war at 14–39 minutes.
   Over 50 seeds of 90 minutes, France falls in 19 of 50 on Easy, against a target of about 2 in 10

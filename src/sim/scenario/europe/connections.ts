@@ -196,7 +196,7 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('gr-larissa', 'gr-thessaloniki'),
   strait('gr-athens', 'gr-crete', 'Cretan Sea crossing'),
   land('gr-thessaloniki', 'mk-skopje'),
-  mountain('gr-larissa', 'mk-skopje', 'Monastir Gap'),
+  land('gr-larissa', 'mk-skopje'), // Monastir Gap: the Florina–Bitola lowland corridor
   mountain('gr-larissa', 'al-tirana', 'Kakavia Pass'),
 
   // Western Balkans: lowland Sava and Drina approaches, mountain walls towards the coast.
@@ -255,9 +255,6 @@ export const CONNECTIONS: ConnectionDef[] = [
 
 /** Names of the crossings that join a region's island land to the rest of it (the generator adds them). */
 export const CROSSINGS: Record<string, string> = {
-  'gr-thessaloniki': 'North Aegean crossing',
-  'gr-crete': 'South Aegean crossing',
-  'gr-patras': 'Ionian islands crossing',
   'fr-midi': 'Ligurian crossing',
   'it-islands': 'Tyrrhenian crossing',
   'dk-copenhagen': 'Little Belt',

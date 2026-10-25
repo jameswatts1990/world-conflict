@@ -366,10 +366,13 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
 - [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
 - [x] Balkans and Greece: Bulgaria and Greece as major powers; Bosnia & Herzegovina, Montenegro, Albania and
-      North Macedonia as minor powers; Kosovo folded into Serbia's southern region (25 nations, 84 regions, 61 VP)
+      North Macedonia as minor powers; Kosovo folded into Serbia's southern region
+      (26 nations, 86 regions, 62 VP, including Ireland)
 - [x] Balkan frontier passes and lowland corridors, named lands and towns, six flags, Na nozh! and Evzone specialities
 - [x] Greek administrative units split by physical shore where necessary, keeping land roads out of the Gulf of Patras
-- [ ] Rivers as defensive lines: the Danube, Sava and Drina currently use ordinary land links; model crossings and bridges
+- [ ] Rivers as defensive lines: model Danube, Sava and Drina crossings and bridges. The Mačva/lower Drina
+      lowlands share the ba-sarajevo–rs-sumadija row pair with the Zlatibor mountains, so that border currently
+      uses a mountain link throughout; distinguish the lowland crossing when the system supports it.
 - [ ] Replace the Neum coastal-road exception with proper transport or transit rules when those systems exist
 - [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
 - [x] A map frame ready for a wider theatre: one scale whatever the theatre's size, the frame grown round it, zooms

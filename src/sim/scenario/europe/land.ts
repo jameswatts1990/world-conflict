@@ -1249,7 +1249,7 @@ export const LINKS: ConnectionDef[] = [
   { a: 'gr-larissa-w', b: 'gr-larissa-nw', kind: 'land' },
   { a: 'gr-larissa-w', b: 'al-tirana-s', kind: 'mountain', label: 'Kakavia Pass' },
   { a: 'gr-larissa-nw', b: 'al-tirana-s', kind: 'mountain', label: 'Kakavia Pass' },
-  { a: 'gr-larissa-nw', b: 'mk-skopje-s', kind: 'mountain', label: 'Monastir Gap' },
+  { a: 'gr-larissa-nw', b: 'mk-skopje-s', kind: 'land' },
   { a: 'gr-patras-s', b: 'gr-patras-se', kind: 'land' },
   { a: 'gr-crete-w', b: 'gr-crete-se', kind: 'land' },
   { a: 'ba-sarajevo-n', b: 'ba-sarajevo-sw', kind: 'land' },

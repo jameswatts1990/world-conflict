@@ -24,7 +24,7 @@ const STRIPED: Record<string, FlagStripes> = {
   nl: { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
   at: { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
   bg: { dir: 'h', colors: ['#f4f4f4', '#00966e', '#d62612'] },
-  gr: { dir: 'h', colors: ['#0d5eaf', '#fff', '#0d5eaf', '#fff', '#0d5eaf', '#fff', '#0d5eaf', '#fff', '#0d5eaf'] },
+  gr: { dir: 'h', colors: ['#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf'] },
   ro: { dir: 'v', colors: ['#002b7f', '#fcd116', '#ce1126'] },
   rs: { dir: 'h', colors: ['#c6363c', '#0c4076', '#f4f4f4'] },
   sk: { dir: 'h', colors: ['#f4f4f4', '#0b4ea2', '#ee1c25'] },
@@ -74,13 +74,13 @@ const FLAGS: Record<string, ReactElement> = {
     <>
       {stripes(STRIPED.gr)}
       <rect width={11.1} height={11.1} fill="#0d5eaf" />
-      <path d="M5.55 0V11.1M0 5.55H11.1" stroke="#fff" strokeWidth={2.22} />
+      <path d="M5.55 0V11.1M0 5.55H11.1" stroke="#f4f4f4" strokeWidth={2.22} />
     </>
   ),
   ba: (
     <>
       <rect width={W} height={H} fill="#002395" />
-      <path d="M7 0H24V17Z" fill="#fecb00" />
+      <path d="M7 0H24V20Z" fill="#fecb00" />
       {[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={i} d="M0 -1.5L0.4 -0.45L1.5 -0.45L0.65 0.2L1 1.3L0 0.65L-1 1.3L-0.65 0.2L-1.5 -0.45L-0.4 -0.45Z" transform={'translate(' + (5 + i * 3) + ' ' + (1 + i * 3) + ')'} fill="#fff" />)}
     </>
   ),
