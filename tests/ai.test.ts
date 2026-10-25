@@ -86,6 +86,8 @@ describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficult
   function captureFront(reserveInfantry = 10) {
     const state = soloAi('es');
     state.settings.difficulty = difficulty;
+    // Spain's personality is drawn from the seed and shifts whenever a nation joins the roster: fix it here.
+    Object.assign(state.nations.es.ai!, { aggression: 0.7, economyBias: 0.35, doctrine: 'artillery', claims: [], opening: 'build' });
     clearArmies(state);
     setWar(state, 'es', 'pt');
     // Lisbon is the only Portuguese target left; Spain already holds its approaches.
