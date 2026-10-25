@@ -201,10 +201,10 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with Ireland and the Balkans, objectives decide 3%, with a 150-minute
-  median; score wins at the limit are intended. Win rates: Poland 34%, Italy 18%, Hungary 14%, France 11%, Spain
-  9%, Germany 7%, Romania 4%, Britain 3%, Greece 1%, Bulgaria and Serbia 0%. Campaign survival: Serbia 28%,
-  Bulgaria 52%, Romania 66%, Greece 77%. Balance is a separate follow-up using general mechanics.
+  limit). Currently, over 200 full campaigns with Ireland and the Balkans, objectives decide 10%, with a 150-minute
+  median; score wins at the limit are intended. Win rates: Poland 33%, Hungary 20%, Italy 13%, France 12%, Spain
+  9%, Romania 6%, Germany 4%, Britain 3%, Greece 1%, Bulgaria and Serbia 0%. Campaign survival: Serbia 25%,
+  Bulgaria 41%, Romania 60%, Greece 77%. Balance is a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
   Normal brings war at 7–11 minutes and a fall in 10 of 10, at 32–83 minutes; Easy brings war at 14–39 minutes.
   Over 50 seeds of 90 minutes, France falls in 19 of 50 on Easy, against a target of about 2 in 10

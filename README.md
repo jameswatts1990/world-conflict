@@ -235,9 +235,9 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been measured with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human
-  playtesting is still needed. Over 200 full campaigns with Ireland and the Balkans, 3% end on objectives and 97%
-  on score at the 150-minute limit; score wins are an intended outcome. Poland wins 34%; Serbia wins none and
-  survives 28%. Bulgaria survives 52%, Romania 66% and Greece 77%. Balance changes are a separate follow-up using
+  playtesting is still needed. Over 200 full campaigns with Ireland and the Balkans, 10% end on objectives and 90%
+  on score at the 150-minute limit; score wins are an intended outcome. Poland wins 33%; Serbia wins none and
+  survives 25%. Bulgaria survives 41%, Romania 60% and Greece 77%. Balance changes are a separate follow-up using
   general mechanics.
 - There are no alliances yet: powers fighting a common enemy are only co-belligerents, and all that does is share
   sight through Liaison Officers.
