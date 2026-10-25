@@ -2,12 +2,19 @@
 import type { ConnectionKind, Terrain } from '../types';
 
 export const ECONOMY = {
+  /** Base output per minute of every province of land without a city (Standard speed), before morale and occupation. */
+  landOutput: { money: 3, materials: 0, manpower: 1, fuel: 0 },
   /** Occupied populations rarely enlist: manpower factor on top of the morale effect. */
   occupiedManpower: 0.4,
   /** Combat multiplier while the treasury cannot pay upkeep. */
   unpaidCombatMult: 0.8,
   /** Combat and speed multiplier for fuel-burning units while out of fuel. */
   noFuelVehicleMult: 0.5,
+  /** Combat multipliers while out of materials (no shells or spares): guns and armour, and every other unit. */
+  noMaterialsHeavyMult: 0.6,
+  noMaterialsMult: 0.9,
+  /** Out of manpower (no replacements): units regain no strength, and morale recovers this much as fast. */
+  noManpowerMoraleRecovery: 0.5,
   /** Share of the price refunded when a construction or recruitment that has started is cancelled (unstarted: all). */
   startedJobRefund: 0.5,
 };

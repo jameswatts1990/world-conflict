@@ -4,6 +4,8 @@ import { memo } from 'react';
 import type { BuildingCategory, BuildingType, CityTier, NationId, OwnerId, TechBranch, Terrain, UnitGen, UnitType, World } from '../../sim';
 import { BranchIcon as BranchArt } from './BranchIcons';
 import { BuildingGlyph, BuildingTile } from './BuildingIcons';
+import type { CityArtBuilding } from './types';
+import { BUILDINGS } from '../../sim/config/buildings';
 import { PLINTH_COLORS, buildCityModel, buildPortModel, type ModelLayer, type PortModelProps } from './CityModel';
 import { flagStripes } from '../flags';
 import { CitySkyline } from './CitySkyline';
@@ -58,6 +60,11 @@ export function BranchIcon({ branch, size = 18 }: { branch: TechBranch; size?: n
   return <BranchArt branch={branch} size={size} />;
 }
 
+/** What a city is building, for its model: land buildings never stand in a city. */
+export function cityConstruction(building: BuildingType | null | undefined): CityArtBuilding | null {
+  return building && !BUILDINGS[building].landOnly ? (building as CityArtBuilding) : null;
+}
+
 export function BuildingTileArt({ kind, level, maxLevel, size = 44 }: { kind: BuildingType; level: number; maxLevel: number; size?: number }) {
   return <BuildingTile kind={kind} level={level} maxLevel={maxLevel} size={size} />;
 }
@@ -71,7 +78,8 @@ export interface CitySceneProps {
   tier: CityTier;
   capital: boolean;
   buildings: Partial<Record<BuildingType, number>>;
-  construction: BuildingType | null;
+  /** Only a city's own buildings (land buildings never stand in a city). */
+  construction: CityArtBuilding | null;
   terrain: Terrain;
   coastal: boolean;
   nationColor?: string;
@@ -116,7 +124,8 @@ export interface CitySpriteProps {
   tier: CityTier;
   capital: boolean;
   buildings: Partial<Record<BuildingType, number>>;
-  construction: BuildingType | null;
+  /** Only a city's own buildings (land buildings never stand in a city). */
+  construction: CityArtBuilding | null;
   freeSlots: number;
   terrain: Terrain;
   /** Directions of the roads out of town and how far the land reaches (see CityModelProps). */

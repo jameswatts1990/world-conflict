@@ -82,9 +82,12 @@ export function resolveArtGen(type: ArtUnitType, gen: ArtGen): ArtGen {
   return best;
 }
 
-export type ArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
+/** Buildings a city can hold, which the city models draw. */
+export type CityArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
   | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'
   | 'fortifications' | 'supplyDepot' | 'railway' | 'coastalBattery';
+/** Every building with a glyph: the city's, and those only land without a city holds. */
+export type ArtBuilding = CityArtBuilding | 'farm' | 'tradingPost' | 'workshops' | 'oilWells' | 'fieldHospital' | 'bunkers' | 'fieldStation';
 export type ArtTerrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
 
 export type BuildingCategory = 'economy' | 'military' | 'civic' | 'infrastructure';
@@ -108,6 +111,13 @@ export const BUILDING_CATEGORY: Record<ArtBuilding, BuildingCategory> = {
   supplyDepot: 'infrastructure',
   railway: 'infrastructure',
   coastalBattery: 'infrastructure',
+  farm: 'economy',
+  tradingPost: 'economy',
+  workshops: 'economy',
+  oilWells: 'economy',
+  fieldHospital: 'military',
+  bunkers: 'military',
+  fieldStation: 'civic',
 };
 
 /** Camouflage for a drawn vehicle or gun shield. */

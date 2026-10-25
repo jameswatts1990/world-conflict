@@ -61,6 +61,21 @@ const GLYPHS: Record<ArtBuilding, ReactElement> = {
   coastalBattery: (
     <path d="M2 13.6l2-5.2h8.4l2 5.2zM11.4 9.4l7.4-2.6v1.9l-6.8 2.5zM1 16.4c1.5-1.3 3-1.3 4.5 0s3 1.3 4.5 0 3-1.3 4.5 0 3 1.3 4.5 0V19H1z" />
   ),
+  // --- Land without a city ---
+  // barn with a crossed door
+  farm: <path fillRule="evenodd" d="M2 18V8.6L10 3l8 5.6V18zM7 11.4V18h6v-6.6zM8 12.4l4 4.6h-.9L8 13.4zM12 12.4L8 17h.9l3.1-3.6z" />,
+  // market stall under an awning
+  tradingPost: <path d="M2.4 6.6L4.6 3h10.8l2.2 3.6zM2.4 7.4h15.2v2H2.4zM3.6 9.4h1.8V18H3.6zM14.6 9.4h1.8V18h-1.8zM7 12.4h6V18H7z" />,
+  // anvil
+  workshops: <path d="M1.8 5.4h12.4c0 2.4 1.8 3.6 4 3.6v1.8h-4.6l-1.2 3.4h2.2V17H5.4v-2.8h2.2L6.4 10.8C3.6 10.6 1.8 8.6 1.8 5.4z" />,
+  // derrick over a drop of oil
+  oilWells: <path d="M10 1.4c1.6 2.2 2.6 3.6 2.6 4.9a2.6 2.6 0 0 1-5.2 0c0-1.3 1-2.7 2.6-4.9zM5.4 17.2l2.8-7.6h3.6l2.8 7.6h-2L10.6 11.6h-1.2l-2 5.6zM3 17.2h14v1.6H3z" />,
+  // tent with a cross on it
+  fieldHospital: <path fillRule="evenodd" d="M1 17.6L10 3l9 14.6zM9.1 9.4v1.9H7.2v1.8h1.9V15h1.8v-1.9h1.9v-1.8h-1.9V9.4z" />,
+  // pillbox: a concrete dome with a firing slit
+  bunkers: <path fillRule="evenodd" d="M1.6 17.4v-3.2a8.4 7 0 0 1 16.8 0v3.2zM5.6 11.4v1.6h8.8v-1.6z" />,
+  // laboratory flask
+  fieldStation: <path fillRule="evenodd" d="M7.4 2h5.2v1.6h-.8v4.2l4.7 8a1.6 1.6 0 0 1-1.4 2.4H4.9a1.6 1.6 0 0 1-1.4-2.4l4.7-8V3.6h-.8zM6.4 12.6l-1.6 3h10.4l-1.6-3z" />,
 };
 
 export function BuildingGlyph({ kind, size = 16, title }: { kind: ArtBuilding; size?: number; title?: string }) {

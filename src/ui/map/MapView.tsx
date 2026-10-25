@@ -38,6 +38,7 @@ import {
 import { slotsUsed } from '../../sim/config/buildings';
 import {
   CounterArt,
+  cityConstruction,
   citySprite,
   onBitmapsBaked,
   portSprite,
@@ -217,7 +218,7 @@ function cityModelProps(state: GameState, world: World, geo: MapGeometry, id: Pr
     tier: ps.tier,
     capital: def.city?.size === 'capital',
     buildings: known ? ps.buildings : {},
-    construction: job,
+    construction: cityConstruction(job),
     freeSlots: known ? buildingSlots(state, world, id) - slotsUsed(ps.buildings, job) : 0,
     terrain: def.terrain,
     exits: geo.roads[id],

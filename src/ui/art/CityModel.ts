@@ -14,7 +14,7 @@
 // land, and everything standing on them.
 import { drawStreets, Envelope, streetPlan, type RailLine } from './cityGround';
 import { Scene, mixColor, shadeColor, type V2, type V3 } from './iso3d';
-import { BUILDING_CATEGORY, type ArtBuilding, type ArtTerrain, type BuildingCategory } from './types';
+import { BUILDING_CATEGORY, type CityArtBuilding, type ArtTerrain, type BuildingCategory } from './types';
 
 export interface CityModelProps {
   /** Province id, e.g. 'uk-north': picks the regional architecture and drives variety. */
@@ -23,9 +23,9 @@ export interface CityModelProps {
   /** A capital: gets a landmark (a national one for the powers' capitals). */
   capital?: boolean;
   /** Building -> level (0 or absent = not built). */
-  buildings: Partial<Record<ArtBuilding, number>>;
+  buildings: Partial<Record<CityArtBuilding, number>>;
   /** Building under construction: scaffolding and a crane. */
-  construction?: ArtBuilding | null;
+  construction?: CityArtBuilding | null;
   /** Unused building slots, drawn as empty plots. */
   freeSlots?: number;
   terrain: ArtTerrain;
@@ -395,7 +395,7 @@ function polyOnLand(reach: number[] | undefined, poly: Poly, margin = 0.4): bool
 }
 
 /** Buildings with a model of their own (walls, rails and coastal guns are drawn elsewhere). */
-type Placed = Exclude<ArtBuilding, 'fortifications' | 'railway' | 'coastalBattery'>;
+type Placed = Exclude<CityArtBuilding, 'fortifications' | 'railway' | 'coastalBattery'>;
 
 /**
  * Where each building would like to stand: a screen direction from the old town
@@ -1261,7 +1261,7 @@ export function buildCityModel(props: CityModelProps): CityModel {
   const region = regionOf(props.seed);
   const flag = props.nationColor ?? K.neutralFlag;
   const ctxFor = (key: string): Ctx => ({ region, flag, r: rngOf(props.seed, key) });
-  const level = (b: ArtBuilding) => props.buildings[b] ?? 0;
+  const level = (b: CityArtBuilding) => props.buildings[b] ?? 0;
   /** Footprints of everything drawn: the extent of the built-up area. */
   const drawn: Poly[] = [diamond(centre, BLOCK)];
 

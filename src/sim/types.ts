@@ -68,7 +68,15 @@ export type BuildingType =
   | 'fortifications'
   | 'supplyDepot'
   | 'railway'
-  | 'coastalBattery';
+  | 'coastalBattery'
+  // Land without a city: one building each (infrastructure included).
+  | 'farm'
+  | 'tradingPost'
+  | 'workshops'
+  | 'oilWells'
+  | 'fieldHospital'
+  | 'bunkers'
+  | 'fieldStation';
 export type BuildingCategory = 'economy' | 'military' | 'civic' | 'infrastructure';
 /** 1 Town, 2 City, 3 Large City, 4 Metropolis, 5 World City. */
 export type CityTier = 1 | 2 | 3 | 4 | 5;
@@ -484,8 +492,11 @@ export interface NationState {
   research: ResearchState;
   relations: Record<NationId, RelationState>;
   eliminated: boolean;
-  /** True when an upkeep bill could not be paid in full this minute. */
-  shortages: { money: boolean; fuel: boolean };
+  /**
+   * True while a resource has run out under its upkeep bill (it clears once the stockpile is above zero again).
+   * Materials and manpower are absent in saves from before they were charged: absent is not short.
+   */
+  shortages: { money: boolean; fuel: boolean; materials?: boolean; manpower?: boolean };
   /** Home-front morale 0..100 (population-weighted core province morale). */
   morale: number;
   ai: AiMemory | null;

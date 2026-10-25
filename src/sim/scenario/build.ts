@@ -6,6 +6,7 @@
 // objective value, the capital's city size, and the starting buildings and army.
 // Shapes live separately in src/assets/map/map.topo.json, keyed by the same ids.
 import { POWERS } from '../config/powers';
+import { ECONOMY } from '../config/rules';
 import {
   NEUTRAL,
   UNIT_TYPES,
@@ -188,7 +189,7 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
           population: 0,
           towns: towns.filter((t) => l.towns.includes(t.name)),
           coastal: l.coastal,
-          production: { money: 0, materials: 0, manpower: 0, fuel: 0 },
+          production: { ...ECONOMY.landOutput },
         }),
       ),
     ];

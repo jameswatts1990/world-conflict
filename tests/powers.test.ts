@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
+import { ECONOMY } from '../src/sim/config/rules';
 import { buildConnections, buildProvinces, buildStartingSetup, type LandData, type ProvinceRow } from '../src/sim/scenario/build';
 import {
   applyCommand,
@@ -100,7 +101,9 @@ describe('power tiers', () => {
     for (const n of NATIONS) {
       const power = POWERS[n.power];
       const provs = s.provinces.filter((p) => p.core === n.id);
-      expect(provs.reduce((t, p) => t + p.production.money, 0)).toBeCloseTo(power.output.money, -1);
+      // Cities are scaled to the tier's output; every land adds its small base output on top.
+      expect(provs.filter((p) => p.city).reduce((t, p) => t + p.production.money, 0)).toBeCloseTo(power.output.money, -1);
+      for (const p of provs) if (!p.city) expect(p.production).toEqual(ECONOMY.landOutput);
       expect(provs.reduce((t, p) => t + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
       expect(s.provinces.find((p) => p.id === n.capital)!.tier).toBe(power.capitalCity);
     }

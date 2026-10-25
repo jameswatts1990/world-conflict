@@ -4,9 +4,9 @@
 import { createElement, useId, useMemo } from 'react';
 import type { JSX, ReactNode, SVGProps } from 'react';
 
-import type { ArtBuilding, ArtTerrain } from './types';
+import type { CityArtBuilding, ArtTerrain } from './types';
 
-export type { ArtBuilding, ArtTerrain } from './types';
+export type { CityArtBuilding, ArtTerrain } from './types';
 
 export interface CitySkylineProps {
   /** Province id, e.g. 'uk-north'; drives deterministic variety. */
@@ -16,9 +16,9 @@ export interface CitySkylineProps {
   /** National capital: adds a landmark (dome, cathedral or parliament tower). */
   capital?: boolean;
   /** Building -> level (0 or absent = not built). */
-  buildings: Partial<Record<ArtBuilding, number>>;
+  buildings: Partial<Record<CityArtBuilding, number>>;
   /** Building under construction: scaffolding and a crane at its spot. */
-  construction?: ArtBuilding | null;
+  construction?: CityArtBuilding | null;
   terrain: ArtTerrain;
   /** Draws a strip of sea and a quay on one side. */
   coastal?: boolean;
@@ -825,7 +825,7 @@ const paintSupplyDepot: Painter = ({ cx, b, lv, g }) => {
   return G(...k);
 };
 
-const PAINTERS: Partial<Record<ArtBuilding, Painter>> = {
+const PAINTERS: Partial<Record<CityArtBuilding, Painter>> = {
   industry: paintIndustry,
   market: paintMarket,
   powerPlant: paintPowerPlant,
@@ -844,7 +844,7 @@ const PAINTERS: Partial<Record<ArtBuilding, Painter>> = {
 };
 
 /** Rough footprint (width, height) used for scaffolding. */
-const FOOT: Record<ArtBuilding, [number, number]> = {
+const FOOT: Record<CityArtBuilding, [number, number]> = {
   industry: [40, 18], market: [28, 20], powerPlant: [34, 28], refinery: [36, 24], housing: [40, 22],
   university: [34, 24], barracks: [28, 11], academy: [30, 24], armsWorks: [30, 20], motorPool: [30, 10],
   tankWorks: [32, 18], hospital: [30, 16], propaganda: [24, 18], garrisonHq: [24, 18], supplyDepot: [30, 12],
@@ -852,14 +852,14 @@ const FOOT: Record<ArtBuilding, [number, number]> = {
 };
 
 /** Horizontal extent (left, right of the slot centre, unscaled) at the highest level, to keep art on land. */
-const EXTENT: Partial<Record<ArtBuilding, [number, number]>> = {
+const EXTENT: Partial<Record<CityArtBuilding, [number, number]>> = {
   industry: [21, 31], market: [21, 21], powerPlant: [32, 44], refinery: [25, 24], housing: [27, 31],
   university: [27, 27], barracks: [27, 29], academy: [23, 23], armsWorks: [20, 37], motorPool: [20, 42],
   tankWorks: [31, 30], hospital: [27, 23], propaganda: [21, 18], garrisonHq: [24, 16], supplyDepot: [26, 30],
 };
 
-const BACK_ROW: ArtBuilding[] = ['industry', 'powerPlant', 'refinery', 'housing', 'university', 'academy', 'propaganda', 'armsWorks'];
-const FRONT_ROW: ArtBuilding[] = ['market', 'barracks', 'motorPool', 'tankWorks', 'hospital', 'garrisonHq', 'supplyDepot'];
+const BACK_ROW: CityArtBuilding[] = ['industry', 'powerPlant', 'refinery', 'housing', 'university', 'academy', 'propaganda', 'armsWorks'];
+const FRONT_ROW: CityArtBuilding[] = ['market', 'barracks', 'motorPool', 'tankWorks', 'hospital', 'garrisonHq', 'supplyDepot'];
 
 // ------------------------------------------------------------------ construction
 
@@ -1511,7 +1511,7 @@ function battleArt(seed: string, x0: number, x1: number, wind: number, fireGlow:
 
 const TIER_NAMES = ['', 'Town', 'City', 'Large City', 'Metropolis', 'World City'];
 
-const ALL_BUILDINGS: ArtBuilding[] = [...BACK_ROW, ...FRONT_ROW, 'fortifications', 'railway', 'coastalBattery'];
+const ALL_BUILDINGS: CityArtBuilding[] = [...BACK_ROW, ...FRONT_ROW, 'fortifications', 'railway', 'coastalBattery'];
 
 export function CitySkyline(props: CitySkylineProps): JSX.Element {
   const { seed, capital = false, buildings, construction = null, terrain, coastal = false, nationColor, battle = false, width = 320 } = props;
@@ -1567,7 +1567,7 @@ function skylineArt(props: Omit<CitySkylineProps, 'width'>, uid: string): ReactN
 
   const flag = nationColor ? mix(nationColor, '#e9dab9', 0.12) : K.neutralFlag;
   const accent = nationColor ? mix(nationColor, K.ink, 0.52) : K.ink2;
-  const lv = (b: ArtBuilding): number => Math.max(0, Math.floor(buildings[b] ?? 0));
+  const lv = (b: CityArtBuilding): number => Math.max(0, Math.floor(buildings[b] ?? 0));
 
   // building slots: interleaved back and front rows, shuffled per seed, independent of what is built
   const rs = rngOf(seed, 'slots');
@@ -1576,8 +1576,8 @@ function skylineArt(props: Omit<CitySkylineProps, 'width'>, uid: string): ReactN
   const sx0 = landX0 + 18;
   const sx1 = landX1 - 18;
   const step = (sx1 - sx0) / 15;
-  const slot = new Map<ArtBuilding, number>();
-  const keepOnLand = (b: ArtBuilding, x: number, s: number): number => {
+  const slot = new Map<CityArtBuilding, number>();
+  const keepOnLand = (b: CityArtBuilding, x: number, s: number): number => {
     const [l, r] = EXTENT[b] ?? [20, 20];
     return clamp(x, landX0 + 1 + l * s, landX1 - 1 - r * s);
   };
@@ -1601,7 +1601,7 @@ function skylineArt(props: Omit<CitySkylineProps, 'width'>, uid: string): ReactN
     createElement('g', { key, transform: `translate(${n(x)} ${n(y)}) scale(${s}) translate(${n(-x)} ${n(-y)})` }, ...kids);
 
   // ---- special building groups
-  const special = (row: ArtBuilding[], s: number): ReactNode[] => {
+  const special = (row: CityArtBuilding[], s: number): ReactNode[] => {
     const items = row
       .map((b) => ({ b, x: slot.get(b) ?? center, l: lv(b) }))
       .filter((it) => it.l > 0 || construction === it.b)
@@ -1715,7 +1715,7 @@ function skylineArt(props: Omit<CitySkylineProps, 'width'>, uid: string): ReactN
   }
 
   // ---- construction of foreground structures
-  const consFg = (b: ArtBuilding, x: number, y: number): ReactNode => {
+  const consFg = (b: CityArtBuilding, x: number, y: number): ReactNode => {
     const [fw, fh] = FOOT[b];
     const cdir = x > center ? -1 : 1;
     return scaled(x, y, SCALE_FG, `fg-${b}`, scaffold(x, y, fw * 0.8, fh * 0.8), crane(x - cdir * (fw * 0.5 - 2), y, fh + 22, Math.max(16, fw * 0.8), cdir));

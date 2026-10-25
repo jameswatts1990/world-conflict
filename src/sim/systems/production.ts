@@ -1,5 +1,5 @@
 // Timed construction, recruitment and research. Runs every tick.
-import { BUILDINGS } from '../config/buildings';
+import { BUILDINGS, landBuildings } from '../config/buildings';
 import { MORALE } from '../config/rules';
 import { TECH_BY_ID } from '../config/research';
 import { ARMY_RULES } from '../config/units';
@@ -19,6 +19,8 @@ export function constructionSystem(state: GameState, world: World): void {
     if (!job || p.owner === NEUTRAL) continue;
     job.remaining -= 1;
     if (job.remaining > 0) continue;
+    // Land holds one building: a new one replaces whatever stood there.
+    if (!world.provinces[id].city) for (const b of landBuildings(p.buildings)) if (b !== job.building) delete p.buildings[b];
     p.buildings[job.building] = job.targetLevel;
     p.construction = null;
     const lvl = BUILDINGS[job.building].maxLevel > 1 ? ` (level ${job.targetLevel})` : '';

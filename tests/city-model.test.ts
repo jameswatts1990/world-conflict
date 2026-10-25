@@ -9,7 +9,9 @@ import { world } from './helpers';
 const base: CityModelProps = { seed: 'fr-nord', tier: 3, buildings: {}, terrain: 'plains', nationColor: '#3f6fc4' };
 
 /** Buildings with a model of their own round the old town; walls, rails and coastal guns are drawn otherwise. */
-const WITH_MODEL = BUILDING_ORDER.filter((b) => !['fortifications', 'railway', 'coastalBattery'].includes(b));
+/** Buildings a city can hold (land buildings never stand in a city). */
+const CITY_BUILDINGS = BUILDING_ORDER.filter((b) => !BUILDINGS[b].landOnly);
+const WITH_MODEL = CITY_BUILDINGS.filter((b) => !['fortifications', 'railway', 'coastalBattery'].includes(b));
 
 /** Half a building pad's width and depth on screen (model units). */
 const PAD_HALF: [number, number] = [3.8, 1.9];
@@ -35,7 +37,7 @@ function coastBelow(y: number): number[] {
 
 describe('3D city models', () => {
   it('draw every building, and draw the same city the same way every time', () => {
-    for (const b of BUILDING_ORDER) {
+    for (const b of CITY_BUILDINGS) {
       if (b === 'coastalBattery') continue;
       const empty = look(buildCityModel(base));
       const one = look(buildCityModel({ ...base, buildings: { [b]: 1 } }));

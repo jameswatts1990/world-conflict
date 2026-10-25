@@ -47,7 +47,7 @@ import {
   type UnitType,
   type World,
 } from '../../sim';
-import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/adapters';
+import { BuildingTileArt, CityScene, cityConstruction, UnitIconArt, UnitPicture } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
@@ -257,7 +257,7 @@ export function ProvincePanel({
             tier={ps.tier}
             capital={capital || nationalCapital}
             buildings={known ? ps.buildings : {}}
-            construction={known ? (ps.construction?.building ?? null) : null}
+            construction={known ? cityConstruction(ps.construction?.building) : null}
             terrain={def.terrain}
             coastal={def.coastal}
             nationColor={owner === 'neutral' ? undefined : color}

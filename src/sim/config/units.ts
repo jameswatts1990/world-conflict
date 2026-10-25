@@ -436,6 +436,12 @@ export function usesFuel(type: UnitType): boolean {
   return (UNITS[type].upkeepPerMinute.fuel ?? 0) > 0;
 }
 
+/** Guns and armour fight worst in a materials shortage: they live on shells and spares. */
+export function usesShells(type: UnitType): boolean {
+  const c = UNITS[type].class;
+  return c === 'support' || c === 'armour';
+}
+
 /** Generic English formation names, used for neutral garrisons. */
 export const GENERIC_FORMATIONS: Record<UnitType, string> = {
   infantry: '{ord} Infantry Brigade',

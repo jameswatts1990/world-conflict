@@ -7,6 +7,7 @@ import { BLOC_IDS, UNIT_GENS, UNIT_TYPES, isOpenRoad } from '../src/sim';
 import { roadFaults } from '../scripts/map/roads';
 import { UNITS } from '../src/sim/config/units';
 import { POWERS, startingUnits } from '../src/sim/config/powers';
+import { ECONOMY } from '../src/sim/config/rules';
 import { world } from './helpers';
 
 describe('scenario data', () => {
@@ -168,9 +169,10 @@ describe('scenario data', () => {
       // Every city stands among two or more lands of its own, which produce nothing yet.
       for (const c of cities) expect(c.lands!.length, c.id).toBeGreaterThanOrEqual(2);
       expect(provs.filter((p) => !p.city).map((p) => p.id).sort()).toEqual(cities.flatMap((c) => c.lands!).sort());
-      for (const p of provs) if (!p.city) expect(Object.values(p.production).some((v) => v), p.id).toBe(false);
+      for (const p of provs) if (!p.city) expect(p.production, p.id).toEqual(ECONOMY.landOutput);
       for (const k of ['money', 'materials', 'manpower'] as const) {
-        expect(provs.reduce((s, p) => s + p.production[k], 0), `${id} ${k}`).toBeCloseTo(power.output[k], -1);
+        const cityOutput = provs.filter((p) => p.city).reduce((s, p) => s + p.production[k], 0);
+        expect(cityOutput, `${id} ${k}`).toBeCloseTo(power.output[k], -1);
       }
       const units: Record<string, number> = {};
       for (const a of world.scenario.startingArmies.filter((x) => x.owner === id)) {
