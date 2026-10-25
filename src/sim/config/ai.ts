@@ -1,7 +1,7 @@
 // Computer opponent tuning. The numbers the AI weighs when it decides live here,
 // so balance runs can try other values (`npm run balance -- --set AI_LEVELS.normal.attackRatio=1.3`)
 // and the tuner can search them (scripts/balance/space.ts; see docs/BALANCE.md).
-import type { AiDifficulty, AiMemory, AiOpening, GameState, PowerTier, TechBranch, Terrain, UnitType } from '../types';
+import type { AiDifficulty, AiMemory, AiOpening, GameState, PowerTier, ResourceKey, TechBranch, Terrain, UnitType } from '../types';
 
 type Doctrine = AiMemory['doctrine'];
 
@@ -167,6 +167,35 @@ export const AI = {
   upkeepPerAggression: 0.3,
   /** ...times this while at war. */
   warUpkeep: 1.25,
+  /** Share of each other resource's income that may go to upkeep (times `warUpkeep` at war): a unit is not raised past it. */
+  upkeepShares: { materials: 0.6, fuel: 0.85, manpower: 0.6 } as Record<Exclude<ResourceKey, 'money'>, number>,
+  /** Upkeep above this share of a resource's income makes the AI stand units down, until it is back to `standDownTo`. */
+  standDownAt: 1.05,
+  standDownTo: 0.9,
+  /**
+   * A materials stockpile worth more than `from` minutes of materials income tilts the army mix towards guns and armour,
+   * up to `max` (their shares × (1 + max)) at `full` minutes: a nation rich in materials fields a heavier army.
+   */
+  materialsLean: { from: 6, full: 18, max: 1 },
+  /**
+   * Building on land without a city (its one building). Base scores of the economy buildings, plus `need` times how short
+   * the resource it makes is (upkeep near its income, or under `storeMinutes` of it in store); defensive works and field hospitals at war; a land's building is replaced only by a
+   * military or infrastructure need scoring at least `replaceScore`, and only if it is an economy or civic one.
+   */
+  land: {
+    farm: 4,
+    tradingPost: 7,
+    workshops: 5,
+    oilWells: 9,
+    fieldStation: 5,
+    need: 8,
+    /** A resource with less than this many minutes of its income in store counts as short. */
+    storeMinutes: 5,
+    bunkers: 13,
+    fieldHospital: 9,
+    fieldHospitals: 3,
+    replaceScore: 12,
+  },
   /** Danger to the capital from hostile armies two connections away, relative to those next door. */
   capitalDepth: 0.5,
   /** Danger to the capital from the armies of neighbouring powers still at peace (they could declare war). */

@@ -82,7 +82,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     },
     cost: { money: 110, materials: 30, manpower: 40 },
     recruitSeconds: 60,
-    upkeepPerMinute: { money: 5, materials: 1, manpower: 0.5 },
+    upkeepPerMinute: { money: 5, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       forest: { defence: 1.2 },
@@ -110,7 +110,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     },
     cost: { money: 150, materials: 60, manpower: 45 },
     recruitSeconds: 80,
-    upkeepPerMinute: { money: 6, materials: 1.5, manpower: 0.75 },
+    upkeepPerMinute: { money: 6, materials: 1.5, manpower: 1 },
     requires: ['barracks', 'academy'],
     terrain: {
       urban: { attack: 1.25, defence: 1.2 },
@@ -137,7 +137,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     },
     cost: { money: 130, materials: 40, manpower: 40 },
     recruitSeconds: 75,
-    upkeepPerMinute: { money: 5.5, materials: 1, manpower: 0.5 },
+    upkeepPerMinute: { money: 5.5, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       mountains: { attack: 1.7, defence: 1.6 },
@@ -192,7 +192,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     },
     cost: { money: 120, materials: 25, manpower: 30 },
     recruitSeconds: 60,
-    upkeepPerMinute: { money: 4, materials: 1, manpower: 0.5 },
+    upkeepPerMinute: { money: 4, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       plains: { attack: 1.25 },
