@@ -228,10 +228,13 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       manpower a minute and holds one building (farmland, trading post, workshops, oil wells, field hospital,
       bunkers, field station, or one piece of infrastructure), lost when the land is captured; the AI budgets
       every resource, leans on a materials stockpile and plans each land's building. Over 200 all-AI campaigns
-      against main (same seeds): wins hardly move, but there are 30% more battles, minor powers fall a little
-      sooner (31% standing at 60 minutes instead of 35%), the 40-minute leader wins more often (49% instead of
-      31%), and the AI raises 2.3× the field artillery, 5× the siege guns and 4× the battle tanks. At 60 minutes a
-      great power holds about 500 money, 1,300 materials and 1,800 manpower (main: 380, 7,900, 4,200)
+      against main (same seeds): most goals improve (doctrine gap 1.75× instead of 2.38×, the 40-minute leader
+      wins 42% instead of 51%), but there are 25% more battles, minor powers fall a little sooner (48% standing at
+      60 minutes instead of 52%; Ireland lasts 12% of campaigns instead of 27%), Hungary wins 28% (20%), fewer
+      campaigns end on objectives (6% instead of 10%), an idle France falls sooner (Normal 10 of 10 instead of 8,
+      Easy 4 of 10 instead of 2), and the AI raises 2.4× the field artillery, 4× the siege guns and 3× the battle
+      tanks. At 60 minutes a great power holds about 500 money, 1,300 materials and 1,800 manpower (main: 380,
+      7,900, 4,200)
 - [ ] Economy follow-ups: fuel still piles up (about 2,000 at 60 minutes: the AI fields few vehicles); manpower
       piles up more slowly but still does; army counters on the map have no tooltip to show upkeep; whether a human
       wants a way to clear a land's building without building another; and provinces with no city at all where
