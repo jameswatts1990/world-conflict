@@ -182,6 +182,13 @@ describe('combat resolution', () => {
     expect(land(2).attackerLeft).toBeLessThan(land(0).attackerLeft);
   });
 
+  it('bunkers make defenders deal more damage; out of materials, guns and armour fight far worse', () => {
+    const fight = (tweak: BattleOptions['tweak']) => battle('de-north', { infantry: 4, artillery: 3 }, { infantry: 6 }, { seed: 5, tweak, maxRounds: 15 });
+    const open = fight(undefined);
+    expect(fight((s) => (s.provinces['de-north'].buildings.bunkers = 1)).attackerLeft).toBeLessThan(open.attackerLeft);
+    expect(fight((s) => (s.nations.fr.shortages.materials = true)).defenderLeft).toBeGreaterThan(open.defenderLeft);
+  });
+
   it('isolated armies suffer attrition; supplied ones do not', () => {
     const state = quietGame();
     clearArmies(state);

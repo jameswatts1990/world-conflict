@@ -18,8 +18,12 @@ describe('resource accounting', () => {
     expect(after.manpower - before.manpower).toBeCloseTo(eco.net.manpower, 6);
     // Upkeep matches the configured per-unit costs.
     const units = Object.values(state.armies).filter((a) => a.owner === 'fr').flatMap((a) => a.units);
-    const expected = units.reduce((s, u) => s + (UNITS[u.type].upkeepPerMinute.money ?? 0), 0);
-    expect(eco.upkeep.money).toBeCloseTo(expected, 9);
+    for (const k of ['money', 'materials', 'fuel', 'manpower'] as const) {
+      const expected = units.reduce((s, u) => s + (UNITS[u.type].upkeepPerMinute[k] ?? 0), 0);
+      expect(eco.upkeep[k], k).toBeCloseTo(expected, 9);
+    }
+    expect(eco.upkeep.materials).toBeGreaterThan(0);
+    expect(eco.upkeep.manpower).toBeGreaterThan(0);
   });
 
   it('building deducts its cost and improves production when complete', () => {
@@ -151,5 +155,41 @@ describe('resource accounting', () => {
     run(state, 120);
     expect(state.nations.fr.resources.money).toBe(0);
     expect(state.nations.fr.shortages.money).toBe(true);
+  });
+
+  it('running out of materials or manpower flags a shortage, which clears (absent) once the stockpile recovers', () => {
+    const state = quietGame();
+    for (const id of world.provinceIds) if (state.provinces[id].owner === 'fr') state.provinces[id].owner = 'de';
+    state.provinces['fr-paris'].owner = 'fr';
+    const army = place(state, 'fr', 'fr-paris', { artillery: 40 }); // eats more materials and manpower than Paris makes
+    state.nations.fr.resources.materials = 1;
+    state.nations.fr.resources.manpower = 1;
+    run(state, 120);
+    expect(state.nations.fr.shortages.materials).toBe(true);
+    expect(state.nations.fr.shortages.manpower).toBe(true);
+    expect(state.events.filter((e) => e.kind === 'shortage').length).toBe(2);
+    delete state.armies[army.id];
+    run(state, 120);
+    expect('materials' in state.nations.fr.shortages).toBe(false);
+    expect('manpower' in state.nations.fr.shortages).toBe(false);
+  });
+
+  it('out of manpower, wounded units regain no strength', () => {
+    const heal = (short: boolean) => {
+      const state = quietGame();
+      clearArmies(state);
+      const army = place(state, 'fr', 'fr-paris', { infantry: 1 });
+      army.units[0].strength = 0.5;
+      if (short) {
+        // A huge army elsewhere eats more manpower than France makes.
+        place(state, 'fr', 'fr-nord', { infantry: 400 });
+        state.nations.fr.resources.manpower = 0;
+      }
+      run(state, 30);
+      expect(state.nations.fr.shortages.manpower === true).toBe(short);
+      return state.armies[army.id].units[0].strength;
+    };
+    expect(heal(false)).toBeGreaterThan(0.5);
+    expect(heal(true)).toBe(0.5);
   });
 });
