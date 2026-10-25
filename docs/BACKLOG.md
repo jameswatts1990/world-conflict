@@ -51,6 +51,9 @@ rock-paper-scissors without names or art, and the AI could be smarter.
 - [x] Artwork: drawn silhouettes per unit type and generation, national palettes and insignia
 - [x] Supplied WWI line infantry model: sixteen map directions and a portrait for cards, rows and counters;
       one shared uniform, with nation identity retained through badges and ownership rings
+- [x] Import the remaining SINNON unit models, pair mountain troops with their pack mule, and share the supplied
+      art across all eras for now; keep recipes and a unit/era mapping for later replacements
+- [ ] Supply and map era-specific unit models as the roster expands
 
 ### 2.2 Morale
 

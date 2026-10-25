@@ -1,14 +1,14 @@
 // Unit artwork: an illustration for unit cards ('full')
 // and a bold single silhouette for map counters ('icon'), coloured per nation
-// and redrawn per technology generation. WWI line infantry uses the supplied
-// model's baked portrait, with the owning nation's badge on full-size cards.
+// and redrawn per technology generation. Imported models use baked portraits,
+// with the owning nation's badge on full-size cards.
 import type { JSX, ReactElement } from 'react';
 import { makeCtx, type Ctx } from './context';
 import { drawCavalry } from './cavalryArt';
 import { drawAntiTank, drawArtillery, drawHeavyArtillery } from './gunsArt';
 import { ICONS } from './iconsArt';
 import { CornerBadge, drawInfantry, drawMountain, drawStormtroopers } from './infantryArt';
-import { INFANTRY_PORTRAIT } from './InfantryAsset';
+import { unitAssetPortrait } from './UnitAssets';
 import { drawHeavyTank, drawLightTank, drawTank, drawTankDestroyer } from './tanksArt';
 import { resolveArtGen, type ArtGen, type ArtNation, type ArtUnitType } from './types';
 import { drawArmouredCar, drawMotorised } from './vehiclesArt';
@@ -50,6 +50,7 @@ export interface UnitArtProps {
 export function UnitArt({ type, gen, nation, accent, width, variant = 'full', className, title }: UnitArtProps): JSX.Element {
   const icon = variant === 'icon';
   const drawGen = resolveArtGen(type, gen);
+  const portrait = unitAssetPortrait(type, drawGen);
   const ctx = makeCtx(nation, drawGen, icon, accent);
   const vw = icon ? 40 : 96;
   const vh = icon ? 24 : 60;
@@ -65,9 +66,9 @@ export function UnitArt({ type, gen, nation, accent, width, variant = 'full', cl
       aria-label={title ?? `${nation} ${type} (${drawGen})`}
     >
       {title && <title>{title}</title>}
-      {type === 'infantry' && drawGen === 'ww1' ? (
-        <g data-infantry-asset="wwi-v1">
-          <image href={INFANTRY_PORTRAIT} x={0} y={0} width={vw} height={vh} />
+      {portrait ? (
+        <g data-unit-asset={type}>
+          <image href={portrait} x={0} y={0} width={vw} height={vh} />
           {!icon && <CornerBadge ctx={ctx} />}
         </g>
       ) : (icon ? ICONS : FULL)[type](ctx)}

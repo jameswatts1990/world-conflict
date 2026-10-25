@@ -30,8 +30,11 @@ What is in it (Milestone 2, Depth):
 - **Cities** that grow through five tiers with building slots and 18 buildings. Zoomed in, each city on the map is a
   web of streets with a small 3D model of everything it holds standing on it (barracks, factories, a tank works, empty
   plots for free slots), and seaside cities have a port on the coast; the city view adds a skyline.
-- **3D armies**: zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
-  lorries, tanks) in its nation's uniforms, paint and flag. Armies gather around their city, march along the roads
+- **3D armies**: supplied SINNON models cover all thirteen unit types, rendered into sixteen map directions and
+  portraits. Models are shared across eras for now; flags and ownership rings identify nations. See
+  [Adding unit art](docs/ADDING_UNIT_ART.md) for the import pipeline and future era variants.
+  Zoomed in, every army is a small 3D model of its main unit (a squad under its flag, horsemen, guns,
+  lorries, tanks) under its nation's flag. Armies gather around their city, march along the roads
   facing the way they go, and cross the sea in troopships.
 - A **60-technology research tree** across four eras with slots, a queue and a classic tree view.
 - **Fog of war**: you see your own land, wherever your armies stand, and one province around them (cavalry and

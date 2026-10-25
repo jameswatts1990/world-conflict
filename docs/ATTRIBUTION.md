@@ -17,9 +17,28 @@ blender --background --threads 4 --python scripts/art/render-infantry.py
 The script imports the GLB directly; it does not run the asset generator's Python script. It renders a three-man
 squad in sixteen headings using the map's projection and a single figure for unit cards and compact icons.
 The images in `src/assets/units/wwi-infantry/` have transparent backgrounds and a fixed ground anchor across
-headings. All nations share this WWI uniform; the game retains national badges and ownership rings. Later
-infantry generations and other unit types retain their existing artwork. No Blender installation or model
-download is needed for ordinary development, production builds or gameplay.
+headings. This model is now shared across all infantry eras and nations, with national badges and ownership
+rings retained. No Blender installation or model download is needed for ordinary development, production
+builds or gameplay.
+
+## Remaining unit models
+
+James supplied thirteen distinct GLBs exported from the SINNON desktop asset generator: assault infantry,
+mountain troops, pack mule, cavalry, motorised infantry, armoured cars, field artillery, heavy siege artillery,
+anti-tank guns, light tanks, battle tanks, heavy tanks and tank destroyers. The second siege-artillery upload was
+byte-for-byte identical and is not stored twice. Unlike the earlier infantry ZIP, these uploads did not include
+separate provenance or licence documents; no additional licensing claims are inferred here.
+
+The original files and their embedded textures are retained unchanged under `scripts/art/sources/<asset>/model.glb`.
+`scripts/art/sources/imported-units.json` records their original filenames, byte sizes and SHA-256 hashes. The
+pack mule is combined with mountain troops rather than introduced as a separate gameplay unit. All models are
+static. For now each unit's model is shared across its equipment eras and nations, with national identity in
+badges and rings and gameplay statistics unchanged.
+
+Rebuild with `blender --background --threads 4 --python scripts/art/render-unit-assets.py`. Recipes control
+formations, scale and facing; the renderer writes PNGs and fixed ground anchors in `src/assets/units/frames.json`.
+Only these images ship to the browser. See [Adding unit art](ADDING_UNIT_ART.md) for individual rebuilds and era
+overrides. No uploaded generation scripts are executed.
 
 ## Map geometry
 
