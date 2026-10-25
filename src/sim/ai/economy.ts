@@ -140,9 +140,11 @@ export function handleConstruction(ctx: Ctx): void {
       // Behind the lines, land earns: whichever economy building eases the shortest resource.
       if (!frontier && threat === 0) {
         const bias = 1 + ctx.mem.economyBias;
-        add('farm', (L.farm + need('manpower') * L.need) * outputFactor);
-        add('tradingPost', (L.tradingPost * bias + need('money') * L.need) * outputFactor);
-        add('workshops', (L.workshops + need('materials') * L.need) * outputFactor);
+        // Each one already standing makes another less attractive, so the land's economy is spread across them.
+        const spread = (b: BuildingType) => 1 / (1 + held(b) * L.spread);
+        add('farm', (L.farm + need('manpower') * L.need) * outputFactor * spread('farm'));
+        add('tradingPost', (L.tradingPost * bias + need('money') * L.need) * outputFactor * spread('tradingPost'));
+        add('workshops', (L.workshops + need('materials') * L.need) * outputFactor * spread('workshops'));
         add('oilWells', (L.oilWells + need('fuel') * L.need) * outputFactor);
         if (held('fieldStation') < BUILDING_EFFECTS.fieldStationMax) add('fieldStation', L.fieldStation * bias);
       }

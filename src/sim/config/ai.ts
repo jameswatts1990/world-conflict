@@ -183,7 +183,7 @@ export const AI = {
    * military or infrastructure need scoring at least `replaceScore`, and only if it is an economy or civic one.
    */
   land: {
-    farm: 4,
+    farm: 8,
     tradingPost: 7,
     workshops: 5,
     oilWells: 20,
@@ -195,6 +195,8 @@ export const AI = {
     fieldHospital: 9,
     fieldHospitals: 3,
     replaceScore: 12,
+    /** Each farm, trading post or workshop already held divides the score of another by (1 + this). */
+    spread: 0.15,
   },
   /** Danger to the capital from hostile armies two connections away, relative to those next door. */
   capitalDepth: 0.5,
