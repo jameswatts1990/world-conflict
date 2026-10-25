@@ -1063,6 +1063,10 @@ kbd {
   fill: #fff;
   text-anchor: middle;
 }
+/* Zoomed out, an army is a chip: its owner's colour and its number of formations. */
+.army-chip .army-count {
+  font-size: 11px;
+}
 .army-select {
   fill: none;
   stroke: #ffcf5a;
