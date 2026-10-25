@@ -191,12 +191,18 @@ npx vite-node scripts/dev/ai-report.ts 10 90
 npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 ```
 
+The pathology and variety figures below are these two commands' results (ten seeds of 90 minutes; Easy with an idle
+France) with this report on the simulation at `c16c07c` (October 2026). The winner and challenge figures further
+down come from earlier runs and were not remeasured with them.
+
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
-  pile-on attacks under 1% (about 0.2% at Normal, 0.0% at Easy, counting deliberate support to weak captures). Armies
-  idle in the interior run at about 10% at Normal, mostly capital garrisons in capitals with no foreign border
-  (Easy higher by design, about 17%).
+  pile-on attacks under 1% (about 0.1% at both levels, counting deliberate support to weak captures), orders
+  into a co-belligerent's uncontested capture (arriving stronger restarts it) about 0.2% at Normal and 0% at Easy. Armies
+  idle in the interior (no foreign border next to their province or to any land of its city's region) run at about
+  10% at Normal, mostly capital garrisons in capitals with no foreign border during a war and armies at home in
+  peacetime (Easy about 13%, mostly in peacetime: its wars come later).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
-  counting timing (currently 20% and 10% at Normal, 10% and 6% at Easy), and who fights the first war.
+  counting timing (about 20% and 8% at Normal, 17% and 8% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at

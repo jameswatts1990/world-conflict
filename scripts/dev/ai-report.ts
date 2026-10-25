@@ -11,6 +11,7 @@
 import {
   EUROPE_SCENARIO,
   Simulation,
+  areAllies,
   buildWorld,
   createInitialState,
   hostileArmiesIn,
@@ -19,6 +20,7 @@ import {
   type AiOrderTrace,
   type NationId,
 } from '../../src/sim';
+import { isInterior } from './interior';
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -60,6 +62,9 @@ for (let seed = 1; seed <= seeds; seed++) {
     last.set(t.armyId, t);
     if (s.provinces[t.from].capture?.by === t.nation) add('abandoned');
     if (t.reason === 'attack' && s.provinces[t.to].capture?.by === t.nation && hostileArmiesIn(s, world, t.to, t.nation).length === 0) add('pileOn');
+    // Into a co-belligerent's uncontested capture: arriving stronger takes the lead, and the capture starts again.
+    const by = s.provinces[t.to].capture?.by;
+    if (by && areAllies(s, t.nation, by) && hostileArmiesIn(s, world, t.to, by).length === 0) add('intoCoBelligerent');
     if (!prev || t.tick - prev.tick > REVERSAL_WINDOW || prev.to !== t.from) return;
     if (t.reason === 'retreat' && (prev.reason === 'attack' || prev.reason === 'strike')) add('failedAttack');
     else if (t.to === prev.from && prev.reason !== 'retreat') add('reversal');
@@ -106,8 +111,7 @@ for (let seed = 1; seed <= seeds; seed++) {
       if (a.owner === 'neutral' || a.owner === human) continue;
       add('armyMinutes');
       if (!a.supplied) add('unsuppliedMinutes');
-      const interior = s.provinces[a.province].owner === a.owner && world.neighbors[a.province].every((n) => s.provinces[n.id].owner === a.owner);
-      if (!a.move && interior) add('idleRearMinutes');
+      if (!a.move && isInterior(world, s, a.province, a.owner)) add('idleRearMinutes');
     }
   }
   setAiOrderTrace(null);
@@ -125,8 +129,9 @@ console.log(`  move orders                ${count.orders ?? 0} (${((count.orders
 console.log(`  back-and-forth reversals   ${per('reversal', 'orders')}% of orders (A→B→A within ${REVERSAL_WINDOW / 60} min, not counting retreats)`);
 console.log(`  captures abandoned         ${per('abandoned', 'orders')}% of orders`);
 console.log(`  pile-on attacks            ${per('pileOn', 'orders')}% of orders (into a province already falling uncontested)`);
+console.log(`  co-belligerent's capture   ${per('intoCoBelligerent', 'orders')}% of orders (into a province a co-belligerent is taking uncontested)`);
 console.log(`  attack then retreat        ${per('failedAttack', 'orders')}% of orders`);
-console.log(`  idle in the interior       ${per('idleRearMinutes', 'armyMinutes')}% of army-minutes (no border at all)`);
+console.log(`  idle in the interior       ${per('idleRearMinutes', 'armyMinutes')}% of army-minutes (no border at all in its city's region)`);
 console.log(`  out of supply              ${per('unsuppliedMinutes', 'armyMinutes')}% of army-minutes; ${count.attrition ?? 0} armies starved, ${count.disband ?? 0} disband orders`);
 
 console.log('\nVariety (first province each power captures, across seeds)');
