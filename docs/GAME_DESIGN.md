@@ -31,8 +31,8 @@ espionage, naval and air warfare, later eras, multiplayer.
 - **Nine playable nations:** the great powers United Kingdom, France, Germany, Italy, Spain, Poland and Hungary,
   and the major powers Romania and Serbia. The human picks one; the AI plays the rest. The theatre's south-eastern
   edge follows Romania's and Serbia's borders.
-- **Ten minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal and
-  Slovenia, one province each, and Slovakia and Croatia, two each; always computer-controlled. They are there to
+- **Eleven minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal and
+  Slovenia, one province each, and Slovakia, Croatia and Ireland, two each; always computer-controlled. They are there to
   be conquered, at a price. They recruit, research, defend themselves and make peace, but **never start a war and
   never win** (§10); invading one means declaring war on it. Every minor capital is fortified (level 2,
   Switzerland's mountain redoubt 3) and starts with six infantry divisions, which the AI tops up to about seven or
@@ -40,7 +40,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   to fourteen units with artillery take it in three to five minutes while losing 40–60% of their strength
   (Switzerland needs about sixteen). The engine still supports neutral states (garrisoned, never attack, open to
   invasion without war); this scenario has none.
-- **69 cities, each a province of its own, among 181 provinces of land round them** (250 provinces). Each
+- **71 cities, each a province of its own, among 185 provinces of land round them** (256 provinces). Each
   region (a row of the scenario: a city and the land round it, merged from Natural Earth admin-1 regions) is
   divided into two to seven lands all round its city, as in Conflict of Nations: no land wraps round a city;
   every city stands where two or three lands meet, the borders between them running out from it, and a road out
@@ -62,24 +62,26 @@ espionage, naval and air warfare, later eras, multiplayer.
   the plain or hills it stands in), the region's secondary towns that lie in them (place names only: the map does not draw them, and the generator keeps borders clear of them) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
   none yet.
-- **Movement connections** are written between rows (a city with its lands): 127 land, 21 mountain passes and
-  11 sea crossings. The generator turns them into links between provinces (`land.ts`): every two lands of
+- **Movement connections** are written between rows (a city with its lands): 129 land, 21 mountain passes and
+  12 sea crossings. The generator turns them into links between provinces (`land.ts`): every two lands of
   neighbouring regions that share a border are linked (by land or a pass, as the connection says), a sea
   crossing joins the two lands with the nearest coasts, and inside a region every two lands that share a border
-  are linked, and the city to each land it touches, its only ways in or out (564 links: 142 from cities to their
-  lands, 137 within regions and 285 between them). Connections are authored data, separate from the map shapes:
+  are linked, and the city to each land it touches, its only ways in or out (575 links: 146 from cities to their
+  lands, 139 within regions and 290 between them). Connections are authored data, separate from the map shapes:
   the generator refuses a map where two regions share a border without a land or mountain connection, or have
   one without a border, and a test checks every link against the shapes (`scripts/map/check-borders.ts` prints
   the report for the regions). Every link is a road on the map that runs from one province's anchor (its centre,
   where its armies stand) to the other's over those two provinces alone, crossing their border once and never
   through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
   over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
-  within 3 km of anything else, the road bends round it (156 of the 564 do). Only two roads find no clean way, as
+  within 3 km of anything else, the road bends round it (158 of the 575 do). Only two roads find no clean way, as
   the shapes stand: the Alcarria, east of Madrid, reaches Valencia only at the Rincón de Ademuz, Valencia's exclave
   beyond Aragon, and Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; the
   scenario test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
-  powers as neighbours, so France is not the only target for Britain, Italy and Spain.
+  powers as neighbours, so France is not the only target for Britain, Italy and Spain. Ireland borders Northern
+  Ireland by land and lies one short crossing from Wales (the Irish Sea, Dublin–Cardiff), so Britain can reach it two
+  ways and Ireland is not a dead end behind Ulster; no crossing joins it to France.
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -93,7 +95,7 @@ broadly balanced:
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
 | Minor | No (computer-controlled; never wins) | 70 / 35 / 20 | 6 units behind level-2 forts | Capital 1 | 1–2 |
 
-Europe has seven great powers, two major powers and ten minor powers. Each great power has one oil province, the same city ladder (one
+Europe has seven great powers, two major powers and eleven minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
 in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). Major powers keep the same share of income on starting upkeep; minor powers spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
@@ -385,7 +387,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 51 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
+- **Objectives:** 52 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
   heartlands 1, minor-power capitals 1). Holding **40% (21 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 2 × cities + 1 × the land round each city +
   2 × technologies, each land scoring its share of its city's land (a city and its lands together score what one
@@ -399,7 +401,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 The AI uses only the public command API, is deterministic through the seeded RNG, thinks every 8 s, and has a
 personality drawn from the seed: aggression (0.35–0.95), economy bias (0.3–0.8), a **doctrine** (armour, infantry or
 artillery), two **claims** and an **opening**, so that each campaign plays differently. Claims are cities whose land borders
-its own that it covets (an island power has none): a claimed province is worth as much to it as lost core land, and a power
+its own that it covets (an island power has none; Britain's one land border, in Ulster, leaves it only Dublin): a claimed province is worth as much to it as lost core land, and a power
 holding one is a likelier war target. The opening sets how it begins: *strike* starts wars of opportunity as soon as
 the grace period allows, *expand* keeps the peace 1.5 times as long and takes neutral states first, *build* keeps the
 peace twice as long and leaves neutrals alone 1.5 times as long. The bullets describe Normal difficulty.

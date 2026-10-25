@@ -68,6 +68,8 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   { id: 'sk', name: 'Slovakia', adjective: 'Slovak', color: '#3a9c96', capital: 'sk-bratislava', power: 'minor', bloc: 'central' },
   { id: 'si', name: 'Slovenia', adjective: 'Slovenian', color: '#d4a13a', capital: 'si-ljubljana', power: 'minor', bloc: 'central' },
   { id: 'hr', name: 'Croatia', adjective: 'Croatian', color: '#6f5aa8', capital: 'hr-zagreb', power: 'minor', bloc: 'central' },
+  // Ireland: two provinces; the Free State's army was armed from British stocks.
+  { id: 'ie', name: 'Ireland', adjective: 'Irish', color: '#62a84a', capital: 'ie-dublin', power: 'minor', bloc: 'western' },
 ];
 
 export const NATIONS: NationDef[] = base.map((n) => ({ ...n, speciality: SPECIALITIES[n.id], identity: nationIdentity(n.bloc, IDENTITIES[n.id]) }));

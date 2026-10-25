@@ -296,8 +296,8 @@ describe('AI personalities', () => {
           expect(landsOf(pid).some((land) => world.neighbors[land].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n))).toBe(true);
         }
       }
-      // An island power has no land border to claim across.
-      expect(state.nations.uk.ai!.claims).toEqual([]);
+      // Britain's only land border is Ireland's, in Ulster: Dublin is all it can claim (never across the sea).
+      expect(state.nations.uk.ai!.claims).toEqual(['ie-dublin']);
     }
     expect(drawn.size).toBeGreaterThan(world.nationIds.length * 3);
   });

@@ -215,6 +215,14 @@ export const ROWS: ProvinceRow[] = [
     lands: { 'nw2': { name: 'Zadar & Lika' }, 'nw3': { name: 'Istria' }, e: { name: 'Dubrovnik' }, nw: { name: 'Šibenik' } },
     towns: [['Rijeka', 14.442, 45.327], ['Zadar', 15.261, 44.129], ['Dubrovnik', 18.094, 42.65], ['Pula', 13.85, 44.868]] },
 
+  // Ireland: Leinster and the Border counties round Dublin, Munster and Connacht round Cork
+  { id: 'ie-dublin', name: 'Leinster & the Border', core: 'ie', terrain: 'plains', tier: 'capital', city: { name: 'Dublin', coord: [-6.26, 53.35], size: 'capital' }, pop: 1400,
+    lands: { sw: { name: 'Midlands & the South-East', article: 'the' }, nw: { name: 'Border Counties', article: 'the' } },
+    towns: [['Dundalk', -6.405, 54.004], ['Kilkenny', -7.252, 52.654], ['Athlone', -7.94, 53.423], ['Wexford', -6.458, 52.336], ['Sligo', -8.476, 54.27]] },
+  { id: 'ie-cork', name: 'Munster & Connacht', core: 'ie', terrain: 'hills', tier: 'town', city: { name: 'Cork', coord: [-8.47, 51.898], size: 'town' }, pop: 220,
+    lands: { n: { name: 'Connacht & the Shannon' }, w: { name: 'Kerry' } },
+    towns: [['Limerick', -8.63, 52.664], ['Galway', -9.049, 53.274], ['Tralee', -9.702, 52.271], ['Ennis', -8.983, 52.844]] },
+
   // Minor powers: one province each, computer-controlled. Their cities keep the sizes they had as neutral
   // states, and the old border forts stand.
   { id: 'be-brussels', name: 'Belgium & Luxembourg', core: 'be', terrain: 'plains', tier: 'capital', cityTier: 3, city: { name: 'Brussels', coord: [4.352, 50.85], size: 'capital' }, pop: 2100,

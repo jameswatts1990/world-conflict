@@ -194,6 +194,11 @@ export const CONNECTIONS: ConnectionDef[] = [
   mountain('sk-kosice', 'pl-silesia', 'Beskids'),
   mountain('sk-kosice', 'pl-lesser', 'Tatras'),
 
+  // Ireland
+  land('ie-dublin', 'ie-cork'),
+  land('ie-dublin', 'uk-ulster'),
+  strait('ie-dublin', 'uk-west', 'Irish Sea crossing'),
+
   // Between the minor powers
   land('be-brussels', 'nl-amsterdam'),
   land('at-vienna', 'cz-prague'),

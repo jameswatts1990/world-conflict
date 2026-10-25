@@ -172,6 +172,7 @@ const REGION_ALIAS: Record<string, string> = {
   hr: 'it',
   rs: 'it',
   ro: 'de',
+  ie: 'uk',
 };
 
 function regionOf(seed: string): Region {
@@ -1032,6 +1033,8 @@ const NATIONAL_LANDMARKS: Record<string, LandmarkKind> = {
   // The Kalemegdan fortress over the confluence; the Athenaeum's dome.
   'rs-belgrade': 'castle',
   'ro-bucharest': 'dome',
+  // The Custom House's dome on the Liffey.
+  'ie-dublin': 'dome',
 };
 
 function landmark(l: Lot, kind: LandmarkKind, ctx: Ctx): void {
