@@ -365,10 +365,27 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [ ] Group minor powers in Diplomacy and on the results screen once there are many
 - [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
 - [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
+- [x] Balkans and Greece: Bulgaria and Greece as major powers; Bosnia & Herzegovina, Montenegro, Albania and
+      North Macedonia as minor powers; Kosovo folded into Serbia's southern region
+      (26 nations, 86 regions, 62 VP, including Ireland)
+- [x] Balkan frontier passes and lowland corridors, named lands and towns, six flags, Na nozh! and Evzone specialities
+- [x] Greek administrative units split by physical shore where necessary, keeping land roads out of the Gulf of Patras
+- [ ] Rivers as defensive lines: model Danube, Sava and Drina crossings and bridges. The Mačva/lower Drina
+      lowlands share the ba-sarajevo–rs-sumadija row pair with the Zlatibor mountains, so that border currently
+      uses a mountain link throughout; distinguish the lowland crossing when the system supports it.
+- [ ] Replace the Neum coastal-road exception with proper transport or transit rules when those systems exist
 - [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
 - [x] A map frame ready for a wider theatre: one scale whatever the theatre's size, the frame grown round it, zooms
       measured against a fixed reference view, and full detail within 4° of the theatre wherever it reaches (today's
       map unchanged, `map.topo.json` byte for byte)
+- [x] Ireland, a two-province minor power: a land border with Northern Ireland and the Irish Sea crossing to Wales.
+      Over 200 all-AI campaigns against main, Britain goes to war with it in nearly all of them (Dublin is its only
+      claim), at about minute 16, and takes Dublin in half of them, a median of 37 minutes after declaring war;
+      Ireland lasts the campaign in a third, and Britain still wins 8% (9% before). Measured and left out: Ulster alone
+      (Britain wins 4%, bogged down behind the North Channel) and a Celtic Sea crossing to Brittany (France takes Irish
+      land in half the campaigns)
+- [x] Minor powers may strike back into thinly held neighbours once at war (Ireland takes Belfast in about half the
+      campaigns, Portugal Galicia): kept by design, as it punishes a border left bare
 - [ ] Eastern-bloc nations east of Poland and Romania
 - [ ] A projection for the far north before Scandinavia (Mercator draws a kilometre at 71°N twice as long as at 48°N)
 - [ ] A nation picker that scales past a dozen nations (pick on the map)

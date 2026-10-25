@@ -22,7 +22,7 @@ the starting buildings and army.
 | `minor` | No: always computer-controlled, never wins | 70 / 35 / 20 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | 1–2 |
 
 Major powers spend the same share of income on army upkeep at the start as a great power (about a sixth); minor
-powers spend about a quarter. Europe has seven great powers, two major powers (Romania and Serbia) and ten minor
+powers spend about a quarter. Europe has seven great powers, four major powers (Romania, Serbia, Bulgaria and Greece) and fifteen minor
 powers. Minor powers are real nations: they have an economy, research, recruit, defend themselves and make peace,
 and the AI plays them. They never start a war and never win (only great and major powers count for victory), and
 players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
@@ -81,6 +81,13 @@ its whole country:
 { id: 'ro-moldavia', country: 'ROU', names: ['Bacau', 'Botosani', 'Iasi', 'Neamt', 'Suceava', 'Vaslui'] },
 { id: 'si-ljubljana', country: 'SVN', whole: true },   // a one-province minor power
 ```
+
+Several source rules can share an id. When one source country is folded into another (Kosovo into `rs-south`),
+give that rule `iso: 'SRB'`: its admin units and final province shapes retain the owning country's ISO tag.
+No separate Kosovo world shape or label remains. An admin unit with detached pieces on opposite shores can
+have an earlier `southOf` rule: it matches polygon parts whose bounding-box middle lies south of that latitude.
+Only that named unit is exploded into polygon parts. Greece uses this for Attica's detached Peloponnese land
+and Western Greece's two shores, avoiding land roads across the Gulf of Patras. This does not cut polygons.
 
 Then `npm run map:build`. It fails if a rule matches nothing, and it tags every province with its country so the
 UI knows which countries the theatre covers. No list needs updating by hand. Its second step
@@ -144,6 +151,12 @@ npx vite-node scripts/map/check-borders.ts ro rs   # only pairs involving these 
 Give a border its real character: Romania's Banat meets southern Serbia along the Danube gorge at the Iron Gates,
 so that link is a `mountain` pass, not open `land`.
 
+A connection also shapes the lands at both ends: the generator cuts a region's land away from the roads out of its
+city, sea crossings included. A new strait can therefore redraw, and rename, the lands of the row it reaches (a
+Celtic Sea crossing from Cork turned Brittany & the Loire's `ne` land into `n` and moved its borders). After adding
+one, check that `git diff src/sim/scenario/europe/land.ts` touches only the rows you meant to, and rename the lands
+if not.
+
 ### 4. The nation ★ — `src/sim/scenario/europe/nations.ts`
 
 ```ts
@@ -179,9 +192,15 @@ npx vite-node scripts/art/contact-sheet.tsx out.html --nations central   # the b
 npm run balance -- --vs main   # 200 campaigns each, before and after: how the newcomer and its neighbours fare
 ```
 
+If PowerShell blocks `npm.ps1` or `npx.ps1`, use `npm.cmd` and `npx.cmd`. The screenshot helper launches Vite directly;
+set `SCREEN_PORT` if another session is using its default port 5199.
+
 The balance run ([BALANCE.md](BALANCE.md)) is the check the tests cannot make: whether the newcomer survives and wins
 about as often as the other nations of its tier, and what it does to its neighbours. It needs no changes for a new
-country: nations, tiers and content all come from the scenario.
+country: nations, tiers and content all come from the scenario. Measure each new sea crossing as a variant (with and
+without it), and watch for a power that gains its first land border: its AI draws its claims from the cities across
+its land borders, so an island power with one neighbour claims that neighbour's city in every campaign (Britain and
+Dublin, since Ireland was added).
 
 The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
 inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the

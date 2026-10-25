@@ -80,9 +80,10 @@ function withoutIslets(geometry, min) {
   return kept.length === 1 ? { type: 'Polygon', coordinates: kept[0] } : { type: 'MultiPolygon', coordinates: kept };
 }
 
-function matchRule(props) {
+function matchRule(props, geometry) {
   for (const rule of PROVINCE_SOURCES) {
     if (props.adm0_a3 !== rule.country) continue;
+    if (rule.southOf !== undefined && middle(geometry)[1] >= rule.southOf) continue;
     const name = props.name;
     const region = props.region;
     if (rule.whole) {
@@ -130,7 +131,15 @@ async function buildMap() {
   const used = new Map();
   const features = [];
   let unit = 0;
-  const units = admin1.features.filter((f) => f.properties.adm0_a3 !== 'ATA').map((f) => ({ f, rule: matchRule(f.properties) }));
+  // Some admin units span separate shores. Only explicitly split units are exploded:
+  // the remaining countries keep exactly the same simplification and grouping.
+  const sourceFeatures = admin1.features.flatMap((f) => {
+    const split = PROVINCE_SOURCES.some((r) => r.country === f.properties.adm0_a3 && r.southOf !== undefined && r.names?.includes(f.properties.name));
+    return split && f.geometry.type === 'MultiPolygon'
+      ? f.geometry.coordinates.map((coordinates) => ({ ...f, geometry: { type: 'Polygon', coordinates } }))
+      : [f];
+  });
+  const units = sourceFeatures.filter((f) => f.properties.adm0_a3 !== 'ATA').map((f) => ({ f, rule: matchRule(f.properties, f.geometry) }));
   const theatre = units.filter((u) => u.rule).map((u) => middle(u.f.geometry));
   for (const { f, rule } of units) {
     const p = f.properties;
@@ -152,7 +161,7 @@ async function buildMap() {
   for (const id of expected) {
     if (!used.has(id)) throw new Error(`Province source rule matched nothing: ${id}`);
   }
-  console.log(`theatre: ${[...used.values()].reduce((a, b) => a + b, 0)} admin-1 units -> ${expected.size} provinces`);
+  console.log(`theatre: ${[...used.values()].reduce((a, b) => a + b, 0)} admin-1 parts -> ${expected.size} provinces`);
 
   const input = { 'admin1.json': { type: 'FeatureCollection', features } };
   const cmd = [

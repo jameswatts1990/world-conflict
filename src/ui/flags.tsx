@@ -23,11 +23,14 @@ const STRIPED: Record<string, FlagStripes> = {
   be: { dir: 'v', colors: ['#151515', '#fdda24', '#ef3340'] },
   nl: { dir: 'h', colors: ['#ae1c28', '#f4f4f4', '#21468b'] },
   at: { dir: 'h', colors: ['#c8102e', '#f4f4f4', '#c8102e'] },
+  bg: { dir: 'h', colors: ['#f4f4f4', '#00966e', '#d62612'] },
+  gr: { dir: 'h', colors: ['#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf', '#f4f4f4', '#0d5eaf'] },
   ro: { dir: 'v', colors: ['#002b7f', '#fcd116', '#ce1126'] },
   rs: { dir: 'h', colors: ['#c6363c', '#0c4076', '#f4f4f4'] },
   sk: { dir: 'h', colors: ['#f4f4f4', '#0b4ea2', '#ee1c25'] },
   si: { dir: 'h', colors: ['#f4f4f4', '#005da4', '#ed1c24'] },
   hr: { dir: 'h', colors: ['#d4172a', '#f4f4f4', '#171796'] },
+  ie: { dir: 'v', colors: ['#169b62', '#f4f4f4', '#ff883e'] },
 };
 
 function stripes({ dir, colors }: FlagStripes): ReactElement {
@@ -60,8 +63,43 @@ function chequy(x: number, y: number, size: number): ReactElement {
   );
 }
 
+/** Small heraldic eagle, legible at flag scale. */
+function eagle(fill: string): ReactElement {
+  return <path d="M15 7L12 4L10 4L11 6L13 7L12 9L8 6L5 6L8 9L5 9L9 12L12 12L10 16L15 14L20 16L18 12L21 12L25 9L22 9L25 6L22 6L18 9L17 7L19 6L20 4L18 4Z" fill={fill} />;
+}
+
 const FLAGS: Record<string, ReactElement> = {
   ...Object.fromEntries(Object.entries(STRIPED).map(([id, s]) => [id, stripes(s)])),
+  gr: (
+    <>
+      {stripes(STRIPED.gr)}
+      <rect width={11.1} height={11.1} fill="#0d5eaf" />
+      <path d="M5.55 0V11.1M0 5.55H11.1" stroke="#f4f4f4" strokeWidth={2.22} />
+    </>
+  ),
+  ba: (
+    <>
+      <rect width={W} height={H} fill="#002395" />
+      <path d="M7 0H24V20Z" fill="#fecb00" />
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => <path key={i} d="M0 -1.5L0.4 -0.45L1.5 -0.45L0.65 0.2L1 1.3L0 0.65L-1 1.3L-0.65 0.2L-1.5 -0.45L-0.4 -0.45Z" transform={'translate(' + (5 + i * 3) + ' ' + (1 + i * 3) + ')'} fill="#fff" />)}
+    </>
+  ),
+  me: (
+    <>
+      <rect width={W} height={H} fill="#d4af37" />
+      <rect x={1.4} y={1.4} width={27.2} height={17.2} fill="#c40308" />
+      {eagle('#d4af37')}
+      <rect x={13.2} y={8} width={3.6} height={4.8} fill="#235496" />
+    </>
+  ),
+  al: (<><rect width={W} height={H} fill="#e41e20" />{eagle('#111')}</>),
+  mk: (
+    <>
+      <rect width={W} height={H} fill="#d20000" />
+      <path d="M15 10L12 0H18ZM15 10L30 0H26ZM15 10L30 8V12ZM15 10L30 20H26ZM15 10L12 20H18ZM15 10L0 20H4ZM15 10L0 8V12ZM15 10L0 0H4Z" fill="#ffe600" />
+      <circle cx={15} cy={10} r={3.5} fill="#ffe600" stroke="#d20000" strokeWidth={1} />
+    </>
+  ),
   // Stripes shared with another flag: their shields tell them apart (the 3D models fly the stripes alone).
   sk: (
     <>

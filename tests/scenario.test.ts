@@ -31,6 +31,19 @@ describe('scenario data', () => {
     expect([...shapeIds].sort()).toEqual([...world.provinceIds].sort());
   });
 
+  it('folds Kosovo into Serbia without a separate country outline or label', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const shapes = topo.objects.provinces.geometries;
+    const south = shapes.filter((g: { properties: { pid: string } }) => g.properties.pid === 'rs-south' || g.properties.pid.startsWith('rs-south-'));
+    expect(south.length).toBeGreaterThan(1);
+    expect(south.every((g: { properties: { iso: string } }) => g.properties.iso === 'SRB')).toBe(true);
+    expect(topo.objects.countries.geometries.some((g: { properties: { iso: string } }) => g.properties.iso === 'KOS')).toBe(false);
+    const provinces = feature(topo, topo.objects.provinces) as unknown as { features: Feature<Polygon | MultiPolygon, { pid: string; iso: string }>[] };
+    const pristina = provinces.features.find((p) => geoContains(p, [21.163, 42.663]));
+    expect(pristina?.properties.pid).toMatch(/^rs-south-/);
+    expect(world.nationIds).not.toContain('kos');
+  });
+
   it('the world underlay shares the provinces\' coasts and never lies under the theatre', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
     // One topology for both layers: shared coasts and borders are the very same arcs.
@@ -71,6 +84,7 @@ describe('scenario data', () => {
     // what it must), and why. Any other road that strays is a map to fix or a road to route again.
     const lastResort: Record<string, string> = {
       'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
+      'me-podgorica-n|hr-dalmatia-e': 'the Dubrovnik coast is cut off from the rest of Dalmatia by Bosnia at Neum; the coastal road crosses that short gap',
       'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);

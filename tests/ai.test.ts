@@ -86,6 +86,8 @@ describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficult
   function captureFront(reserveInfantry = 10) {
     const state = soloAi('es');
     state.settings.difficulty = difficulty;
+    // Spain's personality is drawn from the seed and shifts whenever a nation joins the roster: fix it here.
+    Object.assign(state.nations.es.ai!, { aggression: 0.7, economyBias: 0.35, doctrine: 'artillery', claims: [], opening: 'build' });
     clearArmies(state);
     setWar(state, 'es', 'pt');
     // Lisbon is the only Portuguese target left; Spain already holds its approaches.
@@ -296,8 +298,8 @@ describe('AI personalities', () => {
           expect(landsOf(pid).some((land) => world.neighbors[land].some((c) => c.kind !== 'strait' && state.provinces[c.id].owner === n))).toBe(true);
         }
       }
-      // An island power has no land border to claim across.
-      expect(state.nations.uk.ai!.claims).toEqual([]);
+      // Britain's only land border is Ireland's, in Ulster: Dublin is all it can claim (never across the sea).
+      expect(state.nations.uk.ai!.claims).toEqual(['ie-dublin']);
     }
     expect(drawn.size).toBeGreaterThan(world.nationIds.length * 3);
   });
