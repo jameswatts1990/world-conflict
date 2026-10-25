@@ -45,8 +45,8 @@ What is in it (Milestone 2, Depth):
 - A **map that reads at a glance**: natural relief under light national colours, every province (cities too) with
   jagged, natural borders, roads that run from each province's centre to its neighbours' and never through a third,
   your own land lit up inside a glowing white outline, each power's colour along the inside of its border, and the
-  **front** (your border with a power at war with you) in red. Zoom in up to 20× the whole-theatre view: counters, cities and labels stop growing
-  long before that, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
+  **front** (your border with a power at war with you) in red. Zoom in up to 20× the overview of Europe: cities and armies grow as you zoom in,
+  but more slowly than the map, so a crowded front spreads out, and close-up terrain is baked on demand so the relief stays sharp.
 - **Computer opponents** at **Easy** or **Normal** difficulty that plan offensives, answer the enemy's composition,
   manage morale, fight wars on several fronts one enemy at a time and gang up on a power close to victory, each with
   its own claims and opening so that every campaign plays differently.
@@ -208,6 +208,23 @@ src/assets/map/     Bundled, simplified Natural Earth TopoJSON: provinces and wo
 scripts/            Map and audio pipelines, headless campaigns, browser playthrough, screenshot and art sheets
 tests/              Simulation tests
 ```
+
+## How the map is drawn
+
+- **Shapes.** Natural Earth admin-1 units, grouped into regions by `scripts/map/province-sources.mjs` and simplified
+  by `npm run map:build` into one topology with the world round them (`src/assets/map/map.topo.json`). The theatre,
+  and every unit within 4° of it, keeps about 3 km of detail wherever the theatre reaches; detail falls off beyond,
+  where the map is only ever seen zoomed far out.
+- **Cities, lands and roads.** `scripts/map/city-provinces.ts` cuts each city out of its region and divides the rest
+  into the lands round it; `scripts/map/road-routes.ts` lays out the roads between their centres (CLAUDE.md, *Map
+  rules*).
+- **One scale.** The projection is Mercator at a fixed scale (`MAP_SCALE` in `src/ui/map/geo.ts`: a map unit is
+  about 3.75 km at 48°N), and the frame is the theatre with a margin of sea round it, so a wider theatre makes a
+  larger drawing, never a smaller one.
+- **Camera.** The zoom range, the opening view and the zooms where names, towns and 3D cities appear are measured
+  against a fixed reference view (1000 × 820 map units, the frame the first theatre filled) fitted to the screen,
+  never against the whole theatre; only the fit button and the overview map show all of it. Counters, cities,
+  labels and roads look the same at the same real-world scale however large the theatre grows.
 
 ## Known limitations
 

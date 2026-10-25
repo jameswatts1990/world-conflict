@@ -56,7 +56,7 @@ import { FlagMark, flagKey } from '../flags';
 import { Icon } from '../icons';
 import { composition, mainUnitType, roadEndName } from '../labels';
 import { citySpots, roadEnds, type Offset, type PlateBox } from './armyLayout';
-import { MAP_HEIGHT, MAP_WIDTH, REACH_CAP, THEATRE_ISO, alongRoad, nearestOnRoad, roadLine, roadPart, roadPoint, type MapGeometry } from './geo';
+import { REACH_CAP, THEATRE_ISO, VIEW_HEIGHT, VIEW_WIDTH, alongRoad, nearestOnRoad, roadLine, roadPart, roadPoint, type MapGeometry } from './geo';
 import {
   DETAIL_LEVELS,
   TERRAIN_BASE,
@@ -123,7 +123,7 @@ export interface MapViewProps {
 }
 
 /**
- * Zoom ratios (relative to the initial fit) at which the map changes what it draws. Out past `detail` it shows
+ * Zoom ratios (relative to the base zoom, `baseFor`) at which the map changes what it draws. Out past `detail` it shows
  * only the land, nation names and capitals; out past `chips` armies are compact chips; out past `symbols` city
  * markers and counters shrink; from `cityModels` cities and armies are 3D models, growing nearly with the map
  * to `closeUp` and more slowly past it.
@@ -140,7 +140,7 @@ const ZOOM = {
   closeUp: 4,
 };
 /**
- * Closest zoom (relative to the fit). Models grow more slowly than the map past `ZOOM.closeUp`
+ * Closest zoom (relative to the base). Models grow more slowly than the map past `ZOOM.closeUp`
  * (`closeUpGrowth`), so zooming in both shows them larger and spreads a crowded front out; labels keep
  * their size; close-up terrain tiles keep the relief sharp.
  */
@@ -170,10 +170,11 @@ function symbolScale(ratio: number, touch: boolean): number {
   return Math.max(touch ? 0.75 : 0.6, Math.min(1, Math.sqrt(ratio / ZOOM.symbols)));
 }
 /**
- * The zoom levels above are relative to the whole-theatre fit, but never to a fit smaller
- * than a 1280 × 720 desktop's. On a phone the theatre fits in a few hundred pixels, and
- * counters and 3D cities, drawn at a fixed screen size, would crowd it long before it is
- * zoomed in to their scale.
+ * The zoom levels above are relative to the zoom that fits the reference view (VIEW_WIDTH ×
+ * VIEW_HEIGHT map units, a fixed stretch of ground) to the screen, not the whole theatre, so a
+ * wider theatre changes none of them; and never to one smaller than a 1280 × 720 desktop's. On
+ * a phone the view fits in a few hundred pixels, and counters and 3D cities, drawn at a fixed
+ * screen size, would crowd it long before it is zoomed in to their scale.
  */
 const MIN_ZOOM_BASE = 0.8;
 /**
@@ -197,7 +198,7 @@ export function cityModelScale(ratio: number): number {
 
 /**
  * Model units per map unit where the sea comes closest to a city's buildings: where
- * cities first turn into models, on a desktop whose whole-theatre fit is 1. Closer in
+ * cities first turn into models, on a desktop whose base zoom is 1. Closer in
  * the coast only moves further out, so buildings placed for this stay on land (on the
  * smallest screens, at the first zoom steps, a seaside building may touch the water).
  */
@@ -1923,15 +1924,30 @@ function useStableCallback<A extends any[]>(fn: (...args: A) => void): (...args:
   return useCallback((...args: A) => ref.current(...args), []);
 }
 
-function fitFor(width: number, height: number, inset: number, insetBottom: number) {
+/** The view that fits `w` × `h` map units from the origin into the part of the screen no panel covers. */
+function fitWindow(w: number, h: number, width: number, height: number, inset: number, insetBottom: number) {
   const usable = Math.max(240, width - inset);
   const usableH = Math.max(160, height - insetBottom);
-  const k = Math.min(usable / MAP_WIDTH, usableH / MAP_HEIGHT);
-  return { k, transform: zoomIdentity.translate((usable - MAP_WIDTH * k) / 2, (usableH - MAP_HEIGHT * k) / 2).scale(k) };
+  const k = Math.min(usable / w, usableH / h);
+  return { k, transform: zoomIdentity.translate((usable - w * k) / 2, (usableH - h * k) / 2).scale(k) };
+}
+
+/** The whole theatre: its frame fitted to the screen. */
+function fitFor(geo: MapGeometry, width: number, height: number, inset: number, insetBottom: number) {
+  return fitWindow(geo.size[0], geo.size[1], width, height, inset, insetBottom);
 }
 
 /**
- * Opening view: the player's own territory, somewhat closer than the whole theatre and
+ * The zoom that fits the reference view to the screen (`view`), and the base zoom the zoom levels are measured
+ * against (`base`, never below MIN_ZOOM_BASE). Neither depends on how large the theatre is.
+ */
+function baseFor(width: number, height: number, inset: number, insetBottom: number) {
+  const view = fitWindow(VIEW_WIDTH, VIEW_HEIGHT, width, height, inset, insetBottom).k;
+  return { view, base: Math.max(view, MIN_ZOOM_BASE) };
+}
+
+/**
+ * Opening view: the player's own territory, somewhat closer than the reference view and
  * framed above the field reports (bottom left), which would otherwise hide Iberia.
  * A phone opens closer still, on the capital.
  */
@@ -1945,13 +1961,13 @@ function homeView(
   inset: number,
   insetBottom: number,
 ): ZoomTransform {
-  const fit = fitFor(width, height, inset, insetBottom);
+  const { view, base } = baseFor(width, height, inset, insetBottom);
   if (compact) {
-    const k = Math.max(fit.k, MIN_ZOOM_BASE * COMPACT_OPENING);
+    const k = Math.max(view, MIN_ZOOM_BASE * COMPACT_OPENING);
     const [x, y] = geo.anchors[capital];
     return zoomIdentity.translate(Math.max(240, width - inset) / 2 - x * k, Math.max(240, height - insetBottom) / 2 - y * k).scale(k);
   }
-  if (pids.length === 0) return fit.transform;
+  if (pids.length === 0) return fitFor(geo, width, height, inset, insetBottom).transform;
   let [x0, y0, x1, y1] = [Infinity, Infinity, -Infinity, -Infinity];
   for (const pid of pids) {
     const [[a, b], [c, d]] = geo.provinceBounds[pid];
@@ -1960,7 +1976,7 @@ function homeView(
   const w = Math.max(240, width - inset);
   // A bottom panel takes the place of the field reports.
   const h = Math.max(240, insetBottom ? height - insetBottom : height * 0.68);
-  const k = Math.max(fit.k, Math.min(Math.max(fit.k, MIN_ZOOM_BASE) * 1.6, 0.7 * Math.min(w / (x1 - x0), h / (y1 - y0))));
+  const k = Math.max(view, Math.min(base * 1.6, 0.7 * Math.min(w / (x1 - x0), h / (y1 - y0))));
   return zoomIdentity.translate(w / 2 - ((x0 + x1) / 2) * k, h / 2 - ((y0 + y1) / 2) * k).scale(k);
 }
 
@@ -1991,7 +2007,8 @@ export function MapView(props: MapViewProps) {
   const [rest, setRest] = useState<ZoomTransform>(zoomIdentity);
   // Whether a drag, pinch, wheel or animated move of the map is under way.
   const panning = useRef(false);
-  const [fitK, setFitK] = useState(1);
+  // The zoom that fits the reference view to the screen (see baseFor).
+  const [viewK, setViewK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
   const overscan = overscanFor(size[0], size[1]);
   const frame = useRef({ size, overscan });
@@ -2085,7 +2102,7 @@ export function MapView(props: MapViewProps) {
   useEffect(() => {
     const stage = stageRef.current!;
     const { width, height } = stage.getBoundingClientRect();
-    const fit = fitFor(width, height, insetRef.current, insetBottomRef.current);
+    const { view, base } = baseFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
     const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
     let rescale = 0;
@@ -2104,7 +2121,7 @@ export function MapView(props: MapViewProps) {
       setRest(live.current);
     };
     const behavior = zoom<HTMLDivElement, unknown>()
-      .scaleExtent([minK, Math.max(fit.k, MIN_ZOOM_BASE) * MAX_ZOOM])
+      .scaleExtent([minK, base * MAX_ZOOM])
       .translateExtent([
         [x0, y0],
         [x1, y1],
@@ -2130,7 +2147,7 @@ export function MapView(props: MapViewProps) {
         settle();
       });
     zoomRef.current = behavior;
-    setFitK(fit.k);
+    setViewK(view);
     setSize([width, height]);
     const sel = select(stage);
     sel.call(behavior).on('dblclick.zoom', null);
@@ -2172,7 +2189,7 @@ export function MapView(props: MapViewProps) {
   useEffect(() => {
     if (!props.focus) return;
     const [x, y] = geo.anchors[props.focus.province];
-    centreOn(x, y, Math.max(transform.k, fitK * 2.2), 450);
+    centreOn(x, y, Math.max(transform.k, viewK * 2.2), 450);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.focus?.seq]);
 
@@ -2241,7 +2258,7 @@ export function MapView(props: MapViewProps) {
     const stage = stageRef.current;
     if (!stage || !zoomRef.current) return;
     const { width, height } = stage.getBoundingClientRect();
-    select(stage).transition().duration(400).call(zoomRef.current.transform, fitFor(width, height, insetRef.current, insetBottomRef.current).transform);
+    select(stage).transition().duration(400).call(zoomRef.current.transform, fitFor(geo, width, height, insetRef.current, insetBottomRef.current).transform);
   };
 
   const ownersSig = world.provinceIds.map((id) => state.provinces[id].owner).join(',');
@@ -2294,7 +2311,7 @@ export function MapView(props: MapViewProps) {
   const focusIds = primaryArmy ? (primaryArmy.move?.leg?.to ?? primaryArmy.province) : (props.selectedProvince ?? '');
 
   const k = transform.k;
-  const ratio = k / (Math.max(fitK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
+  const ratio = k / (Math.max(viewK, MIN_ZOOM_BASE) * (props.compact ? COMPACT_DETAIL : 1));
   const view: [number, number, number, number] = [-rest.x / rest.k, -rest.y / rest.k, size[0] / rest.k, size[1] / rest.k];
   // What the drawing covers: the screen it was drawn for and the margin round it.
   const drawnView: [number, number, number, number] = [(-transform.x - overscan) / k, (-transform.y - overscan) / k, (size[0] + 2 * overscan) / k, (size[1] + 2 * overscan) / k];
@@ -2463,7 +2480,7 @@ export function MapView(props: MapViewProps) {
           data-zoom={k.toFixed(3)}
         >
           <defs>
-            <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={MAP_WIDTH * 0.45} cy={MAP_HEIGHT * 0.5} r={MAP_WIDTH * 1.3}>
+            <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={geo.size[0] * 0.45} cy={geo.size[1] * 0.5} r={geo.size[0] * 1.3}>
               <stop offset="0" stopColor="#2c5d7c" />
               <stop offset="0.45" stopColor="#1c425f" />
               <stop offset="1" stopColor="#0c1f31" />

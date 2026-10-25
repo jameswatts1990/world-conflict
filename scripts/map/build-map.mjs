@@ -21,8 +21,18 @@ const root = process.cwd();
 const srcDir = join(root, 'data-src');
 const outDir = join(root, 'src', 'assets', 'map');
 
-/** Centre of the theatre (lon, lat): detail falls off with distance from it. */
+/** Middle of the first theatre (lon, lat): detail falls off with distance from it. */
 const CENTRE = [8, 48];
+/**
+ * ...except within this many degrees (great circle, middle to middle) of any unit of the
+ * theatre, where it stays full wherever the theatre reaches: its neighbours never come out
+ * coarser than the theatre. (A border a theatre unit shares is drawn at the theatre's detail
+ * whatever the neighbour's: mapshaper simplifies an arc at the finest interval of the shapes
+ * on it; this keeps the rest of the neighbour, its coasts and other borders, as fine.) It is
+ * as far as it goes without changing the first theatre's map: the nearest unit with less
+ * detail there, Tadla-Azilal in Morocco, lies 4.5 degrees from it.
+ */
+const NEAR_THEATRE = 4;
 
 /**
  * Simplification interval in metres for a unit whose middle is `deg` degrees
@@ -108,15 +118,22 @@ function degreesFromCentre([lon, lat]) {
   return Math.sqrt(dx * dx + dy * dy);
 }
 
+/** Degrees of arc between two points (lon, lat). */
+function degreesApart([lon0, lat0], [lon1, lat1]) {
+  const r = Math.PI / 180;
+  const cos = Math.sin(lat0 * r) * Math.sin(lat1 * r) + Math.cos(lat0 * r) * Math.cos(lat1 * r) * Math.cos((lon1 - lon0) * r);
+  return Math.acos(Math.min(1, cos)) / r;
+}
+
 async function buildMap() {
   const admin1 = JSON.parse(await readFile(join(srcDir, 'ne_10m_admin_1_states_provinces.geojson'), 'utf8'));
   const used = new Map();
   const features = [];
   let unit = 0;
-  for (const f of admin1.features) {
+  const units = admin1.features.filter((f) => f.properties.adm0_a3 !== 'ATA').map((f) => ({ f, rule: matchRule(f.properties) }));
+  const theatre = units.filter((u) => u.rule).map((u) => middle(u.f.geometry));
+  for (const { f, rule } of units) {
     const p = f.properties;
-    if (p.adm0_a3 === 'ATA') continue;
-    const rule = matchRule(p);
     if (rule) {
       const pid = rule.id;
       used.set(pid, (used.get(pid) ?? 0) + 1);
@@ -125,7 +142,8 @@ async function buildMap() {
     }
     // Units of theatre countries that no province claims (overseas territories,
     // the Azores …) stay with their country in the world layer.
-    const deg = degreesFromCentre(middle(f.geometry));
+    const mid = middle(f.geometry);
+    const deg = theatre.some((t) => degreesApart(mid, t) < NEAR_THEATRE) ? 0 : degreesFromCentre(mid);
     const geometry = withoutIslets(f.geometry, minIslandFor(deg));
     if (!geometry) continue;
     features.push({ type: 'Feature', properties: { key: p.adm0_a3, kind: 'countries', iso: p.adm0_a3, name: p.admin, ivl: intervalFor(deg) }, geometry });

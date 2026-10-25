@@ -204,8 +204,12 @@ setup. What remains per country is its province rows, its connections and one na
    passes and straits to curate by hand.
 2. **Province rows from data.** Natural Earth's populated places could propose cities, towns and populations to
    review instead of typing them.
-3. **The map frame.** The projection fits the theatre's bounds. Adding Scandinavia or Russia changes the map's
-   scale, and counter sizes and zoom thresholds would need retuning. A true world map needs a different camera.
+3. **The map frame.** Done for Europe: the map keeps one scale and its frame grows with the theatre, and the zooms
+   (range, opening view, where detail appears) are measured against a fixed reference view rather than the whole
+   theatre (README, *How the map is drawn*); the theatre's neighbours keep full detail wherever it reaches. Adding
+   the East or Scandinavia needs no retuning. Left: Mercator draws the far north large (a kilometre at 71°N is
+   twice as long on the map as at 48°N), which Scandinavia may want a conic projection for, and a true world map
+   still needs a different camera (a fixed scale across the whole world is far too large a drawing).
 4. **The nation picker and Diplomacy.** A two-column card list and one diplomacy row per nation suit a dozen
    or two; beyond that, picking on the map and grouping minor powers work better.
 5. **Speed.** Each AI looks over every province and army every 8 seconds, so simulation cost grows with nations
