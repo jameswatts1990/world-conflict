@@ -176,7 +176,7 @@ export interface ProvinceDef {
   tier: CityTier;
   /** Urban population of the city in thousands (display, growth and national morale); 0 for land. */
   population: number;
-  /** Smaller towns drawn on the land at close zoom (no gameplay effect). */
+  /** Smaller towns that lie in the land (place names only: not drawn, no gameplay effect). */
   towns: TownDef[];
   /** Has a sea coast (a city: skyline art and its port; land: sea crossings land on it). */
   coastal: boolean;

@@ -503,7 +503,7 @@ export const LAND: LandData = {
   'ch-bern': {
     coast: false,
     lands: [
-      { key: 'e', anchor: [8.639, 47.016], coastal: false, towns: ['Zürich', 'Basel'] },
+      { key: 'e', anchor: [8.713, 47.005], coastal: false, towns: ['Zürich', 'Basel'] },
       { key: 's', anchor: [7.311, 46.285], coastal: false, towns: ['Geneva', 'Lausanne'] },
     ],
   },

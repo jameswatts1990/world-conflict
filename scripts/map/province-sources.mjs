@@ -5,7 +5,8 @@
 //
 // Matching: `country` is the Natural Earth `adm0_a3` code. A unit matches when
 // its `region` is listed in `regions`, or its `name` is listed in `names`, or
-// `whole: true` (every unit of that country, minus `exclude` names/regions).
+// `whole: true` (every unit of that country, minus `exclude` names/regions). A rule's `iso` tags its units
+// with another country's code (absent: their own).
 
 export const PROVINCE_SOURCES = [
   // United Kingdom
@@ -101,4 +102,10 @@ export const PROVINCE_SOURCES = [
   { id: 'cz-prague', country: 'CZE', whole: true },
   { id: 'dk-copenhagen', country: 'DNK', whole: true },
   { id: 'pt-lisbon', country: 'PRT', whole: true, exclude: ['Madeira', 'Azores'] },
+
+  // Microstates too small to play, merged into the province round them so they leave no hole in the map.
+  // `iso` keeps the province tagged with its own country.
+  { id: 'es-catalonia', country: 'AND', whole: true, iso: 'ESP' },
+  { id: 'ch-bern', country: 'LIE', whole: true, iso: 'CHE' },
+  { id: 'it-tuscany', country: 'SMR', whole: true, iso: 'ITA' },
 ];

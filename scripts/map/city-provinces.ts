@@ -437,6 +437,41 @@ function decodeArcs(topo: Topology): Position[][] {
   });
 }
 
+/** A coast or border that turns back on itself more sharply than this (degrees) is a spike. */
+const SPIKE_DEG = 6;
+
+/**
+ * Drops the points where a line turns straight back on itself, and repeated points: a fjord narrower than the
+ * simplification collapses to a zero-width spike, which the map draws as a stray stub of border inside the land.
+ * Works on the shared arcs, so every shape that uses one stays in step with its neighbours; an arc's ends (where
+ * shapes meet) never move. Returns how many points it dropped.
+ */
+function withoutArcSpikes(topo: Topology): number {
+  const t = topo.transform!;
+  let dropped = 0;
+  topo.arcs = topo.arcs.map((arc) => {
+    let [x, y] = [0, 0];
+    const pts = arc.map(([dx, dy]) => [(x += dx), (y += dy)]);
+    const closed = pts.length > 1 && pts[0][0] === pts.at(-1)![0] && pts[0][1] === pts.at(-1)![1];
+    for (let again = true; again; ) {
+      again = false;
+      for (let i = 1; i < pts.length - 1 && pts.length > (closed ? 4 : 2); i++) {
+        const [p, q, r] = [pts[i - 1], pts[i], pts[i + 1]];
+        const k = Math.cos(((t.translate[1] + q[1] * t.scale[1]) * Math.PI) / 180);
+        const [ax, ay] = [(p[0] - q[0]) * t.scale[0] * k, (p[1] - q[1]) * t.scale[1]];
+        const [bx, by] = [(r[0] - q[0]) * t.scale[0] * k, (r[1] - q[1]) * t.scale[1]];
+        const [la, lb] = [Math.hypot(ax, ay), Math.hypot(bx, by)];
+        if (la && lb && Math.acos(Math.min(1, (ax * bx + ay * by) / (la * lb))) > (SPIKE_DEG * Math.PI) / 180) continue;
+        pts.splice(i--, 1);
+        dropped++;
+        again = true;
+      }
+    }
+    return pts.map((p, i) => (i ? [p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]] : p)) as Topology['arcs'][number];
+  });
+  return dropped;
+}
+
 const lengthKm = (line: Position[], to: (p: Position) => Pt) => {
   let s = 0;
   for (let i = 0; i + 1 < line.length; i++) {
@@ -1166,6 +1201,7 @@ async function main() {
   if (!out) throw new Error('No map');
   // The borders the division drew itself broken up like the natural ones, leaving everything else as it is.
   const rough = roughen(out, done, rowOf, unitFc);
+  const spikes = withoutArcSpikes(out);
 
   // 3. The links: every shared border (as the rows' connection says), the sea crossings between the
   //    nearest coasts, and a crossing to any land its row's other provinces cannot reach on foot.
@@ -1336,7 +1372,7 @@ async function main() {
   );
   const count = landData.reduce((s, d) => s + d.lands.length, 0);
   console.log(
-    `divided ${ROWS.length} regions into their cities and ${count} lands (${links.length} links), broke up ${rough.broken} borders; wrote map.topo.json (${(JSON.stringify(out).length / 1024).toFixed(0)} KB) and land.ts`,
+    `divided ${ROWS.length} regions into their cities and ${count} lands (${links.length} links), broke up ${rough.broken} borders, dropped ${spikes} spike or repeated points; wrote map.topo.json (${(JSON.stringify(out).length / 1024).toFixed(0)} KB) and land.ts`,
   );
   if (rough.left.length) console.log(`left as drawn (too near another border, a town or an anchor): ${rough.left.join(', ')}`);
 }

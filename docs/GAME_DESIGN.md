@@ -59,7 +59,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   into its land; the division is decided first and the borders roughened afterwards, keeping their ends, so this
   changes no land, link or anchor. A city has a population, starting tier, terrain, base output, a coastline flag
   and optionally an oil field or objective value; its lands have a terrain (never urban: round a capital it is
-  the plain or hills it stands in), the region's secondary towns that lie in them (dots at close zoom) and an
+  the plain or hills it stands in), the region's secondary towns that lie in them (place names only: the map does not draw them, and the generator keeps borders clear of them) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
   none yet.
 - **Movement connections** are written between rows (a city with its lands): 127 land, 21 mountain passes and
@@ -488,7 +488,9 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   anchored, its coast and towns, which cities reach the sea and the links between all provinces are generated once
   from the shapes into `scenario/europe/land.ts` by `scripts/map/city-provinces.ts`, which cuts the cities out of the
   uncut regions in `scripts/map/base.topo.json` (written by `npm run map:build`, with the admin-1 units inside them)
-  and divides the rest. Where each road runs (its bends round whatever lies between its anchors) and, between two
+  and divides the rest. Microstates too small to play (Andorra, Liechtenstein, San Marino) are merged into the
+  province round them so they leave no hole, and a fjord narrower than the simplification, which would collapse to a
+  zero-width spike drawn as a stray stub of border, is trimmed off (`withoutArcSpikes`). Where each road runs (its bends round whatever lies between its anchors) and, between two
   lands, where it crosses their border (how far along the road one land's outline gives way to the other's) are
   generated the same way into `scenario/europe/roads.ts` by `scripts/map/road-routes.ts`; a test checks every road
   against the shapes. A fraction of the way along a road means the same to the map and the simulation: measured
@@ -540,9 +542,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   zoom. Closer in, only cities are named: the land round them carries no label, to keep the map clear (its name
   shows in its panel).
   Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
-  badges for objective VP and capture-progress rings. Secondary towns
-  are unnamed dots. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
-  army's badge that would cover another city's plate steps up or down off it. City markers grow with tier; secondary towns appear at close zoom. Neutral states (none in
+  badges for objective VP and capture-progress rings. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
+  army's badge that would cover another city's plate steps up or down off it. City markers grow with tier. Neutral states (none in
   the current scenario) are hatched with lines that keep the same spacing at every zoom.
 - **City models.** From one zoom step in, each city is drawn as part of the map rather than on a token. On the
   ground, a lace of white streets, densest in the old town and fraying into the countryside, with main roads running

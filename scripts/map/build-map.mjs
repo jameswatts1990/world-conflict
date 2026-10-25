@@ -77,10 +77,10 @@ function matchRule(props) {
     const region = props.region;
     if (rule.whole) {
       if (rule.exclude && (rule.exclude.includes(name) || rule.exclude.includes(region))) continue;
-      return rule.id;
+      return rule;
     }
-    if (rule.regions && rule.regions.includes(region)) return rule.id;
-    if (rule.names && rule.names.includes(name)) return rule.id;
+    if (rule.regions && rule.regions.includes(region)) return rule;
+    if (rule.names && rule.names.includes(name)) return rule;
   }
   return null;
 }
@@ -116,10 +116,11 @@ async function buildMap() {
   for (const f of admin1.features) {
     const p = f.properties;
     if (p.adm0_a3 === 'ATA') continue;
-    const pid = matchRule(p);
-    if (pid) used.set(pid, (used.get(pid) ?? 0) + 1);
-    if (pid) {
-      features.push({ type: 'Feature', properties: { key: `u${unit++}`, kind: 'units', pid, iso: p.adm0_a3, name: p.name, ivl: intervalFor(0) }, geometry: f.geometry });
+    const rule = matchRule(p);
+    if (rule) {
+      const pid = rule.id;
+      used.set(pid, (used.get(pid) ?? 0) + 1);
+      features.push({ type: 'Feature', properties: { key: `u${unit++}`, kind: 'units', pid, iso: rule.iso ?? p.adm0_a3, name: p.name, ivl: intervalFor(0) }, geometry: f.geometry });
       continue;
     }
     // Units of theatre countries that no province claims (overseas territories,
@@ -158,6 +159,7 @@ async function buildMap() {
   for (const o of Object.values(topo.objects)) o.geometries = o.geometries.filter((g) => g.type);
   return JSON.stringify(topo);
 }
+
 
 await mkdir(outDir, { recursive: true });
 const map = await buildMap();
