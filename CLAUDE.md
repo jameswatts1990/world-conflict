@@ -192,7 +192,8 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 ```
 
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
-  pile-on attacks under 1% (about 0.2% at Normal, 0.0% at Easy, counting deliberate support to weak captures). Armies
+  pile-on attacks under 1% (about 0.2% at Normal, 0.0% at Easy, counting deliberate support to weak captures), orders
+  into a co-belligerent's uncontested capture (arriving stronger restarts it) about 0.2% at Normal and 0% at Easy. Armies
   idle in the interior (no foreign border next to them, or next to any of their city's lands) run at about 10% at
   Normal, mostly capital garrisons in capitals with no foreign border during a war and armies at home in peacetime
   (Easy higher by design, about 16%, mostly in peacetime: its wars come later).
