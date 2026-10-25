@@ -222,9 +222,14 @@ tests/              Simulation tests
 - **Cities, lands and roads.** `scripts/map/city-provinces.ts` cuts each city out of its region and divides the rest
   into the lands round it; `scripts/map/road-routes.ts` lays out the roads between their centres (CLAUDE.md, *Map
   rules*).
-- **One scale.** The projection is Mercator at a fixed scale (`MAP_SCALE` in `src/ui/map/geo.ts`: a map unit is
-  about 3.75 km at 48°N), and the frame is the theatre with a margin of sea round it, so a wider theatre makes a
-  larger drawing, never a smaller one.
+- **One scale.** The projection is Lambert's conformal conic over Europe (standard parallels 35°N and 65°N, middle
+  meridian 10°E, as the EU's own conformal map of Europe), at a fixed scale (`KM_PER_UNIT` in `src/ui/map/geo.ts`: a
+  map unit is 3.75 km at 48°N, and within 4% of that from the Mediterranean to the North Cape, where Mercator drew
+  the far north twice as large). Meridians lean towards the pole, so north is straight up only along 10°E. The frame
+  is the theatre with a margin of sea round it, so a wider theatre makes a larger drawing, never a smaller one.
+- **The world round it.** The countries outside the theatre are drawn as a cap of the globe within 36° of the middle
+  of Europe (10°E 52°N: Greenland's coast, the Sahara, Arabia, the Urals), fading into the sea towards its rim; a
+  conic cannot draw the whole world. The theatre must stay inside the cap (Iceland's west is 22° out).
 - **Camera.** The zoom range, the opening view and the zooms where names, towns and 3D cities appear are measured
   against a fixed reference view (1000 × 820 map units, the frame the first theatre filled) fitted to the screen,
   never against the whole theatre; only the fit button and the overview map show all of it. Counters, cities,

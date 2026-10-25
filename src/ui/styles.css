@@ -716,13 +716,14 @@ kbd {
 }
 .graticule {
   fill: none;
-  stroke: rgba(160, 205, 240, 0.09);
+  /* The map fades it out at the edge of the world it draws (MapView's gradients); elsewhere a plain colour. */
+  stroke: url(#grid-fade) rgba(160, 205, 240, 0.09);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
 .country {
-  fill: #3a413d;
-  stroke: rgba(140, 150, 145, 0.45);
+  fill: url(#land-fade) #3a413d;
+  stroke: url(#border-fade) rgba(140, 150, 145, 0.45);
   stroke-width: 0.6;
   vector-effect: non-scaling-stroke;
 }

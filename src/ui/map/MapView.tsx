@@ -178,6 +178,8 @@ function symbolScale(ratio: number, touch: boolean): number {
  * screen size, would crowd it long before it is zoomed in to their scale.
  */
 const MIN_ZOOM_BASE = 0.8;
+/** The furthest zoom out, against the base zoom (unless the whole world drawn fits sooner): the theatre small in the middle, capitals only. */
+const FAR_OUT = 0.2;
 /**
  * On a phone, names and 3D cities wait for a closer zoom than on the desktop: it opens
  * closer in (COMPACT_OPENING, against the desktop base) with the cities no bigger, so
@@ -316,11 +318,14 @@ export function routePreview(state: GameState, world: World, human: NationId, ar
 // Static layers
 // ---------------------------------------------------------------------------
 
+/** How far the sea reaches past the world drawn, in map units: it fills the screen when zoomed out past the cap. */
+const SEA_BEYOND = 8000;
+
 const SeaLayer = memo(function SeaLayer({ geo, glow }: { geo: MapGeometry; glow: TerrainTexture | null }) {
   const [[x0, y0], [x1, y1]] = geo.worldBounds;
   return (
     <g className="sea-layer" pointerEvents="none">
-      <rect x={x0} y={y0} width={x1 - x0} height={y1 - y0} className="ocean" />
+      <rect x={x0 - SEA_BEYOND} y={y0 - SEA_BEYOND} width={x1 - x0 + 2 * SEA_BEYOND} height={y1 - y0 + 2 * SEA_BEYOND} className="ocean" />
       <path d={geo.graticule} className="graticule" />
       {glow && <image href={glow.href} x={glow.x} y={glow.y} width={glow.width} height={glow.height} preserveAspectRatio="none" className="terrain-img" />}
     </g>
@@ -330,7 +335,7 @@ const SeaLayer = memo(function SeaLayer({ geo, glow }: { geo: MapGeometry; glow:
 const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
   return (
     <g className="world-layer">
-      {geo.countries.map((c) => (
+      {geo.countries.filter((c) => c.d).map((c) => (
         <path key={c.iso + c.name} d={c.d} className="country">
           <title>{THEATRE_ISO.has(c.iso) ? `${c.name}: territory outside this campaign's theatre` : `${c.name}: outside this campaign's theatre`}</title>
         </path>
@@ -2105,7 +2110,8 @@ export function MapView(props: MapViewProps) {
     const { width, height } = stage.getBoundingClientRect();
     const { view, base } = baseFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
-    const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0)));
+    // Out to the whole world drawn, or to FAR_OUT of the base zoom if that is further: the theatre small in the middle.
+    const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0), base * FAR_OUT));
     let rescale = 0;
     const redraw = () => {
       window.clearTimeout(rescale);
@@ -2481,10 +2487,24 @@ export function MapView(props: MapViewProps) {
           data-zoom={k.toFixed(3)}
         >
           <defs>
-            <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={geo.size[0] * 0.45} cy={geo.size[1] * 0.5} r={geo.size[0] * 1.3}>
+            {/* The sea deepens away from the middle of Europe; the world round the theatre, its borders and the
+                graticule fade into it towards the cap's rim (geo.horizon), so the cap ends without an edge. */}
+            <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
               <stop offset="0" stopColor="#2c5d7c" />
-              <stop offset="0.45" stopColor="#1c425f" />
+              <stop offset="0.55" stopColor="#1c425f" />
               <stop offset="1" stopColor="#0c1f31" />
+            </radialGradient>
+            <radialGradient id="land-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
+              <stop offset="0.8" stopColor="#3a413d" />
+              <stop offset="1" stopColor="#0c1f31" />
+            </radialGradient>
+            <radialGradient id="border-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
+              <stop offset="0.8" stopColor="rgb(140, 150, 145)" stopOpacity={0.45} />
+              <stop offset="1" stopColor="rgb(140, 150, 145)" stopOpacity={0} />
+            </radialGradient>
+            <radialGradient id="grid-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
+              <stop offset="0.7" stopColor="rgb(160, 205, 240)" stopOpacity={0.09} />
+              <stop offset="1" stopColor="rgb(160, 205, 240)" stopOpacity={0} />
             </radialGradient>
             {/* Hatching keeps the same on-screen spacing at every zoom. */}
             <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
