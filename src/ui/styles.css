@@ -2132,6 +2132,17 @@ kbd {
 .cost-item.short {
   color: var(--bad);
 }
+.cost.upkeep {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3, var(--text-2));
+  flex-wrap: wrap;
+  gap: 1px 5px;
+}
+.upkeep-label,
+.upkeep-unit {
+  opacity: 0.8;
+}
 .unit-req {
   font-size: 11px;
   line-height: 1.25;
@@ -2744,6 +2755,11 @@ kbd {
 }
 .uc-foot button {
   margin-left: auto;
+}
+.uc-price {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 /* Recruiting: the training queue keeps one height whatever is in it, so the cards never move. */
 .training-strip {
@@ -5887,4 +5903,7 @@ body {
 }
 .touch .road-hit {
   stroke-width: 24;
+}
+.army-upkeep {
+  margin: 4px 0 2px;
 }

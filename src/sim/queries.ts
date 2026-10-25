@@ -461,6 +461,16 @@ export function refineryFuel(state: GameState, owner: OwnerId, oil: boolean, lev
   return 0;
 }
 
+/** Upkeep of an army a minute, per resource. */
+export function armyUpkeep(army: Army): Resources {
+  const upkeep = emptyResources();
+  for (const u of army.units) {
+    const up = UNITS[u.type].upkeepPerMinute;
+    for (const k of RESOURCE_KEYS) upkeep[k] += up[k] ?? 0;
+  }
+  return upkeep;
+}
+
 export interface NationEconomy {
   income: Resources;
   upkeep: Resources;
@@ -478,10 +488,8 @@ export function nationEconomy(state: GameState, world: World, nation: NationId):
   const upkeep = emptyResources();
   for (const a of Object.values(state.armies)) {
     if (a.owner !== nation) continue;
-    for (const u of a.units) {
-      const up = UNITS[u.type].upkeepPerMinute;
-      for (const k of RESOURCE_KEYS) upkeep[k] += up[k] ?? 0;
-    }
+    const up = armyUpkeep(a);
+    for (const k of RESOURCE_KEYS) upkeep[k] += up[k];
   }
   const net = emptyResources();
   for (const k of RESOURCE_KEYS) net[k] = income[k] - upkeep[k];

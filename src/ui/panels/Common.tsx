@@ -16,6 +16,32 @@ export function Cost({ cost, have }: { cost: PartialResources; have?: Resources 
   );
 }
 
+/** "0.75", "1.5", "5": upkeep figures keep their fractions. */
+export function fmtUpkeep(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
+}
+
+/**
+ * Upkeep a minute, per resource. With `net`, a resource the upkeep would push (or has pushed) below zero a minute
+ * shows red.
+ */
+export function Upkeep({ upkeep, net, label = 'Upkeep' }: { upkeep: PartialResources; net?: Resources; label?: string }) {
+  const parts = costParts(upkeep);
+  if (parts.length === 0) return null;
+  return (
+    <span className="cost upkeep" title={`${label} a minute: ${parts.map(({ key, amount }) => `${fmtUpkeep(amount)} ${RESOURCE_LABEL[key].toLowerCase()}`).join(', ')}`}>
+      <span className="upkeep-label">{label}</span>
+      {parts.map(({ key, amount }) => (
+        <span key={key} className={`cost-item${net && net[key] - amount < 0 ? ' short' : ''}`}>
+          <ResourceIcon kind={key} size={11} />
+          {fmtUpkeep(amount)}
+        </span>
+      ))}
+      <span className="upkeep-unit">/min</span>
+    </span>
+  );
+}
+
 export function Progress({ value, label, tone, color }: { value: number; label?: string; tone?: 'gold' | 'red' | 'blue'; color?: string }) {
   return (
     <div className={`progress${tone ? ` ${tone}` : ''}`} role="progressbar" aria-valuenow={Math.round(value * 100)} aria-valuemin={0} aria-valuemax={100}>
