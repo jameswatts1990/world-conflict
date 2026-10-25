@@ -371,11 +371,12 @@ Found by playing full campaigns in the browser and reading the code end to end.
       map unchanged, `map.topo.json` byte for byte)
 - [x] Ireland, a two-province minor power: a land border with Northern Ireland and the Irish Sea crossing to Wales.
       Over 200 all-AI campaigns against main, Britain goes to war with it in nearly all of them (Dublin is its only
-      claim), at about minute 16, and takes Dublin about 40 minutes later; Ireland lasts the campaign in a third, and
-      Britain still wins 8% (9% before). Measured and left out: Ulster alone (Britain wins 4%, bogged down behind the
-      North Channel) and a Celtic Sea crossing to Brittany (France takes Irish land in half the campaigns)
-- [ ] Minor powers strike back into thinly held neighbours: Ireland takes Belfast in about half the campaigns,
-      Portugal Galicia. Decide whether a minor power should only take back its own land
+      claim), at about minute 16, and takes Dublin in half of them, a median of 37 minutes after declaring war;
+      Ireland lasts the campaign in a third, and Britain still wins 8% (9% before). Measured and left out: Ulster alone
+      (Britain wins 4%, bogged down behind the North Channel) and a Celtic Sea crossing to Brittany (France takes Irish
+      land in half the campaigns)
+- [x] Minor powers may strike back into thinly held neighbours once at war (Ireland takes Belfast in about half the
+      campaigns, Portugal Galicia): kept by design, as it punishes a border left bare
 - [ ] Eastern-bloc nations east of Poland and Romania
 - [ ] A projection for the far north before Scandinavia (Mercator draws a kilometre at 71°N twice as long as at 48°N)
 - [ ] A nation picker that scales past a dozen nations (pick on the map)

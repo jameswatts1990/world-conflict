@@ -11,7 +11,7 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'uk', name: 'United Kingdom', article: 'the', adjective: 'British', color: '#c4553f', capital: 'uk-london', power: 'great', bloc: 'western',
     trait: 'Defensive',
-    blurb: 'An island fortress. Safe behind the Channel, but every offensive starts with a slow sea crossing.',
+    blurb: 'An island fortress with one land border, in Ulster. Safe behind the Channel, but every offensive on the Continent starts with a slow sea crossing.',
   },
   {
     id: 'fr', name: 'France', adjective: 'French', color: '#3f6fc4', capital: 'fr-paris', power: 'great', bloc: 'western',
