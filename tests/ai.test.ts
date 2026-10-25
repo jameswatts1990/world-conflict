@@ -15,7 +15,7 @@ import {
   type NationId,
 } from '../src/sim';
 import { buildContext, observeForces } from '../src/sim/ai/context';
-import { attackNeed } from '../src/sim/ai/military';
+import { attackNeed, handleMilitary } from '../src/sim/ai/military';
 import { aiGame, clearArmies, landOf, landsOf, place, run, setWar, world } from './helpers';
 
 /** A game in which only the given nation is run by the computer. */
@@ -79,6 +79,136 @@ describe('AI army control', () => {
     expect(applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'es' }).ok).toBe(true);
     run(state, 20);
     expect(atWarWith(state, 'es')).toEqual([]);
+  });
+});
+
+describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficulty) => {
+  function captureFront(reserveInfantry = 10) {
+    const state = soloAi('es');
+    state.settings.difficulty = difficulty;
+    clearArmies(state);
+    setWar(state, 'es', 'pt');
+    // Lisbon is the only Portuguese target left; Spain already holds its approaches.
+    for (const pid of landsOf('pt-lisbon')) state.provinces[pid].owner = 'es';
+    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
+    state.provinces['pt-lisbon'].recruitQueue = [];
+    const capturer = place(state, 'es', 'pt-lisbon', { infantry: 3 });
+    const approach = world.neighbors['pt-lisbon'].find((n) => state.provinces[n.id].owner === 'es')!.id;
+    const reserve = place(state, 'es', approach, { infantry: reserveInfantry, artillery: 3 });
+    state.provinces['pt-lisbon'].capture = { by: 'es', progress: 1, required: captureTicks(state, world, 'pt-lisbon') };
+    return { state, capturer, reserve };
+  }
+
+  it('keeps a further free army out of an uncontested capture until it falls', () => {
+    const { state, capturer, reserve } = captureFront();
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => state.provinces['pt-lisbon'].owner !== 'es' && orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+      run(state, captureTicks(state, world, 'pt-lisbon') + 5);
+    } finally {
+      setAiOrderTrace(null);
+    }
+    // Cover both planned attacks and opportunistic strikes, not just the report's attack counter.
+    expect(orders.filter((o) => o.armyId === reserve.id && o.to === 'pt-lisbon')).toEqual([]);
+    expect(orders.filter((o) => o.armyId === capturer.id)).toEqual([]);
+    expect(state.provinces['pt-lisbon'].owner).toBe('es');
+  });
+
+  it('still reinforces a capture contested by a visible enemy', () => {
+    const { state, reserve } = captureFront();
+    place(state, 'pt', 'pt-lisbon', { infantry: 1 });
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+    } finally {
+      setAiOrderTrace(null);
+    }
+    expect(orders.some((o) => o.armyId === reserve.id && o.to === 'pt-lisbon' && o.reason === 'attack')).toBe(true);
+  });
+
+  function threatenedCapture(strong: boolean) {
+    const front = captureFront(11);
+    const { state, capturer, reserve } = front;
+    state.nations.es.ai!.campaigns = ['pt-lisbon'];
+    const neighbour = world.neighbors['pt-lisbon'].find((n) => n.id !== reserve.province)!.id;
+    state.provinces[neighbour].owner = 'pt';
+    const enemy = place(state, 'pt', neighbour, { infantry: 12 });
+    // A separate rear guard lets the reserve leave without exposing its starting province.
+    place(state, 'es', reserve.province, { infantry: 12 });
+    if (strong) {
+      const extra = place(state, 'es', capturer.province, { infantry: 8, artillery: 3 });
+      capturer.units.push(...extra.units);
+      delete state.armies[extra.id];
+    }
+    const ctx = buildContext(state, world, 'es');
+    expect(ctx.seen.has(neighbour)).toBe(true);
+    expect(armyPower(state, capturer) >= attackNeed(ctx, capturer.province)).toBe(strong);
+    return { ...front, enemy };
+  }
+
+  it('reinforces a weak capture against a strong visible enemy next door', () => {
+    const { state, capturer, reserve, enemy } = threatenedCapture(false);
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+    } finally {
+      setAiOrderTrace(null);
+    }
+    expect(orders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ armyId: reserve.id, to: capturer.province, reason: expect.stringMatching(/^(attack|strike)$/) }),
+    ]));
+    expect(orders.filter((o) => o.armyId === capturer.id)).toEqual([]);
+    // Future regression guard: handleMilitary currently only orders idle armies, so it cannot recall this march.
+    // Keep that behaviour if eligibility changes as the visible danger moves.
+    const march = structuredClone(reserve.move);
+    expect(march).not.toBeNull();
+    const neighbour = enemy.province;
+    enemy.province = 'de-berlin';
+    handleMilitary(buildContext(state, world, 'es'));
+    expect(reserve.move).toEqual(march);
+    enemy.province = neighbour;
+    handleMilitary(buildContext(state, world, 'es'));
+    expect(reserve.move).toEqual(march);
+  });
+
+  it('does not count support still marching towards a weak capture as holding it', () => {
+    const { state, capturer, reserve } = threatenedCapture(false);
+    const furtherReserve = place(state, 'es', reserve.province, { infantry: 11, artillery: 3 });
+    expect(applyCommand(state, world, {
+      type: 'move', nation: 'es', armyId: reserve.id, to: capturer.province,
+    }).ok).toBe(true);
+    expect(reserve.move).not.toBeNull();
+    const ctx = buildContext(state, world, 'es');
+    const need = attackNeed(ctx, capturer.province);
+    expect(armyPower(state, capturer)).toBeLessThan(need);
+    expect(armyPower(state, capturer) + armyPower(state, reserve)).toBeGreaterThanOrEqual(need);
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(ctx);
+    } finally {
+      setAiOrderTrace(null);
+    }
+    // Incoming support is strong enough, but has not arrived: the capture remains an eligible target.
+    expect(orders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ armyId: furtherReserve.id, to: capturer.province, reason: expect.stringMatching(/^(attack|strike)$/) }),
+    ]));
+  });
+
+  it('leaves an adequately held capture alone despite a visible enemy next door', () => {
+    const { state, capturer, reserve } = threatenedCapture(true);
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+    } finally {
+      setAiOrderTrace(null);
+    }
+    expect(orders.filter((o) => o.armyId === reserve.id && o.to === capturer.province)).toEqual([]);
+    expect(orders.filter((o) => o.armyId === capturer.id)).toEqual([]);
   });
 });
 
