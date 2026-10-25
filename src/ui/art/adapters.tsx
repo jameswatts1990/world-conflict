@@ -9,7 +9,7 @@ import { flagStripes } from '../flags';
 import { CitySkyline } from './CitySkyline';
 import { NATIONAL_STYLES, UnitArt, type ArtNation } from './UnitArt';
 import { buildUnitModel, type UnitModelKind } from './UnitModel';
-import { infantrySprite } from './InfantryAsset';
+import { bakedUnitSprite } from './UnitAssets';
 
 /**
  * How an owner's units are drawn: in its own look if it has one, otherwise in
@@ -177,6 +177,9 @@ export function onBitmapsBaked(listener: () => void): () => void {
  * baked, otherwise its SVG. With `want`, a missing bitmap is queued for baking.
  */
 export function spriteHref(image: { href: string; width: number; height: number }, pxPerUnit: number, want: boolean): string {
+  // Imported model images are already bitmaps. Re-baking them wastes idle time
+  // and memory, and cannot add detail at a higher zoom.
+  if (/\.(png|webp)(?:$|[?#])/.test(image.href) || /^data:image\/(png|webp);/.test(image.href)) return image.href;
   const level = 2 ** Math.max(0, Math.ceil(Math.log2(pxPerUnit)));
   const have = bitmaps.get(image.href);
   for (let l = level; l <= level * 4; l *= 2) {
@@ -331,10 +334,11 @@ const UNIT_SPRITE_CACHE = 480;
 /**
  * An army's 3D model (its main unit type, or the troopship at sea) facing one of 16 headings.
  * A nation drawn in its bloc's look flies its own flag (or one in its colour) and is cached as itself.
- * WWI line infantry shares baked sprites; its national flag is on the map's army badge.
+ * Imported units share baked sprites; their national flag is on the map's army badge.
  */
 export function unitSprite(world: World, type: UnitType | 'transport', gen: UnitGen, nation: OwnerId, heading: number): UnitSprite {
-  if (type === 'infantry' && gen === 'ww1') return infantrySprite(heading);
+  const baked = bakedUnitSprite(type, gen, heading);
+  if (baked) return baked;
   const art = artOf(world, nation);
   const look = art.accent ? nation : art.nation;
   return cached(

@@ -5,11 +5,11 @@
 //     [--bg dark|light|both] [--size 128] [--icon-size 120] [--icons-only]
 //
 // View it in a browser, or screenshot it with scripts/art/screenshot.mjs.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NationInsignia } from '../../src/ui/art/Insignia';
-import { INFANTRY_PORTRAIT } from '../../src/ui/art/InfantryAsset';
+import { embedUnitAssetImages } from './embed-unit-assets';
 import {
   ART_GENS,
   ART_NATIONS,
@@ -136,11 +136,7 @@ function Sheet({ types, nations, bgs, size, iconSize, iconsOnly }: SheetProps) {
 const opts = parseArgs(process.argv);
 const { out, types, bgs } = opts;
 // Standalone sheets must also work over file://, without a Vite asset server.
-const portrait = readFileSync(new URL('../../src/assets/units/wwi-infantry/portrait.png', import.meta.url));
-const body = renderToStaticMarkup(<Sheet {...opts} />).replaceAll(
-  `href="${INFANTRY_PORTRAIT}"`,
-  `href="data:image/png;base64,${portrait.toString('base64')}"`,
-);
+const body = embedUnitAssetImages(renderToStaticMarkup(<Sheet {...opts} />));
 const html = `<!doctype html>
 <html lang="en">
 <head>

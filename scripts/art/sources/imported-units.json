@@ -1,0 +1,86 @@
+{
+  "source": "User-supplied SINNON desktop exports",
+  "assets": [
+    {
+      "asset": "battle-tanks",
+      "originalFile": "battle-tanks-v1-model.glb",
+      "sha256": "8652eb190374a5ba2479724514a5e7f204ef305621f00988929f3d2540ad1d49",
+      "bytes": 9398412
+    },
+    {
+      "asset": "light-tanks",
+      "originalFile": "light-tanks-v1-model.glb",
+      "sha256": "28f3a3f42043a79aa3ce7f876cf056cb07931cf1254638a8b34ca34a92cc6513",
+      "bytes": 16389756
+    },
+    {
+      "asset": "heavy-siege-artillery",
+      "originalFile": "heavy-siege-artillery-v1-model.glb",
+      "sha256": "4d9441fa076e55e1611919541d07618fcd7e044a25440cd5e64253745f9c4173",
+      "bytes": 19825204
+    },
+    {
+      "asset": "heavy-tanks",
+      "originalFile": "heavy-tanks-v1-model.glb",
+      "sha256": "81f3b1095ed19c06c3309bb4b86090659ce404c28d9b36a5d9a97100b60a7e4c",
+      "bytes": 15020944
+    },
+    {
+      "asset": "cavalry",
+      "originalFile": "cavalry-v1-model.glb",
+      "sha256": "61e233cbf846653e2ac6dbae602627932543048913b6a4b567181b3f8a8cc1d6",
+      "bytes": 11130616
+    },
+    {
+      "asset": "pack-mule",
+      "originalFile": "pack-mule-v1-model.glb",
+      "sha256": "5ca06be713879fcb84dbb2b389fea7e4bbac4ce8966d2687c14a12badde8a4e7",
+      "bytes": 10386764
+    },
+    {
+      "asset": "tank-destroyers",
+      "originalFile": "tank-destroyers-v1-model.glb",
+      "sha256": "ed49b6b1285791c46c40673e8e0c7efd1451cad18f315de1cd5ac1f1cbb87321",
+      "bytes": 14936116
+    },
+    {
+      "asset": "assault-infantry",
+      "originalFile": "assault-infantry-v1-model.glb",
+      "sha256": "6912caf11eb40da31ab2189824c2e240948ed5ac070771f827988d6f7a081a7a",
+      "bytes": 12378360
+    },
+    {
+      "asset": "mountain-troops",
+      "originalFile": "mountain-troops-v1-model.glb",
+      "sha256": "7e34e3063a08a3e5fa91088aeb4154a89daa7c6739a4693f6572558054e802f9",
+      "bytes": 10425060
+    },
+    {
+      "asset": "motorised-infantry",
+      "originalFile": "motorised-infantry-v1-model.glb",
+      "sha256": "15aa5db853b0ae41440000d358868a895d8bc76141e230dbd8fa2d039d42bcca",
+      "bytes": 18542380
+    },
+    {
+      "asset": "armoured-cars",
+      "originalFile": "armoured-cars-v1-model.glb",
+      "sha256": "6e249d334a4e373532072b22be437019b711d03b3b2df406433455be22bf4d5e",
+      "bytes": 18786684
+    },
+    {
+      "asset": "field-artillery",
+      "originalFile": "field-artillery-v1-model.glb",
+      "sha256": "44ada6be50f9c989a9dd7c351c9a923214bda155533bf3a8a92a56d110f7dc34",
+      "bytes": 16847024
+    },
+    {
+      "asset": "anti-tank-guns",
+      "originalFile": "anti-tank-guns-v1-model.glb",
+      "sha256": "3569a34ecf66abfb4475749141a0c3d17bae38aba43866b88ad509b0d0c13346",
+      "bytes": 16884652
+    }
+  ],
+  "duplicates": [
+    "heavy-siege-artillery-v1-model (1).glb is byte-for-byte identical to heavy-siege-artillery-v1-model.glb"
+  ]
+}

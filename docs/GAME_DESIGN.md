@@ -574,14 +574,12 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   On touch screens the move banner offers **Declare war…** in place of Confirm. The army panel's **Move**, **Attack** and **Patrol**
   buttons (M, A, P) pick the kind of order for the next click, **Hold** (G) holds or releases, and its **Fall back
   when broken** box sets that option for every selected army.
-- **3D armies.** WWI line infantry uses the supplied WWI Infantry v1 model, baked into sixteen directional squad
-  images at the map's camera angle. Its single khaki uniform is shared by all nations; the ownership ring and flag
-  badge identify the army. Unit cards, recruitment rows, research icons and distant counters use its portrait.
-  Interwar and 1940 infantry keep their national artwork. Wherever the cities are 3D models, so are the armies: each is a model of its main unit, in
-  its generation's equipment and its nation's uniform, headgear, paint (and camouflage) and flag: a squad advancing
-  under its colours, assault troops with a flamethrower, mountain troops with a pack mule, a lorry and its riflemen,
-  horsemen with lances or sabres, field, heavy and anti-tank guns with their crews, armoured cars, and tanks from the
-  Mark IV, A7V and Renault FT to the sloped tanks of 1940. Each stands on a ring in the owner's colour (white-rimmed
+- **3D armies.** All thirteen unit types use the supplied SINNON models, baked into sixteen directions at the map's
+  camera angle. For now each model is shared across all equipment eras and nations; research still changes the
+  unit's statistics and equipment names. Era-specific art can be added through the asset mapping later. Line and
+  assault infantry form three-man squads, cavalry a pair of riders, and mountain troops travel with the supplied
+  pack mule. Vehicles and guns use their supplied models, including crews where present. Unit cards, recruitment
+  rows, research icons and distant counters use the corresponding portraits. Each stands on a ring in the owner's colour (white-rimmed
   for yours, red for enemies at war with you, a running dashed ring for the selection) under a badge with its flag,
   number of formations, strength and morale. Armies in a city take spots on the edge of its built-up area (its
   buildings and old town; empty plots are open ground), and armies on a land round its anchor, yours first: beside it,
@@ -646,10 +644,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   provinces captured, enemy units destroyed, units lost and retreats ordered; after closing it, a banner brings it
   back. The main menu shows the theatre map with the chosen nation lit up and its speciality, and sets the
   campaign speed, the opponents' difficulty and the seed.
-- **Assets.** WWI line infantry uses bundled transparent PNGs rendered from a supplied textured GLB; the source
-  model is retained for rebuilding the images and is not shipped to the browser (see `docs/ATTRIBUTION.md`).
-  Other artwork is drawn in code: flags, unit art (13 types × 3 generations × 6 nations and 3 blocs plus
-  neutrals, with national uniforms, headgear, camouflage and insignia), city skylines, 3D city and army models, building, branch and HUD icons
+- **Assets.** Unit artwork uses bundled transparent PNGs rendered from supplied textured GLBs; source models are
+  retained for rebuilding the images and are not shipped to the browser (see `docs/ATTRIBUTION.md` and
+  `docs/ADDING_UNIT_ART.md`). The PNGs bypass the SVG bitmap-baking queue. The troopship and procedural unit art
+  remain as fallbacks. Other artwork is drawn in code: flags, insignia, city skylines, 3D city models, building, branch and HUD icons
   are inline SVG; the Barlow and Barlow Condensed typefaces are bundled with the build. Nothing is fetched from other
   sites at run time; the sound files load from the game's own files when first needed.
 - **Sound.** Recorded effects and period music, all CC0 or public domain (sources in `docs/ATTRIBUTION.md`). Bugle

@@ -1,0 +1,14 @@
+{
+  "assault-infantry": {"parts": [{"source": "assault-infantry", "height": 1.8, "at": [0.5, 0]}, {"source": "assault-infantry", "height": 1.8, "at": [-0.32, 0.64]}, {"source": "assault-infantry", "height": 1.8, "at": [-0.32, -0.64]}]},
+  "mountain-troops": {"parts": [{"source": "mountain-troops", "height": 1.8, "at": [0.75, -0.45]}, {"source": "mountain-troops", "height": 1.8, "at": [-0.6, -0.55]}, {"source": "pack-mule", "height": 1.55, "at": [-0.15, 0.65]}]},
+  "cavalry": {"parts": [{"source": "cavalry", "length": 2.4, "at": [0.5, 0.6]}, {"source": "cavalry", "length": 2.4, "at": [-0.55, -0.6]}]},
+  "motorised-infantry": {"parts": [{"source": "motorised-infantry", "length": 3.6}]},
+  "armoured-cars": {"parts": [{"source": "armoured-cars", "length": 3.0}]},
+  "field-artillery": {"parts": [{"source": "field-artillery", "length": 3.4}]},
+  "heavy-siege-artillery": {"parts": [{"source": "heavy-siege-artillery", "length": 4.0}]},
+  "anti-tank-guns": {"parts": [{"source": "anti-tank-guns", "length": 3.4}]},
+  "light-tanks": {"parts": [{"source": "light-tanks", "length": 2.8}]},
+  "battle-tanks": {"parts": [{"source": "battle-tanks", "length": 3.4}]},
+  "heavy-tanks": {"parts": [{"source": "heavy-tanks", "length": 4.0}]},
+  "tank-destroyers": {"parts": [{"source": "tank-destroyers", "length": 3.6}]}
+}
