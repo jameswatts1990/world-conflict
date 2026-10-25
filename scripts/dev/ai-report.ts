@@ -14,9 +14,11 @@ import {
   buildWorld,
   createInitialState,
   hostileArmiesIn,
+  landsOf,
   setAiOrderTrace,
   type AiDifficulty,
   type AiOrderTrace,
+  type GameState,
   type NationId,
 } from '../../src/sim';
 
@@ -32,6 +34,12 @@ const minutes = Number(args[1] ?? 90);
 const world = buildWorld(EUROPE_SCENARIO);
 /** A place as the report counts it: a city by its name, land by its region's (as before the land was divided). */
 const place = (pid: string) => (world.provinces[pid].around ? (world.provinces[pid].region ?? world.provinces[pid].name) : world.provinces[pid].name);
+/**
+ * In the interior: the province and everything next to it are the owner's. A city's only neighbours are its own
+ * lands, so a city counts as on the border wherever any of its lands is.
+ */
+const interior = (s: GameState, pid: string, owner: string) =>
+  [pid, ...landsOf(world, pid)].every((p) => s.provinces[p].owner === owner && world.neighbors[p].every((n) => s.provinces[n.id].owner === owner));
 const REVERSAL_WINDOW = 240;
 /** The opening: captures made and wars started in this many minutes. */
 const OPENING_MINUTES = 25;
@@ -106,8 +114,7 @@ for (let seed = 1; seed <= seeds; seed++) {
       if (a.owner === 'neutral' || a.owner === human) continue;
       add('armyMinutes');
       if (!a.supplied) add('unsuppliedMinutes');
-      const interior = s.provinces[a.province].owner === a.owner && world.neighbors[a.province].every((n) => s.provinces[n.id].owner === a.owner);
-      if (!a.move && interior) add('idleRearMinutes');
+      if (!a.move && interior(s, a.province, a.owner)) add('idleRearMinutes');
     }
   }
   setAiOrderTrace(null);
@@ -126,7 +133,7 @@ console.log(`  back-and-forth reversals   ${per('reversal', 'orders')}% of order
 console.log(`  captures abandoned         ${per('abandoned', 'orders')}% of orders`);
 console.log(`  pile-on attacks            ${per('pileOn', 'orders')}% of orders (into a province already falling uncontested)`);
 console.log(`  attack then retreat        ${per('failedAttack', 'orders')}% of orders`);
-console.log(`  idle in the interior       ${per('idleRearMinutes', 'armyMinutes')}% of army-minutes (no border at all)`);
+console.log(`  idle in the interior       ${per('idleRearMinutes', 'armyMinutes')}% of army-minutes (no border at all, a city's lands included)`);
 console.log(`  out of supply              ${per('unsuppliedMinutes', 'armyMinutes')}% of army-minutes; ${count.attrition ?? 0} armies starved, ${count.disband ?? 0} disband orders`);
 
 console.log('\nVariety (first province each power captures, across seeds)');
