@@ -136,7 +136,6 @@ const ZOOM = {
   majorCities: 1.7,
   towns: 2.6,
   capitals: 0.75,
-  townDots: 2.0,
   cityModels: 1.15,
   closeUp: 4,
 };
@@ -1000,13 +999,6 @@ function CityLayer({
   });
   return (
     <g className="city-layer">
-      {ratio >= ZOOM.townDots && (
-        <g pointerEvents="none">
-          {world.provinceIds.map((id) =>
-            geo.towns[id].map((t) => <circle key={`${id}-${t.name}`} cx={t.x} cy={t.y} r={1.8 * s} className="town-dot" />),
-          )}
-        </g>
-      )}
       {cities &&
         world.cityIds.map((id) => {
           const port = cities[id].port;

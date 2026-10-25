@@ -4913,12 +4913,6 @@ button.chip.queued:hover {
 }
 
 /* ---------------------------------------------------------------- Depth: map, top bar, menu */
-.town-dot {
-  fill: #2a2f35;
-  stroke: #f4efe2;
-  stroke-width: 0.7;
-  vector-effect: non-scaling-stroke;
-}
 .counter-art-bg {
   fill: #ece4cf;
   opacity: 0.95;

@@ -31,8 +31,6 @@ export interface MapGeometry {
   provincePaths: Record<ProvinceId, string>;
   labelPoints: Record<ProvinceId, [number, number]>;
   anchors: Record<ProvinceId, [number, number]>;
-  /** Projected secondary towns per province (drawn at close zoom). */
-  towns: Record<ProvinceId, { name: string; x: number; y: number }[]>;
   countries: CountryShape[];
   /** Projected area of each province, in map units² (for label weighting). */
   provinceArea: Record<ProvinceId, number>;
@@ -310,16 +308,11 @@ export function buildMapGeometry(world: World): MapGeometry {
   });
 
   const anchors: Record<ProvinceId, [number, number]> = {};
-  const towns: MapGeometry['towns'] = {};
   for (const id of world.provinceIds) {
     const def = world.provinces[id];
     anchors[id] = projection(def.anchor) as [number, number];
     // Land is labelled at its anchor, the point farthest from its edges and from the city cut out of it.
     if (!def.city) labelPoints[id] = anchors[id];
-    towns[id] = def.towns.map((t) => {
-      const [x, y] = projection(t.coord) as [number, number];
-      return { name: t.name, x, y };
-    });
   }
 
   // Every road both ways, from one anchor through its bends to the other: a fraction of the way along it is the same
@@ -395,7 +388,6 @@ export function buildMapGeometry(world: World): MapGeometry {
     provincePaths,
     labelPoints,
     anchors,
-    towns,
     countries: countryShapes,
     provinceArea,
     provinceBounds,
