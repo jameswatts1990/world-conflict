@@ -36,6 +36,78 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
 6. **Label the pull request `balance`** and CI runs the comparison against the base branch, with the reports on the
    run's summary page.
 
+## Balkans and Greece route experiment (25 October 2026)
+
+The 25-nation theatre was tested on seeds 1–200, full campaigns at Normal, against the shared `ba6645f` baseline.
+Each of three runs used eight workers: (a) no new international sea route, (b) Strait of Otranto from Naples/Apulia
+to Albania, and (c) Otranto plus the Ionian crossing to Patras. Domestic Greek crossings exist in every variant.
+No AI, tier output or victory-rule tuning accompanies this content expansion. The total objective pool rises to
+61 VP and the unchanged 40% rule now requires 25 VP. Results below measure the AI's use of these positions;
+they do not establish how the new majors feel for a human player.
+
+The source reports are `balance-runs/balkans-a-none`, `balkans-b-otranto` and `balkans-c-ionian`; each contains
+the comparison against `coordination/balance/main-ba6645f`. The reports and full campaign records are local,
+ignored artifacts. Campaign timing is indicative: the shared baseline used 12 workers and the variants eight,
+with other sessions using the machine.
+
+Selected variant (c), Otranto + Ionian. Serbia's survival rises from 17.5% to 29% (baseline comparison q=0.017), the strongest observed improvement, matching the lead's stated priority. Romania has the smallest observed survival decline (69.5% to 62.5%), and objective endings are highest of the variants (8.5%). These are trade-offs, not a clean acceptance pass: Poland rises from 29.5% to 32.5% wins, Romania remains below baseline, Bulgaria and Serbia win zero campaigns, and Greece wins once. The aggregate goal penalty is 7.15, versus 7.09 for no route, 7.61 for Otranto, and 6.57 baseline.
+
+Direct route comparisons do not establish a significant Serbia/Romania survival or Poland win-rate difference at 200 games (A→C p=0.257/0.222/0.448 respectively). Greece's average finishing place worsens from 7.25 in A to 8.11 in C (q=0.001), despite 80% survival. Treat the selected route as the best observed compromise for Serbia, not proof of route superiority. Finishing places against baseline also span different roster sizes (9 versus 11 playable), so they are not directly comparable. Objective endings fall from 21.5% baseline to 8.5% (q=0.001); this remains a substantial pacing issue.
+
+| Nation | Baseline | No new route | Otranto | Otranto + Ionian |
+| --- | --- | --- | --- | --- |
+| bg | — | 0/200 wins; 46.0% survive | 0/200 wins; 49.5% survive | 0/200 wins; 50.5% survive |
+| gr | — | 6/200 wins; 77.5% survive | 5/200 wins; 79.0% survive | 1/200 wins; 80.0% survive |
+| rs | 0/200 wins; 17.5% survive | 0/200 wins; 24.0% survive | 0/200 wins; 27.5% survive | 0/200 wins; 29.0% survive |
+| ro | 11/200 wins; 69.5% survive | 8/200 wins; 56.5% survive | 4/200 wins; 59.0% survive | 10/200 wins; 62.5% survive |
+| pl | 59/200 wins; 95.0% survive | 58/200 wins; 96.5% survive | 72/200 wins; 93.5% survive | 65/200 wins; 95.0% survive |
+| hu | 28/200 wins; 67.5% survive | 40/200 wins; 78.0% survive | 44/200 wins; 79.5% survive | 35/200 wins; 81.0% survive |
+| it | 36/200 wins; 90.0% survive | 41/200 wins; 93.5% survive | 18/200 wins; 95.0% survive | 27/200 wins; 97.0% survive |
+| uk | 17/200 wins; 90.0% survive | 12/200 wins; 85.0% survive | 15/200 wins; 82.5% survive | 19/200 wins; 89.0% survive |
+| fr | 12/200 wins; 76.5% survive | 9/200 wins; 72.5% survive | 13/200 wins; 78.5% survive | 21/200 wins; 78.5% survive |
+| de | 15/200 wins; 72.0% survive | 12/200 wins; 69.0% survive | 17/200 wins; 70.0% survive | 9/200 wins; 73.5% survive |
+| es | 22/200 wins; 94.0% survive | 14/200 wins; 90.5% survive | 12/200 wins; 91.0% survive | 13/200 wins; 95.5% survive |
+
+Wins and survival use all 200 campaigns; survival means not eliminated at the campaign end.
+
+| Pace / cost | Baseline | No new route | Otranto | Otranto + Ionian |
+| --- | --- | --- | --- | --- |
+| Mean length (min) | 145.35 | 149.40 | 149.02 | 148.42 |
+| Length p10 / median / p90 | 130.8 / 150.0 / 150.0 | 150.0 / 150.0 / 150.0 | 150.0 / 150.0 / 150.0 | 150.0 / 150.0 / 150.0 |
+| Objective ends | 43/200 (21.5%) | 13/200 (6.5%) | 16/200 (8.0%) | 17/200 (8.5%) |
+| Minor median fall (min, eliminated only) | 47 | 54 | 55 | 57 |
+| Measured seconds per campaign | 16.32 | 22.71 | 20.91 | 19.36 |
+| Batch wall seconds / workers | 303 / 12 | 624 / 8 | 567 / 8 | 528 / 8 |
+
+The lab labels per-campaign runtime cpuSecondsPerGame; machine load and worker counts differ, so timing is indicative, not a controlled benchmark. Baseline ran on 12 workers; all variants use eight.
+
+| Minor | Baseline | No new route | Otranto | Otranto + Ionian |
+| --- | --- | --- | --- | --- |
+| Bosnia & Herzegovina | — | 81 min; 4.0% survive | 84 min; 6.5% survive | 89 min; 6.5% survive |
+| Montenegro | — | 74 min; 7.0% survive | 75 min; 10.5% survive | 75 min; 8.0% survive |
+| Albania | — | 81 min; 14.5% survive | 71 min; 8.5% survive | 67 min; 7.5% survive |
+| North Macedonia | — | 89 min; 21.5% survive | 89.5 min; 18.0% survive | 82 min; 12.5% survive |
+| Belgium & Luxembourg | 40 min; 0.5% survive | 34 min; 1.0% survive | 34 min; 3.0% survive | 37 min; 1.0% survive |
+| Netherlands | 49 min; 1.0% survive | 45 min; 1.5% survive | 45 min; 1.5% survive | 47 min; 1.5% survive |
+| Denmark | 66 min; 18.0% survive | 68.5 min; 14.0% survive | 67.5 min; 14.0% survive | 71.5 min; 14.0% survive |
+| Switzerland | 43 min; 3.5% survive | 38.5 min; 5.0% survive | 44 min; 4.0% survive | 44 min; 5.5% survive |
+| Austria | 42 min; 2.0% survive | 38.5 min; 1.0% survive | 40 min; 0.5% survive | 43 min; 0.5% survive |
+| Czechia | 42 min; 2.0% survive | 43 min; 1.5% survive | 42 min; 2.0% survive | 43 min; 2.5% survive |
+| Portugal | 29 min; 5.0% survive | 30 min; 8.0% survive | 31.5 min; 8.0% survive | 30 min; 7.5% survive |
+| Slovakia | 40 min; 1.5% survive | 41 min; 1.0% survive | 43 min; 1.0% survive | 45.5 min; 0.0% survive |
+| Slovenia | 49 min; 1.5% survive | 46 min; 1.0% survive | 50.5 min; 2.0% survive | 55 min; 0.5% survive |
+| Croatia | 60 min; 0.5% survive | 60 min; 0.5% survive | 67.5 min; 1.0% survive | 69 min; 2.0% survive |
+
+Minor fall times are medians conditional on elimination; survival rates make the censoring visible.
+
+The before/after AI reports use ten seeds for 90 minutes. Normal reversals stay at 1.8% and abandoned captures
+at zero; pile-on attacks rise from 1.8% to 2.3%, interior idleness from 28.5% to 31.8%, and out-of-supply time falls
+from 0.3% to 0.2%. Easy reversals move from 1.3% to 1.5%, pile-on from 1.7% to 2.0%, interior idleness from
+48.2% to 48.9%, and out-of-supply time from 0.1% to 0.0%. Neither run starves an army or orders a disband.
+Idle France survives all ten Easy runs, versus eight before; first wars arrive at 16–53 minutes, versus 14–46.
+This is a small diagnostic sample, not evidence that pathologies are unchanged or that human difficulty is right.
+Logs: `balance-runs/ai/{before,after}-{normal,easy}.log`.
+
 ## Campaigns: `npm run balance`
 
 ```bash

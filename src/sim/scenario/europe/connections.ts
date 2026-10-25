@@ -168,6 +168,54 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('rs-belgrade', 'hu-south'),
   land('rs-belgrade', 'hr-zagreb'),
 
+  // Bulgaria: Danube crossings are land until rivers have their own defensive rules.
+  mountain('bg-sofia', 'bg-plovdiv', 'Gate of Trajan'),
+  mountain('bg-sofia', 'bg-pleven', 'Iskar Gorge'),
+  mountain('bg-plovdiv', 'bg-pleven', 'Shipka Pass'),
+  land('bg-plovdiv', 'bg-burgas'),
+  mountain('bg-pleven', 'bg-burgas', 'Kotel Pass'),
+  land('bg-pleven', 'bg-varna'),
+  mountain('bg-varna', 'bg-burgas', 'Eastern Balkan passes'),
+  land('bg-sofia', 'ro-banat'),
+  land('bg-pleven', 'ro-banat'),
+  land('bg-pleven', 'ro-bucharest'),
+  land('bg-varna', 'ro-bucharest'),
+  land('bg-varna', 'ro-dobruja'),
+  land('bg-sofia', 'rs-south'), // Timok valley and Pirot–Dragoman corridor
+  mountain('bg-sofia', 'mk-skopje', 'Osogovo passes'),
+  mountain('bg-sofia', 'gr-thessaloniki', 'Rupel Pass'),
+  mountain('bg-plovdiv', 'gr-thessaloniki', 'Rhodope passes'),
+
+  strait('it-naples', 'al-tirana', 'Strait of Otranto'),
+  strait('it-naples', 'gr-patras', 'Ionian crossing'),
+
+  // Greece: the Vardar–Axios corridor is open; the western approaches cross the Pindus.
+  land('gr-athens', 'gr-larissa'),
+  land('gr-athens', 'gr-patras'),
+  strait('gr-larissa', 'gr-patras', 'Gulf of Patras'),
+  land('gr-larissa', 'gr-thessaloniki'),
+  strait('gr-athens', 'gr-crete', 'Cretan Sea crossing'),
+  land('gr-thessaloniki', 'mk-skopje'),
+  mountain('gr-larissa', 'mk-skopje', 'Monastir Gap'),
+  mountain('gr-larissa', 'al-tirana', 'Kakavia Pass'),
+
+  // Western Balkans: lowland Sava and Drina approaches, mountain walls towards the coast.
+  land('ba-krajina', 'ba-sarajevo'),
+  land('ba-krajina', 'hr-zagreb'),
+  mountain('ba-krajina', 'hr-dalmatia', 'Dinara passes'),
+  land('ba-sarajevo', 'hr-zagreb'),
+  mountain('ba-sarajevo', 'hr-dalmatia', 'Neretva valley'),
+  land('ba-sarajevo', 'rs-belgrade'),
+  mountain('ba-sarajevo', 'rs-sumadija', 'Drina and Zlatibor'),
+  mountain('ba-sarajevo', 'me-podgorica', 'Tara canyon'),
+  land('me-podgorica', 'hr-dalmatia'), // Konavle coast
+  mountain('me-podgorica', 'rs-sumadija', 'Sandžak passes'),
+  mountain('me-podgorica', 'rs-south', 'Čakor Pass'),
+  land('me-podgorica', 'al-tirana'), // Shkodër corridor
+  mountain('al-tirana', 'rs-south', 'Drin valley'),
+  mountain('al-tirana', 'mk-skopje', 'Ohrid and Debar passes'),
+  land('mk-skopje', 'rs-south'), // Preševo: Morava–Vardar corridor
+
   // Croatia
   mountain('hr-zagreb', 'hr-dalmatia', 'Velebit'),
   land('hr-zagreb', 'si-ljubljana'),
@@ -207,6 +255,9 @@ export const CONNECTIONS: ConnectionDef[] = [
 
 /** Names of the crossings that join a region's island land to the rest of it (the generator adds them). */
 export const CROSSINGS: Record<string, string> = {
+  'gr-thessaloniki': 'North Aegean crossing',
+  'gr-crete': 'South Aegean crossing',
+  'gr-patras': 'Ionian islands crossing',
   'fr-midi': 'Ligurian crossing',
   'it-islands': 'Tyrrhenian crossing',
   'dk-copenhagen': 'Little Belt',

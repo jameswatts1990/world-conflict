@@ -13,17 +13,11 @@ const flags = process.argv.slice(2).filter((a) => a.startsWith('--'));
 const [out = 'e2e-output/screens', nation = 'fr', ...steps] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const phone = flags.includes('--phone') ? { width: 390, height: 844 } : flags.includes('--phone-landscape') ? { width: 844, height: 390 } : null;
 mkdirSync(out, { recursive: true });
-const PORT = 5199;
+const PORT = Number(process.env.SCREEN_PORT ?? 5199);
 const URL = `http://localhost:${PORT}/`;
-// Own process group, so stopping it also stops the vite process npx starts.
-const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'pipe', detached: true });
-const stopServer = () => {
-  try {
-    process.kill(-server.pid, 'SIGTERM');
-  } catch {
-    // already gone
-  }
-};
+// Launch Vite directly: works on Windows without a .cmd wrapper and leaves no child server behind.
+const server = spawn(process.execPath, ['node_modules/vite/bin/vite.js', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', windowsHide: true });
+const stopServer = () => server.exitCode === null && server.kill('SIGTERM');
 process.on('exit', stopServer);
 for (let i = 0; i < 150; i++) {
   try {

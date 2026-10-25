@@ -28,11 +28,12 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ## 3. The theatre
 
-- **Nine playable nations:** the great powers United Kingdom, France, Germany, Italy, Spain, Poland and Hungary,
-  and the major powers Romania and Serbia. The human picks one; the AI plays the rest. The theatre's south-eastern
-  edge follows Romania's and Serbia's borders.
-- **Eleven minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal and
-  Slovenia, one province each, and Slovakia, Croatia and Ireland, two each; always computer-controlled. They are there to
+- **Eleven playable nations:** the great powers United Kingdom, France, Germany, Italy, Spain, Poland and Hungary,
+  and the major powers Romania, Serbia, Bulgaria and Greece. The human picks one; the AI plays the rest. The
+  south-eastern edge reaches Greece and Bulgaria; Turkey stays outside the theatre. Kosovo belongs to southern Serbia.
+- **Fifteen minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
+  Slovenia, Montenegro, Albania and North Macedonia, one region each, and Slovakia, Croatia, Bosnia & Herzegovina and
+  Ireland, two each; always computer-controlled. They are there to
   be conquered, at a price. They recruit, research, defend themselves and make peace, but **never start a war and
   never win** (§10); invading one means declaring war on it. Every minor capital is fortified (level 2,
   Switzerland's mountain redoubt 3) and starts with six infantry divisions, which the AI tops up to about seven or
@@ -40,7 +41,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   to fourteen units with artillery take it in three to five minutes while losing 40–60% of their strength
   (Switzerland needs about sixteen). The engine still supports neutral states (garrisoned, never attack, open to
   invasion without war); this scenario has none.
-- **71 cities, each a province of its own, among 185 provinces of land round them** (256 provinces). Each
+- **86 cities, each a province of its own, among 215 provinces of land round them** (301 provinces). Each
   region (a row of the scenario: a city and the land round it, merged from Natural Earth admin-1 regions) is
   divided into two to seven lands all round its city, as in Conflict of Nations: no land wraps round a city;
   every city stands where two or three lands meet, the borders between them running out from it, and a road out
@@ -62,22 +63,24 @@ espionage, naval and air warfare, later eras, multiplayer.
   the plain or hills it stands in), the region's secondary towns that lie in them (place names only: the map does not draw them, and the generator keeps borders clear of them) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
   none yet.
-- **Movement connections** are written between rows (a city with its lands): 129 land, 21 mountain passes and
-  12 sea crossings. The generator turns them into links between provinces (`land.ts`): every two lands of
+- **Movement connections** are written between rows (a city with its lands): 148 land, 39 mountain passes and
+  16 sea crossings, including the Irish Sea crossing to Wales, the Strait of Otranto and the Ionian crossing from Italy. The generator turns them
+  into links between provinces (`land.ts`): every two lands of
   neighbouring regions that share a border are linked (by land or a pass, as the connection says), a sea
   crossing joins the two lands with the nearest coasts, and inside a region every two lands that share a border
-  are linked, and the city to each land it touches, its only ways in or out (575 links: 146 from cities to their
-  lands, 139 within regions and 290 between them). Connections are authored data, separate from the map shapes:
+  are linked, and the city to each land it touches, its only ways in or out (686 links: 176 from cities to their
+  lands, 153 within regions and 357 between them). Connections are authored data, separate from the map shapes:
   the generator refuses a map where two regions share a border without a land or mountain connection, or have
   one without a border, and a test checks every link against the shapes (`scripts/map/check-borders.ts` prints
   the report for the regions). Every link is a road on the map that runs from one province's anchor (its centre,
   where its armies stand) to the other's over those two provinces alone, crossing their border once and never
   through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
   over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
-  within 3 km of anything else, the road bends round it (156 of the 575 do). Only two roads find no clean way, as
+  within 3 km of anything else, the road bends round it (196 of the 686 do). Only three roads find no clean way, as
   the shapes stand: the Alcarria, east of Madrid, reaches Valencia only at the Rincón de Ademuz, Valencia's exclave
-  beyond Aragon, and Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; the
-  scenario test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  beyond Aragon; Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; and
+  Montenegro meets Dalmatia's Dubrovnik coast, separated from the rest by Bosnia's Neum corridor. The scenario
+  test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings give every great power except Poland at least two great or major
   powers as neighbours, so France is not the only target for Britain, Italy and Spain. Ireland borders Northern
   Ireland by land and lies one short crossing from Wales (the Irish Sea, Dublin–Cardiff), so Britain can reach it two
@@ -95,7 +98,7 @@ broadly balanced:
 | Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
 | Minor | No (computer-controlled; never wins) | 70 / 35 / 20 | 6 units behind level-2 forts | Capital 1 | 1–2 |
 
-Europe has seven great powers, two major powers and eleven minor powers. Each great power has one oil province, the same city ladder (one
+Europe has seven great powers, four major powers and fifteen minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
 in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). Major powers keep the same share of income on starting upkeep; minor powers spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
@@ -245,6 +248,8 @@ Blocs are equipment, not alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.m
 | Hungary | Huszárok | Cavalry and armoured cars +15% attack, 10% faster; cavalry always raised as Regulars |
 | Romania | Ploiești | Refineries produce 25% more fuel and cost 20% less to build |
 | Serbia | Kolubara | Infantry +15% morale resilience and +10% defence |
+| Bulgaria | Na nozh! | Assault infantry +15% attack and +10% morale shock |
+| Greece | Evzones | Mountain infantry +15% defence and +15% morale resilience |
 
 Specialities are optional: a nation without one shows its bloc instead.
 
@@ -387,8 +392,8 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 52 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
-  heartlands 1, minor-power capitals 1). Holding **40% (21 VP)** continuously for **90 s** wins.
+- **Objectives:** 62 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
+  heartlands 1, minor-power capitals 1). Holding **40% (25 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 2 × cities + 1 × the land round each city +
   2 × technologies, each land scoring its share of its city's land (a city and its lands together score what one
   province did before cities were split out).
@@ -678,15 +683,15 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Is 21 VP / 90 s reachable for a human in 2–3 hours? Over 80 AI-vs-AI campaigns about a third end on objectives
-  (after 73 to 150 minutes) and the rest on score at the time limit, since winning AIs settle for limited gains; the
-  AI conquers nearly every minor power along the way, most between minutes 25 and 50.
+- Is 25 VP / 90 s reachable for a human in 2–3 hours? The Balkan expansion raises the objective threshold;
+  the three 200-campaign route experiments and minor-power fall times are recorded in [BALANCE.md](BALANCE.md).
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
 - Is one region of sight around your land and armies the right amount of fog? Mountains and seas over 110 km now
   stop it: is that tight enough, or should provinces see only across land borders and leave scouting to armies?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
-- Positions differ in AI-only campaigns (see the balance report): Poland, with one great-power neighbour and two
-  minor powers to absorb, wins a quarter of them and is never conquered, while Serbia and Romania rarely win. Which
-  of these differences are acceptable strengths and weaknesses of a position?
+- Positions differ in AI-only campaigns (see the 200-campaign Balkan comparisons in [BALANCE.md](BALANCE.md)).
+  Poland remains strong, while the major powers rarely win; adding Balkan routes does not by itself solve this.
+  Which differences are acceptable strengths and weaknesses of a position, and how should the lower objective-end
+  rate and Romania's survival regression be addressed?

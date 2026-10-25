@@ -29,6 +29,11 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
 
 ## Balance lab (docs/BALANCE.md)
 
+The current theatre has 26 nations: seven great, four major (Romania, Serbia, Bulgaria and Greece), and fifteen
+minor powers. Its 86 city regions generate 215 lands (301 provinces); 62 objective VP require 25 to win. Kosovo
+belongs to `rs-south`, with SRB ISO tags throughout the map. Bulgaria uses Central equipment and Na nozh!;
+Greece uses Western equipment and Evzones. See `docs/BALANCE.md` for the three 200-campaign sea-route experiments.
+
 - `npm run balance` plays all-AI campaigns in parallel and reports on balance, pace and content use; `--vs main`
   compares with another commit on the same seeds and `--set PATH=VALUE` tries a config value. `npm run balance:units`
   prices units in staged battles; `npm run balance:techs` measures what each technology is worth (same campaigns with
@@ -196,7 +201,7 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   idle in the interior run at about 10% at Normal, mostly capital garrisons in capitals with no foreign border
   (Easy higher by design, about 17%).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
-  counting timing (currently about 22% and 10% at Normal, 16% and 5% at Easy), and who fights the first war.
+  counting timing (currently 20% and 10% at Normal, 10% and 6% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at

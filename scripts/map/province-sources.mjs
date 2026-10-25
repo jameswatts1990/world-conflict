@@ -6,7 +6,8 @@
 // Matching: `country` is the Natural Earth `adm0_a3` code. A unit matches when
 // its `region` is listed in `regions`, or its `name` is listed in `names`, or
 // `whole: true` (every unit of that country, minus `exclude` names/regions). A rule's `iso` tags its units
-// with another country's code (absent: their own).
+// with another country's code (absent: their own). `southOf` selects existing polygon parts by their
+// bounding-box middle; put that rule before the unit's fallback rule.
 
 export const PROVINCE_SOURCES = [
   // United Kingdom
@@ -85,6 +86,37 @@ export const PROVINCE_SOURCES = [
   { id: 'rs-belgrade', country: 'SRB', names: ['Grad Beograd', 'Severno-Backi', 'Zapadno-Backi', 'Južno-Backi', 'Severno-Banatski', 'Srednje-Banatski', 'Južno-Banatski', 'Sremski'] },
   { id: 'rs-sumadija', country: 'SRB', names: ['Šumadijski', 'Kolubarski', 'Macvanski', 'Zlatiborski', 'Moravicki', 'Raški', 'Pomoravski'] },
   { id: 'rs-south', country: 'SRB', names: ['Podunavski', 'Branicevski', 'Borski', 'Zajecarski', 'Nišavski', 'Pirotski', 'Toplicki', 'Jablanicki', 'Pcinjski'] },
+
+  // Kosovo belongs to Serbia's southern region in this scenario. Keep both source
+  // rules under one id and tag all of their units Serbian, including the KOS source.
+  { id: 'rs-south', country: 'KOS', iso: 'SRB', whole: true },
+
+  // Bulgaria: the Balkan range divides the Danube plain from Upper Thrace.
+  { id: 'bg-sofia', country: 'BGR', names: ['Grad Sofiya', 'Sofia', 'Pernik', 'Kyustendil', 'Blagoevgrad', 'Vidin', 'Montana'] },
+  { id: 'bg-plovdiv', country: 'BGR', names: ['Plovdiv', 'Pazardzhik', 'Stara Zagora', 'Haskovo', 'Kardzhali', 'Smolyan'] },
+  { id: 'bg-pleven', country: 'BGR', names: ['Vratsa', 'Pleven', 'Lovech', 'Gabrovo', 'Veliko Tarnovo', 'Ruse', 'Razgrad', 'Targovishte'] },
+  { id: 'bg-varna', country: 'BGR', names: ['Varna', 'Dobrich', 'Silistra', 'Shumen'] },
+  { id: 'bg-burgas', country: 'BGR', names: ['Burgas', 'Sliven', 'Yambol'] },
+
+  // Greece: Crete has its own city; the Aegean admin units join the northern
+  // mainland and Crete, so a small Attic land never anchors itself on Rhodes.
+  // Attica includes detached land on the Peloponnese and Kythira; Western Greece
+  // spans both shores of the Gulf of Patras. Assign those polygon parts geographically,
+  // so land roads do not have to cross the gulf or a third region at Corinth.
+  { id: 'gr-patras', country: 'GRC', names: ['Attiki'], southOf: 37.8 },
+  { id: 'gr-patras', country: 'GRC', names: ['Dytiki Ellada'], southOf: 38.35 },
+  { id: 'gr-athens', country: 'GRC', names: ['Attiki', 'Stereá Elláda'] },
+  { id: 'gr-thessaloniki', country: 'GRC', names: ['Kentriki Makedonia', 'Anatoliki Makedonia kai Thraki', 'Ayion Oros', 'Voreio Aigaio'] },
+  { id: 'gr-larissa', country: 'GRC', names: ['Thessalia', 'Ipeiros', 'Dytiki Makedonia', 'Dytiki Ellada'] },
+  { id: 'gr-patras', country: 'GRC', names: ['Peloponnisos', 'Ionioi Nisoi'] },
+  { id: 'gr-crete', country: 'GRC', names: ['Kriti', 'Notio Aigaio'] },
+
+  // Bosnia is divided geographically, across both modern entities.
+  { id: 'ba-krajina', country: 'BIH', names: ['Banja Luka', 'Una-Sana', 'West Bosnia'] },
+  { id: 'ba-sarajevo', country: 'BIH', whole: true, exclude: ['Banja Luka', 'Una-Sana', 'West Bosnia'] },
+  { id: 'me-podgorica', country: 'MNE', whole: true },
+  { id: 'al-tirana', country: 'ALB', whole: true },
+  { id: 'mk-skopje', country: 'MKD', whole: true },
 
   // Minor powers of the Danube and the Adriatic
   { id: 'sk-bratislava', country: 'SVK', names: ['Bratislavský', 'Trnavský', 'Trenciansky', 'Nitriansky'] },
