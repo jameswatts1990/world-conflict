@@ -1,6 +1,6 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Seven great powers, two major powers and ten minor powers on
+A browser-based, real-time global strategy game. Seven great powers, two major powers and eleven minor powers on
 recognisable Earth geography start with Great War technology and research their way towards the Second World War.
 The current build is a local single-player campaign on the **European theatre** at **Standard** speed (target ~2–3
 hours).
@@ -16,11 +16,13 @@ What is in it (Milestone 2, Depth):
   equipment, its own hussars and Toldi, Turán and Zrínyi armour.
 - **Romania and Serbia**, the first major powers (playable, five and three provinces, Western-pattern equipment),
   with Slovakia, Slovenia and Croatia as minor powers: Hungary now has a neighbour on every side.
+- **Ireland**, a two-province minor power (Dublin and Cork): Britain's one land border, in Ulster, with the Irish
+  Sea crossing from Dublin to Wales.
 - **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
   get output, starting armies, objectives and size from their tier, so a new country is province rows,
   connections and one line.
-- **Ten minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
-  Slovakia, Slovenia, Croatia): one- or two-province nations run by the computer. They recruit, research, defend
+- **Eleven minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
+  Slovakia, Slovenia, Croatia, Ireland): one- or two-province nations run by the computer. They recruit, research, defend
   themselves and make peace, but never start a war and never win. Each holds a fortified capital with a garrison of
   six to eight divisions: an eight-unit probe fails, and taking one takes twelve to fourteen units with artillery
   and costs them 40–60% of their strength.
@@ -171,7 +173,7 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **21 of the 51 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
+Hold **21 of the 52 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
 major-power capitals 2 VP and heartlands 1 VP, minor-power capitals 1 VP) continuously for **90 seconds**, or have
 the **highest score** when the **2 h 30 min** time limit ends. Only great and major powers can win: minor powers
 are there to be conquered. You lose if your nation is eliminated or another power wins.

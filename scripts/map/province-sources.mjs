@@ -93,6 +93,11 @@ export const PROVINCE_SOURCES = [
   { id: 'hr-zagreb', country: 'HRV', names: ['Grad Zagreb', 'Zagrebacka', 'Krapinsko-Zagorska', 'Varaždinska', 'Medimurska', 'Koprivničko-Križevačka', 'Bjelovarsko-bilogorska', 'Viroviticko-Podravska', 'Osjecko-Baranjska', 'Vukovarsko-Srijemska', 'Brodsko-Posavska', 'Sisacko-Moslavacka', 'Karlovacka'] },
   { id: 'hr-dalmatia', country: 'HRV', names: ['Istarska', 'Primorsko-Goranska', 'Licko-Senjska', 'Zadarska', 'Šibensko-Kninska', 'Splitsko-Dalmatinska', 'Dubrovacko-Neretvanska'] },
 
+  // Ireland (admin-1 units are counties, grouped by their NUTS 3 regions): Leinster and the Border
+  // round Dublin, Munster and Connacht round Cork, 220 km apart
+  { id: 'ie-dublin', country: 'IRL', regions: ['Dublin', 'Mid-East', 'Midlands', 'South-East', 'Border'] },
+  { id: 'ie-cork', country: 'IRL', regions: ['South-West', 'Mid-West', 'West'] },
+
   // Minor powers (one province each; Belgium and Luxembourg share one)
   { id: 'be-brussels', country: 'BEL', whole: true },
   { id: 'be-brussels', country: 'LUX', whole: true },

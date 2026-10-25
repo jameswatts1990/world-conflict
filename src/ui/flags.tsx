@@ -28,6 +28,7 @@ const STRIPED: Record<string, FlagStripes> = {
   sk: { dir: 'h', colors: ['#f4f4f4', '#0b4ea2', '#ee1c25'] },
   si: { dir: 'h', colors: ['#f4f4f4', '#005da4', '#ed1c24'] },
   hr: { dir: 'h', colors: ['#d4172a', '#f4f4f4', '#171796'] },
+  ie: { dir: 'v', colors: ['#169b62', '#f4f4f4', '#ff883e'] },
 };
 
 function stripes({ dir, colors }: FlagStripes): ReactElement {

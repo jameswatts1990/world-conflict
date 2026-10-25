@@ -11,7 +11,7 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'uk', name: 'United Kingdom', article: 'the', adjective: 'British', color: '#c4553f', capital: 'uk-london', power: 'great', bloc: 'western',
     trait: 'Defensive',
-    blurb: 'An island fortress. Safe behind the Channel, but every offensive starts with a slow sea crossing.',
+    blurb: 'An island fortress with one land border, in Ulster. Safe behind the Channel, but every offensive on the Continent starts with a slow sea crossing.',
   },
   {
     id: 'fr', name: 'France', adjective: 'French', color: '#3f6fc4', capital: 'fr-paris', power: 'great', bloc: 'western',
@@ -68,6 +68,8 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   { id: 'sk', name: 'Slovakia', adjective: 'Slovak', color: '#3a9c96', capital: 'sk-bratislava', power: 'minor', bloc: 'central' },
   { id: 'si', name: 'Slovenia', adjective: 'Slovenian', color: '#d4a13a', capital: 'si-ljubljana', power: 'minor', bloc: 'central' },
   { id: 'hr', name: 'Croatia', adjective: 'Croatian', color: '#6f5aa8', capital: 'hr-zagreb', power: 'minor', bloc: 'central' },
+  // Ireland: two provinces; the Free State's army was armed from British stocks.
+  { id: 'ie', name: 'Ireland', adjective: 'Irish', color: '#62a84a', capital: 'ie-dublin', power: 'minor', bloc: 'western' },
 ];
 
 export const NATIONS: NationDef[] = base.map((n) => ({ ...n, speciality: SPECIALITIES[n.id], identity: nationIdentity(n.bloc, IDENTITIES[n.id]) }));
