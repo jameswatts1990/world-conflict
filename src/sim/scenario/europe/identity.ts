@@ -500,6 +500,15 @@ export const IDENTITIES: Record<string, NationIdentityOverrides> = {
     },
   },
   hu: { units: HU, formations: { cavalry: '{ord} Hussar Regiment' } },
+  bg: { formations: { stormtroopers: '{ord} Assault Battalion' } },
+  gr: {
+    units: { mountain: {
+      ww1: n('Evzones', 'Greek mountain infantry'),
+      interwar: n('Evzones', 'Riflemen of the mountain frontier'),
+      ww2: n('Evzones', 'Mountain infantry of the Pindus'),
+    } },
+    formations: { mountain: '{ord} Evzone Regiment' },
+  },
 };
 
 // Each nation has one small, flavourful edge. They are deliberately modest so
@@ -551,6 +560,22 @@ export const SPECIALITIES: Record<string, NationSpeciality | undefined> = {
       { kind: 'unitStat', units: ['cavalry'], stat: 'attack', mult: 1.25 },
       { kind: 'unitStat', units: ['cavalry'], stat: 'speed', mult: 1.1 },
       { kind: 'unitStat', units: ['cavalry'], stat: 'resilience', mult: 1.15 },
+    ],
+  },
+  bg: {
+    name: 'Na nozh!',
+    description: 'The bayonet charge: assault infantry +15% attack and +10% morale shock.',
+    effects: [
+      { kind: 'unitStat', units: ['stormtroopers'], stat: 'attack', mult: 1.15 },
+      { kind: 'unitStat', units: ['stormtroopers'], stat: 'shock', mult: 1.1 },
+    ],
+  },
+  gr: {
+    name: 'Evzones',
+    description: 'Guardians of the mountain frontier: mountain infantry +15% defence and +15% morale resilience.',
+    effects: [
+      { kind: 'unitStat', units: ['mountain'], stat: 'defence', mult: 1.15 },
+      { kind: 'unitStat', units: ['mountain'], stat: 'resilience', mult: 1.15 },
     ],
   },
   ro: {

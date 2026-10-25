@@ -1035,6 +1035,9 @@ const NATIONAL_LANDMARKS: Record<string, LandmarkKind> = {
   'ro-bucharest': 'dome',
   // The Custom House's dome on the Liffey.
   'ie-dublin': 'dome',
+  // Alexander Nevsky Cathedral and the Greek parliament use existing silhouettes.
+  'bg-sofia': 'dome',
+  'gr-athens': 'palace',
 };
 
 function landmark(l: Lot, kind: LandmarkKind, ctx: Ctx): void {

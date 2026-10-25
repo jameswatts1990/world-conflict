@@ -196,15 +196,15 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   idle in the interior run at about 10% at Normal, mostly capital garrisons in capitals with no foreign border
   (Easy higher by design, about 17%).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
-  counting timing (currently about 22% and 10% at Normal, 16% and 5% at Easy), and who fights the first war.
+  counting timing (currently 20% and 10% at Normal, 10% and 6% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently about a third of campaigns end on objectives within 150 minutes. Counting wins on score, Poland
-  (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
-  France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
-  in about half.
+  limit). Currently, over 200 full campaigns with Ireland and the Balkans, objectives decide 10%, with a 150-minute
+  median; score wins at the limit are intended. Win rates: Poland 33%, Hungary 20%, Italy 13%, France 12%, Spain
+  9%, Romania 6%, Germany 4%, Britain 3%, Greece 1%, Bulgaria and Serbia 0%. Campaign survival: Serbia 25%,
+  Bulgaria 41%, Romania 60%, Greece 77%. Balance is a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
   Normal brings war at 7–11 minutes and a fall in 10 of 10, at 32–83 minutes; Easy brings war at 14–39 minutes.
   Over 50 seeds of 90 minutes, France falls in 19 of 50 on Easy, against a target of about 2 in 10

@@ -47,13 +47,27 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'ro', name: 'Romania', adjective: 'Romanian', color: '#3d78c0', capital: 'ro-bucharest', power: 'major', bloc: 'western',
     trait: 'Oil and mountains',
-    blurb: "Europe's own oil field behind the arc of the Carpathians. Hungary and Serbia to the west; the Black Sea and the edge of the theatre to the east.",
+    blurb: "Europe's own oil field behind the arc of the Carpathians. Hungary and Serbia to the west, Bulgaria across the Danube; the Black Sea and the edge of the theatre to the east.",
   },
   {
     id: 'rs', name: 'Serbia', adjective: 'Serbian', color: '#c0703a', capital: 'rs-belgrade', power: 'major', bloc: 'western',
     trait: 'Balkan bastion',
-    blurb: 'Where the Sava meets the Danube. Hungary across the plain to the north, Croatia and Romania on either flank; to the south, only the edge of the theatre.',
+    blurb: 'Where the Sava meets the Danube. Hungary across the plain to the north, Croatia and Romania on either flank. Bulgaria and four smaller Balkan neighbours open routes to the south.',
   },
+  {
+    id: 'bg', name: 'Bulgaria', adjective: 'Bulgarian', color: '#759444', capital: 'bg-sofia', power: 'major', bloc: 'central',
+    trait: 'Balkan passes',
+    blurb: 'The Danube plain and the Thracian heartland, divided by the Balkan range. Romania across the river, Serbia to the west and Greece beyond the southern passes.',
+  },
+  {
+    id: 'gr', name: 'Greece', adjective: 'Greek', color: '#38a6b5', capital: 'gr-athens', power: 'major', bloc: 'western',
+    trait: 'Mountain shield',
+    blurb: 'A peninsula behind the Pindus and the Rhodopes. Macedonia guards the road north; Crete and the Aegean islands stretch the homeland across the sea.',
+  },
+  { id: 'ba', name: 'Bosnia & Herzegovina', adjective: 'Bosnian', color: '#c6a24d', capital: 'ba-sarajevo', power: 'minor', bloc: 'central' },
+  { id: 'me', name: 'Montenegro', adjective: 'Montenegrin', color: '#963e59', capital: 'me-podgorica', power: 'minor', bloc: 'western' },
+  { id: 'al', name: 'Albania', adjective: 'Albanian', color: '#a178b5', capital: 'al-tirana', power: 'minor', bloc: 'western' },
+  { id: 'mk', name: 'North Macedonia', adjective: 'Macedonian', color: '#d3b977', capital: 'mk-skopje', power: 'minor', bloc: 'western' },
   // Minor powers: one province each, always computer-controlled. Blocs follow who armed them: Belgium,
   // Denmark and Portugal Entente-style; the Netherlands, Switzerland, Austria and Czechia with
   // Schwarzlose guns, Škoda artillery and German-pattern kit.
