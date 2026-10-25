@@ -187,8 +187,9 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 ```
 
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
-  pile-on attacks under 5%. Armies idle in the interior run at about 10% at Normal, mostly capital garrisons in
-  capitals with no foreign border (Easy higher by design, about 17%).
+  pile-on attacks under 1% (about 0.2% at Normal, 0.0% at Easy, counting deliberate support to weak captures). Armies
+  idle in the interior run at about 10% at Normal, mostly capital garrisons in capitals with no foreign border
+  (Easy higher by design, about 17%).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
   counting timing (currently about 22% and 10% at Normal, 16% and 5% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
@@ -199,9 +200,10 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
   (one great-power neighbour) wins 20 of 80 and is never eliminated, Italy 14, Hungary 12, Britain 11, Germany 9,
   France and Spain 6, Romania 2, Serbia 0; France is eliminated in about two in five campaigns, Serbia and Romania
   in about half.
-- **Challenge**: when war comes to an idle player and when they fall (an idle France, over 10 seeds of 90 minutes:
-  currently war at 7–10 minutes and a fall in 7 of 10, at 40–83 minutes, at Normal; war at 14–46 and a fall in 2 of 10
-  at Easy). An idle player should lose, just not at once.
+- **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
+  Normal brings war at 7–11 minutes and a fall in 10 of 10, at 32–83 minutes; Easy brings war at 14–39 minutes.
+  Over 50 seeds of 90 minutes, France falls in 19 of 50 on Easy, against a target of about 2 in 10
+  (see [BACKLOG](docs/BACKLOG.md)). An idle player should lose, just not at once.
 
 Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather
 than retuning silently, and recommend human playtests for anything about feel.

@@ -157,6 +157,12 @@ function neutralTargetsAllowed(ctx: Ctx): boolean {
 function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const owner = ctx.state.provinces[pid].owner;
   if (owner === ctx.me) return false;
+  // Leave an uncontested capture to its occupiers only if they can hold against the danger we can see or estimate.
+  // Count armies actually standing there, not support still marching in; existing marches keep their orders.
+  if (ctx.seen.has(pid) && ctx.state.provinces[pid].capture?.by === ctx.me && hostilesInSight(ctx, pid).length === 0) {
+    const held = idleArmies(ctx).filter((a) => a.province === pid).reduce((sum, a) => sum + armyPower(ctx.state, a), 0);
+    if (held >= attackNeed(ctx, pid)) return false;
+  }
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);
   // On several fronts, only the main enemy is attacked; the other fronts are held.
   const main = mainEnemy(ctx);

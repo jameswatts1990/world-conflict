@@ -152,7 +152,11 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       that give Poland a second great-power neighbour and at how the others gang up on a leader
 - [ ] Game length: with limited war aims, about a third of all-AI campaigns end on objectives within 150 minutes
       (59 of 80 before), the rest on score at the time limit
-- [ ] AI: don't pile into a province already falling uncontested (3–5% of orders)
+- [x] AI: don't pile into a province already falling uncontested when its occupiers can hold it; free armies
+      choose other work, but support remains available if the occupiers are too weak for nearby enemies.
+- [ ] Retune Easy: since the AI stopped piling into captures, an idle France falls in 19 of 50 Easy campaigns
+      within 90 minutes (8 before); bring it back towards about 2 in 10 through Easy's handicaps in `AI_LEVELS`,
+      leaving Normal's hashes unchanged
 - [x] Balance lab ([BALANCE.md](BALANCE.md)): `npm run balance` plays hundreds of all-AI campaigns in parallel and
       reports on nations, pace, AI personalities and how the AI uses every unit, building and technology, with red
       flags; `--vs <ref>` compares two commits on the same seeds and `--set PATH=VALUE` tries any config value.
