@@ -95,9 +95,10 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   them into links between provinces (`land.ts`), and a city's only neighbours are the lands that touch it (two or
   more). `def.city` is absent on land, so use `world.cityIds`, `landsOf`/`cityOf`, `world.regionOf`,
   `world.nearbyCities` and `world.vicinity` rather than assuming a city (`def.lands` lists a city's lands,
-  `def.around` a land's city). Cities hold output, slots, recruitment and objectives; land takes only
-  infrastructure, and where the land round a city counts as one (score, war aims, capture shock) it is shared
-  between its lands (`landShare`). The division, shapes, anchors and links come from
+  `def.around` a land's city). Cities hold most output, slots, recruitment and objectives; land earns a small base
+  output and holds one building (a land building or one piece of infrastructure: `landSite`, `landBuildings`), and
+  where the land round a city counts as one (score, war aims, capture shock) it is shared between its lands
+  (`landShare`). The division, shapes, anchors and links come from
   `npx vite-node scripts/map/city-provinces.ts` (also run by `npm run map:build`; `--hints` lists what each land
   holds). A changed division changes land keys: rename the lands in `provinces.ts` to match, and look at the result
   (`scripts/map/check-borders.ts` reports borders between regions).

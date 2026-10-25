@@ -186,7 +186,7 @@ export const AI = {
     farm: 4,
     tradingPost: 7,
     workshops: 5,
-    oilWells: 9,
+    oilWells: 20,
     fieldStation: 5,
     need: 8,
     /** A resource with less than this many minutes of its income in store counts as short. */

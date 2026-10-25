@@ -141,7 +141,7 @@ export function handleConstruction(ctx: Ctx): void {
       if (!frontier && threat === 0) {
         const bias = 1 + ctx.mem.economyBias;
         add('farm', (L.farm + need('manpower') * L.need) * outputFactor);
-        add('tradingPost', (L.tradingPost + need('money') * L.need) * outputFactor * bias);
+        add('tradingPost', (L.tradingPost * bias + need('money') * L.need) * outputFactor);
         add('workshops', (L.workshops + need('materials') * L.need) * outputFactor);
         add('oilWells', (L.oilWells + need('fuel') * L.need) * outputFactor);
         if (held('fieldStation') < BUILDING_EFFECTS.fieldStationMax) add('fieldStation', L.fieldStation * bias);
@@ -160,7 +160,11 @@ export function handleConstruction(ctx: Ctx): void {
     if (builds >= maxBuilds) break;
     if (used.has(c.pid)) continue;
     const level = (state.provinces[c.pid].buildings[c.b] ?? 0) + 1;
-    if (!affordableWithReserve(ctx, constructionCost(state, me, c.b, level))) continue;
+    if (!affordableWithReserve(ctx, constructionCost(state, me, c.b, level))) {
+      // A land holds one building: save up for its best rather than settle for a cheaper one.
+      if (!world.provinces[c.pid].city) used.add(c.pid);
+      continue;
+    }
     if (issue(ctx, { type: 'build', nation: me, province: c.pid, building: c.b })) {
       builds++;
       used.add(c.pid);
