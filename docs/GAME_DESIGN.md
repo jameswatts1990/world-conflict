@@ -606,17 +606,20 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   zoom ends, when the zoom drifts past 2× either way or pauses, or when the margin is about to run out (a drag
   alone is not drawn again when it ends; zooming out, the sea's colour may show at the edges for a moment instead
   of the map being drawn again at every step). Marching armies wait while the map is being moved
-  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone or desktop). Zoom goes to 20× the fitted view, and
+  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone or desktop). Zoom goes to 20× the overview (the reference view below), and
   what the map draws changes with it (levels of detail): right out, only the land, the nation names and small stars
   for the capitals; then city markers and army chips, both smaller than at play zoom; then full counters; from just
-  past the fitted view, 3D cities and armies. These grow nearly with the map to about 4×, then more slowly (cities with
+  past the overview, 3D cities and armies. These grow nearly with the map to about 4×, then more slowly (cities with
   the zoom to the power 0.6, armies 0.4), so zooming in shows them larger, up to a city filling its province at the
   closest zoom, while neighbours still spread apart and the armies' exaggerated size fades. Name plates and badges
   keep their size at every zoom. Past the zoom where the session's relief
   texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
   match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
   opens closer in, centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so
-  they stand apart.
+  they stand apart. The map has one scale (a map unit is about 3.75 km at 48°N) whatever the theatre's size, and
+  every zoom above (the range, the opening view, where detail appears) is measured against a fixed reference view of
+  1000 × 820 map units fitted to the screen, not against the whole theatre: adding land makes the map larger, never
+  smaller, and only the fit button and the overview map show all of it (`src/ui/map/geo.ts`, `MapView.tsx`).
 - **HUD.** The top bar holds the nation's flag and era, resources with per-minute rates (shortages pulse red; pointing
   at one shows stockpile, production, army upkeep and net), national morale, research progress with slots in use and
   the queue, objective VP towards victory, the clock and the speed controls (DEV speeds grouped under an orange tag). A

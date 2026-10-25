@@ -58,9 +58,9 @@ Natural Earth data is in the **public domain**
    MPL-2.0, as a build-time tool only):
    - assigns each admin-1 unit to a game province using `scripts/map/province-sources.mjs`; every other unit (and
      any unit of a theatre country that no province claims, such as overseas territories) goes to its country
-   - simplifies each unit by its distance from the theatre (about 3 km detail in and around it, coarser further
-     away; distant islets are dropped), then dissolves units into provinces and countries, drops islets under
-     120 km² and cleans topology; Antarctica is removed
+   - simplifies each unit by its distance from the theatre (about 3 km detail in it and within 4° of any of its
+     units, coarser further away; distant islets are dropped), then dissolves units into provinces and countries,
+     drops islets under 120 km² and cleans topology; Antarctica is removed
    - writes `src/assets/map/map.topo.json` with two objects, `provinces` (50) and `countries`, in one topology, so
      every coast and border the two share is the same line
 

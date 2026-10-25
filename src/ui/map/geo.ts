@@ -9,8 +9,24 @@ import type { GeometryCollection, MultiPolygon as TopoMultiPolygon, Polygon as T
 import mapJson from '../../assets/map/map.topo.json';
 import type { OwnerId, ProvinceId, RoadSpot, World } from '../../sim';
 
-export const MAP_WIDTH = 1000;
-export const MAP_HEIGHT = 820;
+/**
+ * The map's scale: Mercator's, in map units per radian. It never changes, so a map unit is always the same stretch
+ * of ground (about 3.75 km at 48°N, less further north, as Mercator goes) and adding land to the theatre makes the
+ * drawing larger, never smaller: counters, cities, labels, roads and textures, sized in map units or in screen
+ * pixels at a zoom, look the same at the same real-world scale however wide the theatre grows. It is the scale the
+ * first theatre (9.5°W–29.7°E, 36–61°N) was fitted to the reference view at.
+ */
+export const MAP_SCALE = 1136.8817280014393;
+/**
+ * The reference view, in map units: the window a screen's zooms are measured against (MapView sets the zoom range,
+ * the opening view and the zooms where detail appears from how this window fits the screen). It is the frame the
+ * first theatre filled, and stays the measure as the theatre grows; the frame itself (`MapGeometry.size`) grows
+ * with the theatre.
+ */
+export const VIEW_WIDTH = 1000;
+export const VIEW_HEIGHT = 820;
+/** Sea round the theatre in its frame, in map units. */
+const FRAME_MARGIN = 30;
 
 const topo = mapJson as unknown as Topology<{
   provinces: GeometryCollection<{ pid: string; iso: string }>;
@@ -39,6 +55,8 @@ export interface MapGeometry {
   shapeBounds: Record<ProvinceId, [[number, number], [number, number]]>;
   /** Bounding box of the playable theatre, in map units. */
   theatreBounds: [[number, number], [number, number]];
+  /** The frame, from (0, 0): the theatre in the middle with a margin of sea, and never smaller than the reference view. */
+  size: [number, number];
   coastline: string;
   /** All the theatre's land as one shape, without the borders inside it (cheap to clip with). */
   land: string;
@@ -285,13 +303,11 @@ export function buildMapGeometry(world: World): MapGeometry {
   const provinces = feature(topo, topo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string; iso: string }>;
   const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
-  const projection = geoMercator().fitExtent(
-    [
-      [30, 30],
-      [MAP_WIDTH - 30, MAP_HEIGHT - 30],
-    ],
-    provinces,
-  );
+  // A fixed scale, and the theatre in the middle of its frame.
+  const projection = geoMercator().scale(MAP_SCALE).translate([0, 0]);
+  const [[tx0, ty0], [tx1, ty1]] = geoPath(projection).bounds(provinces);
+  const size: [number, number] = [Math.max(VIEW_WIDTH, tx1 - tx0 + 2 * FRAME_MARGIN), Math.max(VIEW_HEIGHT, ty1 - ty0 + 2 * FRAME_MARGIN)];
+  projection.translate([(size[0] - tx0 - tx1) / 2, (size[1] - ty0 - ty1) / 2]);
   const path = geoPath(projection);
 
   const provincePaths: Record<ProvinceId, string> = {};
@@ -393,6 +409,7 @@ export function buildMapGeometry(world: World): MapGeometry {
     provinceBounds,
     shapeBounds,
     theatreBounds,
+    size,
     coastline,
     land,
     graticule,

@@ -366,7 +366,11 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Results screen: the race over the campaign (score, objective VP, provinces), from a score history the simulation now keeps
 - [x] Hungary's missing neighbours: Romania and Serbia (major powers), Slovakia, Slovenia and Croatia (minor powers)
 - [x] A test that every shared border has a movement link (`scripts/map/check-borders.ts` prints the report)
+- [x] A map frame ready for a wider theatre: one scale whatever the theatre's size, the frame grown round it, zooms
+      measured against a fixed reference view, and full detail within 4° of the theatre wherever it reaches (today's
+      map unchanged, `map.topo.json` byte for byte)
 - [ ] Eastern-bloc nations east of Poland and Romania
+- [ ] A projection for the far north before Scandinavia (Mercator draws a kilometre at 71°N twice as long as at 48°N)
 - [ ] A nation picker that scales past a dozen nations (pick on the map)
 - [ ] Expand beyond Europe: more theatres, then the whole world
 - [ ] Authoritative multiplayer server running `src/sim` unchanged; client sends commands only
