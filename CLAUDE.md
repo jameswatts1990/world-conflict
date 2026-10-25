@@ -72,6 +72,11 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
 - City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
   raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
   `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.
+- What the map draws and how big depends on the zoom ratio (`ZOOM` in `MapView.tsx`): `symbolScale` shrinks markers and
+  counters zoomed out (chips below `ZOOM.chips`, capitals only below `ZOOM.detail`), and `cityModelScale` and
+  `unitModelScale` grow the models with `closeUpGrowth` past `ZOOM.closeUp`. Models must never grow faster than the
+  map (pixels per model unit over the zoom never rising): a city's coast reach is baked for the first model zoom
+  (`REACH_SCALE`) and its buildings would reach the sea. Keep text (plates, badges) a constant size on screen.
 - Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
   (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 

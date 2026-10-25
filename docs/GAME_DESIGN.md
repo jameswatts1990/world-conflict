@@ -535,8 +535,10 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   **Morale** (civilian morale, red to green; unknown under the fog) and **Cities** (city tier).
 - **Labels.** Nation names are painted across their territory when zoomed out, as a translucent, widely spaced
   background layer: one per block of land (a conquest across the sea gets its own), placed near the middle but clear of
-  cities and counters where possible. Closer in, only cities are named: the land round them carries no label, to keep
-  the map clear (its name shows in its panel).
+  cities and counters where possible. However far out, a name is never drawn smaller than can be read (nor huge);
+  where names grown to be readable would overlap, the bigger territories' names win and the rest wait for a closer
+  zoom. Closer in, only cities are named: the land round them carries no label, to keep the map clear (its name
+  shows in its panel).
   Cities have dark name plates with an owner-colour stripe (capitals always, cities and towns as you zoom), gold
   badges for objective VP and capture-progress rings. Secondary towns
   are unnamed dots. Name plates are drawn above the armies: armies round a city stand clear of its plate, and an
@@ -561,7 +563,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   idle moments, so the map is cheap to draw; the name plate hangs in front of the built-up area. The cursor tooltip
   lists the same buildings and free slots.
 - **Armies.** Zoomed out, counters in the owner's colour show the army's main unit in its national art, the number of
-  formations, and strength and morale bars; Your armies have a white rim, armies of
+  formations, and strength and morale bars; further out they shrink, and further still become compact chips in the
+  owner's colour with the number of formations and a strength bar, stacked closer; Your armies have a white rim, armies of
   nations at war with you a red rim, armies out of supply a red "!" badge, and the selection a running dashed outline.
   Armies standing in one province (or at one spot on a road) fill rows of two above it, yours first, so a crowded province
   grows a short pyramid rather than a tower. Overlapping counters are drawn other nations' first, then yours (marching above
@@ -602,8 +605,13 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   zoom ends, when the zoom drifts past 2× either way or pauses, or when the margin is about to run out (a drag
   alone is not drawn again when it ends; zooming out, the sea's colour may show at the edges for a moment instead
   of the map being drawn again at every step). Marching armies wait while the map is being moved
-  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone or desktop). Zoom goes to 20× the fitted view. Counters, 3D cities, armies and labels stop growing at about 4×,
-  so zooming further spreads a crowded front out instead of magnifying it. Past the zoom where the session's relief
+  (`scripts/dev/pan-perf.mjs` measures it on an emulated phone or desktop). Zoom goes to 20× the fitted view, and
+  what the map draws changes with it (levels of detail): right out, only the land, the nation names and small stars
+  for the capitals; then city markers and army chips, both smaller than at play zoom; then full counters; from just
+  past the fitted view, 3D cities and armies. These grow nearly with the map to about 4×, then more slowly (cities with
+  the zoom to the power 0.6, armies 0.4), so zooming in shows them larger, up to a city filling its province at the
+  closest zoom, while neighbours still spread apart and the armies' exaggerated size fades. Name plates and badges
+  keep their size at every zoom. Past the zoom where the session's relief
   texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
   match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
   opens closer in, centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so

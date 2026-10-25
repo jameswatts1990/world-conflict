@@ -153,7 +153,8 @@ function release(image: { href: string }): void {
  * The browser draws an SVG image by replaying every shape in it each time it paints the stretch of map it lies
  * on (a city's model has hundreds), and lays it out again whenever its size changes, as it does on every zoom.
  * So the map draws its sprites as bitmaps, baked from the SVG in idle moments at a power of two of device
- * pixels per model unit: the smallest at or above what the zoom needs, so a bitmap is never stretched.
+ * pixels per model unit: the smallest at or above what the zoom needs, so a bitmap is never stretched (but
+ * for the largest sprites at the closest zooms; see `spriteHref`).
  */
 const bitmaps = new Map<string, Map<number, string>>();
 /** The level each sprite was last asked for at: a bake queued for another one is skipped. */
@@ -180,7 +181,11 @@ export function spriteHref(image: { href: string; width: number; height: number 
   // Imported model images are already bitmaps. Re-baking them wastes idle time
   // and memory, and cannot add detail at a higher zoom.
   if (/\.(png|webp)(?:$|[?#])/.test(image.href) || /^data:image\/(png|webp);/.test(image.href)) return image.href;
-  const level = 2 ** Math.max(0, Math.ceil(Math.log2(pxPerUnit)));
+  const sharp = 2 ** Math.max(0, Math.ceil(Math.log2(pxPerUnit)));
+  // A sprite too big for a sharp bitmap at this zoom (a big city's streets, close up) takes the largest that fits,
+  // stretched less than twice (it is flat ground): an SVG would be replayed shape by shape on every raster.
+  const fits = 2 ** Math.floor(Math.log2(MAX_BITMAP / Math.max(image.width, image.height)));
+  const level = sharp > fits && pxPerUnit < fits * 2 ? fits : sharp;
   const have = bitmaps.get(image.href);
   for (let l = level; l <= level * 4; l *= 2) {
     const url = have?.get(l);

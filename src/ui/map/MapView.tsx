@@ -122,13 +122,54 @@ export interface MapViewProps {
   onHover: (pid: ProvinceId | null, army?: ArmyId) => void;
 }
 
-/** Zoom ratios (relative to the initial fit) at which labels change. */
-const ZOOM = { detail: 0.32, nationNames: 1.7, majorCities: 1.7, towns: 2.6, capitals: 0.75, townDots: 2.0, cityModels: 1.15 };
 /**
- * Closest zoom (relative to the fit). Counters, models and labels stop growing long before
- * it, so zooming in spreads a crowded front out; close-up terrain tiles keep the relief sharp.
+ * Zoom ratios (relative to the initial fit) at which the map changes what it draws. Out past `detail` it shows
+ * only the land, nation names and capitals; out past `chips` armies are compact chips; out past `symbols` city
+ * markers and counters shrink; from `cityModels` cities and armies are 3D models, growing nearly with the map
+ * to `closeUp` and more slowly past it.
+ */
+const ZOOM = {
+  detail: 0.32,
+  chips: 0.6,
+  symbols: 0.9,
+  nationNames: 1.7,
+  majorCities: 1.7,
+  towns: 2.6,
+  capitals: 0.75,
+  townDots: 2.0,
+  cityModels: 1.15,
+  closeUp: 4,
+};
+/**
+ * Closest zoom (relative to the fit). Models grow more slowly than the map past `ZOOM.closeUp`
+ * (`closeUpGrowth`), so zooming in both shows them larger and spreads a crowded front out; labels keep
+ * their size; close-up terrain tiles keep the relief sharp.
  */
 const MAX_ZOOM = 20;
+/**
+ * How much bigger models are drawn than at `ZOOM.closeUp`, at a zoom ratio past it: a power of the zoom
+ * below 1, so they grow as you zoom in but never as fast as the map. Never outgrowing the map is what keeps
+ * neighbouring cities apart and a city's buildings on land (see REACH_SCALE).
+ */
+function closeUpGrowth(ratio: number, power: number): number {
+  return ratio > ZOOM.closeUp ? (ratio / ZOOM.closeUp) ** power : 1;
+}
+/** Cities grow with the zoom to this power past `ZOOM.closeUp`: zooming in 2× shows them about 1.5× bigger. */
+const CITY_CLOSE_UP = 0.6;
+/**
+ * Armies grow more slowly than cities past it, so the exaggeration that makes them readable at play zoom fades
+ * as you close in. At the closest zoom they reach about 38 screen pixels per model unit, which the baked unit
+ * images (about 80 pixels per unit) still cover on a 2× screen.
+ */
+const ARMY_CLOSE_UP = 0.4;
+/**
+ * The size of city markers, counters and objective badges zoomed out, against their size at `ZOOM.symbols`
+ * and closer: they shrink with the square root of the zoom down to a floor, so a whole theatre on screen
+ * does not drown in them. On a touch screen the floor is higher, so they stay easy to tap.
+ */
+function symbolScale(ratio: number, touch: boolean): number {
+  return Math.max(touch ? 0.75 : 0.6, Math.min(1, Math.sqrt(ratio / ZOOM.symbols)));
+}
 /**
  * The zoom levels above are relative to the whole-theatre fit, but never to a fit smaller
  * than a 1280 × 720 desktop's. On a phone the theatre fits in a few hundred pixels, and
@@ -147,11 +188,12 @@ const COMPACT_OPENING = 2.1;
 /**
  * Screen pixels per model unit for the 3D cities at a zoom ratio, or 0 below the
  * ratio where cities are still drawn as symbols. Models grow more slowly than the
- * map, so neighbouring cities keep their distance.
+ * map, so neighbouring cities keep their distance: nearly with it to `ZOOM.closeUp`
+ * (3.6 there), then with a power of it (about 9.5 at the closest zoom).
  */
 export function cityModelScale(ratio: number): number {
   if (ratio < ZOOM.cityModels) return 0;
-  return Math.min(3.6, 0.4 + 0.8 * ratio);
+  return Math.min(3.6, 0.4 + 0.8 * ratio) * closeUpGrowth(ratio, CITY_CLOSE_UP);
 }
 
 /**
@@ -719,27 +761,62 @@ function nationLabels(geo: MapGeometry, world: World, ownerOf: Record<ProvinceId
   return out;
 }
 
+/** Nation names on screen (pixels): never smaller than can be read, nor so big they shout. */
+const NAME_PX = { min: 9, max: 44 };
+
+/**
+ * The nation names to show at zoom `k`, each at a size that can be read: the size that fits its territory
+ * where that is big enough, else the smallest readable one. Zoomed out, a name grown to be readable may
+ * run over its neighbours': the bigger territories' names go first and any name that would overlap one
+ * already placed is left out, so the overview names the great powers rather than smudging them all.
+ */
+function shownLabels(labels: NationLabel[], k: number): (NationLabel & { scale: number })[] {
+  const placed: [number, number, number, number][] = [];
+  const out: (NationLabel & { scale: number })[] = [];
+  for (const l of [...labels].sort((a, b) => Number(a.neutral) - Number(b.neutral) || b.size - a.size)) {
+    const px = Math.max(NAME_PX.min, Math.min(NAME_PX.max, l.size * k));
+    // Letter-spaced capitals take about 0.94 em per character (0.78 with the neutral names' narrower spacing).
+    const half = (l.text.length * px * (l.neutral ? 0.78 : 0.94)) / 2 + 3;
+    const box: [number, number, number, number] = [l.x * k - half, l.y * k - px * 0.6, l.x * k + half, l.y * k + px * 0.6];
+    if (placed.some((b) => box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1])) continue;
+    placed.push(box);
+    out.push({ ...l, scale: px / k / l.size });
+  }
+  return out;
+}
+
 function LabelLayer({
   geo,
   world,
   owners,
   ownerOf,
+  k,
   ratio,
 }: {
   geo: MapGeometry;
   world: World;
   owners: string;
   ownerOf: Record<ProvinceId, string>;
+  k: number;
   ratio: number;
 }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const labels = useMemo(() => nationLabels(geo, world, ownerOf), [geo, world, owners]);
+  const shown = useMemo(() => shownLabels(labels, k), [labels, k]);
   // Closer in, only cities are named (by their plates): unnamed land keeps the map clear.
   if (ratio >= ZOOM.nationNames) return null;
   return (
     <g className="label-layer" pointerEvents="none">
-      {labels.map((l) => (
-        <text key={l.id} x={l.x} y={l.y} fontSize={l.size} className={`nation-label${l.neutral ? ' neutral' : ''}`}>
+      {/* A name made bigger to be read keeps its outline in proportion. */}
+      {shown.map((l) => (
+        <text
+          key={l.id}
+          x={l.x}
+          y={l.y}
+          fontSize={l.size * l.scale}
+          strokeWidth={l.scale === 1 ? undefined : (l.neutral ? 0.45 : 1) * l.scale}
+          className={`nation-label${l.neutral ? ' neutral' : ''}`}
+        >
           {l.text}
         </text>
       ))}
@@ -885,6 +962,7 @@ function CityLayer({
   world,
   k,
   ratio,
+  symbol,
   cities,
   seen,
   handlers,
@@ -895,6 +973,8 @@ function CityLayer({
   world: World;
   k: number;
   ratio: number;
+  /** The markers' and badges' size against their full one (`symbolScale`). */
+  symbol: number;
   cities: Record<ProvinceId, CityFootprint> | null;
   seen: ReadonlySet<ProvinceId>;
   handlers: ProvinceHandlers;
@@ -902,6 +982,9 @@ function CityLayer({
 }) {
   const s = 1 / k;
   const px = cityModelScale(ratio);
+  const overview = ratio < ZOOM.detail;
+  // Right out, the capitals are only there for bearings: small, whatever the screen.
+  const icon = overview ? 0.5 : symbol;
   const hit = (id: ProvinceId) => ({
     'data-city': id,
     onClick: (e: React.MouseEvent) => {
@@ -931,6 +1014,8 @@ function CityLayer({
         })}
       {world.cityIds.map((id) => {
         const def = world.provinces[id];
+        // Zoomed right out, only the capitals show, for bearings.
+        if (overview && def.city!.size !== 'capital') return null;
         const [x, y] = geo.anchors[id];
         const ps = state.provinces[id];
         // Under the fog of war nobody reports a siege.
@@ -976,44 +1061,47 @@ function CityLayer({
         }
         return (
           <g key={id} transform={`translate(${x},${y}) scale(${s})`} className={fogged ? 'fogged' : undefined}>
-            <circle r={isCapital ? 14 : 12} className="city-hit" {...hit(id)} />
+            {/* Zoomed out the marker and its badges shrink (`symbol`); the name keeps its size. */}
+            <circle r={(isCapital ? 14 : 12) * symbol} className="city-hit" {...hit(id)} />
             <g pointerEvents="none">
-              {capture && (
-                <g className="capture">
-                  <circle r={11} className="capture-track" />
-                  <circle
-                    r={11}
-                    className="capture-ring"
-                    stroke={world.nations[capture.by]?.color}
-                    strokeDasharray={`${(capture.progress / capture.required) * 69.1} 69.1`}
-                    transform="rotate(-90)"
-                  />
-                </g>
-              )}
-              <g transform={`scale(${tierScale})`}>
-                {isCapital ? (
-                  <g className={`city-icon capital${def.core ? ' national' : ''}`}>
-                    <circle r={6.6} />
-                    <path d={STAR} transform="scale(0.72)" />
+              <g transform={icon === 1 ? undefined : `scale(${icon})`}>
+                {capture && (
+                  <g className="capture">
+                    <circle r={11} className="capture-track" />
+                    <circle
+                      r={11}
+                      className="capture-ring"
+                      stroke={world.nations[capture.by]?.color}
+                      strokeDasharray={`${(capture.progress / capture.required) * 69.1} 69.1`}
+                      transform="rotate(-90)"
+                    />
                   </g>
-                ) : size === 'major' ? (
-                  <g className="city-icon major">
-                    <circle r={4.2} />
-                    <circle r={1.6} className="dot" />
-                  </g>
-                ) : (
-                  <circle r={2.7} className="city-icon town" />
                 )}
-              </g>
-              {def.objectiveVp ? (
-                <g className="vp-badge-map" transform={`translate(${isCapital ? 14 : 12},1)`}>
-                  <VpMarker vp={def.objectiveVp} />
+                <g transform={`scale(${tierScale})`}>
+                  {isCapital ? (
+                    <g className={`city-icon capital${def.core ? ' national' : ''}`}>
+                      <circle r={6.6} />
+                      <path d={STAR} transform="scale(0.72)" />
+                    </g>
+                  ) : size === 'major' ? (
+                    <g className="city-icon major">
+                      <circle r={4.2} />
+                      <circle r={1.6} className="dot" />
+                    </g>
+                  ) : (
+                    <circle r={2.7} className="city-icon town" />
+                  )}
                 </g>
-              ) : null}
+                {def.objectiveVp && !overview ? (
+                  <g className="vp-badge-map" transform={`translate(${isCapital ? 14 : 12},1)`}>
+                    <VpMarker vp={def.objectiveVp} />
+                  </g>
+                ) : null}
+              </g>
               {showName && (
                 <Plate
                   text={def.city!.name}
-                  y={isCapital ? 8.5 : 6.5}
+                  y={(isCapital ? 8.5 : 6.5) * symbol}
                   color={ownerColor(world, ps.owner)}
                   size={isCapital ? 10.5 : 9.5}
                   className={isCapital ? 'capital' : ''}
@@ -1088,8 +1176,9 @@ function spotKey(army: Army): string {
   return army.road ? `${army.province}>${army.road.toward}@${army.road.at}` : army.province;
 }
 
-/** Stationary counters sit above their city in rows of two (screen pixels). */
+/** Stationary counters sit above their city in rows of two (screen pixels at full size); chips likewise, closer. */
 const STACK = { base: 19, row: 27, half: 23 };
+const STACK_CHIP = { base: 13, row: 19, half: 14 };
 
 /** Army ids by creation order: "a9" before "a10". */
 function byCreation(a: Army, b: Army): number {
@@ -1138,6 +1227,8 @@ function ArmyMarker({
   x,
   y,
   k,
+  symbol,
+  chip,
   selected,
   own,
   hostile,
@@ -1151,6 +1242,10 @@ function ArmyMarker({
   x: number;
   y: number;
   k: number;
+  /** Its size against the full counter's (`symbolScale`). */
+  symbol: number;
+  /** Zoomed out: a chip in the owner's colour with the number of formations and a strength bar, not the counter. */
+  chip: boolean;
   selected: boolean;
   own: boolean;
   hostile: boolean;
@@ -1162,10 +1257,12 @@ function ArmyMarker({
   const main = mainUnitType(c);
   const avg = c.strength;
   const morale = armyMorale(army);
+  const count = String(army.units.length);
+  const half = 7 + count.length * 3.3;
   return (
     <g
-      transform={`translate(${x},${y}) scale(${1 / k})`}
-      className={`army-marker${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}`}
+      transform={`translate(${x},${y}) scale(${symbol / k})`}
+      className={`army-marker${chip ? ' army-chip' : ''}${selected ? ' selected' : ''}${own ? ' own' : ''}${hostile ? ' hostile' : ''}${army.supplied ? '' : ' unsupplied'}`}
       data-army={army.id}
       onClick={(e) => {
         e.stopPropagation();
@@ -1179,22 +1276,40 @@ function ArmyMarker({
       onMouseEnter={() => onHover(armyTarget(army), army.id)}
       onMouseLeave={() => onHover(null)}
     >
-      <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
-      <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
-      <CounterArt world={world} type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
-      <text x={12.2} y={4.7} className="army-count">
-        {army.units.length}
-      </text>
-      <rect x={-21} y={10.6} width={42} height={6.2} rx={1.6} className="army-hp-bg" />
-      <rect x={-21} y={10.6} width={42 * avg} height={3} rx={1.5} fill={strengthColor(avg)} />
-      <rect x={-21} y={14} width={42 * morale} height={2.6} rx={1.3} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
-      {!army.supplied && (
-        <g transform="translate(20,-11)" className="army-badge warn">
-          <circle r={5.4} />
-          <text y={2.9}>!</text>
-        </g>
+      {chip ? (
+        <>
+          <rect x={-half} y={-8} width={half * 2} height={16} rx={3.5} fill={`url(#ag-${army.owner})`} className="army-body" />
+          <text y={4.4} className="army-count">
+            {count}
+          </text>
+          <rect x={-half + 2} y={5.2} width={(half * 2 - 4) * avg} height={1.8} rx={0.9} fill={strengthColor(avg)} />
+          {!army.supplied && (
+            <g transform={`translate(${half},-8)`} className="army-badge warn">
+              <circle r={3.6} />
+            </g>
+          )}
+          {selected && <rect x={-half - 3.5} y={-11.5} width={half * 2 + 7} height={23} rx={5} className="army-select" />}
+        </>
+      ) : (
+        <>
+          <rect x={-21} y={-11} width={42} height={20} rx={4} fill={`url(#ag-${army.owner})`} className="army-body" />
+          <ellipse cx={1} cy={17} rx={20} ry={3.2} className="army-shadow" />
+          <CounterArt world={world} type={main} gen={unitGen(state, army.owner, main)} nation={army.owner} x={-19.5} y={-8.6} width={23} />
+          <text x={12.2} y={4.7} className="army-count">
+            {count}
+          </text>
+          <rect x={-21} y={10.6} width={42} height={6.2} rx={1.6} className="army-hp-bg" />
+          <rect x={-21} y={10.6} width={42 * avg} height={3} rx={1.5} fill={strengthColor(avg)} />
+          <rect x={-21} y={14} width={42 * morale} height={2.6} rx={1.3} className={`army-morale ${morale >= 0.6 ? 'high' : morale >= 0.35 ? 'mid' : 'low'}`} />
+          {!army.supplied && (
+            <g transform="translate(20,-11)" className="army-badge warn">
+              <circle r={5.4} />
+              <text y={2.9}>!</text>
+            </g>
+          )}
+          {selected && <rect x={-25.5} y={-15.5} width={51} height={36.5} rx={6} className="army-select" />}
+        </>
       )}
-      {selected && <rect x={-25.5} y={-15.5} width={51} height={36.5} rx={6} className="army-select" />}
     </g>
   );
 }
@@ -1203,6 +1318,8 @@ function ArmyLayer({
   ctrl,
   geo,
   k,
+  symbol,
+  chips,
   panning,
   selectedArmies,
   onArmyClick,
@@ -1212,6 +1329,10 @@ function ArmyLayer({
   ctrl: GameController;
   geo: MapGeometry;
   k: number;
+  /** The counters' size against their full one (`symbolScale`). */
+  symbol: number;
+  /** Zoomed out, compact chips rather than counters. */
+  chips: boolean;
   panning: RefObject<boolean>;
   selectedArmies: ArmyId[];
   onArmyClick: (army: Army, additive: boolean) => void;
@@ -1220,6 +1341,7 @@ function ArmyLayer({
 }) {
   useArmyClock(ctrl, panning);
   const { state, human, world } = ctrl;
+  const stack = chips ? STACK_CHIP : STACK;
   const alpha = ctrl.loop.paused ? 0 : ctrl.loop.alpha;
   const selected = new Set(selectedArmies);
   const relations = state.nations[human].relations;
@@ -1242,8 +1364,8 @@ function ArmyLayer({
     list.sort((a, b) => Number(b.owner === human) - Number(a.owner === human) || byCreation(a, b));
     list.forEach((a, i) => {
       const lone = i % 2 === 0 && i === list.length - 1;
-      const dx = lone ? 0 : i % 2 === 0 ? -STACK.half : STACK.half;
-      offsets.set(a.id, [dx / k, -(STACK.base + Math.floor(i / 2) * STACK.row) / k]);
+      const dx = lone ? 0 : i % 2 === 0 ? -stack.half : stack.half;
+      offsets.set(a.id, [(dx * symbol) / k, (-(stack.base + Math.floor(i / 2) * stack.row) * symbol) / k]);
     });
   }
   // Drawn bottom to top: other nations' armies, then yours (marching ones above those
@@ -1272,6 +1394,8 @@ function ArmyLayer({
         x={x}
         y={y}
         k={k}
+        symbol={symbol}
+        chip={chips}
         selected={selected.has(army.id)}
         own={own}
         hostile={hostile}
@@ -1295,9 +1419,12 @@ function ArmyLayer({
 // 3D armies (wherever the cities are 3D models)
 // ---------------------------------------------------------------------------
 
-/** Screen pixels per model unit for the 3D armies. Like the cities, they grow more slowly than the map. */
+/**
+ * Screen pixels per model unit for the 3D armies. Like the cities, they grow more slowly than the map, and past
+ * `ZOOM.closeUp` more slowly than the cities (about 38 at the closest zoom).
+ */
 export function unitModelScale(ratio: number): number {
-  return Math.min(20, 2.5 + 5 * ratio);
+  return Math.min(20, 2.5 + 5 * ratio) * closeUpGrowth(ratio, ARMY_CLOSE_UP);
 }
 
 /**
@@ -2408,27 +2535,24 @@ export function MapView(props: MapViewProps) {
                 </>
               )}
             </g>
-            {/* Zoomed far out the theatre is tiny: hide markers so the world context stays readable. */}
-            {showDetail && (
-              <>
-                <ConnectionLayer geo={geo} world={world} focusIds={focusIds} onRoad={roadsLive ? onRoad : null} />
-                <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} ratio={ratio} />
-                {cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} src={spriteSrc} />}
-                {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
-                <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />
-                <CityLayer
-                  geo={geo}
-                  state={state}
-                  world={world}
-                  k={k}
-                  ratio={ratio}
-                  cities={cities}
-                  seen={seen}
-                  handlers={{ onClick: onProvinceClick, onContext: onProvinceContext, onHover }}
-                  src={spriteSrc}
-                />
-              </>
-            )}
+            {/* Zoomed far out the theatre is tiny: only names and capitals, so the world context stays readable. */}
+            {showDetail && <ConnectionLayer geo={geo} world={world} focusIds={focusIds} onRoad={roadsLive ? onRoad : null} />}
+            <LabelLayer geo={geo} world={world} owners={ownersSig} ownerOf={ownerOf} k={k} ratio={ratio} />
+            {showDetail && cities && <CityGroundLayer geo={geo} world={world} k={k} ratio={ratio} cities={cities} seen={seen} src={spriteSrc} />}
+            {/* A portal target: React's focus listeners make Chrome treat it as focusable, so keep it out of the tab order. */}
+            {showDetail && <g ref={setArmyBack} className="army-layer army-models army-back" tabIndex={-1} />}
+            <CityLayer
+              geo={geo}
+              state={state}
+              world={world}
+              k={k}
+              ratio={ratio}
+              symbol={symbolScale(ratio, props.touch)}
+              cities={cities}
+              seen={seen}
+              handlers={{ onClick: onProvinceClick, onContext: onProvinceContext, onHover }}
+              src={spriteSrc}
+            />
           </g>
         </svg>
         {/*
@@ -2459,6 +2583,8 @@ export function MapView(props: MapViewProps) {
                     ctrl={ctrl}
                     geo={geo}
                     k={k}
+                    symbol={symbolScale(ratio, props.touch)}
+                    chips={ratio < ZOOM.chips}
                     panning={panning}
                     selectedArmies={props.selectedArmies}
                     onArmyClick={onArmyClick}
