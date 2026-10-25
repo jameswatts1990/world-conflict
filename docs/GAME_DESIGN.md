@@ -684,9 +684,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
 
 ## 14. Open questions for playtesting
 
-- Does the campaign stay engaging through its 150-minute limit? Score wins are intended: in the combined
-  Ireland/Balkans reference build (`5ff0a56`, 200 campaigns), 6% end on objectives and 94% on score. These figures
-  will be re-measured after review fixes; no victory-rule change is planned.
+- Does the campaign stay engaging through its 150-minute limit? Score wins are intended: over 200 full campaigns
+  with Ireland and the Balkans, 3% end on objectives and 97% on score. No victory-rule change is planned.
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
