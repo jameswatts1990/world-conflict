@@ -340,9 +340,40 @@ const WorldLayer = memo(function WorldLayer({ geo }: { geo: MapGeometry }) {
           <title>{THEATRE_ISO.has(c.iso) ? `${c.name}: territory outside this campaign's theatre` : `${c.name}: outside this campaign's theatre`}</title>
         </path>
       ))}
+      <path d={fadeRing(geo)} className="world-fade" fillRule="evenodd" pointerEvents="none" />
     </g>
   );
 });
+
+/** The sea's colours (OCEAN_STOPS) from the middle of the cap (0) to its horizon (1), past which it stays the last. */
+const OCEAN_STOPS: [number, string][] = [
+  [0, '#2c5d7c'],
+  [0.55, '#1c425f'],
+  [1, '#0c1f31'],
+];
+/** Where, between the cap's middle (0) and its horizon (1), the world starts to fade into the sea. */
+const FADE_FROM = 0.8;
+
+/** The sea's colour at `t` of the way to the horizon. */
+function oceanAt(t: number): string {
+  const i = Math.max(1, OCEAN_STOPS.findIndex(([at]) => at >= t));
+  const [[t0, c0], [t1, c1]] = [OCEAN_STOPS[i - 1], OCEAN_STOPS[i]];
+  const f = Math.max(0, Math.min(1, (t - t0) / (t1 - t0)));
+  const rgb = (c: string, k: number) => parseInt(c.slice(1 + 2 * k, 3 + 2 * k), 16);
+  return `rgb(${[0, 1, 2].map((k) => Math.round(rgb(c0, k) + (rgb(c1, k) - rgb(c0, k)) * f)).join(',')})`;
+}
+
+/**
+ * The ring where the world fades: from FADE_FROM of the way to the horizon out past the cap's rim. It is painted
+ * in the sea's own colour at each distance, clear at its inner edge and solid from the horizon, so over the sea it
+ * cannot be seen and over the land, borders and graticule it fades them out. Only the ring's pixels pay for the
+ * gradient; the countries themselves are plain fills.
+ */
+function fadeRing(geo: MapGeometry): string {
+  const { x, y, r, outer } = geo.horizon;
+  const circle = (q: number) => `M${x + q},${y}A${q},${q} 0 1 0 ${x - q},${y}A${q},${q} 0 1 0 ${x + q},${y}Z`;
+  return circle(outer) + circle(r * FADE_FROM);
+}
 
 /**
  * Close up, past the zoom where the session's relief texture turns soft, sharper tiles of
@@ -2488,23 +2519,18 @@ export function MapView(props: MapViewProps) {
         >
           <defs>
             {/* The sea deepens away from the middle of Europe; the world round the theatre, its borders and the
-                graticule fade into it towards the cap's rim (geo.horizon), so the cap ends without an edge. */}
+                graticule fade into it towards the cap's rim (geo.horizon, the ring in WorldLayer), so the cap ends
+                without an edge. */}
             <radialGradient id="ocean-grad" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
-              <stop offset="0" stopColor="#2c5d7c" />
-              <stop offset="0.55" stopColor="#1c425f" />
-              <stop offset="1" stopColor="#0c1f31" />
+              {OCEAN_STOPS.map(([at, color]) => (
+                <stop key={at} offset={at} stopColor={color} />
+              ))}
             </radialGradient>
-            <radialGradient id="land-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
-              <stop offset="0.8" stopColor="#3a413d" />
-              <stop offset="1" stopColor="#0c1f31" />
-            </radialGradient>
-            <radialGradient id="border-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
-              <stop offset="0.8" stopColor="rgb(140, 150, 145)" stopOpacity={0.45} />
-              <stop offset="1" stopColor="rgb(140, 150, 145)" stopOpacity={0} />
-            </radialGradient>
-            <radialGradient id="grid-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
-              <stop offset="0.7" stopColor="rgb(160, 205, 240)" stopOpacity={0.09} />
-              <stop offset="1" stopColor="rgb(160, 205, 240)" stopOpacity={0} />
+            <radialGradient id="world-fade" gradientUnits="userSpaceOnUse" cx={geo.horizon.x} cy={geo.horizon.y} r={geo.horizon.r}>
+              {[0, 0.25, 0.5, 0.75, 1].map((f) => {
+                const at = FADE_FROM + (1 - FADE_FROM) * f;
+                return <stop key={f} offset={at} stopColor={oceanAt(at)} stopOpacity={f} />;
+              })}
             </radialGradient>
             {/* Hatching keeps the same on-screen spacing at every zoom. */}
             <pattern id="hatch-neutral" width={7 / k} height={7 / k} patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">

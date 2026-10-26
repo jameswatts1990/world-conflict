@@ -116,8 +116,11 @@ export interface MapGeometry {
   provinceBorders: string;
   /** Bounds of the world drawn round the theatre: a cap of the globe round the middle of Europe. */
   worldBounds: [[number, number], [number, number]];
-  /** A circle just inside the cap's rim, round its middle (map units): the world fades into the sea towards it. */
-  horizon: { x: number; y: number; r: number };
+  /**
+   * A circle just inside the cap's rim, round its middle (map units): the world fades into the sea towards it.
+   * `outer` reaches just past the farthest point of the rim (the conic not being quite even in scale).
+   */
+  horizon: { x: number; y: number; r: number; outer: number };
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
@@ -452,7 +455,8 @@ export function buildMapGeometry(world: World): MapGeometry {
   // little, the conic not being quite even in scale).
   const [hx, hy] = projection(CAP_CENTRE) as Pt;
   const rim = geoCircle().center(CAP_CENTRE).radius(CAP_DEGREES).precision(1)().coordinates[0].map((p) => projection(p as [number, number]) as Pt);
-  const horizon = { x: hx, y: hy, r: Math.min(...rim.map(([x, y]) => Math.hypot(x - hx, y - hy))) - 15 };
+  const fromMiddle = rim.map(([x, y]) => Math.hypot(x - hx, y - hy));
+  const horizon = { x: hx, y: hy, r: Math.min(...fromMiddle) - 15, outer: Math.max(...fromMiddle) + 15 };
 
   return {
     provincePaths,

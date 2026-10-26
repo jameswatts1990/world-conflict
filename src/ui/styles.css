@@ -716,14 +716,17 @@ kbd {
 }
 .graticule {
   fill: none;
-  /* The map fades it out at the edge of the world it draws (MapView's gradients); elsewhere a plain colour. */
-  stroke: url(#grid-fade) rgba(160, 205, 240, 0.09);
+  stroke: rgba(160, 205, 240, 0.09);
   stroke-width: 1;
   vector-effect: non-scaling-stroke;
 }
+/* The world round the theatre fades into the sea towards the rim of the cap it is drawn in (MapView's fadeRing). */
+.world-fade {
+  fill: url(#world-fade);
+}
 .country {
-  fill: url(#land-fade) #3a413d;
-  stroke: url(#border-fade) rgba(140, 150, 145, 0.45);
+  fill: #3a413d;
+  stroke: rgba(140, 150, 145, 0.45);
   stroke-width: 0.6;
   vector-effect: non-scaling-stroke;
 }
