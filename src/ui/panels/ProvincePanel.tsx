@@ -1,7 +1,7 @@
 // The city view: skyline, morale, growth, building slots and the build
 // picker; unit cards for recruitment; armies present and routes.
 import { useState } from 'react';
-import { BUILDINGS, BUILDING_ORDER, CITY, slotsUsed } from '../../sim/config/buildings';
+import { BUILDINGS, BUILDING_ORDER, CITY, landBuildings, landSite, slotsUsed } from '../../sim/config/buildings';
 import { BUILDING_UNLOCKED_BY, TECH_BY_ID } from '../../sim/config/research';
 import { ECONOMY, SIGHT } from '../../sim/config/rules';
 import { ARMY_RULES, UNITS, UNITS_BY_CLASS } from '../../sim/config/units';
@@ -27,6 +27,7 @@ import {
   nationName,
   provinceMoraleTarget,
   provinceName,
+  nationEconomy,
   provinceOutput,
   recruitCost,
   recruitTicks,
@@ -47,14 +48,14 @@ import {
   type UnitType,
   type World,
 } from '../../sim';
-import { BuildingTileArt, CityScene, UnitIconArt, UnitPicture } from '../art/adapters';
+import { BuildingTileArt, CityScene, cityConstruction, UnitIconArt, UnitPicture } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
 import { countOf, fmtPopulation, fmtRate, formatDuration, listText } from '../format';
 import { BuildingIcon, Icon, RESOURCE_LABEL, ResourceIcon, type IconName } from '../icons';
 import { TERRAIN_LABEL, TERRAIN_NOTE, composition, ownerLabel, ownerShortName, roadEndName } from '../labels';
-import { Cost, MoraleMeter, Progress, Section } from './Common';
+import { Cost, MoraleMeter, Progress, Section, Upkeep } from './Common';
 import { CLASS_LABEL, UnitInfo } from './UnitInfo';
 
 const CATEGORY_LABEL: Record<BuildingCategory, string> = {
@@ -62,6 +63,14 @@ const CATEGORY_LABEL: Record<BuildingCategory, string> = {
   military: 'Military',
   civic: 'Civic',
   infrastructure: 'Infrastructure (no slot)',
+};
+
+/** On land every building, infrastructure included, takes its one place. */
+const LAND_CATEGORY_LABEL: Record<BuildingCategory, string> = {
+  economy: 'Economy',
+  military: 'Military',
+  civic: 'Support',
+  infrastructure: 'Infrastructure',
 };
 
 const CLASS_ICON: Record<UnitClass, IconName> = { infantry: 'shield', mobile: 'move', support: 'target', armour: 'bolt' };
@@ -257,7 +266,7 @@ export function ProvincePanel({
             tier={ps.tier}
             capital={capital || nationalCapital}
             buildings={known ? ps.buildings : {}}
-            construction={known ? (ps.construction?.building ?? null) : null}
+            construction={known ? cityConstruction(ps.construction?.building) : null}
             terrain={def.terrain}
             coastal={def.coastal}
             nationColor={owner === 'neutral' ? undefined : color}
@@ -301,9 +310,8 @@ export function ProvincePanel({
 }
 
 /**
- * A province without a city: no people to speak of, no building slots and no recruiting, but armies
- * march and fight over it, and it takes infrastructure (forts, a supply depot, a railway junction,
- * coastal batteries where a sea crossing lands).
+ * A province without a city: no people to speak of and no recruiting, but armies march and fight over it, it earns
+ * a little money and manpower, and it holds one building: an economy or military one, or infrastructure.
  */
 function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const { state, world, human } = ctrl;
@@ -312,20 +320,35 @@ function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const mine = ps.owner === human;
   const res = state.nations[human].resources;
   const morale = provinceMoraleTarget(state, world, pid);
-  const infra = BUILDING_ORDER.filter((b) => BUILDINGS[b].category === 'infrastructure').filter((b) => !BUILDINGS[b].coastalOnly || world.seaLandings.has(pid));
+  const out = provinceOutput(state, world, pid);
+  const standing = landBuildings(ps.buildings);
+  const choices = BUILDING_ORDER.filter((b) => landSite(b) && (!BUILDINGS[b].coastalOnly || world.seaLandings.has(pid)));
   return (
     <>
       <p className="muted small land-note">
         {def.around
           ? `Land round ${world.provinces[def.around].name}: armies march and fight across it, and whoever holds all the land round the city can cut it off. `
           : 'Open country: armies march and fight across it. '}
-        No city stands here, so nothing is raised or produced; only infrastructure can be built.
+        It earns a little money and manpower and holds one building; a new one replaces the old when it is finished, and
+        land that is captured loses its building.
       </p>
       {ps.owner !== 'neutral' && (
         <Section title="Morale" icon="morale">
           <div className="meter-row">
             <span className="meter-label">Morale</span>
             <MoraleMeter value={ps.morale} target={morale.target} factors={morale.factors} />
+          </div>
+        </Section>
+      )}
+      {ps.owner !== 'neutral' && (
+        <Section title="Output per minute" icon="factory">
+          <div className="output-grid" title={def.core !== ps.owner ? 'Occupied: output follows morale; few recruits volunteer.' : undefined}>
+            {RESOURCE_KEYS.filter((k) => out[k] > 0).map((k) => (
+              <span key={k} className="output-tile" title={RESOURCE_LABEL[k]}>
+                <ResourceIcon kind={k} size={16} />
+                <span>{fmtRate(out[k])}</span>
+              </span>
+            ))}
           </div>
         </Section>
       )}
@@ -357,13 +380,22 @@ function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
         </Section>
       )}
       {mine ? (
-        <Section title="Infrastructure" icon="plus">
+        <Section title="Building" icon="plus" extra={standing.length ? listText(standing.map((b) => BUILDINGS[b].name)) : 'None yet'}>
           {ps.construction && <p className="muted small build-note">One project at a time: new orders open when the current work is done.</p>}
-          <ul className="building-list">
-            {infra.map((b) => (
-              <BuildRow key={b} ctrl={ctrl} pid={pid} building={b} res={res} />
-            ))}
-          </ul>
+          {(['economy', 'military', 'civic', 'infrastructure'] as BuildingCategory[]).map((cat) => {
+            const rows = choices.filter((b) => BUILDINGS[b].category === cat);
+            if (rows.length === 0) return null;
+            return (
+              <div key={cat} className="picker-group">
+                <div className={`picker-cat cat-${cat}`}>{LAND_CATEGORY_LABEL[cat]}</div>
+                <ul className="building-list">
+                  {rows.map((b) => (
+                    <BuildRow key={b} ctrl={ctrl} pid={pid} building={b} res={res} />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </Section>
       ) : (
         <BuildingSummary buildings={ps.buildings} />
@@ -512,6 +544,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
           {(['economy', 'military', 'civic', 'infrastructure'] as BuildingCategory[]).map((cat) => {
             const rows = BUILDING_ORDER.filter((b) => BUILDINGS[b].category === cat).filter((b) => {
               const cfg = BUILDINGS[b];
+              if (cfg.landOnly) return false;
               if (cfg.occupiedOnly && def.core === human) return false;
               if (cfg.coastalOnly && !world.seaLandings.has(pid)) return false;
               return true;
@@ -538,6 +571,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: ProvinceId; building: BuildingType; res: Resources }) {
   const { state, world, human } = ctrl;
   const ps = state.provinces[pid];
+  const city = !!world.provinces[pid].city;
   const cfg = BUILDINGS[building];
   const level = ps.buildings[building] ?? 0;
   const maxed = level >= cfg.maxLevel;
@@ -548,8 +582,11 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
   const nextLevel = level + 1;
   const demolishable = level > 0 && cfg.category !== 'infrastructure';
   // Why it cannot be ordered here (the city's one-job-at-a-time rule is explained once, above the list).
-  const fullCity = cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, world, pid);
+  const fullCity = city && cfg.category !== 'infrastructure' && level === 0 && slotsUsed(ps.buildings, ps.construction?.building ?? null) >= buildingSlots(state, world, pid);
   const why = locked || maxed || rules.ok ? null : fullCity ? 'No free slot' : rules.reason.replace(/\.$/, '');
+  // Land holds one building: a new one replaces whatever stands there.
+  const replaces = city ? [] : landBuildings(ps.buildings).filter((b) => b !== building);
+  const replaced = listText(replaces.map((b) => BUILDINGS[b].name));
   return (
     <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}`}>
       <span className="bld-icon">
@@ -571,6 +608,7 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
           )}
         </span>
         {why && <span className="bld-why">{why}</span>}
+        {!why && !locked && !maxed && replaces.length > 0 && <span className="bld-why">Replaces {replaced}</span>}
       </span>
       {locked ? null : maxed ? (
         <span className="b-action">
@@ -587,11 +625,11 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
             <button
               className="build-btn"
               disabled={!check.ok}
-              title={check.ok ? `${cfg.description} Takes ${formatDuration(constructionTicks(state, human, building, nextLevel), state)}.` : check.reason}
+              title={check.ok ? `${cfg.description} Takes ${formatDuration(constructionTicks(state, human, building, nextLevel), state)}.${replaces.length ? ` Replaces the ${replaced} here when finished.` : ''}` : check.reason}
               onClick={() => ctrl.submit({ type: 'build', nation: human, province: pid, building })}
               data-build={building}
             >
-              {level ? 'Upgrade' : 'Build'}
+              {level ? 'Upgrade' : replaces.length ? 'Replace' : 'Build'}
             </button>
           </span>
         </span>
@@ -724,6 +762,7 @@ function RecruitCard({ ctrl, pid, type, queued, onInfo }: { ctrl: GameController
   const model = currentModel(state, world, human, type);
   const s = unitStats(state, human, type);
   const res = state.nations[human].resources;
+  const net = nationEconomy(state, world, human).net;
   // A missing building is a lock; a short treasury is only a wait.
   const missing = cfg.requires.filter((b) => !state.provinces[pid].buildings[b]);
   const time = formatDuration(recruitTicks(state, human, type), state);
@@ -765,7 +804,10 @@ function RecruitCard({ ctrl, pid, type, queued, onInfo }: { ctrl: GameController
               <Icon name="lock" size={12} /> Needs {missing.map((b) => BUILDINGS[b].name).join(' and ')}
             </span>
           ) : (
-            <Cost cost={recruitCost(state, human, type)} have={res} />
+            <span className="uc-price">
+              <Cost cost={recruitCost(state, human, type)} have={res} />
+              <Upkeep upkeep={cfg.upkeepPerMinute} net={net} />
+            </span>
           )}
           <button
             className="build-btn"

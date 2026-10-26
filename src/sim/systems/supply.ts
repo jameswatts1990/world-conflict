@@ -4,7 +4,7 @@
 // a supply hub (the capital or any Supply Depot). Armies are supplied in such
 // provinces, or within front-line range of one (railway junctions reach further).
 import { BUILDING_EFFECTS } from '../config/buildings';
-import { MORALE, SUPPLY } from '../config/rules';
+import { ECONOMY, MORALE, SUPPLY } from '../config/rules';
 import { INTERVALS } from '../config/timing';
 import { pushEvent } from '../events';
 import { armyName } from '../names';
@@ -141,16 +141,21 @@ export function armyConditionSystem(state: GameState, world: World): void {
     if (inBattle) continue;
     const p = state.provinces[army.province];
     const home = p.owner === army.owner;
-    const hospital = home && (p.buildings.hospital ?? 0) > 0;
-    if (home && army.supplied) {
-      const heal = SUPPLY.healPerStep * healingMult(state, army.owner) * (hospital ? BUILDING_EFFECTS.hospitalHealing : 1);
+    const E = BUILDING_EFFECTS;
+    const hospital = !home ? null : (p.buildings.hospital ?? 0) > 0 ? 'city' : (p.buildings.fieldHospital ?? 0) > 0 ? 'field' : null;
+    // Out of manpower there are no replacements: units regain no strength and are slower to recover their nerve.
+    const noReplacements = army.owner !== NEUTRAL && state.nations[army.owner].shortages.manpower === true;
+    if (home && army.supplied && !noReplacements) {
+      const hospitalHeal = hospital === 'city' ? E.hospitalHealing : hospital === 'field' ? E.fieldHospitalHealing : 1;
+      const heal = SUPPLY.healPerStep * healingMult(state, army.owner) * hospitalHeal;
       for (const u of army.units) u.strength = Math.min(1, u.strength + heal);
     }
     const cap = unitMoraleCap(state, army.owner);
     let rate = army.supplied ? MORALE.recoverPerStep : 0;
     if (home && army.supplied) rate *= MORALE.homeRecovery;
     if (army.move) rate *= MORALE.marchingRecovery;
-    if (hospital) rate *= BUILDING_EFFECTS.hospitalMoraleRecovery;
+    if (hospital) rate *= hospital === 'city' ? E.hospitalMoraleRecovery : E.fieldHospitalMoraleRecovery;
+    if (noReplacements) rate *= ECONOMY.noManpowerMoraleRecovery;
     for (const u of army.units) {
       u.morale = u.morale > cap ? Math.max(cap, u.morale - MORALE.starvingDrain) : Math.min(cap, u.morale + rate);
     }

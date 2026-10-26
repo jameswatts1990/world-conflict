@@ -17,7 +17,7 @@ import { aiGame, landsOf, run, world } from './helpers';
 
 /** A scripted player (France) issuing orders at fixed ticks, plus five AIs. */
 const SCRIPT: { tick: number; command: Command }[] = [
-  { tick: 3, command: { type: 'build', nation: 'fr', province: 'fr-nord', building: 'industry' } },
+  { tick: 3, command: { type: 'build', nation: 'fr', province: 'fr-west', building: 'industry' } },
   { tick: 5, command: { type: 'research', nation: 'fr', tech: 'industrialMobilisation' } },
   { tick: 10, command: { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'artillery' } },
   { tick: 200, command: { type: 'declareWar', nation: 'fr', target: 'de' } },

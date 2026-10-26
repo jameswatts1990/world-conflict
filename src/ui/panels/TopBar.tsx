@@ -1,5 +1,6 @@
 import { TECH_BY_ID } from '../../sim/config/research';
-import { ECONOMY, VICTORY } from '../../sim/config/rules';
+import { VICTORY } from '../../sim/config/rules';
+import { SHORTAGE_TEXT } from '../../sim/systems/economy';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
 import { RESOURCE_KEYS, heldVp, homeSoilMult, nationEconomy, nationEra, nationName, nextQueuedResearch, researchSlots, sentence, vpToWin, type ResourceKey } from '../../sim';
 import type { GameController } from '../game/GameController';
@@ -9,19 +10,12 @@ import { Icon, RESOURCE_LABEL, ResourceIcon } from '../icons';
 import { moraleClass } from './Common';
 import type { PanelId } from './NavRail';
 
-const pct = (x: number) => `${Math.round(x * 100)}%`;
-
 /** What each resource is for, shown in its breakdown. */
 const RESOURCE_HINT: Record<ResourceKey, string> = {
-  money: 'Pays for everything, including army upkeep.',
-  materials: 'Mostly from industrial provinces. Needed for buildings, every unit and research.',
-  fuel: 'From oil fields and refineries. Tanks and motor vehicles need it to be built and to keep moving.',
-  manpower: 'Grows with population; Barracks and housing add more. Every new unit needs it.',
-};
-
-const SHORTAGE: Partial<Record<ResourceKey, string>> = {
-  money: `Treasury empty: troops fight at ${pct(ECONOMY.unpaidCombatMult)}.`,
-  fuel: `Out of fuel: tanks and motor vehicles move and fight at ${pct(ECONOMY.noFuelVehicleMult)}.`,
+  money: 'Pays every soldier (most of foot and horse upkeep), and part of every unit, building and research.',
+  materials: 'Steel, guns and shells: most of the price of artillery, armour and buildings, and the upkeep of guns and tanks.',
+  fuel: 'From oil fields, oil wells and refineries. Tanks and motor vehicles need it to be built and to keep moving.',
+  manpower: 'Grows with population; farms, Barracks and housing add more. Every new unit needs it, and every unit a few replacements.',
 };
 
 export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: PanelId) => void }) {
@@ -29,6 +23,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
   const nation = state.nations[human];
   const def = world.nations[human];
   const eco = nationEconomy(state, world, human);
+  const units = Object.values(state.armies).reduce((n, a) => (a.owner === human ? n + a.units.length : n), 0);
   const remaining = state.settings.timeLimitTicks - state.tick;
   const vp = heldVp(state, world, human);
   const need = vpToWin(world);
@@ -55,7 +50,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
 
       <div className="tb-resources">
         {RESOURCE_KEYS.map((k) => {
-          const short = (k === 'money' && nation.shortages.money) || (k === 'fuel' && nation.shortages.fuel);
+          const short = nation.shortages[k] === true;
           return (
             <div key={k} className={`tb-res${short ? ' short' : ''}`} data-resource={k} tabIndex={0} aria-label={RESOURCE_LABEL[k]}>
               <span className="tb-res-icon">
@@ -74,12 +69,12 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
                   <dd>{Math.floor(nation.resources[k]).toLocaleString('en-GB')}</dd>
                   <dt>Production</dt>
                   <dd className="ok">{fmtRate(eco.income[k])} / min</dd>
-                  <dt>Army upkeep</dt>
+                  <dt>Army upkeep{units > 0 ? ` (${units} units)` : ''}</dt>
                   <dd className={eco.upkeep[k] > 0 ? 'bad' : 'muted'}>{fmtRate(-eco.upkeep[k])} / min</dd>
                   <dt className="total">Net</dt>
                   <dd className={`total${eco.net[k] < 0 ? ' bad' : ''}`}>{fmtRate(eco.net[k])} / min</dd>
                 </dl>
-                {short && <div className="tb-pop-warn">{SHORTAGE[k]}</div>}
+                {short && <div className="tb-pop-warn">{SHORTAGE_TEXT[k]}</div>}
                 <p>{RESOURCE_HINT[k]}</p>
               </div>
             </div>

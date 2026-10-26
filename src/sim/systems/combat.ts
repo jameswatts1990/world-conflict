@@ -6,7 +6,7 @@
 // share of its strength. Runs every INTERVALS.combatRound ticks.
 import { BUILDING_EFFECTS } from '../config/buildings';
 import { ECONOMY, MORALE, SUPPLY } from '../config/rules';
-import { ARMY_RULES, UNITS, VETERANCY, usesFuel } from '../config/units';
+import { ARMY_RULES, UNITS, VETERANCY, usesFuel, usesShells } from '../config/units';
 import { pushEvent } from '../events';
 import { armyName } from '../names';
 import {
@@ -170,6 +170,7 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
   const terrain = world.provinces[pid].terrain;
   const fortLevel = province.buildings.fortifications ?? 0;
   const battery = province.buildings.coastalBattery ?? 0;
+  const bunkers = (province.buildings.bunkers ?? 0) > 0 ? 1 + BUILDING_EFFECTS.bunkersDamage : 1;
   const hpDamage = new Map<string, number>();
   const moraleDamage = new Map<string, number>();
   const power = new Map<string, number>();
@@ -192,6 +193,8 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
     const role = province.owner === army.owner ? 'defence' : 'attack';
     const armyMult = armyCombatMultiplier(state, army, pid) * homeSoilMult(state, world, army.owner, pid);
     const fuelShort = army.owner !== NEUTRAL && state.nations[army.owner].shortages.fuel;
+    const materialsShort = army.owner !== NEUTRAL && state.nations[army.owner].shortages.materials === true;
+    const bunkerMod = army.owner === province.owner ? bunkers : 1;
     const ignore = fortIgnore(army);
 
     for (const unit of army.units) {
@@ -202,11 +205,13 @@ function resolveRound(state: GameState, world: World, pid: ProvinceId, armies: A
       const base = values.soft * (1 - tStats.hardness) + values.hard * tStats.hardness;
       const terrainMod = UNITS[unit.type].terrain[terrain]?.[role] ?? 1;
       const fuelMod = fuelShort && usesFuel(unit.type) ? ECONOMY.noFuelVehicleMult : 1;
+      // Out of materials, guns and armour run short of shells and spares.
+      const materialsMod = materialsShort ? (usesShells(unit.type) ? ECONOMY.noMaterialsHeavyMult : ECONOMY.noMaterialsMult) : 1;
       const strengthMod = ARMY_RULES.strengthFloor + (1 - ARMY_RULES.strengthFloor) * unit.strength;
       const moraleMod = MORALE.firepowerFloor + (1 - MORALE.firepowerFloor) * unit.morale;
       const vet = VETERANCY.damage[veterancyRank(unit.xp)];
       const variance = 1 + (random(state) * 2 - 1) * ARMY_RULES.damageVariance;
-      let dmg = base * terrainMod * fuelMod * strengthMod * moraleMod * vet * variance * armyMult * ARMY_RULES.damageScale;
+      let dmg = base * terrainMod * fuelMod * materialsMod * bunkerMod * strengthMod * moraleMod * vet * variance * armyMult * ARMY_RULES.damageScale;
       if (target.army.owner === province.owner && fortLevel > 0) {
         dmg *= 1 - fortificationReduction(state, province.owner, fortLevel) * (1 - ignore);
       }

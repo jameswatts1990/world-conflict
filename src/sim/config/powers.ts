@@ -38,7 +38,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   great: {
     name: 'Great power',
     playable: true,
-    output: { money: 260, materials: 140, manpower: 70 },
+    output: { money: 260, materials: 140, manpower: 42 },
     startingResources: { money: 1200, materials: 500, fuel: 150, manpower: 250 },
     vp: { capital: 3, industrial: 2 },
     capitalCity: 4,
@@ -57,7 +57,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   major: {
     name: 'Major power',
     playable: true,
-    output: { money: 150, materials: 80, manpower: 40 },
+    output: { money: 150, materials: 80, manpower: 24 },
     startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145 },
     vp: { capital: 2, industrial: 1 },
     capitalCity: 3,
@@ -75,7 +75,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   minor: {
     name: 'Minor power',
     playable: false,
-    output: { money: 70, materials: 35, manpower: 20 },
+    output: { money: 70, materials: 35, manpower: 12 },
     startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70 },
     vp: { capital: 1 },
     capitalCity: 2,

@@ -174,11 +174,11 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       great powers, lasts 59% of them (out within the first hour in 11%); Serbia lasts 45% and never wins, Romania
       wins 1%; 3% of playable seats are out within the hour
 - [ ] AI: garrison restive conquests, plan sea landings (Britain), use railways for strategic redeployment
-- [ ] Line infantry is the best buy at every technology level: in the unit lab an army of it beats every other army of
-      the same cost, and battle tanks give about 0.56× their price (fuel is scarce). AIs with the infantry doctrine win
-      19% of campaigns, armour and artillery 7% each (200 campaigns). Armour-doctrine great powers field 13% vehicles
-      against a 47% target (and 18% cavalry against 4%), though two in three build a Tank Works. Make armour pay its way
-      (price, fuel, or the AI's Tank Works and refinery plans)
+- [ ] Line infantry is still the best buy at every technology level, though by less since the economy rework: in the
+      unit lab its edge over every other army of the same cost fell by about a third, battle tanks give 0.73× their
+      price (0.56× before), heavy tanks 0.73× (0.33×), armoured cars 0.80× (0.59×). AIs with the infantry doctrine
+      win 17% of campaigns, armour 8% (200 campaigns). Make armour pay its way the rest of the way (fuel prices, or
+      the AI's Tank Works and refinery plans)
 - [ ] Explain battles: a battle report (losses, morale, why it was won) and a rout/encirclement preview
 - [ ] Better peace: orderly withdrawal marches instead of instant relocation
 - [x] Notifications for key events (war declared on you, attacks on your territory, provinces won or lost, research
@@ -222,8 +222,23 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       An idle France on Easy now survives 90 minutes in 8 of 10 campaigns (3 on main): it has 40 provinces to take
       instead of 18. Look at how the AI defends a frontier of several lands (small regions spread its armies thin),
       and at the pace of taking land (whether a nation with no city left should fight on)
-- [ ] Upgrades for land without a city: field hospitals, barracks or depots in the field, farms (manpower and money),
-      entrenchments; and provinces with no city at all where the map needs them
+- [x] Economy rework: every resource has a job (line units money and manpower, guns and armour materials and
+      fuel), army upkeep in every resource with a shortage effect for each (materials: guns and armour at 60%;
+      manpower: no replacements), shown on recruit cards, the army panel and the top bar; land earns 3 money and 1
+      manpower a minute and holds one building (farmland, trading post, workshops, oil wells, field hospital,
+      bunkers, field station, or one piece of infrastructure), lost when the land is captured; the AI budgets
+      every resource, leans on a materials stockpile and plans each land's building. Over 200 all-AI campaigns
+      against main (same seeds): most goals improve (doctrine gap 1.75× instead of 2.38×, the 40-minute leader
+      wins 42% instead of 51%), but there are 25% more battles, minor powers fall a little sooner (48% standing at
+      60 minutes instead of 52%; Ireland lasts 12% of campaigns instead of 27%), Hungary wins 28% (20%), fewer
+      campaigns end on objectives (6% instead of 10%), an idle France falls sooner (Normal 10 of 10 instead of 8,
+      Easy 4 of 10 instead of 2), and the AI raises 2.4× the field artillery, 4× the siege guns and 3× the battle
+      tanks. At 60 minutes a great power holds about 500 money, 1,300 materials and 1,800 manpower (main: 380,
+      7,900, 4,200)
+- [ ] Economy follow-ups: fuel still piles up (about 2,000 at 60 minutes: the AI fields few vehicles); manpower
+      piles up more slowly but still does; army counters on the map have no tooltip to show upkeep; whether a human
+      wants a way to clear a land's building without building another; and provinces with no city at all where
+      the map needs them
 - [ ] Rebalance after the city split. Over 200 all-AI campaigns against main (same seeds): the overall goal
       penalty is unchanged (4.31), but fewer campaigns end on objectives (19% instead of 32%), Poland wins 33%
       instead of 26% (not yet significant, p 0.10), Hungary lasts 71% of campaigns instead of 83%, and minor

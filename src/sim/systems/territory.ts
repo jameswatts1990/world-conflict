@@ -56,8 +56,10 @@ export function transferProvince(state: GameState, world: World, pid: ProvinceId
   p.capture = null;
   p.construction = null;
   p.recruitQueue = [];
-  // Fighting damages fortifications; an occupation HQ only serves its builder.
-  if (p.buildings.fortifications) {
+  // Land without a city loses its building: conquered land starts bare. In a city, fighting damages
+  // fortifications and an occupation HQ only serves its builder.
+  if (!def.city) p.buildings = {};
+  else if (p.buildings.fortifications) {
     p.buildings.fortifications -= 1;
     if (p.buildings.fortifications <= 0) delete p.buildings.fortifications;
   }

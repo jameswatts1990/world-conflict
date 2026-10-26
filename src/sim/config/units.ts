@@ -80,9 +80,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 110, attack: { soft: 7.5, hard: 2.5 }, defence: { soft: 12, hard: 5 }, speedKmPerTick: 4.2 },
       ww2: { hp: 120, attack: { soft: 9, hard: 3.5 }, defence: { soft: 14, hard: 6 }, speedKmPerTick: 4.4 },
     },
-    cost: { money: 120, materials: 30, manpower: 30 },
+    cost: { money: 110, materials: 30, manpower: 40 },
     recruitSeconds: 60,
-    upkeepPerMinute: { money: 3 },
+    upkeepPerMinute: { money: 5, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       forest: { defence: 1.2 },
@@ -108,9 +108,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 100, attack: { soft: 11, hard: 3.5 }, defence: { soft: 9, hard: 4 }, speedKmPerTick: 4.2 },
       ww2: { hp: 110, attack: { soft: 13, hard: 5 }, defence: { soft: 11, hard: 5 }, speedKmPerTick: 4.4 },
     },
-    cost: { money: 170, materials: 40, manpower: 35 },
+    cost: { money: 150, materials: 60, manpower: 45 },
     recruitSeconds: 80,
-    upkeepPerMinute: { money: 4.5 },
+    upkeepPerMinute: { money: 6, materials: 1.5, manpower: 1 },
     requires: ['barracks', 'academy'],
     terrain: {
       urban: { attack: 1.25, defence: 1.2 },
@@ -135,9 +135,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 110, attack: { soft: 7.5, hard: 2.5 }, defence: { soft: 12, hard: 5 }, speedKmPerTick: 4.0 },
       ww2: { hp: 120, attack: { soft: 9, hard: 3.5 }, defence: { soft: 14, hard: 6 }, speedKmPerTick: 4.2 },
     },
-    cost: { money: 150, materials: 35, manpower: 30 },
+    cost: { money: 145, materials: 45, manpower: 40 },
     recruitSeconds: 75,
-    upkeepPerMinute: { money: 3.5 },
+    upkeepPerMinute: { money: 5.5, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       mountains: { attack: 1.7, defence: 1.6 },
@@ -162,9 +162,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 110, attack: { soft: 8, hard: 2.5 }, defence: { soft: 11, hard: 4.5 }, speedKmPerTick: 7.0 },
       ww2: { hp: 130, attack: { soft: 10, hard: 5 }, defence: { soft: 13, hard: 7 }, speedKmPerTick: 8.0, hardness: 0.35 },
     },
-    cost: { money: 190, materials: 70, fuel: 10, manpower: 30 },
+    cost: { money: 120, materials: 100, fuel: 10, manpower: 35 },
     recruitSeconds: 80,
-    upkeepPerMinute: { money: 4, fuel: 1 },
+    upkeepPerMinute: { money: 3.5, materials: 1.5, fuel: 1, manpower: 0.5 },
     requires: ['barracks', 'motorPool'],
     terrain: {
       plains: { attack: 1.1 },
@@ -190,9 +190,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 85, attack: { soft: 7.5, hard: 1.5 }, defence: { soft: 6.5, hard: 2 }, speedKmPerTick: 6.8 },
       ww2: { hp: 90, attack: { soft: 8, hard: 2 }, defence: { soft: 7, hard: 2.5 }, speedKmPerTick: 7.0 },
     },
-    cost: { money: 130, materials: 20, manpower: 25 },
+    cost: { money: 120, materials: 25, manpower: 30 },
     recruitSeconds: 60,
-    upkeepPerMinute: { money: 3 },
+    upkeepPerMinute: { money: 4, materials: 1, manpower: 0.75 },
     requires: ['barracks'],
     terrain: {
       plains: { attack: 1.25 },
@@ -219,9 +219,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 90, attack: { soft: 8, hard: 3 }, defence: { soft: 6, hard: 3 }, speedKmPerTick: 8.5 },
       ww2: { hp: 105, attack: { soft: 10, hard: 5 }, defence: { soft: 8, hard: 5 }, speedKmPerTick: 9.5, hardness: 0.6 },
     },
-    cost: { money: 190, materials: 80, fuel: 15, manpower: 15 },
+    cost: { money: 110, materials: 120, fuel: 10, manpower: 15 },
     recruitSeconds: 75,
-    upkeepPerMinute: { money: 4, fuel: 1.5 },
+    upkeepPerMinute: { money: 2.5, materials: 1.5, fuel: 1, manpower: 0.25 },
     requires: ['motorPool'],
     terrain: {
       plains: { attack: 1.15, defence: 1.05 },
@@ -248,9 +248,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 75, attack: { soft: 16.5, hard: 5.5 }, defence: { soft: 6, hard: 2.5 }, speedKmPerTick: 3.7 },
       ww2: { hp: 80, attack: { soft: 19, hard: 7 }, defence: { soft: 7, hard: 3 }, speedKmPerTick: 4.2 },
     },
-    cost: { money: 200, materials: 90, manpower: 25 },
+    cost: { money: 110, materials: 140, manpower: 25 },
     recruitSeconds: 90,
-    upkeepPerMinute: { money: 5 },
+    upkeepPerMinute: { money: 2.5, materials: 2.5, manpower: 0.25 },
     requires: ['armsWorks'],
     terrain: {
       hills: { attack: 1.15 },
@@ -273,9 +273,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 80, attack: { soft: 23, hard: 8 }, defence: { soft: 3.5, hard: 1.5 }, speedKmPerTick: 2.7 },
       ww2: { hp: 90, attack: { soft: 27, hard: 10 }, defence: { soft: 4, hard: 2 }, speedKmPerTick: 3.4 },
     },
-    cost: { money: 300, materials: 160, manpower: 30 },
+    cost: { money: 160, materials: 260, manpower: 30 },
     recruitSeconds: 120,
-    upkeepPerMinute: { money: 7 },
+    upkeepPerMinute: { money: 3, materials: 4, manpower: 0.5 },
     requires: ['armsWorks'],
     terrain: {
       hills: { attack: 1.1 },
@@ -300,9 +300,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 60, attack: { soft: 3, hard: 12 }, defence: { soft: 4, hard: 16 }, speedKmPerTick: 3.6 },
       ww2: { hp: 70, attack: { soft: 4, hard: 18 }, defence: { soft: 5, hard: 24 }, speedKmPerTick: 4.2 },
     },
-    cost: { money: 150, materials: 70, manpower: 20 },
+    cost: { money: 80, materials: 110, manpower: 20 },
     recruitSeconds: 60,
-    upkeepPerMinute: { money: 3 },
+    upkeepPerMinute: { money: 2, materials: 1.5, manpower: 0.25 },
     requires: ['armsWorks'],
     terrain: {
       forest: { defence: 1.25 },
@@ -326,9 +326,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 110, attack: { soft: 11, hard: 6 }, defence: { soft: 7, hard: 6 }, speedKmPerTick: 6.5 },
       ww2: { hp: 130, attack: { soft: 13, hard: 9 }, defence: { soft: 9, hard: 8 }, speedKmPerTick: 7.5, hardness: 0.85 },
     },
-    cost: { money: 220, materials: 100, fuel: 25, manpower: 15 },
+    cost: { money: 110, materials: 150, fuel: 20, manpower: 15 },
     recruitSeconds: 90,
-    upkeepPerMinute: { money: 4, fuel: 2 },
+    upkeepPerMinute: { money: 2.5, materials: 2, fuel: 1, manpower: 0.25 },
     requires: ['tankWorks'],
     terrain: { ...TANK_TERRAIN, forest: { attack: 0.75, defence: 0.85 } },
     movement: { connection: { mountain: 1.8 }, terrain: { marsh: 1.5, mountains: 1.6, forest: 1.15 } },
@@ -348,9 +348,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 150, attack: { soft: 15, hard: 11 }, defence: { soft: 9, hard: 9 }, speedKmPerTick: 5.0 },
       ww2: { hp: 170, attack: { soft: 18, hard: 15 }, defence: { soft: 11, hard: 12 }, speedKmPerTick: 6.5 },
     },
-    cost: { money: 320, materials: 150, fuel: 40, manpower: 20 },
+    cost: { money: 170, materials: 260, fuel: 25, manpower: 20 },
     recruitSeconds: 120,
-    upkeepPerMinute: { money: 6, fuel: 3 },
+    upkeepPerMinute: { money: 3.5, materials: 3, fuel: 1.5, manpower: 0.25 },
     requires: ['tankWorks'],
     terrain: TANK_TERRAIN,
     movement: { connection: { mountain: 1.8 }, terrain: { marsh: 1.5, mountains: 1.6, forest: 1.2 } },
@@ -369,9 +369,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
       interwar: { hp: 230, attack: { soft: 16, hard: 12 }, defence: { soft: 13, hard: 13 }, speedKmPerTick: 2.8 },
       ww2: { hp: 260, attack: { soft: 22, hard: 20 }, defence: { soft: 16, hard: 18 }, speedKmPerTick: 4.2 },
     },
-    cost: { money: 480, materials: 260, fuel: 60, manpower: 25 },
+    cost: { money: 250, materials: 420, fuel: 40, manpower: 25 },
     recruitSeconds: 180,
-    upkeepPerMinute: { money: 9, fuel: 5 },
+    upkeepPerMinute: { money: 5, materials: 5, fuel: 3, manpower: 0.5 },
     requires: ['tankWorks'],
     terrain: {
       plains: { attack: 1.1, defence: 1.15 },
@@ -396,9 +396,9 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     models: {
       ww2: { hp: 150, attack: { soft: 10, hard: 22 }, defence: { soft: 9, hard: 26 }, speedKmPerTick: 5.5 },
     },
-    cost: { money: 300, materials: 160, fuel: 30, manpower: 15 },
+    cost: { money: 160, materials: 240, fuel: 20, manpower: 15 },
     recruitSeconds: 110,
-    upkeepPerMinute: { money: 5, fuel: 2 },
+    upkeepPerMinute: { money: 3, materials: 3, fuel: 1, manpower: 0.25 },
     requires: ['tankWorks'],
     terrain: {
       plains: { attack: 1.1, defence: 1.15 },
@@ -434,6 +434,12 @@ export function baseGen(type: UnitType): UnitGen {
 /** Units whose upkeep includes fuel slow down and fight worse in a fuel shortage. */
 export function usesFuel(type: UnitType): boolean {
   return (UNITS[type].upkeepPerMinute.fuel ?? 0) > 0;
+}
+
+/** Guns and armour fight worst in a materials shortage: they live on shells and spares. */
+export function usesShells(type: UnitType): boolean {
+  const c = UNITS[type].class;
+  return c === 'support' || c === 'armour';
 }
 
 /** Generic English formation names, used for neutral garrisons. */

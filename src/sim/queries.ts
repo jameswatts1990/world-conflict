@@ -114,11 +114,15 @@ export function nextQueuedResearch(state: GameState, nation: NationId): { tech: 
 /** Research progress per tick (1 = nominal). Universities and research add speed. */
 export function researchSpeed(state: GameState, nation: NationId): number {
   let universities = 0;
+  let stations = 0;
   for (const id of Object.keys(state.provinces)) {
     const p = state.provinces[id];
-    if (p.owner === nation && (p.buildings.university ?? 0) > 0) universities++;
+    if (p.owner !== nation) continue;
+    if ((p.buildings.university ?? 0) > 0) universities++;
+    if ((p.buildings.fieldStation ?? 0) > 0) stations++;
   }
-  let speed = 1 + Math.min(BUILDING_EFFECTS.universityMax, universities) * BUILDING_EFFECTS.universityResearch;
+  const E = BUILDING_EFFECTS;
+  let speed = 1 + Math.min(E.universityMax, universities) * E.universityResearch + Math.min(E.fieldStationMax, stations) * E.fieldStationResearch;
   for (const e of techEffects(state, nation)) if (e.kind === 'researchSpeed') speed *= e.mult;
   return speed;
 }
@@ -409,9 +413,17 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   const out = emptyResources();
   if (ps.owner === NEUTRAL) return out;
   const b = ps.buildings;
-  // Land without output of its own (all the land round the cities) yields nothing whatever its owner's bonuses.
+  // A province without output of its own yields nothing whatever its owner's bonuses.
   if (!b.refinery && RESOURCE_KEYS.every((k) => !def.production[k])) return out;
   const E = BUILDING_EFFECTS;
+  if (!def.city) {
+    // Land: a small base output, and whatever its one building adds.
+    out.money = def.production.money + (b.farm ? E.farmMoney : 0) + (b.tradingPost ? E.tradingPostMoney : 0);
+    out.materials = def.production.materials + (b.workshops ? E.workshopsMaterials : 0);
+    out.manpower = def.production.manpower + (b.farm ? E.farmManpower : 0);
+    out.fuel = def.production.fuel + (b.oilWells ? E.oilWellsFuel : 0);
+    return scaleOutput(state, def.core, ps.owner, ps.morale, out);
+  }
   const industry = b.industry ?? 0;
   const power = (b.powerPlant ?? 0) > 0 ? E.powerPlantLocal : 0;
   let adjacentPower = 0;
@@ -427,9 +439,14 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   out.manpower =
     def.production.manpower * (1 + (b.barracks ? E.barracksManpower : 0) + (b.housing ?? 0) * E.housingManpowerPerLevel) * tierBonus;
   out.fuel = def.production.fuel + refineryFuel(state, ps.owner, def.oil === true, b.refinery ?? 0);
-  const moraleFactor = moraleOutputMult(ps.morale);
-  for (const k of RESOURCE_KEYS) out[k] *= moraleFactor * productionMultiplier(state, ps.owner, k);
-  if (def.core !== ps.owner) out.manpower *= ECONOMY.occupiedManpower;
+  return scaleOutput(state, def.core, ps.owner, ps.morale, out);
+}
+
+/** Civilian morale, the owner's research and occupation scale a province's output. */
+function scaleOutput(state: GameState, core: OwnerId | null, owner: OwnerId, morale: number, out: Resources): Resources {
+  const moraleFactor = moraleOutputMult(morale);
+  for (const k of RESOURCE_KEYS) out[k] *= moraleFactor * productionMultiplier(state, owner, k);
+  if (core !== owner) out.manpower *= ECONOMY.occupiedManpower;
   return out;
 }
 
@@ -442,6 +459,16 @@ export function refineryFuel(state: GameState, owner: OwnerId, oil: boolean, lev
     return level * BUILDING_EFFECTS.refinerySyntheticFuelPerLevel * mult;
   }
   return 0;
+}
+
+/** Upkeep of an army a minute, per resource. */
+export function armyUpkeep(army: Army): Resources {
+  const upkeep = emptyResources();
+  for (const u of army.units) {
+    const up = UNITS[u.type].upkeepPerMinute;
+    for (const k of RESOURCE_KEYS) upkeep[k] += up[k] ?? 0;
+  }
+  return upkeep;
 }
 
 export interface NationEconomy {
@@ -461,10 +488,8 @@ export function nationEconomy(state: GameState, world: World, nation: NationId):
   const upkeep = emptyResources();
   for (const a of Object.values(state.armies)) {
     if (a.owner !== nation) continue;
-    for (const u of a.units) {
-      const up = UNITS[u.type].upkeepPerMinute;
-      for (const k of RESOURCE_KEYS) upkeep[k] += up[k] ?? 0;
-    }
+    const up = armyUpkeep(a);
+    for (const k of RESOURCE_KEYS) upkeep[k] += up[k];
   }
   const net = emptyResources();
   for (const k of RESOURCE_KEYS) net[k] = income[k] - upkeep[k];

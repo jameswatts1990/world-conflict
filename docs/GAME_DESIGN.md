@@ -92,11 +92,14 @@ espionage, naval and air warfare, later eras, multiplayer.
 Every nation has a **power tier** (`src/sim/config/powers.ts`) that sets its start, so nations of one tier start
 broadly balanced:
 
-| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
+| Tier | Playable | City output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
 | --- | --- | --- | --- | --- | --- |
-| Great | Yes | 260 / 140 / 70 | 13 units | Capital 3, heartland 2 | 6–9 |
-| Major | Yes | 150 / 80 / 40 | 8 units | Capital 2, heartland 1 | 3–5 |
-| Minor | No (computer-controlled; never wins) | 70 / 35 / 20 | 6 units behind level-2 forts | Capital 1 | 1–2 |
+| Great | Yes | 260 / 140 / 42 | 13 units | Capital 3, heartland 2 | 6–9 |
+| Major | Yes | 150 / 80 / 24 | 8 units | Capital 2, heartland 1 | 3–5 |
+| Minor | No (computer-controlled; never wins) | 70 / 35 / 12 | 6 units behind level-2 forts | Capital 1 | 1–2 |
+
+Every land province adds its own small output on top (§5), about 60 money and 20 manpower a minute for a great
+power's twenty or so lands.
 
 Europe has seven great powers, four major powers and fifteen minor powers. Each great power has one oil province, the same city ladder (one
 Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
@@ -117,17 +120,34 @@ modest speciality (§6.4).
 
 ## 5. Economy and cities
 
-Four resources, each with a per-minute rate shown in the top bar: money, industrial materials, fuel, manpower.
+Four resources, each with a per-minute rate shown in the top bar, and each with a job:
 
-- All output comes from the cities. The land round them produces nothing yet: it is where armies march and fight,
-  and whoever holds it can cut its city off from supply. (Upgrades for land without a city, such as field
-  hospitals, barracks or farms, are on the roadmap.)
-- City output = base × buildings × city tier bonus × **morale factor** × research. The morale factor is
-  `0.35 + 0.65 × morale / 70`, capped at 1.2: a contented home province (70) produces at 100%.
+| Resource | Stands for | Pays for |
+| --- | --- | --- |
+| Money | Wages and contracts | Every soldier's pay (most of the upkeep of foot and horse), line units, part of every building and of research |
+| Materials | Steel, guns and shells | Most of the price of guns, vehicles and buildings, a share of research, the upkeep of guns and armour |
+| Fuel | Petrol and oil | Vehicles: their price and upkeep |
+| Manpower | Men of fighting age | Recruits, and every unit's replacements |
+
+Line units are money and manpower; guns and vehicles are materials and fuel, so a nation rich in materials can
+turn them into artillery and armour.
+
+- Most output comes from the cities. Every province of land round them also earns **3 money and 1 manpower a
+  minute**, and its one building (§5.2) may add more. Land is where armies march and fight, and whoever holds it can
+  cut its city off from supply.
+- Output = base × buildings × city tier bonus × **morale factor** × research. The morale factor is
+  `0.35 + 0.65 × morale / 70`, capped at 1.2: a contented home province (70) produces at 100%. Land follows the same
+  rules (a land building's output is added to the land's base before them).
 - Occupied (non-core) provinces have no flat penalty any more: they start with low morale (§7) and integrate
   over time. Occupied populations still provide only 40% of their manpower.
-- **Shortages:** stockpiles cannot go negative. While money is short, armies fight at 80% and morale falls. While
-  fuel is short, fuel-burning units move and fight at 50%.
+- **Army upkeep** is paid every minute in every resource a unit draws on (§6.1): the recruit card shows it before
+  buying, the army panel each army's total, and the top bar the nation's.
+- **Shortages:** stockpiles cannot go negative. A resource that runs out under its upkeep is short until the
+  stockpile is above zero again:
+  - money: unpaid troops fight at 80%, and province morale falls;
+  - fuel: fuel-burning units move and fight at 50%;
+  - materials: no shells or spares, so artillery, anti-tank guns and armour fight at 60% and other units at 90%;
+  - manpower: no replacements, so units regain no strength and their morale recovers at half speed.
 
 ### 5.1 City tiers and growth
 
@@ -147,9 +167,12 @@ skyline. Capture costs 10 growth points. Each tier above Town also makes capture
 
 ### 5.2 Buildings
 
-Economy, military and civic buildings use a **slot** and stand only in cities; infrastructure needs no slot and
-can also be built on the land between them (forts, a supply depot, a railway junction, coastal batteries where a
-sea crossing lands). Some levels need a bigger city. A city or a province of land builds one project at a time. Demolishing frees a slot (no refund); a building cannot be demolished while another one
+In a city, economy, military and civic buildings use a **slot**; infrastructure needs no slot. **Land without a
+city holds one building**: one of the land buildings below, or one piece of infrastructure (forts, a supply depot,
+a railway junction, coastal batteries where a sea crossing lands), so a border land chooses between a fort and a
+farm. A new building replaces the land's building when it is finished (the old one works until then, and is lost),
+and **captured land loses its building**: conquered land starts bare. Old saves whose lands hold several pieces of
+infrastructure keep them until something new is built there. Some levels need a bigger city. A city or a province of land builds one project at a time. Demolishing frees a slot (no refund); a building cannot be demolished while another one
 that needs it stands or is being built. Construction and recruitment can be cancelled: the full price comes back until
 work has started, half of it after. The refund is what was paid, even if research has since made the job cheaper.
 
@@ -173,6 +196,18 @@ work has started, half of it after. The refund is what was paid, even if researc
 | Supply Depot | Infrastructure | 1 | Supply hub |
 | Railway Junction | Infrastructure | 1 (research) | Legs to or from it 20% faster (35% between two); front-line supply reaches one province further |
 | Coastal Batteries | Infrastructure | 2 (sea landings only; research) | Defenders deal +30% damage per level to armies that landed by sea, and shake their morale |
+
+Land buildings (land without a city only; one level; cheap, 45–60 s):
+
+| Building | Group | Effect |
+| --- | --- | --- |
+| Farmland | Economy | +2 manpower and +1 money a minute |
+| Trading Post | Economy | +4 money a minute |
+| Workshops | Economy | +5 materials a minute |
+| Oil Wells | Economy | +4 fuel a minute; only in the land round a city with an oil field |
+| Field Hospital | Military | Armies here heal 2× and regain morale 1.5× as fast |
+| Bunkers | Military | Defenders here deal 20% more damage (forts instead cut the damage they take) |
+| Field Station | Support | Research 3% faster nationally each, up to five |
 
 ## 6. Military
 
@@ -198,6 +233,24 @@ upgrades every existing unit of the type in place.
 | Armour | Tank Destroyers | Turretless armoured guns; superb against tanks, especially defending |
 
 Infantry, field artillery and cavalry are available from the start; everything else is researched.
+
+Prices and upkeep (`config/units.ts`; upkeep a minute at Standard speed):
+
+| Unit | Price (money / materials / fuel / manpower) | Upkeep (money / materials / fuel / manpower) |
+| --- | --- | --- |
+| Line Infantry | 110 / 30 / – / 40 | 5 / 1 / – / 0.75 |
+| Assault Infantry | 150 / 60 / – / 45 | 6 / 1.5 / – / 1 |
+| Mountain Troops | 145 / 45 / – / 40 | 5.5 / 1 / – / 0.75 |
+| Motorised Infantry | 120 / 100 / 10 / 35 | 3.5 / 1.5 / 1 / 0.5 |
+| Cavalry | 120 / 25 / – / 30 | 4 / 1 / – / 0.75 |
+| Armoured Cars | 110 / 120 / 10 / 15 | 2.5 / 1.5 / 1 / 0.25 |
+| Field Artillery | 110 / 140 / – / 25 | 2.5 / 2.5 / – / 0.25 |
+| Heavy Siege Artillery | 160 / 260 / – / 30 | 3 / 4 / – / 0.5 |
+| Anti-Tank Guns | 80 / 110 / – / 20 | 2 / 1.5 / – / 0.25 |
+| Light Tanks | 110 / 150 / 20 / 15 | 2.5 / 2 / 1 / 0.25 |
+| Battle Tanks | 170 / 260 / 25 / 20 | 3.5 / 3 / 1.5 / 0.25 |
+| Heavy Tanks | 250 / 420 / 40 / 25 | 5 / 5 / 3 / 0.5 |
+| Tank Destroyers | 160 / 240 / 20 / 15 | 3 / 3 / 1 / 0.25 |
 
 ### 6.2 Combat
 
@@ -432,11 +485,16 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
   recruitment buildings, refineries, propaganda when morale is low, occupation HQs in restive conquests,
   forts where threatened, railways and hospitals on active fronts. It keeps the last free slot for valuable builds.
-- **Recruitment:** an upkeep budget and an army cap that grow with the cities it holds and its income; it recruits
-  in the cities whose lands meet the enemy first. The mix follows
-  doctrine and answers the enemy: more anti-tank guns and tank destroyers against armour, mountain troops on
-  alpine fronts, siege guns against forts. Bankrupt AIs disband their weakest rear units (only at home, never
-  occupiers abroad).
+- **Land:** each land behind the lines gets an economy building (whichever eases the resource it runs shortest of:
+  upkeep near its income, or little of it in store), and Field Stations with an economy bias; front lands at war
+  get bunkers or forts, and the lands just behind them field hospitals. It replaces a land's building only for a
+  pressing military or supply need, and only an economy or support building.
+- **Recruitment:** an upkeep budget in every resource (each resource's upkeep stays within a share of its income)
+  and an army cap that grow with the cities it holds and its income; it recruits in the cities whose lands meet the
+  enemy first. The mix follows doctrine and answers the enemy: more anti-tank guns and tank destroyers against
+  armour, mountain troops on alpine fronts, siege guns against forts; a materials stockpile tilts it towards guns
+  and armour. An AI whose upkeep outruns a resource (or that runs short of one) disbands rear units drawing on it,
+  least fighting power for what they draw first (only at home, never occupiers abroad).
 - **Military:** armies fight to the death, withdrawing only when the battle is hopeless (under a fifth of the
   enemy's power there) and the army's morale is spent (below 30%); armies taking a province hold it until it falls
   (unless they would starve first). Further attacks skip an uncontested capture the occupiers can hold; support
@@ -653,7 +711,8 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   and a cancel button), so recruiting again and again never moves the buttons. Tapping a unit's picture or name opens
   its details: role and description, numbers, strengths and weaknesses read from its rules (terrain, armour, punch
   against armour, forts, reconnaissance, second line, nerve, shock, speed, passes, off-road, fuel) and its nation's
-  bonus. A province without a city shows its morale, its infrastructure picker and a link to its city.
+  bonus. A province without a city shows its morale, what it earns, its one-building picker (economy, military,
+support and infrastructure, saying what a new building would replace) and a link to its city.
 - **Army panel:** army and formation names, named equipment, veterancy chevrons, strength and morale per formation,
   and orders (move, stop, split, merge, disband). Merging keeps the senior (lowest-numbered) army's name.
 - **Windows.** Research is a classic tree: era columns, branch rows, prerequisite lines, path highlighting, slots and

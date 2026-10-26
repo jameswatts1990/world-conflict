@@ -1,7 +1,7 @@
 // Explicit player/AI commands. Every state change initiated by a player goes
 // through applyCommand, which validates first. The same validators are used
 // by the UI to explain why an action is unavailable.
-import { BUILDINGS, CITY, slotsUsed } from './config/buildings';
+import { BUILDINGS, CITY, landSite, slotsUsed } from './config/buildings';
 import { DIPLOMACY, ECONOMY } from './config/rules';
 import { RESEARCH_RULES, TECH_BY_ID } from './config/research';
 import { ARMY_RULES, UNITS } from './config/units';
@@ -154,7 +154,10 @@ export function checkBuildRules(
   const p = state.provinces[province];
   if (!p || p.owner !== nation) return fail('You do not control this province.');
   const cfg = BUILDINGS[building];
-  if (!world.provinces[province].city && cfg.category !== 'infrastructure') return fail('Needs a city: the land between cities takes only infrastructure.');
+  const def = world.provinces[province];
+  if (!def.city && !landSite(building)) return fail('Needs a city: land without one holds a single land building or piece of infrastructure.');
+  if (def.city && cfg.landOnly) return fail('Only on land without a city.');
+  if (cfg.oilLand && !(def.around && world.provinces[def.around].oil)) return fail('Only in the land round a city with an oil field.');
   if (!isBuildingUnlocked(state, nation, building)) return fail(`${cfg.name} must be researched first.`);
   if (cfg.occupiedOnly && world.provinces[province].core === nation) return fail('Only in occupied provinces.');
   if (cfg.coastalOnly && !world.seaLandings.has(province)) return fail('Only where a sea crossing lands.');
@@ -167,7 +170,7 @@ export function checkBuildRules(
   if (building === 'refinery' && refineryFuel(state, nation, world.provinces[province].oil === true, 1) <= 0) {
     return fail('Needs an oil field, or Synthetic Fuel research.');
   }
-  if (cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, world, province)) {
+  if (def.city && cfg.category !== 'infrastructure' && current === 0 && slotsUsed(p.buildings, p.construction?.building ?? null) >= buildingSlots(state, world, province)) {
     return fail(`No free building slot (${CITY.tierNames[p.tier]}: ${buildingSlots(state, world, province)} slots). Grow the city or demolish something.`);
   }
   return OK;

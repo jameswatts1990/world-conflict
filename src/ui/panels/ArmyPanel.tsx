@@ -5,6 +5,7 @@ import {
   armyMorale,
   armyName,
   armySpeedKmPerTick,
+  armyUpkeep,
   currentModel,
   formationName,
   hostileArmiesIn,
@@ -29,7 +30,7 @@ import type { GameController } from '../game/GameController';
 import { countOf, formatDuration } from '../format';
 import { Icon, type IconName } from '../icons';
 import { ORDER, composition, ownerShortName, roadEndName } from '../labels';
-import { MoraleMeter, Progress, Section, moraleClass } from './Common';
+import { MoraleMeter, Progress, Section, Upkeep, moraleClass } from './Common';
 import { UnitInfo } from './UnitInfo';
 
 /** Rank chevrons: none for Green, one to three for Regular to Elite. */
@@ -397,6 +398,12 @@ export function ArmyPanel({
         {multi && (
           <div className="muted multi-note">
             {selectedOwn.length} armies selected: orders and options apply to all. Select one army to tick formations.
+          </div>
+        )}
+
+        {own && !multi && (
+          <div className="army-upkeep">
+            <Upkeep upkeep={armyUpkeep(army)} label="Army upkeep" />
           </div>
         )}
 
