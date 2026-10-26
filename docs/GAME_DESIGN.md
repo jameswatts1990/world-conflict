@@ -682,7 +682,9 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   texture turns soft, sharper tiles of the same relief (the same noise with finer octaves added, lighting steepened to
   match their resolution) are baked for the view once it settles, one at a time, and kept for panning back. A phone
   opens closer in, centred on the capital, and its names and 3D cities wait for a closer zoom than the desktop's, so
-  they stand apart. The map has one scale (a map unit is about 3.75 km at 48°N) whatever the theatre's size, and
+  they stand apart. The map is a conformal conic over Europe, so the far north keeps its true size (a map unit is
+  3.47–3.75 km from the Mediterranean to the North Cape) and meridians lean towards the pole; fully zoomed out, the
+  world round the theatre is a cap of the globe that fades into the sea. The map has one scale (a map unit is 3.75 km at 48°N) whatever the theatre's size, and
   every zoom above (the range, the opening view, where detail appears) is measured against a fixed reference view of
   1000 × 820 map units fitted to the screen, not against the whole theatre: adding land makes the map larger, never
   smaller, and only the fit button and the overview map show all of it (`src/ui/map/geo.ts`, `MapView.tsx`).

@@ -226,9 +226,12 @@ setup. What remains per country is its province rows, its connections and one na
 3. **The map frame.** Done for Europe: the map keeps one scale and its frame grows with the theatre, and the zooms
    (range, opening view, where detail appears) are measured against a fixed reference view rather than the whole
    theatre (README, *How the map is drawn*); the theatre's neighbours keep full detail wherever it reaches. Adding
-   the East or Scandinavia needs no retuning. Left: Mercator draws the far north large (a kilometre at 71°N is
-   twice as long on the map as at 48°N), which Scandinavia may want a conic projection for, and a true world map
-   still needs a different camera (a fixed scale across the whole world is far too large a drawing).
+   the East or Scandinavia needs no retuning, and the conformal conic keeps the far north in proportion (a map unit
+   is 3.47 km at 71°N, 3.75 km at 48°N). Left: the conic draws the world only as a cap within 36° of the middle of
+   Europe, fading out from about 29°, so a theatre reaching that far (the Caucasus is 26–30° out, the Canaries
+   31–32°) needs the cap moved (it cannot grow past about 38° without reaching across the pole) or a new
+   projection, and a true world map still needs a different camera (a fixed scale across the whole world is far too
+   large a drawing).
 4. **The nation picker and Diplomacy.** A two-column card list and one diplomacy row per nation suit a dozen
    or two; beyond that, picking on the map and grouping minor powers work better.
 5. **Speed.** Each AI looks over every province and army every 8 seconds, so simulation cost grows with nations

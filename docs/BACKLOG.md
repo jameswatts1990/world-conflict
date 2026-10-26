@@ -402,7 +402,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Minor powers may strike back into thinly held neighbours once at war (Ireland takes Belfast in about half the
       campaigns, Portugal Galicia): kept by design, as it punishes a border left bare
 - [ ] Eastern-bloc nations east of Poland and Romania
-- [ ] A projection for the far north before Scandinavia (Mercator draws a kilometre at 71°N twice as long as at 48°N)
+- [x] A projection for the far north before Scandinavia: a conformal conic over Europe (35°N and 65°N) in place of
+      Mercator, which drew a kilometre at 71°N twice as long as at 48°N; the world round the theatre is a cap of the
+      globe fading into the sea
 - [ ] A nation picker that scales past a dozen nations (pick on the map)
 - [ ] Expand beyond Europe: more theatres, then the whole world
 - [ ] Authoritative multiplayer server running `src/sim` unchanged; client sends commands only

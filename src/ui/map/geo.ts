@@ -2,7 +2,7 @@
 // TopoJSON; gameplay adjacency lives in the simulation's scenario data. The
 // provinces and the world around them share one topology, so their coasts and
 // borders are the same lines.
-import { geoArea, geoGraticule, geoMercator, geoPath } from 'd3-geo';
+import { geoArea, geoCircle, geoClipCircle, geoConicConformal, geoDistance, geoGraticule, geoMercator, geoPath, geoRotation, type GeoStream } from 'd3-geo';
 import type { Feature, FeatureCollection, MultiLineString, MultiPolygon, Polygon, Position } from 'geojson';
 import { feature, merge, mesh } from 'topojson-client';
 import type { GeometryCollection, MultiPolygon as TopoMultiPolygon, Polygon as TopoPolygon, Topology } from 'topojson-specification';
@@ -10,13 +10,62 @@ import mapJson from '../../assets/map/map.topo.json';
 import type { OwnerId, ProvinceId, RoadSpot, World } from '../../sim';
 
 /**
- * The map's scale: Mercator's, in map units per radian. It never changes, so a map unit is always the same stretch
- * of ground (about 3.75 km at 48°N, less further north, as Mercator goes) and adding land to the theatre makes the
- * drawing larger, never smaller: counters, cities, labels, roads and textures, sized in map units or in screen
- * pixels at a zoom, look the same at the same real-world scale however wide the theatre grows. It is the scale the
- * first theatre (9.5°W–29.7°E, 36–61°N) was fitted to the reference view at.
+ * The projection: Lambert's conformal conic with standard parallels at 35°N and 65°N and Europe's middle meridian,
+ * 10°E (the European Union's own conformal map of Europe, ETRS89-LCC). It keeps shapes, like Mercator, and keeps
+ * the scale close from the Mediterranean to the North Cape: a map unit is 3.64 km at 36°N, 3.75 km at 48°N and
+ * 3.47 km at 71°N, so the North Cape is drawn 8% larger than the middle of Europe where Mercator drew it twice as
+ * large (2.06×). Meridians lean towards the pole, so north is up only along 10°E.
  */
-export const MAP_SCALE = 1136.8817280014393;
+const PARALLELS: [number, number] = [35, 65];
+const MERIDIAN = 10;
+/**
+ * The map's scale, in km per map unit at 48°N: the scale the first theatre was drawn at (on Mercator), so counters,
+ * cities and zoom levels keep their feel. It never changes, so adding land to the theatre makes the drawing
+ * larger, never smaller: counters, cities, labels, roads and textures, sized in map units or in screen pixels at a
+ * zoom, look the same at the same real-world scale however large the theatre grows.
+ */
+const KM_PER_UNIT = 3.7497577699717315;
+/**
+ * The world round the theatre is drawn as far as this many degrees from the middle of Europe (CAP_CENTRE), a cap
+ * of the globe reaching Greenland's coast, the Sahara, Arabia and the Urals; it fades into the sea towards its rim
+ * (`horizon`). A conic cannot draw the whole world: the far side of the pole tears open and the south runs off to
+ * infinity. 36° keeps the cap short of the pole's far side; the theatre must stay inside it (Iceland's west, the
+ * farthest yet, is 22° out).
+ */
+const CAP_CENTRE: [number, number] = [MERIDIAN, 52];
+const CAP_DEGREES = 36;
+/** The conic, at the map's scale, with no translation. */
+function conic() {
+  const p = geoConicConformal().parallels(PARALLELS).rotate([-MERIDIAN, 0]).scale(1).translate([0, 0]);
+  // Units per km at 48°N at scale 1, from two points 0.02° apart on the middle meridian.
+  const [a, b] = [p([MERIDIAN, 47.99])!, p([MERIDIAN, 48.01])!];
+  const perKm = Math.hypot(a[0] - b[0], a[1] - b[1]) / ((0.02 * Math.PI) / 180) / 6371;
+  return p.scale(1 / (KM_PER_UNIT * perKm)).preclip(capClip());
+}
+
+/** Clips to the cap: the projection's own frame turned so the cap's middle is at the origin, clipped there, turned back. */
+function capClip() {
+  const clip = geoClipCircle((CAP_DEGREES * Math.PI) / 180);
+  // The projection hands its preclip points in radians, already turned so 10°E is the middle meridian.
+  const turn = geoRotation([0, -CAP_CENTRE[1]]);
+  const [deg, rad] = [180 / Math.PI, Math.PI / 180];
+  const via = (f: (p: [number, number]) => [number, number]) => (x: number, y: number) => f([x * deg, y * deg]).map((v) => v * rad) as [number, number];
+  const [there, back] = [via((p) => turn(p)), via((p) => turn.invert(p))];
+  return (sink: GeoStream): GeoStream => {
+    const out = clip({ ...relay(sink), point: (x: number, y: number) => sink.point(...back(x, y)) });
+    return { ...relay(out), point: (x: number, y: number) => out.point(...there(x, y)) };
+  };
+}
+
+/** A stream that passes everything but points straight on. */
+const relay = (s: GeoStream): GeoStream => ({
+  point: (x, y) => s.point(x, y),
+  lineStart: () => s.lineStart(),
+  lineEnd: () => s.lineEnd(),
+  polygonStart: () => s.polygonStart(),
+  polygonEnd: () => s.polygonEnd(),
+  sphere: () => s.sphere?.(),
+});
 /**
  * The reference view, in map units: the window a screen's zooms are measured against (MapView sets the zoom range,
  * the opening view and the zooms where detail appears from how this window fits the screen). It is the frame the
@@ -65,7 +114,15 @@ export interface MapGeometry {
   landBorders: string;
   /** Borders between the regions (a city with the lands round it), within a country or across one. */
   provinceBorders: string;
+  /** Bounds of the world drawn round the theatre: a cap of the globe round the middle of Europe. */
   worldBounds: [[number, number], [number, number]];
+  /**
+   * A circle just inside the cap's rim, round its middle (map units): the world fades into the sea towards it.
+   * `outer` reaches just past the farthest point of the rim (the conic not being quite even in scale).
+   */
+  horizon: { x: number; y: number; r: number; outer: number };
+  /** The point on the ground ([longitude, latitude]) under a point of the map (map units). */
+  invert: (p: [number, number]) => [number, number];
   nationBorders: (ownerOf: (pid: ProvinceId) => OwnerId) => string;
   /** Full outline (land borders and coast) of everything one owner holds. */
   ownerOutline: (owner: OwnerId, ownerOf: (pid: ProvinceId) => OwnerId) => string;
@@ -93,9 +150,9 @@ export interface MapGeometry {
 
 /**
  * A road as the map draws it, from one province's anchor to the other's, bending where the scenario says it
- * must to keep to the two provinces: its points (map units), how far along it each lies (0..1 of its length,
- * which is what a fraction of the way along a road means everywhere: a spot on it, an army on its leg), and
- * its length.
+ * must to keep to the two provinces: its points (map units), how far along it each lies (0..1, measured as the
+ * road generator measures it, which is what a fraction of the way along a road means everywhere: a spot on it,
+ * an army on its leg, where it crosses its border; see roadThrough), and its length as drawn.
  */
 export interface RoadLine {
   pts: [number, number][];
@@ -108,6 +165,46 @@ function lineThrough(pts: [number, number][]): RoadLine {
   const length = steps.reduce((s, x) => s + x, 0);
   let gone = 0;
   return { pts, at: [0, ...steps.map((s) => (gone += s) / (length || 1))], length };
+}
+
+/**
+ * The grid the road generator measures on (`scripts/map/roads.ts`): a road runs straight between its knots (its
+ * anchors and bends) on this Mercator, and a fraction of the way along it, as the scenario stores it (where it
+ * crosses its border) and as the simulation uses it (a spot on a road, a leg's progress), is measured along those
+ * straight lines here. The drawing is a different projection, so its roads follow the same lines.
+ */
+const ROAD_GRID = geoMercator();
+/** How finely (km) a road's line is followed when it is drawn: straight between these points, it strays a few metres at most. */
+const ROAD_STEP_KM = 2;
+
+/**
+ * A road through its knots ([longitude, latitude]) as the map draws it: the generator's straight lines between
+ * them, followed every ROAD_STEP_KM or so and drawn on `projection`, each point carrying its fraction of the way
+ * as the generator measures it. So a fraction means the same spot on the ground in the drawing as in the
+ * simulation: a road crosses its border on the map where the scenario says, and pointing at the map either side
+ * of the border picks the land on that side.
+ */
+function roadThrough(knots: [number, number][], projection: (p: [number, number]) => [number, number] | null): RoadLine {
+  const grid = knots.map((p) => ROAD_GRID(p) as Pt);
+  const lengths = grid.slice(1).map((q, i) => Math.hypot(q[0] - grid[i][0], q[1] - grid[i][1]));
+  const total = lengths.reduce((s, x) => s + x, 0) || 1;
+  const pts: Pt[] = [];
+  const at: number[] = [];
+  let gone = 0;
+  for (let i = 0; i + 1 < knots.length; i++) {
+    const n = Math.max(1, Math.ceil((geoDistance(knots[i], knots[i + 1]) * 6371) / ROAD_STEP_KM));
+    pts.push(projection(knots[i]) as Pt);
+    at.push(gone / total);
+    for (let j = 1; j < n; j++) {
+      const [p, q] = [grid[i], grid[i + 1]];
+      pts.push(projection(ROAD_GRID.invert!([p[0] + ((q[0] - p[0]) * j) / n, p[1] + ((q[1] - p[1]) * j) / n])!) as Pt);
+      at.push((gone + (lengths[i] * j) / n) / total);
+    }
+    gone += lengths[i];
+  }
+  pts.push(projection(knots[knots.length - 1]) as Pt);
+  at.push(1);
+  return { pts, at, length: pts.slice(1).reduce((s, p, i) => s + Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]), 0) };
 }
 
 /** The road from one province's anchor to a neighbour's (straight, should they not be neighbours). */
@@ -304,7 +401,7 @@ export function buildMapGeometry(world: World): MapGeometry {
   const countries = feature(topo, topo.objects.countries) as FeatureCollection<Polygon | MultiPolygon, { iso: string; name: string }>;
 
   // A fixed scale, and the theatre in the middle of its frame.
-  const projection = geoMercator().scale(MAP_SCALE).translate([0, 0]);
+  const projection = conic();
   const [[tx0, ty0], [tx1, ty1]] = geoPath(projection).bounds(provinces);
   const size: [number, number] = [Math.max(VIEW_WIDTH, tx1 - tx0 + 2 * FRAME_MARGIN), Math.max(VIEW_HEIGHT, ty1 - ty0 + 2 * FRAME_MARGIN)];
   projection.translate([(size[0] - tx0 - tx1) / 2, (size[1] - ty0 - ty1) / 2]);
@@ -332,12 +429,12 @@ export function buildMapGeometry(world: World): MapGeometry {
   }
 
   // Every road both ways, from one anchor through its bends to the other: a fraction of the way along it is the same
-  // spot from either end, measured along the road as drawn (the simulation's crossings are measured the same way).
+  // spot from either end, and the same spot on the ground as the simulation's (see roadThrough).
   const roadLines: Record<string, RoadLine> = {};
   for (const c of world.scenario.connections) {
-    const pts: [number, number][] = [anchors[c.a], ...(c.via ?? []).map((p) => projection(p) as [number, number]), anchors[c.b]];
-    roadLines[`${c.a}>${c.b}`] = lineThrough(pts);
-    roadLines[`${c.b}>${c.a}`] = lineThrough([...pts].reverse());
+    const there = roadThrough([world.provinces[c.a].anchor, ...(c.via ?? []), world.provinces[c.b].anchor], projection);
+    roadLines[`${c.a}>${c.b}`] = there;
+    roadLines[`${c.b}>${c.a}`] = { pts: [...there.pts].reverse(), at: there.at.map((t) => 1 - t).reverse(), length: there.length };
   }
 
   const countryShapes: CountryShape[] = countries.features.map((f) => ({
@@ -354,12 +451,13 @@ export function buildMapGeometry(world: World): MapGeometry {
   const region = (g: { properties?: unknown }) => world.regionOf[pidOf(g)] ?? pidOf(g);
   const landBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) === region(b))) ?? '';
   const provinceBorders = path(mesh(topo, geoms, (a, b) => a !== b && region(a) !== region(b))) ?? '';
+  // The cap reaches no further than 16°N and 88°N.
   const graticule =
     path(
       geoGraticule()
         .extent([
-          [-180, -60],
-          [180, 84],
+          [-180, 15],
+          [180, 89],
         ])
         .step([5, 5])(),
     ) ?? '';
@@ -393,12 +491,14 @@ export function buildMapGeometry(world: World): MapGeometry {
     campSide[id] = lean > 0 ? -1 : 1;
   }
 
+  // The world drawn is the cap (the projection clips the sphere to it).
   const worldBounds = path.bounds({ type: 'Sphere' }) as [[number, number], [number, number]];
-  // Mercator is unbounded at the poles; clamp to the inhabited latitudes we draw.
-  const north = projection([0, 84])![1];
-  const south = projection([0, -60])![1];
-  worldBounds[0][1] = north;
-  worldBounds[1][1] = south;
+  // Where the world fades out: a circle round the cap's middle, just inside its rim (whose distance varies a
+  // little, the conic not being quite even in scale).
+  const [hx, hy] = projection(CAP_CENTRE) as Pt;
+  const rim = geoCircle().center(CAP_CENTRE).radius(CAP_DEGREES).precision(1)().coordinates[0].map((p) => projection(p as [number, number]) as Pt);
+  const fromMiddle = rim.map(([x, y]) => Math.hypot(x - hx, y - hy));
+  const horizon = { x: hx, y: hy, r: Math.min(...fromMiddle) - 15, outer: Math.max(...fromMiddle) + 15 };
 
   return {
     provincePaths,
@@ -416,6 +516,8 @@ export function buildMapGeometry(world: World): MapGeometry {
     landBorders,
     provinceBorders,
     worldBounds,
+    horizon,
+    invert: (p) => projection.invert!(p) as [number, number],
     ...cities,
     roadLines,
     campSide,
