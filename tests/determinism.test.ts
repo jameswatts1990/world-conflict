@@ -255,6 +255,54 @@ describe('save / load', () => {
     expect(settleRoads(aiGame(35), world)).toBe(0);
   });
 
+  it.each(['halted', 'mid-leg', 'planned', 'later-leg', 'halt-target'] as const)(
+    'settles a saved army using a removed Polish road (%s)',
+    (position) => {
+      const state = aiGame(36, 'pl');
+      const army = Object.values(state.armies).find((a) => a.owner === 'pl')!;
+      const from = 'pl-east-ne';
+      const to = 'pl-lesser-e';
+      // These provinces survive the East expansion, but their old link does not.
+      expect(world.provinces[from]).toBeDefined();
+      expect(world.provinces[to]).toBeDefined();
+      expect(world.neighbors[from].some((n) => n.id === to)).toBe(false);
+      army.province = from;
+      army.move = null;
+      army.arrivedVia = 'land';
+      if (position === 'halted') army.road = { toward: to, at: 0.2 };
+      else if (position === 'later-leg') {
+        const previous = world.neighbors[from][0].id;
+        army.province = previous;
+        army.move = { mode: 'move', path: [from, to], leg: { from: previous, to: from, elapsed: 5, duration: 100 } };
+      } else if (position === 'halt-target') {
+        army.move = { mode: 'move', path: [], leg: null, halt: { province: from, toward: to, at: 0.2 } };
+      } else {
+        army.move = { mode: 'move', path: [to], leg: position === 'mid-leg' ? { from, to, elapsed: 5, duration: 100 } : null };
+      }
+      const loaded = deserializeGame(serializeGame(state, 'pre-East Polish road')).state;
+      const before = loaded.armies[army.id].province;
+      expect(settleRoads(loaded, world)).toBe(1);
+      expect(loaded.armies[army.id].province).toBe(before);
+      expect(loaded.armies[army.id].road).toBeUndefined();
+      expect(loaded.armies[army.id].move).toBeNull();
+      expect(loaded.armies[army.id].arrivedVia).toBeNull();
+      expect(settleRoads(loaded, world)).toBe(0);
+    },
+  );
+
+  it.each([false, true])('keeps a valid saved march back from a road (mid-leg %s)', (midLeg) => {
+    const state = aiGame(37);
+    const road = world.scenario.connections.find((c) => c.border !== undefined && !world.provinces[c.a].city && !world.provinces[c.b].city)!;
+    const army = Object.values(state.armies)[0];
+    army.province = road.a;
+    army.move = { mode: 'move', path: [road.a], leg: null };
+    if (midLeg) army.move.leg = { from: road.b, to: road.a, elapsed: 90, duration: 100 };
+    else army.road = { toward: road.b, at: Math.min(0.1, road.border! / 2) };
+    const hash = hashState(state);
+    expect(settleRoads(state, world)).toBe(0);
+    expect(hashState(state)).toBe(hash);
+  });
+
   it('refuses a save from a redrawn map', () => {
     const vanished = aiGame(32);
     vanished.provinces['xx-atlantis'] = { ...vanished.provinces['fr-paris'], id: 'xx-atlantis' };

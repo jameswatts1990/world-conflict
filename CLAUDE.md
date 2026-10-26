@@ -193,28 +193,31 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 ```
 
 The pathology and variety figures below are these two commands' results (ten seeds of 90 minutes; Easy with an idle
-France) with this report on the simulation at `c16c07c` (October 2026). The winner and challenge figures further
-down come from earlier runs and were not remeasured with them.
+France) on the simulation with the East (October 2026); the winner figures come from 200 campaigns of the same
+build, and the Challenge figures from the same ten seeds with an idle France at both levels.
 
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
-  pile-on attacks under 1% (about 0.1% at both levels, counting deliberate support to weak captures), orders
+  pile-on attacks under 1% (about 0.2% at Normal and 0% at Easy, counting deliberate support to weak captures), orders
   into a co-belligerent's uncontested capture (arriving stronger restarts it) about 0.2% at Normal and 0% at Easy. Armies
   idle in the interior (no foreign border next to their province or to any land of its city's region) run at about
-  10% at Normal, mostly capital garrisons in capitals with no foreign border during a war and armies at home in
-  peacetime (Easy about 13%, mostly in peacetime: its wars come later).
+  8% at Normal, mostly capital garrisons in capitals with no foreign border during a war and armies at home in
+  peacetime (Easy about 11%, mostly in peacetime: its wars come later).
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
-  counting timing (about 20% and 8% at Normal, 17% and 8% at Easy), and who fights the first war.
+  counting timing (about 13% and 6% at Normal, 11% and 4% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with Ireland and the Balkans, objectives decide 10%, with a 150-minute
-  median; score wins at the limit are intended. Win rates: Poland 33%, Hungary 20%, Italy 13%, France 12%, Spain
-  9%, Romania 6%, Germany 4%, Britain 3%, Greece 1%, Bulgaria and Serbia 0%. Campaign survival: Serbia 25%,
-  Bulgaria 41%, Romania 60%, Greece 77%. Balance is a separate follow-up using general mechanics.
+  limit). Currently, over 200 full campaigns with the five-region East on the current economy, none end on
+  objectives; all reach the 150-minute score limit. Win rates: Hungary 29%, Germany 19%, Poland 16.5%, France
+  and Italy 9.5% each, Britain 6.5%, Spain 6%, Greece 2%, Romania 1.5%, Ukraine 0.5%, and Belarus, Bulgaria and
+  Serbia 0%. Against main on the same seeds, Germany rises from 4%, Hungary from 27.5%, and Poland falls from
+  29.5%. Campaign survival: Ukraine 69.5%, Belarus 49.5%, Romania 39.5%, Serbia 30%, Bulgaria 55%, Greece 84.5%.
+  Balance is a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
-  Normal brings war at 7–11 minutes and a fall in 10 of 10, at 32–83 minutes; Easy brings war at 14–39 minutes.
-  Over 50 seeds of 90 minutes, France falls in 19 of 50 on Easy, against a target of about 2 in 10
+  Normal brings war at 7–29 minutes and a fall in 9 of 10, at 33–72 minutes; Easy brings war at 19–70 minutes and
+  a fall in 1 of 10, at 85 minutes. An earlier run of 50 seeds of 90 minutes had France fall in 19 of 50 on Easy,
+  against a target of about 2 in 10
   (see [BACKLOG](docs/BACKLOG.md)). An idle player should lose, just not at once.
 
 Report balance shifts (game length, how fast players are overrun, how quickly minor powers fall) to the user rather

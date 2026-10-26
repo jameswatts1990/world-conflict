@@ -1,6 +1,6 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Seven great powers, four major powers and fifteen minor powers on
+A browser-based, real-time global strategy game. Seven great powers, six major powers and nineteen minor powers on
 recognisable Earth geography start with Great War technology and research their way towards the Second World War.
 The current build is a local single-player campaign on the **European theatre** at **Standard** speed (target ~2–3
 hours).
@@ -20,11 +20,15 @@ What is in it (Milestone 2, Depth):
   plus Bosnia & Herzegovina, Montenegro, Albania and North Macedonia as minor powers. Kosovo belongs to southern Serbia.
 - **Ireland**, a two-province minor power (Dublin and Cork): Britain's one land border, in Ulster, with the Irish
   Sea crossing from Dublin to Wales.
+- **Ukraine and Belarus**, playable major powers with five and four regions, Eastern-pattern equipment,
+  Cossack cavalry and the Brest Fortress speciality. Crimea and Sevastopol belong to Ukraine; Moldova and the three
+  Baltic states are minor powers. Russia, including Kaliningrad, remains outside the theatre.
 - **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
   get output, starting armies, objectives and size from their tier, so a new country is province rows,
   connections and one line.
-- **Fifteen minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
-  Slovakia, Slovenia, Croatia, Bosnia & Herzegovina, Montenegro, Albania, North Macedonia and Ireland): one- or two-region nations run by the computer. They recruit, research, defend
+- **Nineteen minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
+  Slovakia, Slovenia, Croatia, Bosnia & Herzegovina, Montenegro, Albania, North Macedonia, Ireland, Moldova,
+  Lithuania, Latvia and Estonia): one- or two-region nations run by the computer. They recruit, research, defend
   themselves and make peace, but never start a war and never win. Each holds a fortified capital with a garrison of
   six to eight divisions: an eight-unit probe fails, and taking one takes twelve to fourteen units with artillery
   and costs them 40–60% of their strength.
@@ -175,7 +179,7 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **25 of the 62 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
+Hold **29 of the 72 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
 major-power capitals 2 VP and heartlands 1 VP, minor-power capitals 1 VP) continuously for **90 seconds**, or have
 the **highest score** when the **2 h 30 min** time limit ends. Only great and major powers can win: minor powers
 are there to be conquered. You lose if your nation is eliminated or another power wins.
@@ -240,20 +244,25 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been measured with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human
-  playtesting is still needed. Over 200 full campaigns with Ireland and the Balkans, 10% end on objectives and 90%
-  on score at the 150-minute limit; score wins are an intended outcome. Poland wins 33%; Serbia wins none and
-  survives 25%. Bulgaria survives 41%, Romania 60% and Greece 77%. Balance changes are a separate follow-up using
-  general mechanics.
+  playtesting is still needed. Over 200 full campaigns with five-region major Ukraine on the current economy,
+  none end on objectives; all reach the 150-minute score limit. Against main on the same seeds, Germany's wins
+  rise from 4% to 19%, Hungary's from 27.5% to 29%, and Poland's fall from 29.5% to 16.5%. Ukraine wins 0.5%,
+  Romania 1.5%, and Belarus and Serbia never win. Ukraine, Romania, Belarus and Serbia survive 69.5%, 39.5%,
+  49.5% and 30%. The East still misses balance goals. Balance changes are a separate follow-up using general mechanics.
 - There are no alliances yet: powers fighting a common enemy are only co-belligerents, and all that does is share
   sight through Liaison Officers.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
 - Only the Standard speed is playable. Slow (~1 week) is defined in config and greyed out in the menu.
 - The phone layouts are checked in Chromium's touch emulation (`npm run e2e:mobile`), not yet on real iOS and Android
-  devices. Production JavaScript is split into six chunks totalling ~1,288 KB (414 KB gzipped).
+  devices. Production JavaScript is split into six chunks totalling ~1,380 KB (438 KB gzipped, as reported by Vite).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
 - The theatre includes the western Balkans, Bulgaria and Greece, including Crete and the larger Aegean islands.
-  Turkey and everything east of Romania remain context only. Kosovo is part of Serbia's southern region.
+  The eastern theatre reaches Estonia, Belarus and Ukraine, including Crimea. Russia, Kaliningrad and Turkey
+  remain context only. Kosovo is part of Serbia's southern region.
 - Saves from before the Balkans expansion cannot be loaded. Every save contains the renamed lands
   `hr-zagreb-sw` → `hr-zagreb-se` and `rs-south-s` → `rs-south-sw`, so all such saves are refused. There is no
   migration for these renames; start a new campaign.
+- Saves from before the East expansion load with its six newcomers at peace. Armies on removed roads return to
+  their current province, and marches using removed links stop. Adding the East raises the objective requirement
+  from 25 of 62 VP to 29 of 72 VP in those saved campaigns. The earlier Balkans restriction still applies.

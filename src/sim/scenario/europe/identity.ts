@@ -499,6 +499,7 @@ export const IDENTITIES: Record<string, NationIdentityOverrides> = {
       tankDestroyer: '{n}. Dywizjon Niszczycieli Czołgów',
     },
   },
+  ua: { formations: { cavalry: '{ord} Cossack Regiment' } },
   hu: { units: HU, formations: { cavalry: '{ord} Hussar Regiment' } },
   bg: { formations: { stormtroopers: '{ord} Assault Battalion' } },
   gr: {
@@ -514,6 +515,19 @@ export const IDENTITIES: Record<string, NationIdentityOverrides> = {
 // Each nation has one small, flavourful edge. They are deliberately modest so
 // the starting balance holds.
 export const SPECIALITIES: Record<string, NationSpeciality | undefined> = {
+  ua: {
+    name: 'Cossack hosts',
+    description: 'Cavalry of the steppe: cavalry move 10% faster and inflict 15% more morale shock.',
+    effects: [
+      { kind: 'unitStat', units: ['cavalry'], stat: 'speed', mult: 1.1 },
+      { kind: 'unitStat', units: ['cavalry'], stat: 'shock', mult: 1.15 },
+    ],
+  },
+  by: {
+    name: 'Brest Fortress',
+    description: 'Strongpoints on the forest frontier: fortifications are 20% more effective.',
+    effects: [{ kind: 'fortification', mult: 1.2 }],
+  },
   uk: {
     name: 'Combined Operations',
     description: 'An island nation that knows the sea: no penalty for attacking straight off a sea crossing.',

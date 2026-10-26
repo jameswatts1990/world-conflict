@@ -45,6 +45,32 @@ describe('scenario data', () => {
     expect(world.nationIds).not.toContain('kos');
   });
 
+  it('keeps Crimea Ukrainian and Russia outside the playable East', () => {
+    const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
+    const provinces = (feature(topo, topo.objects.provinces) as unknown as { features: Feature<Polygon | MultiPolygon, { pid: string; iso: string }>[] }).features;
+    const countries = (feature(topo, topo.objects.countries) as unknown as { features: Feature<Polygon | MultiPolygon, { iso: string }>[] }).features;
+    for (const coord of [[34.103, 44.952], [33.535, 44.605], [32.617, 46.636]] as [number, number][]) {
+      const home = provinces.find((p) => geoContains(p, coord));
+      expect(home?.properties.pid).toMatch(/^ua-odesa(?:-|$)/);
+      expect(home?.properties.iso).toBe('UKR');
+      expect(countries.some((p) => geoContains(p, coord))).toBe(false);
+    }
+    // Kaliningrad and mainland Russia remain context, never a playable bridge.
+    for (const coord of [[20.51, 54.71], [37.62, 55.75]] as [number, number][]) {
+      expect(countries.find((p) => geoContains(p, coord))?.properties.iso).toBe('RUS');
+      expect(provinces.some((p) => geoContains(p, coord))).toBe(false);
+    }
+    expect(world.neighbors['ua-odesa-se']).toContainEqual(expect.objectContaining({ id: 'ua-odesa-e', kind: 'land' })); // Crimea reaches the Taurida steppe over Perekop.
+    expect(world.nations.ua.power).toBe('major');
+    expect(world.cityIds.filter((id) => world.provinces[id].core === 'ua').sort()).toEqual(['ua-dnipro', 'ua-galicia', 'ua-kharkiv', 'ua-kyiv', 'ua-odesa']);
+    expect(world.nations.by.power).toBe('major');
+    for (const id of ['ua', 'by', 'md']) expect(world.nations[id].bloc).toBe('eastern');
+    for (const id of ['md', 'lt', 'lv', 'ee']) expect(world.nations[id].power).toBe('minor');
+    for (const id of ['lt', 'lv', 'ee']) expect(world.nations[id].bloc).toBe('western');
+    expect(world.nations.lt.capital).toBe('lt-vilnius');
+    expect(provinces.find((p) => geoContains(p, [29.643, 46.848]))?.properties.pid).toMatch(/^md-chisinau-/);
+  });
+
   it('the world underlay shares the provinces\' coasts and never lies under the theatre', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
     // One topology for both layers: shared coasts and borders are the very same arcs.

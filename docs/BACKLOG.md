@@ -146,10 +146,9 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       quarter of campaigns and the central powers won 5–6 of 80 against 15–22 for the others. On the map with
       minor powers (80 full campaigns), they cut eliminations: France 31 instead of 61, Serbia 46 instead of 67,
       Germany 24 instead of 35, Britain 11 instead of 25
-- [ ] Balance on the map with minor powers: Poland, with one great-power neighbour and two minor powers to absorb,
-      wins 20 of 80 (counting wins on score) and is never eliminated; it leads with any one of capital garrisons,
-      war aims, home soil or interior lines switched off (18–32 wins). Serbia and Romania win 0–2. Look at routes
-      that give Poland a second great-power neighbour and at how the others gang up on a leader
+- [ ] Balance on the expanded map with minor powers: Ukraine and Belarus give Poland two major-power neighbours.
+      Recheck the leader response and the survival of exposed major powers after adding the East; use general
+      mechanics for the follow-up, not per-nation income or army bonuses.
 - [ ] Game length: with limited war aims, about a third of all-AI campaigns end on objectives within 150 minutes
       (59 of 80 before), the rest on score at the time limit
 - [x] AI: don't pile into a province already falling uncontested when its occupiers can hold it; free armies
@@ -408,7 +407,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
       land in half the campaigns)
 - [x] Minor powers may strike back into thinly held neighbours once at war (Ireland takes Belfast in about half the
       campaigns, Portugal Galicia): kept by design, as it punishes a border left bare
-- [ ] Eastern-bloc nations east of Poland and Romania
+- [x] Ukraine and Belarus (major), Moldova and the Baltic states (minor); Crimea and Sevastopol Ukrainian,
+      Vilnius the Lithuanian capital; Ukraine in five regions. Ukraine, Belarus and Moldova use Eastern equipment;
+      the Baltic states Western. Russia and Kaliningrad remain outside the theatre.
 - [x] A projection for the far north before Scandinavia: a conformal conic over Europe (35°N and 65°N) in place of
       Mercator, which drew a kilometre at 71°N twice as long as at 48°N; the world round the theatre is a cap of the
       globe fading into the sea

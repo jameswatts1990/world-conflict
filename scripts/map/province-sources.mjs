@@ -140,6 +140,25 @@ export const PROVINCE_SOURCES = [
   { id: 'dk-copenhagen', country: 'DNK', whole: true },
   { id: 'pt-lisbon', country: 'PRT', whole: true, exclude: ['Madeira', 'Azores'] },
 
+
+  // S13: five Ukrainian regions; Crimea and Sevastopol retain the Ukrainian ISO tag.
+  { id: 'ua-kyiv', country: 'UKR', names: ['Kiev City', 'Kiev', 'Chernihiv', 'Zhytomyr', 'Cherkasy'] },
+  { id: 'ua-dnipro', country: 'UKR', names: ["Dnipropetrovs'k", 'Zaporizhzhya', 'Kirovohrad', 'Poltava'] },
+  { id: 'ua-kharkiv', country: 'UKR', names: ['Kharkiv', 'Sumy', "Donets'k", "Luhans'k"] },
+  { id: 'ua-odesa', country: 'UKR', names: ['Odessa', 'Mykolayiv', 'Kherson'] },
+  { id: 'ua-odesa', country: 'RUS', iso: 'UKR', names: ['Crimea', 'Sevastopol'] },
+  { id: 'ua-galicia', country: 'UKR', names: ["L'viv", 'Volyn', 'Rivne', "Ternopil'", "Ivano-Frankivs'k", 'Transcarpathia', 'Chernivtsi', "Khmel'nyts'kyy", 'Vinnytsya'] },
+
+  // Belarus: the source calls the oblast Minsk and the capital City of Minsk.
+  { id: 'by-minsk', country: 'BLR', names: ['Minsk', 'City of Minsk'] },
+  { id: 'by-gomel', country: 'BLR', names: ['Gomel', 'Mogilev'] },
+  { id: 'by-brest', country: 'BLR', names: ['Brest', 'Grodno'] },
+  { id: 'by-vitebsk', country: 'BLR', names: ['Vitebsk'] },
+  { id: 'md-chisinau', country: 'MDA', whole: true },
+  { id: 'lt-vilnius', country: 'LTU', whole: true },
+  { id: 'lv-riga', country: 'LVA', whole: true },
+  { id: 'ee-tallinn', country: 'EST', whole: true },
+
   // Microstates too small to play, merged into the province round them so they leave no hole in the map.
   // `iso` keeps the province tagged with its own country.
   { id: 'es-catalonia', country: 'AND', whole: true, iso: 'ESP' },
