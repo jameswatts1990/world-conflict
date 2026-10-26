@@ -2141,9 +2141,8 @@ export function MapView(props: MapViewProps) {
     const { width, height } = stage.getBoundingClientRect();
     const { view, base } = baseFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
-    // Out to FAR_OUT of the zoom that fits the theatre (desktop or phone alike), never beyond the whole world drawn.
-    const fitK = fitFor(geo, width, height, insetRef.current, insetBottomRef.current).k;
-    const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0), fitK * FAR_OUT));
+    // Out to FAR_OUT of the zoom that fits the theatre (desktop or phone alike); the whole world drawn is always further out.
+    const minK = Math.max(0.05, fitFor(geo, width, height, insetRef.current, insetBottomRef.current).k * FAR_OUT);
     let rescale = 0;
     const redraw = () => {
       window.clearTimeout(rescale);
