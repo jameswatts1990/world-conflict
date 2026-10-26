@@ -11,10 +11,10 @@ import type { OwnerId, ProvinceId, RoadSpot, World } from '../../sim';
 
 /**
  * The projection: Lambert's conformal conic with standard parallels at 35°N and 65°N and Europe's middle meridian,
- * 10°E (the European Union's own conformal map of Europe, ETRS89-LCC). It keeps shapes, like Mercator, but holds
- * the scale within 4% from the Mediterranean to the North Cape (a map unit is 3.64 km at 36°N, 3.75 km at 48°N,
- * 3.47 km at 71°N) where Mercator drew the far north twice as large. Meridians lean towards the pole, so north is up
- * only along 10°E.
+ * 10°E (the European Union's own conformal map of Europe, ETRS89-LCC). It keeps shapes, like Mercator, and keeps
+ * the scale close from the Mediterranean to the North Cape: a map unit is 3.64 km at 36°N, 3.75 km at 48°N and
+ * 3.47 km at 71°N, so the North Cape is drawn 8% larger than the middle of Europe where Mercator drew it twice as
+ * large (2.06×). Meridians lean towards the pole, so north is up only along 10°E.
  */
 const PARALLELS: [number, number] = [35, 65];
 const MERIDIAN = 10;

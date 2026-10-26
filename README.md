@@ -224,8 +224,8 @@ tests/              Simulation tests
   rules*).
 - **One scale.** The projection is Lambert's conformal conic over Europe (standard parallels 35°N and 65°N, middle
   meridian 10°E, as the EU's own conformal map of Europe), at a fixed scale (`KM_PER_UNIT` in `src/ui/map/geo.ts`: a
-  map unit is 3.75 km at 48°N, and within 4% of that from the Mediterranean to the North Cape, where Mercator drew
-  the far north twice as large). Meridians lean towards the pole, so north is straight up only along 10°E. The frame
+  map unit is 3.75 km at 48°N, 3.64 km at 36°N and 3.47 km at 71°N, so the North Cape is drawn 8% larger than the
+  middle of Europe, where Mercator drew it twice as large). Meridians lean towards the pole, so north is straight up only along 10°E. The frame
   is the theatre with a margin of sea round it, so a wider theatre makes a larger drawing, never a smaller one.
 - **The world round it.** The countries outside the theatre are drawn as a cap of the globe within 36° of the middle
   of Europe (10°E 52°N: Greenland's coast, the Sahara, Arabia, the Urals), fading into the sea towards its rim; a
