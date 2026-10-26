@@ -43,7 +43,7 @@ export function tutorialSteps(
     {
       title: 'Cities and the economy',
       icon: 'factory',
-      body: `The top bar shows money, materials, fuel and manpower with their change per minute; ${touch ? 'tap' : 'point at'} one for the breakdown. ${
+      body: `The top bar shows money, materials, fuel, manpower and Fusion (which pays for research) with their change per minute; ${touch ? 'tap' : 'point at'} one for the breakdown. ${
         touch ? 'Tap one of your cities to open its page' : 'Click one of your cities to open it on the right'
       }. Each city has building slots set by its size, so choose what to build: industry and exchanges for money and materials, housing to grow the city into a bigger tier with more slots, universities for research, barracks, arms and tank works to recruit, and infrastructure (forts, depots, railways) that needs no slot.`,
     },
