@@ -178,8 +178,8 @@ function symbolScale(ratio: number, touch: boolean): number {
  * screen size, would crowd it long before it is zoomed in to their scale.
  */
 const MIN_ZOOM_BASE = 0.8;
-/** The furthest zoom out, against the base zoom (unless the whole world drawn fits sooner): the theatre small in the middle, capitals only. */
-const FAR_OUT = 0.2;
+/** The furthest zoom out, against the zoom that fits the whole theatre to the screen: a little short of filling it, so it never shrinks to a patch in the middle. */
+const FAR_OUT = 0.85;
 /**
  * On a phone, names and 3D cities wait for a closer zoom than on the desktop: it opens
  * closer in (COMPACT_OPENING, against the desktop base) with the cities no bigger, so
@@ -2141,8 +2141,9 @@ export function MapView(props: MapViewProps) {
     const { width, height } = stage.getBoundingClientRect();
     const { view, base } = baseFor(width, height, insetRef.current, insetBottomRef.current);
     const [[x0, y0], [x1, y1]] = geo.worldBounds;
-    // Out to the whole world drawn, or to FAR_OUT of the base zoom if that is further: the theatre small in the middle.
-    const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0), base * FAR_OUT));
+    // Out to FAR_OUT of the zoom that fits the theatre (desktop or phone alike), never beyond the whole world drawn.
+    const fitK = fitFor(geo, width, height, insetRef.current, insetBottomRef.current).k;
+    const minK = Math.max(0.05, Math.min(width / (x1 - x0), height / (y1 - y0), fitK * FAR_OUT));
     let rescale = 0;
     const redraw = () => {
       window.clearTimeout(rescale);
