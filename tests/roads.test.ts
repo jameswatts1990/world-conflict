@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { applyCommand, armiesIn, armyName, connectionBetween, hostileArmiesIn, legTicks, planMarch, roadBorder, spotOnRoad, stepState } from '../src/sim';
 import { makePeace } from '../src/sim/systems/diplomacy';
+import { geoContains, geoDistance, geoMercator } from 'd3-geo';
+import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson';
+import { feature } from 'topojson-client';
+import type { GeometryCollection, Topology } from 'topojson-specification';
+import mapJson from '../src/assets/map/map.topo.json';
 import { alongRoad, buildMapGeometry, nearestOnRoad, roadLine, roadPart } from '../src/ui/map/geo';
 import { aiGame, clearArmies, linkBetween, place, quietGame, run, setWar, world } from './helpers';
+
+const mapTopo = mapJson as unknown as Topology<{ provinces: GeometryCollection<{ pid: string }> }>;
 
 describe('halting on a road', () => {
   it('stops part of the way along a road, still in its own land, and goes on from there', () => {
@@ -324,7 +331,8 @@ describe('roads as the map draws them', () => {
   it("run from one province's anchor to the other's through the scenario's bends, the same road either way", () => {
     for (const c of world.scenario.connections) {
       const [there, back] = [roadLine(geo, c.a, c.b), roadLine(geo, c.b, c.a)];
-      expect(there.pts, `${c.a}|${c.b}`).toHaveLength(2 + (c.via?.length ?? 0));
+      // Through every bend: a point of the drawn line lies on it.
+      for (const bend of c.via ?? []) expect(Math.min(...there.pts.map((p) => geoDistance(geo.invert(p), bend))) * 6371, `${c.a}|${c.b}`).toBeLessThan(0.001);
       close(alongRoad(there, 0), geo.anchors[c.a]);
       close(alongRoad(there, 1), geo.anchors[c.b]);
       // A spot a share of the way from one end is the same spot from the other.
@@ -332,6 +340,95 @@ describe('roads as the map draws them', () => {
     }
     // The road between the lands round Rouen goes round the city, not through it.
     expect(world.scenario.connections.find((c) => c.a === 'fr-normandy-sw' && c.b === 'fr-normandy-ne')?.via?.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The road generator's point a fraction `t` of the way along a road (scripts/map/roads.ts): straight lines between
+   * its knots on its own Mercator, measured there. This is what a fraction means to the simulation (where a road
+   * crosses its border, a spot on a road), whatever projection the map is drawn in.
+   */
+  const ROAD_GRID = geoMercator();
+  const generatorPoint = (c: { a: string; b: string; via?: [number, number][] }, t: number): [number, number] => {
+    const knots = [world.provinces[c.a].anchor, ...(c.via ?? []), world.provinces[c.b].anchor];
+    const grid = knots.map((p) => ROAD_GRID(p)!);
+    const lengths = grid.slice(1).map((q, i) => Math.hypot(q[0] - grid[i][0], q[1] - grid[i][1]));
+    let left = t * lengths.reduce((s, x) => s + x, 0);
+    for (let i = 0; i < lengths.length; i++) {
+      if (left <= lengths[i] || i === lengths.length - 1) {
+        const u = lengths[i] ? left / lengths[i] : 0;
+        return ROAD_GRID.invert!([grid[i][0] + (grid[i + 1][0] - grid[i][0]) * u, grid[i][1] + (grid[i + 1][1] - grid[i][1]) * u]) as [number, number];
+      }
+      left -= lengths[i];
+    }
+    return knots[knots.length - 1];
+  };
+  const kmOf = (c: { a: string; b: string; via?: [number, number][] }) => {
+    const knots = [world.provinces[c.a].anchor, ...(c.via ?? []), world.provinces[c.b].anchor];
+    return knots.slice(1).reduce((s, p, i) => s + geoDistance(knots[i], p) * 6371, 0);
+  };
+
+  it('put a fraction of the way along a road on the same spot on the ground as the simulation, in any projection', () => {
+    for (const c of world.scenario.connections) {
+      const line = roadLine(geo, c.a, c.b);
+      for (const t of [0.05, 0.2, 0.37, 0.5, 0.63, 0.8, 0.95, ...(c.border === undefined ? [] : [c.border - 0.002, c.border + 0.002])]) {
+        const p = alongRoad(line, t);
+        expect(geoDistance(geo.invert([p.x, p.y]), generatorPoint(c, t)) * 6371, `${c.a}|${c.b} at ${t}`).toBeLessThan(0.005);
+      }
+    }
+  });
+
+  it('pick the land on each side of a border where the map draws it', () => {
+    const shapes = new Map((feature(mapTopo, mapTopo.objects.provinces) as FeatureCollection<Polygon | MultiPolygon, { pid: string }>).features.map((f) => [f.properties.pid, f]));
+    const inLand = (id: string, p: { x: number; y: number }) => geoContains(shapes.get(id)!, geo.invert([p.x, p.y]));
+    /** Where along a road its drawn line lies (`a`, `b` or elsewhere) from 2 km before its stored crossing to 2 km after. */
+    const lands = (c: { a: string; b: string; via?: [number, number][]; border?: number }, line: ReturnType<typeof roadLine>) => {
+      const step = 0.1 / kmOf(c);
+      const out: string[] = [];
+      for (let k = -20; k <= 20; k++) {
+        const p = alongRoad(line, c.border! + k * step);
+        const here = inLand(c.a, p) ? 'a' : inLand(c.b, p) ? 'b' : '-';
+        if (out[out.length - 1] !== here) out.push(here);
+      }
+      return out.join('');
+    };
+    const winding: string[] = [];
+    let clean = 0;
+    for (const c of world.scenario.connections) {
+      if (c.border === undefined) continue;
+      const line = roadLine(geo, c.a, c.b);
+      const d = 0.5 / kmOf(c);
+      for (const [t, id] of [
+        [c.border - d, c.a],
+        [c.border + d, c.b],
+      ] as [number, string][]) {
+        // Pointing at the drawn road either side of its crossing finds a spot in the land on that side.
+        const p = alongRoad(line, t);
+        expect(spotOnRoad(world, c.a, c.b, nearestOnRoad(line, [p.x, p.y]).t).province, `${c.a}|${c.b} at ${t}`).toBe(id);
+      }
+      // And that is the land the point lies in, wherever the road crosses its border cleanly (once, between its two
+      // lands). The few that wind back over it near the crossing, or touch a third province there (see the
+      // scenario test's lastResort), are counted instead.
+      if (lands(c, line) !== 'ab') {
+        winding.push(`${c.a}|${c.b}`);
+        continue;
+      }
+      clean++;
+      expect(inLand(c.a, alongRoad(line, c.border - d)), `${c.a}|${c.b} before its crossing`).toBe(true);
+      expect(inLand(c.b, alongRoad(line, c.border + d)), `${c.a}|${c.b} after its crossing`).toBe(true);
+    }
+    expect(clean).toBeGreaterThan(450);
+    expect(winding.length, winding.join(', ')).toBeLessThan(15);
+    // Two roads a projection change once misread (the drawn point in one land, picking the other).
+    for (const [a, b, t] of [
+      ['de-hesse-ne', 'de-lowersaxony-nw', 0.3428696321191933],
+      ['ro-transylvania-se', 'ro-moldavia-w', 0.5445539702271418],
+    ] as [string, string, number][]) {
+      const line = roadLine(geo, a, b);
+      const p = alongRoad(line, t);
+      const picked = spotOnRoad(world, a, b, nearestOnRoad(line, [p.x, p.y]).t).province;
+      expect(picked, `${a}|${b}`).toBe(b);
+      expect(inLand(picked, p), `${a}|${b}`).toBe(true);
+    }
   });
 
   it('measure a share of the way along the road as drawn, round its bends', () => {
