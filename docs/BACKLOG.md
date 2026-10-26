@@ -235,6 +235,13 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       Easy 4 of 10 instead of 2), and the AI raises 2.4× the field artillery, 4× the siege guns and 3× the battle
       tanks. At 60 minutes a great power holds about 500 money, 1,300 materials and 1,800 manpower (main: 380,
       7,900, 4,200)
+- [x] Fusion, a fifth resource that pays for research with money: made only by Laboratories (new city building,
+      +4 a minute per level), Universities (+3) and Field Stations (+1); research no longer costs materials (vehicle
+      research keeps its fuel), so city materials output is down 10%; the AI builds laboratories one at a time
+      while short of Fusion. Research runs about a third slower through 90 minutes (a great power: 16
+      technologies instead of 25), a fifth slower by 150 (36 instead of 45)
+- [ ] Fusion follow-ups: other uses (equipment upgrades, elite units), espionage that steals it or a technology, and
+      late-game money and materials still piling up past 90 minutes (as before Fusion)
 - [ ] Economy follow-ups: fuel still piles up (about 2,000 at 60 minutes: the AI fields few vehicles); manpower
       piles up more slowly but still does; army counters on the map have no tooltip to show upkeep; whether a human
       wants a way to clear a land's building without building another; and provinces with no city at all where

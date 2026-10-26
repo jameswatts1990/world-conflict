@@ -40,7 +40,7 @@ describe('AI army control', () => {
     setWar(state, 'es', 'pt');
     // Portugal has no army left and nothing to raise one with.
     state.provinces['pt-lisbon'].recruitQueue = [];
-    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
+    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
     const army = place(state, 'es', 'pt-lisbon', { infantry: 3 });
     const orders: AiOrderTrace[] = [];
     // Only orders given before Lisbon falls: afterwards the army is free to go.
@@ -92,7 +92,7 @@ describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficult
     setWar(state, 'es', 'pt');
     // Lisbon is the only Portuguese target left; Spain already holds its approaches.
     for (const pid of landsOf('pt-lisbon')) state.provinces[pid].owner = 'es';
-    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
+    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
     state.provinces['pt-lisbon'].recruitQueue = [];
     const capturer = place(state, 'es', 'pt-lisbon', { infantry: 3 });
     const approach = world.neighbors['pt-lisbon'].find((n) => state.provinces[n.id].owner === 'es')!.id;
@@ -342,7 +342,7 @@ describe('AI military', () => {
     // Belgium has no army left and nothing to raise one with.
     clearArmies(state, 'be-brussels');
     state.provinces['be-brussels'].recruitQueue = [];
-    state.nations.be.resources = { money: 0, materials: 0, fuel: 0, manpower: 0 };
+    state.nations.be.resources = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
     place(state, 'fr', 'be-brussels', { infantry: 4 });
     for (let t = 0; t < 400 && state.provinces['be-brussels'].owner === 'be'; t++) {
       run(state, 1);

@@ -825,6 +825,20 @@ const paintSupplyDepot: Painter = ({ cx, b, lv, g }) => {
   return G(...k);
 };
 
+const paintLaboratory: Painter = ({ cx, b, lv, g }) => {
+  const k: ReactNode[] = [];
+  if (lv >= 2) {
+    k.push(rect(cx + 12, b - 9, 12, 9, K.ink2));
+    g.grid(cx + 13.5, b - 7, 3, 1, 2.6, 0, 1.2, 3);
+  }
+  k.push(rect(cx - 16, b - 12, 28, 12, K.ink));
+  g.grid(cx - 14, b - 9.6, 6, 2, 2.8, 4, 1.2, 3);
+  k.push(g.flush());
+  k.push(rect(cx - 5, b - 16, 10, 4, K.ink), path(`M${n(cx - 5.5)} ${b - 16}a5.5 5.5 0 0 1 11 0z`, K.ink));
+  if (lv >= 3) k.push(rect(cx - 13, b - 20, 2, 8, K.ink2));
+  return k;
+};
+
 const PAINTERS: Partial<Record<CityArtBuilding, Painter>> = {
   industry: paintIndustry,
   market: paintMarket,
@@ -832,6 +846,7 @@ const PAINTERS: Partial<Record<CityArtBuilding, Painter>> = {
   refinery: paintRefinery,
   housing: paintHousing,
   university: paintUniversity,
+  laboratory: paintLaboratory,
   barracks: paintBarracks,
   academy: paintAcademy,
   armsWorks: paintArmsWorks,
@@ -846,7 +861,7 @@ const PAINTERS: Partial<Record<CityArtBuilding, Painter>> = {
 /** Rough footprint (width, height) used for scaffolding. */
 const FOOT: Record<CityArtBuilding, [number, number]> = {
   industry: [40, 18], market: [28, 20], powerPlant: [34, 28], refinery: [36, 24], housing: [40, 22],
-  university: [34, 24], barracks: [28, 11], academy: [30, 24], armsWorks: [30, 20], motorPool: [30, 10],
+  university: [34, 24], laboratory: [30, 20], barracks: [28, 11], academy: [30, 24], armsWorks: [30, 20], motorPool: [30, 10],
   tankWorks: [32, 18], hospital: [30, 16], propaganda: [24, 18], garrisonHq: [24, 18], supplyDepot: [30, 12],
   railway: [24, 11], fortifications: [26, 9], coastalBattery: [16, 9],
 };
@@ -854,11 +869,11 @@ const FOOT: Record<CityArtBuilding, [number, number]> = {
 /** Horizontal extent (left, right of the slot centre, unscaled) at the highest level, to keep art on land. */
 const EXTENT: Partial<Record<CityArtBuilding, [number, number]>> = {
   industry: [21, 31], market: [21, 21], powerPlant: [32, 44], refinery: [25, 24], housing: [27, 31],
-  university: [27, 27], barracks: [27, 29], academy: [23, 23], armsWorks: [20, 37], motorPool: [20, 42],
+  university: [27, 27], laboratory: [16, 24], barracks: [27, 29], academy: [23, 23], armsWorks: [20, 37], motorPool: [20, 42],
   tankWorks: [31, 30], hospital: [27, 23], propaganda: [21, 18], garrisonHq: [24, 16], supplyDepot: [26, 30],
 };
 
-const BACK_ROW: CityArtBuilding[] = ['industry', 'powerPlant', 'refinery', 'housing', 'university', 'academy', 'propaganda', 'armsWorks'];
+const BACK_ROW: CityArtBuilding[] = ['industry', 'powerPlant', 'refinery', 'housing', 'university', 'laboratory', 'academy', 'propaganda', 'armsWorks'];
 const FRONT_ROW: CityArtBuilding[] = ['market', 'barracks', 'motorPool', 'tankWorks', 'hospital', 'garrisonHq', 'supplyDepot'];
 
 // ------------------------------------------------------------------ construction

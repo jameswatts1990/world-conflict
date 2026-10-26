@@ -44,6 +44,15 @@ const RESOURCE_PATHS: Record<ResourceKey, ReactElement> = {
       <path d="M7 8.6c.8-1.2 1.8-1.8 3-1.8" stroke="#c4d29a" strokeWidth="0.9" fill="none" strokeLinecap="round" />
     </>
   ),
+  // an atom: three orbits round a glowing core
+  fusion: (
+    <>
+      <ellipse cx="10" cy="10" rx="8.4" ry="3.2" fill="none" stroke="#5fc6d9" strokeWidth="1.2" />
+      <ellipse cx="10" cy="10" rx="8.4" ry="3.2" fill="none" stroke="#5fc6d9" strokeWidth="1.2" transform="rotate(60 10 10)" />
+      <ellipse cx="10" cy="10" rx="8.4" ry="3.2" fill="none" stroke="#5fc6d9" strokeWidth="1.2" transform="rotate(-60 10 10)" />
+      <circle cx="10" cy="10" r="2.3" fill="#c9f3ff" stroke="#1f6f80" strokeWidth="0.9" />
+    </>
+  ),
 };
 
 export function ResourceIcon({ kind, size = 16, title }: IconProps & { kind: ResourceKey }) {
@@ -183,4 +192,5 @@ export const RESOURCE_LABEL: Record<ResourceKey, string> = {
   materials: 'Industrial materials',
   fuel: 'Fuel',
   manpower: 'Manpower',
+  fusion: 'Fusion',
 };

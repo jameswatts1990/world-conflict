@@ -28,9 +28,15 @@ export function serializeGame(state: GameState, label: string, now = new Date())
 /** Saves from schema 6 kept the land round each city as one province, keyed `<city>-land`. */
 const OLD_LAND = '-land';
 const isLandId = (id: string) => id.endsWith(OLD_LAND);
+/** Fusion each nation of a save from before Fusion starts with. */
+const SAVE_FUSION = 40;
 
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
+  // 8: Fusion, the research resource. Every nation gets a starting stock (a major power's) to research with.
+  7: (state) => {
+    for (const n of Object.values(state.nations)) n.resources.fusion ??= SAVE_FUSION;
+  },
   // 3: rates are derived by the UI, so nations no longer store lastRates. Job prices and
   // the peace retry delay are optional fields that older saves simply lack.
   2: (state) => {

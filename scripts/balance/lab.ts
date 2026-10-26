@@ -123,7 +123,7 @@ function setUp(sim: Sim, level: TechLevel, settings: LabSettings): Lab {
     Object.assign(state.provinces[pid], { owner: defender, buildings, construction: null, recruitQueue: [], capture: null });
   }
   // Prices in minutes of an average great power's base output.
-  const output = { money: 0, materials: 0, fuel: 0, manpower: 0 };
+  const output = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
   for (const pid of world.provinceIds) {
     const core = world.provinces[pid].core;
     if (!core || !great.includes(core)) continue;

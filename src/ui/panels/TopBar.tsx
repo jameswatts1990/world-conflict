@@ -16,6 +16,7 @@ const RESOURCE_HINT: Record<ResourceKey, string> = {
   materials: 'Steel, guns and shells: most of the price of artillery, armour and buildings, and the upkeep of guns and tanks.',
   fuel: 'From oil fields, oil wells and refineries. Tanks and motor vehicles need it to be built and to keep moving.',
   manpower: 'Grows with population; farms, Barracks and housing add more. Every new unit needs it, and every unit a few replacements.',
+  fusion: 'Scientific breakthroughs, from Laboratories, Universities and Field Stations only. With money, it pays for all research.',
 };
 
 export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: PanelId) => void }) {
@@ -50,7 +51,7 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
 
       <div className="tb-resources">
         {RESOURCE_KEYS.map((k) => {
-          const short = nation.shortages[k] === true;
+          const short = k !== 'fusion' && nation.shortages[k] === true;
           return (
             <div key={k} className={`tb-res${short ? ' short' : ''}`} data-resource={k} tabIndex={0} aria-label={RESOURCE_LABEL[k]}>
               <span className="tb-res-icon">
@@ -69,8 +70,12 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
                   <dd>{Math.floor(nation.resources[k]).toLocaleString('en-GB')}</dd>
                   <dt>Production</dt>
                   <dd className="ok">{fmtRate(eco.income[k])} / min</dd>
-                  <dt>Army upkeep{units > 0 ? ` (${units} units)` : ''}</dt>
-                  <dd className={eco.upkeep[k] > 0 ? 'bad' : 'muted'}>{fmtRate(-eco.upkeep[k])} / min</dd>
+                  {k !== 'fusion' && (
+                    <>
+                      <dt>Army upkeep{units > 0 ? ` (${units} units)` : ''}</dt>
+                      <dd className={eco.upkeep[k] > 0 ? 'bad' : 'muted'}>{fmtRate(-eco.upkeep[k])} / min</dd>
+                    </>
+                  )}
                   <dt className="total">Net</dt>
                   <dd className={`total${eco.net[k] < 0 ? ' bad' : ''}`}>{fmtRate(eco.net[k])} / min</dd>
                 </dl>

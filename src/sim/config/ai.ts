@@ -182,6 +182,12 @@ export const AI = {
    * the resource it makes is (upkeep near its income, or under `storeMinutes` of it in store); defensive works and field hospitals at war; a land's building is replaced only by a
    * military or infrastructure need scoring at least `replaceScore`, and only if it is an economy or civic one.
    */
+  /**
+   * Laboratories (the Fusion research is paid in) only while it runs short of Fusion: `fusionNeed` times how short
+   * (0..1), plus a small base, times (1 + economy bias), divided by (1 + `perLevel` × the level already built); and
+   * only one at a time, while its Fusion income is under `fusionPerSlot` for each research slot.
+   */
+  research: { laboratory: 2, fusionNeed: 16, perLevel: 0.6, fusionPerSlot: 3.5 },
   land: {
     farm: 8,
     tradingPost: 7,

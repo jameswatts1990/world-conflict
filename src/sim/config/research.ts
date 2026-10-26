@@ -42,9 +42,9 @@ const TANKS: UnitType[] = ['lightTank', 'tank'];
 /** Default cost and time by column; individual techs may override. */
 function tier(col: number, extra: PartialResources = {}): { cost: PartialResources; seconds: number } {
   const money = [340, 430, 515, 590, 685, 800, 910, 1025][col];
-  const materials = [130, 185, 240, 275, 330, 395, 460, 530][col];
+  const fusion = [30, 42, 54, 66, 78, 93, 108, 126][col];
   const seconds = [240, 280, 330, 380, 430, 480, 540, 600][col];
-  return { cost: { money, materials, ...extra }, seconds };
+  return { cost: { money, fusion, ...extra }, seconds };
 }
 
 export const TECHS: TechConfig[] = [
@@ -200,7 +200,7 @@ export const TECHS: TechConfig[] = [
     row: 1,
     description: 'Railway-hauled monsters that crack concrete forts. Unlocks Heavy Siege Artillery.',
     requires: [],
-    ...tier(0, { materials: 155 }),
+    ...tier(0),
     effects: [{ kind: 'unlockUnit', unit: 'heavyArtillery' }],
   },
   {
@@ -487,10 +487,10 @@ export const TECHS: TechConfig[] = [
     branch: 'industry',
     col: 4,
     row: 2,
-    description: 'Government laboratories: one extra research slot.',
+    description: 'Government laboratories: one extra research slot and 20% more Fusion.',
     requires: ['electrification'],
     ...tier(4),
-    effects: [{ kind: 'researchSlot' }],
+    effects: [{ kind: 'researchSlot' }, { kind: 'production', resource: 'fusion', mult: 1.2 }],
   },
   {
     id: 'rationalisation',

@@ -30,7 +30,7 @@ import {
 import { isOpenRoad, roadBorder, specialityEffects, type World } from './world';
 
 export function emptyResources(): Resources {
-  return { money: 0, materials: 0, fuel: 0, manpower: 0 };
+  return { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
 }
 
 export function scaledTicks(state: GameState, seconds: number): number {
@@ -114,15 +114,11 @@ export function nextQueuedResearch(state: GameState, nation: NationId): { tech: 
 /** Research progress per tick (1 = nominal). Universities and research add speed. */
 export function researchSpeed(state: GameState, nation: NationId): number {
   let universities = 0;
-  let stations = 0;
   for (const id of Object.keys(state.provinces)) {
     const p = state.provinces[id];
-    if (p.owner !== nation) continue;
-    if ((p.buildings.university ?? 0) > 0) universities++;
-    if ((p.buildings.fieldStation ?? 0) > 0) stations++;
+    if (p.owner === nation && (p.buildings.university ?? 0) > 0) universities++;
   }
-  const E = BUILDING_EFFECTS;
-  let speed = 1 + Math.min(E.universityMax, universities) * E.universityResearch + Math.min(E.fieldStationMax, stations) * E.fieldStationResearch;
+  let speed = 1 + Math.min(BUILDING_EFFECTS.universityMax, universities) * BUILDING_EFFECTS.universityResearch;
   for (const e of techEffects(state, nation)) if (e.kind === 'researchSpeed') speed *= e.mult;
   return speed;
 }
@@ -414,7 +410,7 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   if (ps.owner === NEUTRAL) return out;
   const b = ps.buildings;
   // A province without output of its own yields nothing whatever its owner's bonuses.
-  if (!b.refinery && RESOURCE_KEYS.every((k) => !def.production[k])) return out;
+  if (!b.refinery && !b.laboratory && !b.university && !b.fieldStation && RESOURCE_KEYS.every((k) => !def.production[k])) return out;
   const E = BUILDING_EFFECTS;
   if (!def.city) {
     // Land: a small base output, and whatever its one building adds.
@@ -422,6 +418,7 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
     out.materials = def.production.materials + (b.workshops ? E.workshopsMaterials : 0);
     out.manpower = def.production.manpower + (b.farm ? E.farmManpower : 0);
     out.fuel = def.production.fuel + (b.oilWells ? E.oilWellsFuel : 0);
+    out.fusion = b.fieldStation ? E.fieldStationFusion : 0;
     return scaleOutput(state, def.core, ps.owner, ps.morale, out);
   }
   const industry = b.industry ?? 0;
@@ -439,6 +436,8 @@ export function provinceOutput(state: GameState, world: World, province: Provinc
   out.manpower =
     def.production.manpower * (1 + (b.barracks ? E.barracksManpower : 0) + (b.housing ?? 0) * E.housingManpowerPerLevel) * tierBonus;
   out.fuel = def.production.fuel + refineryFuel(state, ps.owner, def.oil === true, b.refinery ?? 0);
+  // Fusion comes only from research: laboratories and universities.
+  out.fusion = (b.laboratory ?? 0) * E.laboratoryFusionPerLevel + ((b.university ?? 0) > 0 ? E.universityFusion : 0);
   return scaleOutput(state, def.core, ps.owner, ps.morale, out);
 }
 
