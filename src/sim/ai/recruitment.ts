@@ -7,7 +7,7 @@ import { AI } from '../config/ai';
 import { UNITS, usesShells } from '../config/units';
 import { checkRecruit } from '../commands';
 import { isUnitUnlocked, recruitCost, unitPower } from '../queries';
-import { RESOURCE_KEYS, UNIT_TYPES, type ProvinceId, type ResourceKey, type Resources, type UnitType } from '../types';
+import { RESOURCE_KEYS, UNIT_TYPES, UPKEEP_KEYS, type ProvinceId, type Resources, type UnitType, type UpkeepKey } from '../types';
 import { landsOf } from '../world';
 import { affordableWithReserve, issue, type Ctx } from './context';
 import { mountainFront } from './economy';
@@ -22,7 +22,7 @@ function materialsLean(ctx: Ctx): number {
 /** Upkeep a unit type draws, per resource. */
 function upkeepOf(type: UnitType): Resources {
   const up = UNITS[type].upkeepPerMinute;
-  return { money: up.money ?? 0, materials: up.materials ?? 0, fuel: up.fuel ?? 0, manpower: up.manpower ?? 0 };
+  return { money: up.money ?? 0, materials: up.materials ?? 0, fuel: up.fuel ?? 0, manpower: up.manpower ?? 0, fusion: 0 };
 }
 
 function desiredMix(ctx: Ctx): Map<UnitType, number> {
@@ -91,7 +91,7 @@ export function handleRecruitment(ctx: Ctx): void {
   // Army size is bounded by what the treasury, the other resources and the territory can sustain.
   const war = ctx.enemies.length > 0 ? AI.warUpkeep : 1;
   const share = (AI.upkeepShare + AI.upkeepPerAggression * ctx.mem.aggression) * war * ctx.level.armySize;
-  const budget: Resources = { money: ctx.eco.income.money * share, materials: 0, fuel: 0, manpower: 0 };
+  const budget: Resources = { money: ctx.eco.income.money * share, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
   for (const k of ['materials', 'fuel', 'manpower'] as const) budget[k] = ctx.eco.income[k] * AI.upkeepShares[k] * war;
   const cap =
     (ctx.ownedCities * AI.unitsPerProvince + AI.unitsFlat[world.nations[me].power] + ctx.eco.income.money / AI.unitsPerIncome) *
@@ -135,11 +135,11 @@ export function handleRecruitment(ctx: Ctx): void {
 }
 
 /** The resource the army overdraws most (short, or upkeep above income), if any. */
-function overdrawn(ctx: Ctx, upkeep: Resources): ResourceKey | null {
+function overdrawn(ctx: Ctx, upkeep: Resources): UpkeepKey | null {
   const shortages = ctx.state.nations[ctx.me].shortages;
-  let worst: ResourceKey | null = null;
+  let worst: UpkeepKey | null = null;
   let worstRatio = AI.standDownAt;
-  for (const k of RESOURCE_KEYS) {
+  for (const k of UPKEEP_KEYS) {
     if (upkeep[k] <= 0) continue;
     const ratio = shortages[k] ? Infinity : upkeep[k] / Math.max(1e-9, ctx.eco.income[k]);
     if (ratio > worstRatio) (worst = k), (worstRatio = ratio);
@@ -151,7 +151,7 @@ function overdrawn(ctx: Ctx, upkeep: Resources): ResourceKey | null {
  * Disband units far from any threat until upkeep of the overdrawn resource fits its income again: first those
  * giving least fighting power for what they draw on it.
  */
-function standDown(ctx: Ctx, k: ResourceKey): void {
+function standDown(ctx: Ctx, k: UpkeepKey): void {
   const { state, me } = ctx;
   const target = ctx.eco.income[k] * AI.standDownTo;
   let upkeep = ctx.eco.upkeep[k];

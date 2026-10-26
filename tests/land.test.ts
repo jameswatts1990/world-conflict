@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILDING_EFFECTS } from '../src/sim/config/buildings';
 import { ECONOMY, MORALE, SUPPLY } from '../src/sim/config/rules';
-import { applyCommand, checkBuild, moraleOutputMult, provinceOutput, researchSpeed } from '../src/sim';
+import { applyCommand, checkBuild, moraleOutputMult, provinceOutput } from '../src/sim';
 import { transferProvince } from '../src/sim/systems/territory';
 import { clearArmies, place, quietGame, richen, run, world } from './helpers';
 
@@ -93,12 +93,12 @@ describe('land without a city', () => {
     expect(provinceOutput(state, world, OIL_LAND).fuel).toBeCloseTo(E.oilWellsFuel, 9);
   });
 
-  it('field stations speed research, up to a cap', () => {
+  it('field stations make a little Fusion', () => {
     const state = quietGame();
-    const before = researchSpeed(state, 'fr');
-    const lands = world.provinceIds.filter((id) => !world.provinces[id].city && state.provinces[id].owner === 'fr');
-    for (const id of lands.slice(0, E.fieldStationMax + 2)) state.provinces[id].buildings = { fieldStation: 1 };
-    expect(researchSpeed(state, 'fr') - before).toBeCloseTo(E.fieldStationMax * E.fieldStationResearch, 9);
+    state.provinces[LAND].morale = MORALE.outputPivot;
+    expect(provinceOutput(state, world, LAND).fusion).toBe(0);
+    state.provinces[LAND].buildings = { fieldStation: 1 };
+    expect(provinceOutput(state, world, LAND).fusion).toBeCloseTo(E.fieldStationFusion, 9);
   });
 
   it('field hospitals heal armies faster', () => {

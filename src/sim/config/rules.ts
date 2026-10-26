@@ -3,7 +3,7 @@ import type { ConnectionKind, Terrain } from '../types';
 
 export const ECONOMY = {
   /** Base output per minute of every province of land without a city (Standard speed), before morale and occupation. */
-  landOutput: { money: 3, materials: 0, manpower: 1, fuel: 0 },
+  landOutput: { money: 3, materials: 0, manpower: 1, fuel: 0, fusion: 0 },
   /** Occupied populations rarely enlist: manpower factor on top of the morale effect. */
   occupiedManpower: 0.4,
   /** Combat multiplier while the treasury cannot pay upkeep. */
