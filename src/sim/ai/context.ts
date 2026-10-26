@@ -275,6 +275,8 @@ export function observeForces(state: GameState, world: World, me: NationId): voi
 export function affordableWithReserve(ctx: Ctx, cost: PartialResources): boolean {
   const r = ctx.state.nations[ctx.me].resources;
   return RESOURCE_KEYS.every((k) => {
+    // Saving up holds back only what this purchase would spend: short of Fusion for research, it still recruits.
+    if (!cost[k]) return true;
     const reserve = k === 'money' ? Math.max(0, ctx.eco.income.money * AI.reserveMinutes) : 0;
     return r[k] - (cost[k] ?? 0) >= reserve + (ctx.savings[k] ?? 0);
   });

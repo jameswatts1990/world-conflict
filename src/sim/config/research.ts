@@ -42,7 +42,7 @@ const TANKS: UnitType[] = ['lightTank', 'tank'];
 /** Default cost and time by column; individual techs may override. */
 function tier(col: number, extra: PartialResources = {}): { cost: PartialResources; seconds: number } {
   const money = [340, 430, 515, 590, 685, 800, 910, 1025][col];
-  const fusion = [20, 28, 36, 44, 52, 62, 72, 84][col];
+  const fusion = [30, 42, 54, 66, 78, 93, 108, 126][col];
   const seconds = [240, 280, 330, 380, 430, 480, 540, 600][col];
   return { cost: { money, fusion, ...extra }, seconds };
 }
