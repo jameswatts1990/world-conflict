@@ -70,8 +70,12 @@ export function TopBar({ ctrl, onOpen }: { ctrl: GameController; onOpen: (p: Pan
                   <dd>{Math.floor(nation.resources[k]).toLocaleString('en-GB')}</dd>
                   <dt>Production</dt>
                   <dd className="ok">{fmtRate(eco.income[k])} / min</dd>
-                  <dt>Army upkeep{units > 0 ? ` (${units} units)` : ''}</dt>
-                  <dd className={eco.upkeep[k] > 0 ? 'bad' : 'muted'}>{fmtRate(-eco.upkeep[k])} / min</dd>
+                  {k !== 'fusion' && (
+                    <>
+                      <dt>Army upkeep{units > 0 ? ` (${units} units)` : ''}</dt>
+                      <dd className={eco.upkeep[k] > 0 ? 'bad' : 'muted'}>{fmtRate(-eco.upkeep[k])} / min</dd>
+                    </>
+                  )}
                   <dt className="total">Net</dt>
                   <dd className={`total${eco.net[k] < 0 ? ' bad' : ''}`}>{fmtRate(eco.net[k])} / min</dd>
                 </dl>
