@@ -9,10 +9,13 @@ export type ProvinceId = string;
 export type ArmyId = string;
 export type UnitId = string;
 
-export type ResourceKey = 'money' | 'materials' | 'fuel' | 'manpower';
-export const RESOURCE_KEYS: readonly ResourceKey[] = ['money', 'materials', 'fuel', 'manpower'];
+export type ResourceKey = 'money' | 'materials' | 'fuel' | 'manpower' | 'fusion';
+export const RESOURCE_KEYS: readonly ResourceKey[] = ['money', 'materials', 'fuel', 'manpower', 'fusion'];
 export type Resources = Record<ResourceKey, number>;
 export type PartialResources = Partial<Resources>;
+/** Resources armies draw upkeep from, and so can run short of (Fusion only pays for research). */
+export type UpkeepKey = Exclude<ResourceKey, 'fusion'>;
+export const UPKEEP_KEYS: readonly UpkeepKey[] = ['money', 'materials', 'fuel', 'manpower'];
 
 export type Terrain = 'plains' | 'forest' | 'hills' | 'mountains' | 'urban' | 'marsh';
 
@@ -57,6 +60,7 @@ export type BuildingType =
   | 'refinery'
   | 'housing'
   | 'university'
+  | 'laboratory'
   | 'barracks'
   | 'academy'
   | 'armsWorks'

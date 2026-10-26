@@ -60,7 +60,7 @@ export function setWar(state: GameState, a: NationId, b: NationId): void {
 }
 
 export function richen(state: GameState, nation: NationId): void {
-  state.nations[nation].resources = { money: 100000, materials: 100000, fuel: 100000, manpower: 100000 };
+  state.nations[nation].resources = { money: 100000, materials: 100000, fuel: 100000, manpower: 100000, fusion: 100000 };
 }
 
 /** The lands round a city, largest first. */

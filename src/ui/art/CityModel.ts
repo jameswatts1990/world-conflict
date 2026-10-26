@@ -409,6 +409,7 @@ const HOME_ANGLE: Record<Placed, number> = {
   housing: 40,
   market: 65,
   university: 270,
+  laboratory: 290,
   barracks: 195,
   academy: 235,
   armsWorks: 160,
@@ -423,7 +424,7 @@ const HOME_ANGLE: Record<Placed, number> = {
 /** The order buildings choose their homes in, the commonest first, so they get the places nearest the old town. */
 const CLAIM_ORDER: Placed[] = [
   'barracks', 'industry', 'supplyDepot', 'armsWorks', 'housing', 'market', 'refinery', 'hospital', 'motorPool',
-  'powerPlant', 'academy', 'university', 'tankWorks', 'propaganda', 'garrisonHq',
+  'powerPlant', 'academy', 'university', 'laboratory', 'tankWorks', 'propaganda', 'garrisonHq',
 ];
 
 /**
@@ -879,6 +880,18 @@ const MODELS: Record<Placed, Builder> = {
     l.panel([[0.46, -0.25, 4.1], [0.46, 0.25, 4.1], [0.46, 0.25, 3.6], [0.46, -0.25, 3.6]], '#f2ead2', true);
     l.panel([[-0.25, 0.46, 4.1], [0.25, 0.46, 4.1], [0.25, 0.46, 3.6], [-0.25, 0.46, 3.6]], '#f2ead2', true);
     l.hip(-0.5, -0.5, 0.5, 0.5, 4.6, 1.8, K.slate);
+  },
+  laboratory: (l, level) => {
+    // Low laboratory block with an observatory dome; wings as it grows.
+    l.box(-1.4, -1.1, 1.4, 1.1, 0, 1.6, '#d8d4c8', null);
+    l.hip(-1.45, -1.15, 1.45, 1.15, 1.6, 0.5, '#8fa6a6');
+    l.box(-0.55, -0.55, 0.55, 0.55, 1.6, 2.5, '#cfcabb');
+    l.dome(0, 0, 2.5, 0.65, 0.85, '#9fb4bd');
+    if (level >= 2) {
+      l.box(-1.4, 1.2, 0.2, 1.9, 0, 1.1, '#d8d4c8', null);
+      l.hip(-1.45, 1.15, 0.25, 1.95, 1.1, 0.35, '#8fa6a6');
+    }
+    if (level >= 3) l.box(0.9, 1.25, 1.3, 1.65, 0, 2.6, '#a59e8c');
   },
   barracks: (l, _level, { flag, r }) => {
     // Two long blocks around a parade ground.

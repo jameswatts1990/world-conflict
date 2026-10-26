@@ -63,8 +63,9 @@ export const BUILDING_EFFECTS = {
   fieldHospitalHealing: 2,
   fieldHospitalMoraleRecovery: 1.5,
   bunkersDamage: 0.2,
-  fieldStationResearch: 0.03,
-  fieldStationMax: 5,
+  fieldStationFusion: 1,
+  laboratoryFusionPerLevel: 4,
+  universityFusion: 3,
 };
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
@@ -120,11 +121,20 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
   university: {
     name: 'University',
     category: 'economy',
-    description: `Research is ${pct(E.universityResearch)} faster nationally for each university (up to ${E.universityMax}). Needs a Large City.`,
+    description: `+${E.universityFusion} Fusion a minute here, and research is ${pct(E.universityResearch)} faster nationally for each university (up to ${E.universityMax}). Needs a Large City.`,
     maxLevel: 1,
     levelTiers: [3],
     cost: () => ({ money: 450, materials: 165 }),
     seconds: () => 150,
+  },
+  laboratory: {
+    name: 'Laboratory',
+    category: 'economy',
+    description: `Each level: +${E.laboratoryFusionPerLevel} Fusion a minute here, the research resource. Level 2 needs a City, level 3 a Large City.`,
+    maxLevel: 3,
+    levelTiers: [1, 2, 3],
+    cost: (l) => ({ money: 200 * l, materials: 120 * l }),
+    seconds: (l) => 60 + 40 * l,
   },
   // --- Military ------------------------------------------------------------
   barracks: {
@@ -256,7 +266,7 @@ export const BUILDINGS: Record<BuildingType, BuildingConfig> = {
   fieldStation: {
     name: 'Field Station',
     category: 'civic',
-    description: `Agricultural and engineering trials: research is ${pct(E.fieldStationResearch)} faster nationally for each (up to ${E.fieldStationMax}).`,
+    description: `Agricultural and engineering trials: +${E.fieldStationFusion} Fusion a minute here.`,
     maxLevel: 1,
     cost: () => ({ money: 100, materials: 60 }),
     seconds: () => 60,
@@ -305,6 +315,7 @@ export const BUILDING_ORDER: BuildingType[] = [
   'refinery',
   'housing',
   'university',
+  'laboratory',
   'barracks',
   'academy',
   'armsWorks',

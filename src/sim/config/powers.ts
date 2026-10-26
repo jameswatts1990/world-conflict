@@ -17,7 +17,7 @@ export interface PowerTemplate {
   /** Whether a human may play it, and whether it can win (`isContender`); minor powers can do neither. */
   playable: boolean;
   /** The nation's core provinces are scaled to these totals per minute (Standard speed). */
-  output: Omit<Resources, 'fuel'>;
+  output: Omit<Resources, 'fuel' | 'fusion'>;
   startingResources: Resources;
   /** Objective victory points of the capital and of the industrial heartland. */
   vp: { capital: number; industrial?: number };
@@ -38,8 +38,8 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   great: {
     name: 'Great power',
     playable: true,
-    output: { money: 260, materials: 140, manpower: 42 },
-    startingResources: { money: 1200, materials: 500, fuel: 150, manpower: 250 },
+    output: { money: 260, materials: 126, manpower: 42 },
+    startingResources: { money: 1200, materials: 500, fuel: 150, manpower: 250, fusion: 60 },
     vp: { capital: 3, industrial: 2 },
     capitalCity: 4,
     buildings: {
@@ -57,8 +57,8 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   major: {
     name: 'Major power',
     playable: true,
-    output: { money: 150, materials: 80, manpower: 24 },
-    startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145 },
+    output: { money: 150, materials: 72, manpower: 24 },
+    startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145, fusion: 40 },
     vp: { capital: 2, industrial: 1 },
     capitalCity: 3,
     buildings: {
@@ -75,8 +75,8 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
   minor: {
     name: 'Minor power',
     playable: false,
-    output: { money: 70, materials: 35, manpower: 12 },
-    startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70 },
+    output: { money: 70, materials: 32, manpower: 12 },
+    startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70, fusion: 20 },
     vp: { capital: 1 },
     capitalCity: 2,
     // A fortress rather than a rival: a fortified capital and a garrison larger than its economy alone would

@@ -72,7 +72,7 @@ export interface ProvinceRow {
 }
 
 /** Relative output weights per role, per minute, before each nation is scaled to its tier's totals. */
-const ROLE_OUTPUT: Record<ProvinceRole, Omit<Resources, 'fuel'>> = {
+const ROLE_OUTPUT: Record<ProvinceRole, Omit<Resources, 'fuel' | 'fusion'>> = {
   capital: { money: 60, materials: 22, manpower: 16 },
   industrial: { money: 45, materials: 38, manpower: 12 },
   city: { money: 38, materials: 20, manpower: 11 },
@@ -124,7 +124,7 @@ function landTerrain(r: ProvinceRow): Terrain {
 
 export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: LandData): ProvinceDef[] {
   // Per-nation normalisation factors so each nation starts with its tier's output.
-  const totals = new Map<string, Omit<Resources, 'fuel'>>();
+  const totals = new Map<string, Omit<Resources, 'fuel' | 'fusion'>>();
   for (const r of rows) {
     if (!r.core) continue;
     const t = totals.get(r.core) ?? { money: 0, materials: 0, manpower: 0 };
@@ -170,6 +170,7 @@ export function buildProvinces(rows: ProvinceRow[], nations: Nations, land: Land
           materials: scale('materials'),
           manpower: scale('manpower'),
           fuel: r.oil ? OIL_FUEL : BASE_FUEL,
+          fusion: 0,
         },
         oil: r.oil,
         objectiveVp: r.vp ?? roleVp,

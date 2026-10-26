@@ -20,6 +20,8 @@ const GLYPHS: Record<ArtBuilding, ReactElement> = {
   ),
   // mortarboard
   university: <path d="M10 2.8l9 4.6-9 4.6-9-4.6zM5 10.4v3.6c0 1.6 2.4 3 5 3s5-1.4 5-3v-3.6l-5 2.6zM16.4 8.3h1.2v5.6h-1.2z" />,
+  // observatory dome over a laboratory
+  laboratory: <path fillRule="evenodd" d="M5 9.2a5 5 0 0 1 10 0zM9.3 4.6h1.4v2H9.3zM2.5 10h15v8h-15zM5 12.4v2.4h2.2v-2.4zm3.9 0v2.4h2.2v-2.4zm3.9 0v2.4H15v-2.4z" />,
   barracks: <path d="M3 17V8l7-5 7 5v9h-5v-5H8v5z" />,
   // castle keep with a gate
   academy: (

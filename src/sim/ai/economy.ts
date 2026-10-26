@@ -4,7 +4,7 @@
 // gives each land its one building: economy behind the lines, defence and
 // field hospitals at the front.
 import { AI } from '../config/ai';
-import { BUILDINGS, BUILDING_EFFECTS, CITY, landBuildings, slotsUsed } from '../config/buildings';
+import { BUILDINGS, CITY, landBuildings, slotsUsed } from '../config/buildings';
 import { TECHS, type TechConfig } from '../config/research';
 import { checkBuildRules, checkResearch } from '../commands';
 import { buildingSlots, constructionCost, isUnitUnlocked, researchSlots } from '../queries';
@@ -122,6 +122,8 @@ export function handleConstruction(ctx: Ctx): void {
     add('powerPlant', 9 + world.nearbyCities[pid].filter((c) => ctx.ownedSet.has(c)).length * 2);
     add('housing', p.tier < 4 ? (core ? 9 : 4) + (CITY.slots[p.tier + 1] - CITY.slots[p.tier]) * 2 - lvl('housing') * 2 : 0);
     if (held('university') < 3) add('university', 18 - held('university') * 3);
+    // Laboratories make the Fusion research is paid in: more of them when the research queue waits for it.
+    add('laboratory', ((AI.research.laboratory + need('fusion') * AI.research.fusionNeed) * outputFactor * (1 + ctx.mem.economyBias)) / (1 + lvl('laboratory') * AI.research.perLevel));
     if (held('barracks') < 2 + Math.floor(ctx.ownedCities / 4)) add('barracks', 13 + (front ? 5 : 0));
     if (held('academy') < 1 && (isUnitUnlocked(state, me, 'stormtroopers') || ctx.mem.doctrine === 'infantry')) add('academy', 11);
     if (held('armsWorks') < 2) add('armsWorks', 12 + (ctx.mem.doctrine === 'artillery' ? 3 : 0));
@@ -146,7 +148,7 @@ export function handleConstruction(ctx: Ctx): void {
         add('tradingPost', (L.tradingPost * bias + need('money') * L.need) * outputFactor * spread('tradingPost'));
         add('workshops', (L.workshops + need('materials') * L.need) * outputFactor * spread('workshops'));
         add('oilWells', (L.oilWells + need('fuel') * L.need) * outputFactor);
-        if (held('fieldStation') < BUILDING_EFFECTS.fieldStationMax) add('fieldStation', L.fieldStation * bias);
+        add('fieldStation', (L.fieldStation * bias + need('fusion') * L.need) * outputFactor * spread('fieldStation'));
       }
       // At the front, defensive works where the enemy stands next door; field hospitals just behind the line.
       if (frontier && atWar && threat > 0 && !lvl('fortifications')) add('bunkers', L.bunkers + (threat > presence ? 2 : 0));
