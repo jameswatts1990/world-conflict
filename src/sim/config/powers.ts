@@ -58,7 +58,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
     name: 'Major power',
     playable: true,
     output: { money: 150, materials: 72, manpower: 24 },
-    startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145, fusion: 40 },
+    startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145, fusion: 45 },
     vp: { capital: 2, industrial: 1 },
     capitalCity: 3,
     buildings: {
@@ -76,7 +76,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
     name: 'Minor power',
     playable: false,
     output: { money: 70, materials: 32, manpower: 12 },
-    startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70, fusion: 20 },
+    startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70, fusion: 30 },
     vp: { capital: 1 },
     capitalCity: 2,
     // A fortress rather than a rival: a fortified capital and a garrison larger than its economy alone would
