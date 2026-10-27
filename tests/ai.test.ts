@@ -214,6 +214,55 @@ describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficult
   });
 });
 
+describe.each(['normal', 'easy'] as const)("AI and a co-belligerent's capture (%s)", (difficulty) => {
+  /** France is taking Lisbon uncontested; Spain, its co-belligerent against Portugal, has a strong army next door. */
+  function alliedCapture() {
+    const state = soloAi('es');
+    state.settings.difficulty = difficulty;
+    Object.assign(state.nations.es.ai!, { aggression: 0.7, economyBias: 0.35, doctrine: 'artillery', claims: [], opening: 'build' });
+    clearArmies(state);
+    setWar(state, 'es', 'pt');
+    setWar(state, 'fr', 'pt');
+    // Lisbon is the only Portuguese target left; Spain already holds its approaches.
+    for (const pid of landsOf('pt-lisbon')) state.provinces[pid].owner = 'es';
+    state.nations.pt.resources = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
+    state.provinces['pt-lisbon'].recruitQueue = [];
+    const capturer = place(state, 'fr', 'pt-lisbon', { infantry: 2 });
+    state.provinces['pt-lisbon'].capture = { by: 'fr', progress: 1, required: captureTicks(state, world, 'pt-lisbon') };
+    const approach = world.neighbors['pt-lisbon'].find((n) => state.provinces[n.id].owner === 'es')!.id;
+    const army = place(state, 'es', approach, { infantry: 10, artillery: 3 });
+    const ctx = buildContext(state, world, 'es');
+    expect(ctx.seen.has('pt-lisbon')).toBe(true);
+    // Spain's army alone could take Lisbon, and would arrive stronger than France's occupiers.
+    expect(armyPower(state, army)).toBeGreaterThan(Math.max(attackNeed(ctx, 'pt-lisbon'), armyPower(state, capturer)));
+    return { state, army };
+  }
+
+  const ordersOf = (state: GameState) => {
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+    } finally {
+      setAiOrderTrace(null);
+    }
+    return orders;
+  };
+
+  it('leaves it to the co-belligerent rather than taking the lead and restarting it', () => {
+    const { state } = alliedCapture();
+    expect(ordersOf(state).filter((o) => o.to === 'pt-lisbon')).toEqual([]);
+  });
+
+  it('still attacks once an enemy stands in the province', () => {
+    const { state, army } = alliedCapture();
+    place(state, 'pt', 'pt-lisbon', { infantry: 1 });
+    expect(ordersOf(state)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ armyId: army.id, to: 'pt-lisbon', reason: expect.stringMatching(/^(attack|strike)$/) }),
+    ]));
+  });
+});
+
 describe('AI on several fronts (interior lines)', () => {
   /** Germany at war with a strong France and a weak Poland; the French border is thinly held. */
   function twoFronts() {

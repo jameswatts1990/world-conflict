@@ -37,6 +37,7 @@ import {
 import { random } from '../rng';
 import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId, type RoadSpot } from '../types';
+import { areAllies } from '../visibility';
 import { cityOf, isCity, isCityGate, isOpenRoad, roadBorder } from '../world';
 import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
@@ -157,6 +158,9 @@ function neutralTargetsAllowed(ctx: Ctx): boolean {
 function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const owner = ctx.state.provinces[pid].owner;
   if (owner === ctx.me) return false;
+  // Leave a co-belligerent's uncontested capture to it: arriving stronger would take the lead and start it again.
+  const by = ctx.state.provinces[pid].capture?.by;
+  if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesIn(ctx.state, ctx.world, pid, by).length === 0) return false;
   // Leave an uncontested capture to its occupiers only if they can hold against the danger we can see or estimate.
   // Count armies actually standing there, not support still marching in; existing marches keep their orders.
   if (ctx.seen.has(pid) && ctx.state.provinces[pid].capture?.by === ctx.me && hostilesInSight(ctx, pid).length === 0) {

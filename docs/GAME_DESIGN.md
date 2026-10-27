@@ -525,7 +525,8 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   whose defenders would be encircled are preferred, and a land touching a city is worth half of what the city
   is worth on top of its own value, since taking it is the way in; threatened provinces are covered by the nearest
   free armies; the rest moves up to the front. An enemy stack only counts fully against one province, so a single
-  army cannot tie down a whole frontier.
+  army cannot tie down a whole frontier. A province a co-belligerent is taking uncontested, in sight, is left to it:
+  arriving stronger would take the lead of the capture and start it again from zero.
 - **Forward positions** (Normal only): an offensive masses on the roads into its target rather than at the crossroads
   behind them, halfway to the border (`AI.forwardDepth`), so a build-up shows on the map where it will strike and the
   attack has less ground to cover. (Three-quarters of the way struck so much sooner that Serbia and Romania fell
