@@ -45,6 +45,11 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
   const pick = <T,>(list: readonly T[]): T => list[Math.floor(rnd() * list.length)];
   const armies = Object.values(state.armies).filter((a) => a.owner === me);
   const provinces = world.provinceIds.filter((p) => state.provinces[p].owner === me);
+  // Mix local targets with whole-map targets: keep valid orders frequent as the map
+  // grows, while still exercising distant marches and diplomacy with strangers.
+  const neighbours = new Set(provinces.flatMap((p) => world.neighbors[p].map((n) => n.id)));
+  const targets = [...new Set([...provinces, ...neighbours])];
+  const nations = [...new Set([me, ...targets.map((p) => state.provinces[p].owner).filter((id) => id !== 'neutral')])];
   const army = armies.length ? pick(armies) : null;
   const province = provinces.length ? pick(provinces) : null;
   // Recruits are raised in cities: aim most such orders at one (the rest try the land, and fail).
@@ -55,7 +60,7 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
       if (!army) return null;
       // Half the time a spot on a road nearby (sea crossings included, which are refused).
       const nearby = rnd() < 0.5;
-      const to = nearby ? pick([army.province, ...world.neighbors[army.province].map((n) => n.id)]) : pick(world.provinceIds);
+      const to = nearby ? pick([army.province, ...world.neighbors[army.province].map((n) => n.id)]) : rnd() < 0.25 ? pick(world.provinceIds) : pick(targets);
       const road = nearby ? { toward: pick(world.neighbors[to]).id, at: rnd() } : undefined;
       return { type: 'move', nation: me, armyId: army.id, to, road, mode: pick(['move', 'attack', 'patrol'] as const) };
     }
@@ -76,9 +81,9 @@ function randomCommand(state: GameState, me: NationId, rnd: () => number): Comma
     case 8:
       return { type: 'research', nation: me, tech: pick(TECHS).id };
     case 9:
-      return rnd() < 0.1 ? { type: 'declareWar', nation: me, target: pick(world.nationIds) } : null;
+      return rnd() < 0.1 ? { type: 'declareWar', nation: me, target: rnd() < 0.25 ? pick(world.nationIds) : pick(nations) } : null;
     case 10:
-      return { type: 'offerPeace', nation: me, target: pick(world.nationIds) };
+      return { type: 'offerPeace', nation: me, target: rnd() < 0.25 ? pick(world.nationIds) : pick(nations) };
     default: {
       const offer = state.peaceOffers.find((o) => o.to === me);
       return offer ? { type: 'respondPeace', nation: me, from: offer.from, accept: rnd() < 0.5 } : null;

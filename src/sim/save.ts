@@ -8,7 +8,7 @@ import { LAND } from './scenario/europe/land';
 import { SCHEMA_VERSION, createInitialState, newId, nextSerial } from './state';
 import { nationName, sentence } from './text';
 import type { GameState, NationId, UnitType } from './types';
-import { roadBorder, type World } from './world';
+import { connectionBetween, isOpenRoad, roadBorder, type World } from './world';
 
 export const SAVE_FORMAT = 'world-conflict-save';
 
@@ -215,18 +215,40 @@ export function joinNewcomers(state: GameState, world: World): NationId[] {
 }
 
 /**
- * Brings a save's armies halted on roads into line with where the roads cross their borders now: one that stands
- * past its road's border (the map was redrawn since the save, moving the crossing) stands at the border instead,
- * on its own side. Returns how many moved.
+ * Reconciles saved roads and marches with today's graph. Removed links stop the army at
+ * its current province; a surviving road position is clamped to its side of the border.
+ * Returns the number of armies whose position or march changed.
  */
 export function settleRoads(state: GameState, world: World): number {
-  let moved = 0;
+  let settled = 0;
   for (const army of Object.values(state.armies)) {
+    const move = army.move;
+    const leg = move?.leg;
+    // A march back from a road begins at the other end, even though the army still
+    // belongs to its own province. This is the same first leg startLeg would use.
+    let at = leg?.from ?? (army.road && move?.path[0] === army.province ? army.road.toward : army.province);
+    const missingPath = move?.path.some((to) => {
+      const missing = !connectionBetween(world, at, to);
+      at = to;
+      return missing;
+    });
+    if (
+      (army.road && !isOpenRoad(world, army.province, army.road.toward)) ||
+      (leg && !connectionBetween(world, leg.from, leg.to)) ||
+      missingPath ||
+      (move?.halt && !isOpenRoad(world, move.halt.province, move.halt.toward))
+    ) {
+      delete army.road;
+      army.move = null;
+      army.arrivedVia = null;
+      settled++;
+      continue;
+    }
     if (!army.road) continue;
     const border = roadBorder(world, army.province, army.road.toward);
     if (army.road.at <= border) continue;
     army.road.at = border;
-    moved++;
+    settled++;
   }
-  return moved;
+  return settled;
 }

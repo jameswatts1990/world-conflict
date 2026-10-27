@@ -36,18 +36,18 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   {
     id: 'pl', name: 'Poland', adjective: 'Polish', color: '#8d5bb4', capital: 'pl-warsaw', power: 'great', bloc: 'western',
     trait: 'Open plains',
-    blurb: 'Open plains between Germany and the edge of the theatre. Czechia and Slovakia lie to the south, beyond the mountains.',
+    blurb: 'Open plains between Germany and Ukraine, with Belarus beyond the Bug and Lithuania across the Suwałki gap. Czechia and Slovakia lie to the south, beyond the mountains.',
   },
   {
     id: 'hu', name: 'Hungary', adjective: 'Hungarian', color: '#b0476d', capital: 'hu-budapest', power: 'great', bloc: 'central',
     trait: 'Danube crossroads',
-    blurb: 'The heart of the Danube basin. Six neighbours and none of them a great power: room to grow, and a front on every side.',
+    blurb: 'The heart of the Danube basin. Seven neighbours, with Ukraine beyond the Upper Tisza: room to grow, and a front on every side.',
   },
   // Major powers: playable, smaller than the great powers (config/powers.ts).
   {
     id: 'ro', name: 'Romania', adjective: 'Romanian', color: '#3d78c0', capital: 'ro-bucharest', power: 'major', bloc: 'western',
     trait: 'Oil and mountains',
-    blurb: "Europe's own oil field behind the arc of the Carpathians. Hungary and Serbia to the west, Bulgaria across the Danube; the Black Sea and the edge of the theatre to the east.",
+    blurb: "Europe's own oil field behind the arc of the Carpathians. Hungary and Serbia to the west, Bulgaria across the Danube; Ukraine and Moldova to the north and east.",
   },
   {
     id: 'rs', name: 'Serbia', adjective: 'Serbian', color: '#c0703a', capital: 'rs-belgrade', power: 'major', bloc: 'western',
@@ -84,6 +84,21 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
   { id: 'hr', name: 'Croatia', adjective: 'Croatian', color: '#6f5aa8', capital: 'hr-zagreb', power: 'minor', bloc: 'central' },
   // Ireland: two provinces; the Free State's army was armed from British stocks.
   { id: 'ie', name: 'Ireland', adjective: 'Irish', color: '#62a84a', capital: 'ie-dublin', power: 'minor', bloc: 'western' },
+  {
+    id: 'ua', name: 'Ukraine', adjective: 'Ukrainian', color: '#d9df58', capital: 'ua-kyiv', power: 'major', bloc: 'eastern',
+    trait: 'Black-earth steppe',
+    blurb: 'The Dnieper links the northern forests to the Black Sea. Industry in its great bend, open steppe to the east and a crowded frontier beyond the Carpathians.',
+  },
+  {
+    id: 'by', name: 'Belarus', adjective: 'Belarusian', color: '#4b927b', capital: 'by-minsk', power: 'major', bloc: 'eastern',
+    trait: 'Forest and marsh',
+    blurb: 'Between Poland and Ukraine, the forests and Pripet marshes guard the approaches to Minsk. The Baltic states offer room to expand, but Poland watches the western frontier and Ukraine lies beyond the marshes.',
+  },
+  { id: 'md', name: 'Moldova', adjective: 'Moldovan', color: '#af5663', capital: 'md-chisinau', power: 'minor', bloc: 'eastern' },
+  { id: 'lt', name: 'Lithuania', adjective: 'Lithuanian', color: '#b98542', capital: 'lt-vilnius', power: 'minor', bloc: 'western' },
+  { id: 'lv', name: 'Latvia', adjective: 'Latvian', color: '#a85277', capital: 'lv-riga', power: 'minor', bloc: 'western' },
+  { id: 'ee', name: 'Estonia', adjective: 'Estonian', color: '#568da7', capital: 'ee-tallinn', power: 'minor', bloc: 'western' },
+
 ];
 
 export const NATIONS: NationDef[] = base.map((n) => ({ ...n, speciality: SPECIALITIES[n.id], identity: nationIdentity(n.bloc, IDENTITIES[n.id]) }));

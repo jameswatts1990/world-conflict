@@ -22,8 +22,9 @@ the starting buildings and army.
 | `minor` | No: always computer-controlled, never wins | 70 / 35 / 20 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | 1–2 |
 
 Major powers spend the same share of income on army upkeep at the start as a great power (about a sixth); minor
-powers spend about a quarter. Europe has seven great powers, four major powers (Romania, Serbia, Bulgaria and Greece) and fifteen minor
-powers. Minor powers are real nations: they have an economy, research, recruit, defend themselves and make peace,
+powers spend about a quarter. Europe has seven great powers, six major powers (Romania, Serbia, Bulgaria, Greece,
+Ukraine and Belarus) and nineteen minor powers. Minor powers are real nations: they have an economy, research,
+recruit, defend themselves and make peace,
 and the AI plays them. They never start a war and never win (only great and major powers count for victory), and
 players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
 seven or eight behind the capital's forts (`unitsFlat` in `config/ai.ts`), so an eight-unit probe fails and taking
@@ -48,8 +49,8 @@ The UI gives each bloc a look of its own: uniform and vehicle colours, headgear,
 
 A nation names its bloc and overrides only what it wants to make its own. The original six override almost
 everything (their identities are unchanged). Hungary overrides six designs (Toldi, Turán, Zrínyi, Csaba, Tas and
-its hussars) and one formation name, and takes the rest from `central`. A new country can override nothing, as
-Romania and Serbia do.
+its hussars) and one formation name, and takes the rest from `central`. Ukraine names its Cossack cavalry.
+A new country can override nothing, as Romania and Serbia do.
 
 Two nations in one bloc still look different on the map: army counters keep the owner's colour, the 3D army
 models fly the nation's flag, and the bloc insignia on their units is drawn in the nation's own colour.
@@ -84,8 +85,9 @@ its whole country:
 
 Several source rules can share an id. When one source country is folded into another (Kosovo into `rs-south`),
 give that rule `iso: 'SRB'`: its admin units and final province shapes retain the owning country's ISO tag.
-No separate Kosovo world shape or label remains. An admin unit with detached pieces on opposite shores can
-have an earlier `southOf` rule: it matches polygon parts whose bounding-box middle lies south of that latitude.
+No separate Kosovo world shape or label remains. Crimea and Sevastopol likewise come from `RUS` by name with
+`iso: 'UKR'`; the remaining Russian units stay in the world layer. An admin unit with detached pieces on opposite
+shores can have an earlier `southOf` rule: it matches polygon parts whose bounding-box middle lies south of that latitude.
 Only that named unit is exploded into polygon parts. Greece uses this for Attica's detached Peloponnese land
 and Western Greece's two shores, avoiding land roads across the Gulf of Patras. This does not cut polygons.
 

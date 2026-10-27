@@ -147,7 +147,7 @@ export const ROWS: ProvinceRow[] = [
     lands: { wsw: { name: 'West Pomerania' }, s: { name: 'Kuyavia' }, w: { name: 'Kashubia' } },
     towns: [['Szczecin', 14.553, 53.428], ['Bydgoszcz', 18.008, 53.123], ['Toruń', 18.598, 53.013], ['Koszalin', 16.172, 54.194]] },
   { id: 'pl-east', name: 'Eastern Poland', core: 'pl', terrain: 'marsh', tier: 'town', city: { name: 'Lublin', coord: [22.568, 51.247], size: 'town' }, pop: 650, garrison: { infantry: 1 },
-    lands: { n: { name: 'Podlachia' }, nw: { name: 'Masuria' }, ne: { name: 'Chełm' }, se: { name: 'Zamość' } },
+    lands: { n: { name: 'Podlachia' }, nw: { name: 'Masuria' }, ne: { name: 'Biała Podlaska' }, se: { name: 'Zamość & Chełm' } },
     towns: [['Białystok', 23.164, 53.133], ['Olsztyn', 20.49, 53.778], ['Zamość', 23.251, 50.723]] },
 
   // Hungary
@@ -295,4 +295,41 @@ export const ROWS: ProvinceRow[] = [
   { id: 'pt-lisbon', name: 'Portugal', core: 'pt', terrain: 'hills', tier: 'capital', cityTier: 3, city: { name: 'Lisbon', coord: [-9.139, 38.722], size: 'capital' }, pop: 2900,
     lands: { nne: { name: 'Douro', article: 'the' }, se: { name: 'Alentejo', article: 'the' }, ne: { name: 'Ribatejo', article: 'the' }, n: { name: 'Estremadura' } },
     towns: [['Porto', -8.611, 41.15], ['Coimbra', -8.43, 40.205], ['Faro', -7.935, 37.019]] },
+  // Ukraine: five larger regions for the major tier (S13), including Crimea (S4).
+  { id: 'ua-kyiv', name: 'Kyiv & the Middle Dnieper', core: 'ua', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Kyiv', coord: [30.523, 50.45], size: 'capital' }, pop: 2950,
+    lands: { se: { name: 'Cherkasy & Uman', terrain: 'plains' }, wnw: { name: 'Northern Zhytomyr Polesia' }, e: { name: 'Nizhyn & Eastern Kyiv', terrain: 'plains' }, ne: { name: 'Chernihiv & Severia' }, w: { name: 'Southern Zhytomyr & Bila Tserkva', terrain: 'plains' } },
+    towns: [['Chernihiv', 31.294, 51.498], ['Bila Tserkva', 30.113, 49.796], ['Nizhyn', 31.887, 51.048], ['Zhytomyr', 28.657, 50.254], ['Cherkasy', 32.062, 49.444], ['Uman', 30.221, 48.749]] },
+  { id: 'ua-dnipro', name: 'Dnieper Bend & Poltava', article: 'the', core: 'ua', terrain: 'plains', tier: 'industrial', city: { name: 'Dnipro', coord: [35.046, 48.465], size: 'major' }, pop: 980,
+    lands: { se: { name: 'Zaporizhzhia & the Azov Steppe' }, nw: { name: 'Poltava & Kremenchuk' }, sw: { name: 'Kryvyi Rih' }, w: { name: 'Kropyvnytskyi' }, ne: { name: 'Samara Plain' } },
+    towns: [['Zaporizhzhia', 35.139, 47.839], ['Kryvyi Rih', 33.393, 47.91], ['Kropyvnytskyi', 32.262, 48.508], ['Melitopol', 35.365, 46.848], ['Poltava', 34.552, 49.588], ['Kremenchuk', 33.42, 49.074]] },
+  { id: 'ua-kharkiv', name: 'Kharkiv & the Donbas', core: 'ua', terrain: 'plains', tier: 'city', city: { name: 'Kharkiv', coord: [36.23, 49.993], size: 'major' }, pop: 1420,
+    lands: { se: { name: 'Luhansk & the Donets Ridge', terrain: 'hills' }, sse: { name: 'Donetsk & the Azov Coast', terrain: 'hills' }, nw: { name: 'Sumy' }, s: { name: 'Southern Sloboda' }, e: { name: 'Eastern Sloboda' } },
+    towns: [['Sumy', 34.799, 50.908], ['Donetsk', 37.803, 48.015], ['Luhansk', 39.307, 48.574], ['Mariupol', 37.55, 47.105], ['Kramatorsk', 37.584, 48.738]] },
+  { id: 'ua-odesa', name: 'Odesa & Crimea', core: 'ua', terrain: 'plains', tier: 'city', city: { name: 'Odesa', coord: [30.723, 46.483], size: 'major' }, pop: 1010,
+    lands: { se: { name: 'Crimea & Sevastopol', terrain: 'hills' }, n: { name: 'Balta & the Southern Bug' }, ne: { name: 'Mykolaiv, Kherson & the Lower Dnieper' }, e: { name: 'Northern Taurida & Perekop' }, sw: { name: 'Budjak' } },
+    towns: [['Mykolaiv', 31.994, 46.975], ['Izmail', 28.837, 45.351], ['Balta', 29.619, 47.935], ['Simferopol', 34.103, 44.952], ['Sevastopol', 33.535, 44.605], ['Kherson', 32.617, 46.636], ['Kerch', 36.467, 45.356], ['Yalta', 34.165, 44.496]] },
+  { id: 'ua-galicia', name: 'Lviv & the West', core: 'ua', terrain: 'hills', tier: 'city', city: { name: 'Lviv', coord: [24.032, 49.842], size: 'major' }, pop: 720, oil: true,
+    lands: { se: { name: 'Ternopil, Western Podolia & Bukovina' }, s: { name: 'Transcarpathia & the Galician Carpathians', terrain: 'mountains' }, e: { name: 'Eastern Podolia', terrain: 'plains' }, n: { name: 'Volhynia & Kovel Polesia', terrain: 'marsh' }, ne: { name: 'Rivne & Eastern Volhynia', terrain: 'forest' } },
+    towns: [['Ternopil', 25.594, 49.553], ['Ivano-Frankivsk', 24.711, 48.922], ['Uzhhorod', 22.299, 48.62], ['Chernivtsi', 25.94, 48.291], ['Drohobych', 23.506, 49.35], ['Lutsk', 25.325, 50.747], ['Kovel', 24.708, 51.215], ['Rivne', 26.252, 50.62], ['Vinnytsia', 28.468, 49.233], ['Khmelnytskyi', 26.987, 49.423], ['Kamianets-Podilskyi', 26.585, 48.684]] },
+
+  // Belarus: forest and marsh protect the approaches to the interior capital.
+  { id: 'by-minsk', name: 'Minsk', core: 'by', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Minsk', coord: [27.567, 53.9], size: 'capital' }, pop: 2000,
+    lands: { e: { name: 'Barysaw & Maladzyechna' }, s: { name: 'Slutsk' } }, towns: [['Barysaw', 28.505, 54.227], ['Slutsk', 27.558, 53.028], ['Maladzyechna', 26.843, 54.307]] },
+  { id: 'by-gomel', name: 'Gomel & Mogilev', core: 'by', terrain: 'marsh', tier: 'industrial', city: { name: 'Gomel', coord: [30.987, 52.425], size: 'major' }, pop: 500,
+    lands: { sw: { name: 'Mazyr & the Pripet Marshes' }, n: { name: 'Eastern Mogilev & the Sozh', terrain: 'forest' }, nw: { name: 'Mogilev & Babruysk', terrain: 'forest' } }, towns: [['Mogilev', 30.335, 53.9], ['Babruysk', 29.221, 53.138], ['Mazyr', 29.272, 52.05]] },
+  { id: 'by-brest', name: 'Brest & Grodno', core: 'by', terrain: 'forest', tier: 'town', city: { name: 'Brest', coord: [23.688, 52.097], size: 'town' }, pop: 340,
+    lands: { ne2: { name: 'Grodno & Baranavichy' }, e: { name: 'Pinsk Marshes', terrain: 'marsh' }, ne: { name: 'Białowieża & Pruzhany' } }, towns: [['Grodno', 23.829, 53.669], ['Pinsk', 26.099, 52.122], ['Baranavichy', 26.014, 53.132]] },
+  { id: 'by-vitebsk', name: 'Vitebsk', core: 'by', terrain: 'forest', tier: 'town', city: { name: 'Vitebsk', coord: [30.203, 55.191], size: 'town' }, pop: 360,
+    lands: { w: { name: 'Polotsk & the Braslaw Lakes' }, s: { name: 'Orsha' } }, towns: [['Polotsk', 28.775, 55.487], ['Orsha', 30.424, 54.509], ['Braslaw', 27.032, 55.642]] },
+
+  // Moldova includes Transnistria; Vilnius is Lithuania's capital.
+  { id: 'md-chisinau', name: 'Moldova', core: 'md', terrain: 'urban', landTerrain: 'plains', tier: 'capital', city: { name: 'Chișinău', coord: [28.833, 47.01], size: 'town' }, pop: 530,
+    lands: { nw: { name: 'Bălți, Soroca & the Codri' }, s: { name: 'Cahul, Gagauzia & Tiraspol' } }, towns: [['Bălți', 27.929, 47.761], ['Tiraspol', 29.643, 46.848], ['Cahul', 28.194, 45.904], ['Soroca', 28.3, 48.15]] },
+  { id: 'lt-vilnius', name: 'Lithuania', core: 'lt', terrain: 'urban', landTerrain: 'plains', tier: 'capital', city: { name: 'Vilnius', coord: [25.279, 54.687], size: 'town' }, pop: 590,
+    lands: { nw: { name: 'Samogitia & Klaipėda' }, n: { name: 'Kaunas & Aukštaitija' }, sw: { name: 'Dzūkija & Suvalkija' } }, towns: [['Kaunas', 23.904, 54.899], ['Klaipėda', 21.139, 55.711], ['Šiauliai', 23.313, 55.934], ['Panevėžys', 24.357, 55.734]] },
+  { id: 'lv-riga', name: 'Latvia', core: 'lv', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Riga', coord: [24.105, 56.949], size: 'town' }, pop: 610,
+    lands: { ese: { name: 'Latgale & Eastern Vidzeme' }, w: { name: 'Courland & Western Zemgale' }, ne: { name: 'Northern Vidzeme' }, e: { name: 'Eastern Zemgale & the Daugava' } }, towns: [['Liepāja', 21.06, 56.51], ['Ventspils', 21.565, 57.39], ['Daugavpils', 26.53, 55.874], ['Jelgava', 23.724, 56.652], ['Valmiera', 25.427, 57.538]] },
+  { id: 'ee-tallinn', name: 'Estonia', core: 'ee', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Tallinn', coord: [24.754, 59.437], size: 'town' }, pop: 440,
+    lands: { s: { name: 'Southern Estonia & the West Estonian Islands' }, e: { name: 'Viru & the Peipus Shore' } }, towns: [['Tartu', 26.729, 58.378], ['Narva', 28.17, 59.376], ['Pärnu', 24.498, 58.385], ['Kuressaare', 22.485, 58.255]] },
+
 ];

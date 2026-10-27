@@ -15,6 +15,12 @@ export interface FlagStripes {
 
 /** Striped flags: most countries need only a line here. */
 const STRIPED: Record<string, FlagStripes> = {
+  by: { dir: 'h', colors: ['#c8313e', '#c8313e', '#4b9b46'] },
+  ua: { dir: 'h', colors: ['#0057b7', '#ffd700'] },
+  md: { dir: 'v', colors: ['#0046ae', '#ffd200', '#cc092f'] },
+  lt: { dir: 'h', colors: ['#fdb913', '#006a44', '#c1272d'] },
+  lv: { dir: 'h', colors: ['#9e1b34', '#9e1b34', '#f4f4f4', '#9e1b34', '#9e1b34'] },
+  ee: { dir: 'h', colors: ['#4891d9', '#151515', '#f4f4f4'] },
   fr: { dir: 'v', colors: ['#1f4fa0', '#f4f4f4', '#e0383e'] },
   de: { dir: 'h', colors: ['#121212', '#d40000', '#ffcc00'] },
   it: { dir: 'v', colors: ['#0c8a46', '#f4f4f4', '#cd2b37'] },
@@ -70,6 +76,13 @@ function eagle(fill: string): ReactElement {
 
 const FLAGS: Record<string, ReactElement> = {
   ...Object.fromEntries(Object.entries(STRIPED).map(([id, s]) => [id, stripes(s)])),
+  by: (
+    <>
+      {stripes(STRIPED.by)}
+      <rect width={3.5} height={H} fill="#f4f4f4" />
+      {[2, 6, 10, 14, 18].map((y) => <path key={y} d={'M1.75 ' + (y - 1.5) + 'L3 ' + y + 'L1.75 ' + (y + 1.5) + 'L0.5 ' + y + 'Z'} fill="#c8313e" />)}
+    </>
+  ),
   gr: (
     <>
       {stripes(STRIPED.gr)}
