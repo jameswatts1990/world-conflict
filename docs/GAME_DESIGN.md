@@ -260,7 +260,8 @@ Prices and upkeep (`config/units.ts`; upkeep a minute at Standard speed):
 
 ### 6.2 Combat
 
-- Combat happens when hostile armies are stationary in the same province. Rounds run every 10 s. **The province
+- Combat happens when hostile armies are stationary in the same province (or meet on a road between two lands and
+  stop there, §6.5). Rounds run every 10 s. **The province
   owner's armies use defence values and everyone else uses attack values.**
 - **Targeting:** each unit fires at a random enemy unit, weighted: support units are hit about a third as often
   while their army has front-line units to screen them.
@@ -357,6 +358,19 @@ Specialities are optional: a nation without one shows its bloc instead.
   battle then, that is its withdrawal under fire: an army ordered elsewhere from a road (or a broken one falling back
   from it) fights on as it walks back, and passes straight through its crossroads, paying the price there. Patrols
   run between provinces.
+- **Meeting the enemy on the road (interception).** A march cannot slip past an enemy it is at war with. Entering a
+  province where an enemy army stands already stops it there to fight (it holds at the crossroads until the battle
+  is over, as above). On the road between two lands, an army that comes level with an enemy army on that road (one
+  standing on it, one coming the other way, or one it catches up with) is stopped at that spot if the enemy can see
+  it (its nation's sight, §6.7: in practice always, since an army watches the road it is on, but fog rules decide);
+  two marching armies stop if either sees the other. Both then stand on the road at the meeting point, in the land
+  whose stretch of road it is, and fight a normal battle there (§6.2): the defender is whoever holds that land, as
+  in any battle. Each keeps its march order: the winner goes on along its road once the field is clear; the player
+  can give a new order at any time (leaving is a withdrawal under fire). The field reports say "intercepted" (or
+  that the two "ran into each other"). Not intercepted: armies at peace (including co-belligerents and bystanders),
+  an army pulling out of a battle under fire on its way out (it has paid already), and crossings by sea or between a
+  city and its land, which are not roads (they meet where they land, if the enemy is still there). The computer
+  plays by the same rule and accepts these fights rather than routing round them.
 - **Merging on arrival.** An army of yours that ends its march in a city where another of your armies stands idle
   joins it (not one holding, nor out on the land or on a road): the army standing there keeps its orders and options,
   the merged army the senior (lowest-numbered) name, and the field reports say so. Computer opponents gather their
@@ -716,7 +730,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   overview map, hidden by default (the browser remembers the choice). Closing the army card returns to the map. Field reports
   (the event log) sit bottom left; alerts pop up top left (below any banner) for wars, peace, research, eliminations,
   shortages, objective captures, provinces you win or lose, enemy attacks on your territory, armies you lose, enemy
-  withdrawals, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
+  withdrawals, interceptions on the road involving your armies, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
   wars and treaties neutral; those alert (and sound) only when one side borders you or both are great powers, the rest
   staying in the field reports. Alerts only count down while the game runs. Keyboard and mouse extras: Shift-drag
   selects your armies in a box, , and . cycle through them, the arrow keys pan and C jumps to the capital. A cursor

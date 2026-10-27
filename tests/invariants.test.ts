@@ -19,7 +19,8 @@ function violations(state: GameState): string[] {
       const leg = a.move.leg;
       // On the way, an army belongs to one end of its road (it set out from it, or is walking back to it).
       if (leg && ((leg.from !== a.province && leg.to !== a.province) || a.move.path[0] !== leg.to)) out.push(`army ${a.id} leg out of step`);
-      let at = leg ? leg.from : a.province;
+      // Stopped on a road short of the land it was making for, its march goes on from the road's far end (as in startLeg).
+      let at = leg ? leg.from : a.road && a.move.path[0] === a.province ? a.road.toward : a.province;
       for (const next of a.move.path) {
         if (!world.neighbors[at].some((n) => n.id === next)) out.push(`army ${a.id} path jumps ${at} -> ${next}`);
         at = next;

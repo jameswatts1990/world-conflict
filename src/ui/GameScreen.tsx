@@ -108,6 +108,9 @@ function alertTone(ctrl: GameController, e: GameEvent): EventSeverity | null {
     case 'peace-rejected':
       // Our army lost, or our offer turned down.
       return e.subject === human ? 'bad' : null;
+    case 'intercept':
+      // Our army stopped on the road by an enemy, or an enemy stopped by ours: a battle follows.
+      return e.nations.includes(human) ? 'combat' : null;
     case 'rout':
       // An enemy pulled out of a battle with us.
       return e.subject !== human && e.nations.includes(human) ? 'good' : null;
