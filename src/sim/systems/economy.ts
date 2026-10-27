@@ -2,20 +2,20 @@
 import { ECONOMY } from '../config/rules';
 import { pushEvent } from '../events';
 import { nationEconomies, perTick } from '../queries';
-import { RESOURCE_KEYS, type GameState, type NationState, type ResourceKey } from '../types';
+import { RESOURCE_KEYS, UPKEEP_KEYS, type GameState, type NationState, type UpkeepKey } from '../types';
 import type { World } from '../world';
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 /** What running out of each resource does, as the event that announces it says. */
-export const SHORTAGE_TEXT: Record<ResourceKey, string> = {
+export const SHORTAGE_TEXT: Record<UpkeepKey, string> = {
   money: `Treasury empty: unpaid troops fight at ${pct(ECONOMY.unpaidCombatMult)}.`,
   fuel: `Out of fuel: tanks and motor vehicles move and fight at ${pct(ECONOMY.noFuelVehicleMult)}.`,
   materials: `Out of materials: with no shells or spares, guns and armour fight at ${pct(ECONOMY.noMaterialsHeavyMult)} and other troops at ${pct(ECONOMY.noMaterialsMult)}.`,
   manpower: `Out of manpower: no replacements, so units regain no strength and their morale recovers at ${pct(ECONOMY.noManpowerMoraleRecovery)} speed.`,
 };
 
-export function isShort(nation: NationState, k: ResourceKey): boolean {
+export function isShort(nation: NationState, k: UpkeepKey): boolean {
   return nation.shortages[k] === true;
 }
 
@@ -27,7 +27,9 @@ export function economySystem(state: GameState, world: World): void {
     const eco = economies.get(id)!;
     for (const k of RESOURCE_KEYS) nation.resources[k] += perTick(eco.net[k], state);
 
-    for (const k of RESOURCE_KEYS) {
+    // Fusion has no upkeep and never runs short: research waits for it instead.
+    if (nation.resources.fusion < 0) nation.resources.fusion = 0;
+    for (const k of UPKEEP_KEYS) {
       const ranOut = nation.resources[k] < 0;
       if (ranOut) nation.resources[k] = 0;
       if (ranOut && !isShort(nation, k)) pushEvent(state, 'shortage', SHORTAGE_TEXT[k], { nations: [id], severity: 'bad' });

@@ -94,9 +94,9 @@ broadly balanced:
 
 | Tier | Playable | City output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
 | --- | --- | --- | --- | --- | --- |
-| Great | Yes | 260 / 140 / 42 | 13 units | Capital 3, heartland 2 | 6–9 |
-| Major | Yes | 150 / 80 / 24 | 8 units | Capital 2, heartland 1 | 3–5 |
-| Minor | No (computer-controlled; never wins) | 70 / 35 / 12 | 6 units behind level-2 forts | Capital 1 | 1–2 |
+| Great | Yes | 260 / 126 / 42 | 13 units | Capital 3, heartland 2 | 6–9 |
+| Major | Yes | 150 / 72 / 24 | 8 units | Capital 2, heartland 1 | 3–5 |
+| Minor | No (computer-controlled; never wins) | 70 / 32 / 12 | 6 units behind level-2 forts | Capital 1 | 1–2 |
 
 Every land province adds its own small output on top (§5), about 60 money and 20 manpower a minute for a great
 power's twenty or so lands.
@@ -120,14 +120,15 @@ modest speciality (§6.4).
 
 ## 5. Economy and cities
 
-Four resources, each with a per-minute rate shown in the top bar, and each with a job:
+Five resources, each with a per-minute rate shown in the top bar, and each with a job:
 
 | Resource | Stands for | Pays for |
 | --- | --- | --- |
-| Money | Wages and contracts | Every soldier's pay (most of the upkeep of foot and horse), line units, part of every building and of research |
-| Materials | Steel, guns and shells | Most of the price of guns, vehicles and buildings, a share of research, the upkeep of guns and armour |
-| Fuel | Petrol and oil | Vehicles: their price and upkeep |
+| Money | Wages and contracts | Every soldier's pay (most of the upkeep of foot and horse), line units, part of every building, and research |
+| Materials | Steel, guns and shells | Most of the price of guns, vehicles and buildings, the upkeep of guns and armour |
+| Fuel | Petrol and oil | Vehicles: their price and upkeep, and the research into them |
 | Manpower | Men of fighting age | Recruits, and every unit's replacements |
+| Fusion | Scientific breakthroughs | Research only (with money); hard to make: only Laboratories, Universities and Field Stations produce it |
 
 Line units are money and manpower; guns and vehicles are materials and fuel, so a nation rich in materials can
 turn them into artillery and armour.
@@ -183,7 +184,8 @@ work has started, half of it after. The refund is what was paid, even if researc
 | Power Station | Economy | 1 (City; needs Industrial Works; research) | +20% money and materials here, +10% materials in your cities next door (those whose lands border its own) |
 | Fuel Refinery | Economy | 2 | +12 fuel/min per level on oil fields; +6 elsewhere with Synthetic Fuel |
 | Housing Estates | Economy | 3 | +12% manpower, +3 morale and +0.4 growth/min per level |
-| University | Economy | 1 (Large City) | Research +10% nationally each, up to three |
+| University | Economy | 1 (Large City) | +3 Fusion a minute; research +10% nationally each, up to three |
+| Laboratory | Economy | 3 (L2 City, L3 Large City) | +4 Fusion a minute per level |
 | Barracks | Military | 1 | Recruits infantry, mountain troops, cavalry; +25% manpower |
 | Military Academy | Military | 1 (City; needs Barracks) | Recruits start as Regulars; required for assault infantry |
 | Arms Works | Military | 1 | Recruits field artillery, siege guns, anti-tank guns; +10% materials |
@@ -207,7 +209,7 @@ Land buildings (land without a city only; one level; cheap, 45–60 s):
 | Oil Wells | Economy | +4 fuel a minute; only in the land round a city with an oil field |
 | Field Hospital | Military | Armies here heal 2× and regain morale 1.5× as fast |
 | Bunkers | Military | Defenders here deal 20% more damage (forts instead cut the damage they take) |
-| Field Station | Support | Research 3% faster nationally each, up to five |
+| Field Station | Support | +1 Fusion a minute |
 
 ## 6. Military
 
@@ -422,13 +424,18 @@ nothing at 30 to +20% at 90), and the AI sues for peace when it falls low.
 Engineering, Society & Morale) across **eight columns in four eras** (Great War, Twenties, Thirties, Second World
 War). Technologies unlock units and buildings, upgrade equipment generations, and grant modifiers.
 
-- One research slot; State Research Institutes adds a second. Universities (+10% each, up to three) and
-  Operational Research (+20%) speed research up.
+- One research slot; State Research Institutes adds a second (and 20% more Fusion). Universities (+10% each, up
+  to three) and Operational Research (+20%) speed research up.
+- **Research costs money and Fusion** (columns 0–7: 30, 42, 54, 66, 78, 93, 108, 126 Fusion), and vehicle
+  technologies some fuel; never materials. Fusion has no upkeep and no shortage: a project short of it waits in the
+  queue. Nations start with 60 (great), 45 (major) or 30 (minor) Fusion, enough for a first technology; after that
+  research is as fast as a nation's Laboratories. In AI campaigns a great power finishes about 8 technologies by 60
+  minutes, 16 by 90 and 36 by 150 (before Fusion: 13, 25 and 45).
 - Cost is paid when a project starts; cancelling refunds half. A queue (up to 8) starts projects in order as
   slots, prerequisites and funds allow. Clicking a locked technology in the tree queues its whole path.
 - **Era:** Interwar after 3 technologies from the Twenties onwards; WWII after 3 from column 5 (1935) onwards.
-- The tree is deliberately longer than a campaign: in AI campaigns nations finish 30–50 of the 60 technologies
-  (fewer when beaten early).
+- The tree is deliberately longer than a campaign: in AI campaigns nations finish about 25–40 of the 60
+  technologies (fewer when beaten early).
 - A queued project that cannot be paid for yet waits, and the queue behind it waits too; the top bar and the research
   window say what it is still short of.
 
@@ -480,13 +487,16 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   not count) and the war is 10 minutes old, it accepts peace even while winning (against a power about to win, it
   fights on). Who is winning a war is weighed on the home cities each side holds, the land round them counting half
   (shared between its lands).
+- **Laboratories:** one at a time, only while it runs short of Fusion and makes less than 3.5 a minute for each
+  research slot; while it saves up for a technology it holds back only what that technology costs, so waiting for
+  Fusion never stops it recruiting.
 - **Research:** by doctrine and need (slots and new equipment first; anti-tank when facing armour; morale when
   sagging).
 - **Cities:** slot-aware plans: industry and exchanges by output, housing to grow, up to three universities,
   recruitment buildings, refineries, propaganda when morale is low, occupation HQs in restive conquests,
   forts where threatened, railways and hospitals on active fronts. It keeps the last free slot for valuable builds.
 - **Land:** each land behind the lines gets an economy building (whichever eases the resource it runs shortest of:
-  upkeep near its income, or little of it in store), and Field Stations with an economy bias; front lands at war
+  upkeep near its income, or little of it in store), and Field Stations while short of Fusion; front lands at war
   get bunkers or forts, and the lands just behind them field hospitals. It replaces a land's building only for a
   pressing military or supply need, and only an economy or support building.
 - **Recruitment:** an upkeep budget in every resource (each resource's upkeep stays within a share of its income)

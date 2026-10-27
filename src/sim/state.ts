@@ -24,7 +24,7 @@ import {
 } from './types';
 import { landsOf, type World } from './world';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export interface NewGameOptions {
   seed: number;

@@ -83,7 +83,7 @@ export function resolveArtGen(type: ArtUnitType, gen: ArtGen): ArtGen {
 }
 
 /** Buildings a city can hold, which the city models draw. */
-export type CityArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'barracks'
+export type CityArtBuilding = 'industry' | 'market' | 'powerPlant' | 'refinery' | 'housing' | 'university' | 'laboratory' | 'barracks'
   | 'academy' | 'armsWorks' | 'motorPool' | 'tankWorks' | 'hospital' | 'propaganda' | 'garrisonHq'
   | 'fortifications' | 'supplyDepot' | 'railway' | 'coastalBattery';
 /** Every building with a glyph: the city's, and those only land without a city holds. */
@@ -99,6 +99,7 @@ export const BUILDING_CATEGORY: Record<ArtBuilding, BuildingCategory> = {
   refinery: 'economy',
   housing: 'economy',
   university: 'economy',
+  laboratory: 'economy',
   barracks: 'military',
   academy: 'military',
   armsWorks: 'military',
