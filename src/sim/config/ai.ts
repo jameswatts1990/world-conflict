@@ -235,6 +235,13 @@ export const AI = {
   /** Fog of war: how far each think's sightings move the AI's estimate of a nation's armour share (0..1). */
   armourSightingWeight: 0.3,
   /**
+   * Fog of war: how many units the AI reckons a radar blip of each size stands for (each as strong as its own
+   * average unit). A province its radar covers that shows no blip it reckons empty.
+   */
+  blipUnits: { small: 2, medium: 5, large: 10 },
+  /** ...or, with no units of its own to compare, this strong (about a fresh 1914 infantry division). */
+  blipUnitPower: 9,
+  /**
    * Strength needed to attack a province: the defenders' estimated power times the level's attack ratio, times
    * (attackCaution - aggression × attackAggression), plus a flat margin.
    */

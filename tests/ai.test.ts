@@ -449,13 +449,28 @@ describe('AI under the fog of war', () => {
     expect(ctx.seen.has('de-berlin')).toBe(false);
     expect(ctx.hostile.has('de-berlin')).toBe(false);
     expect(ctx.enemyArmour).toBe(0);
-    // Germany's military power is public, so France spreads it over the German places it cannot see: each city one,
-    // and the land round it one more, shared between its lands.
-    const dark = world.provinceIds.filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p)).reduce((t, p) => t + placeShare(world, p), 0);
+    // Germany's military power is public, so France spreads it over the German places beyond its sight and its
+    // radar: each city one, and the land round it one more, shared between its lands.
+    const dark = world.provinceIds
+      .filter((p) => state.provinces[p].owner === 'de' && !ctx.seen.has(p) && !ctx.radar.has(p))
+      .reduce((t, p) => t + placeShare(world, p), 0);
+    expect(ctx.radar.has('de-berlin')).toBe(false);
     expect(ctx.unseen.get('de')).toBeCloseTo(armyPower(state, tanks) / dark);
 
-    // A French cavalry scout two provinces away finds it.
-    const scout = place(state, 'fr', 'de-hesse', { cavalry: 1 });
+    // A French infantry army next door, in Saxony, picks the tanks up on its radar: a blip of six units, which
+    // France reckons by its own units (it cannot see what they are).
+    const watch = place(state, 'fr', 'de-saxony', { infantry: 2 });
+    observeForces(state, world, 'fr');
+    ctx = buildContext(state, world, 'fr');
+    expect(ctx.seen.has('de-berlin')).toBe(false);
+    expect(ctx.hostile.has('de-berlin')).toBe(false);
+    expect(ctx.radar.get('de-berlin')).toBeCloseTo(AI.blipUnits.medium * (armyPower(state, watch) / 2));
+    expect(ctx.enemyArmour).toBe(0);
+    // The radar shows Saxony's other neighbours empty.
+    expect(ctx.radar.get(landOf('de-berlin', 'de-saxony'))).toBe(0);
+
+    // A French cavalry scout in Saxony sees one step further, and finds them.
+    const scout = place(state, 'fr', 'de-saxony', { cavalry: 1 });
     observeForces(state, world, 'fr');
     ctx = buildContext(state, world, 'fr');
     expect(ctx.hostile.get('de-berlin')).toBeCloseTo(armyPower(state, tanks));
@@ -464,25 +479,45 @@ describe('AI under the fog of war', () => {
 
     // Out of sight again, the tanks are not forgotten.
     delete state.armies[scout.id];
+    delete state.armies[watch.id];
     observeForces(state, world, 'fr');
     ctx = buildContext(state, world, 'fr');
     expect(ctx.hostile.has('de-berlin')).toBe(false);
     expect(ctx.enemyArmour).toBe(1);
   });
 
-  it('sizes an attack by what it can see, not by where a hidden army stands', () => {
+  it('sizes an attack by what it can see or pick up on its radar, not by where a hidden army stands', () => {
     const state = aiGame(5);
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    // Baden, by the Rhine, borders France and is in sight; Swabia, behind it, and Berlin are not.
-    const army = place(state, 'de', 'de-bavaria-w', { infantry: 10 });
+    // Baden, by the Rhine, borders France and is in sight; Swabia, behind it, is only on France's radar; Berlin
+    // and the north are beyond both.
+    const army = place(state, 'de', 'de-berlin', { infantry: 10 });
     const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-sw');
     const hidden = need();
-    army.province = 'de-berlin';
+    army.province = 'de-north';
     expect(need()).toBeCloseTo(hidden);
-    // In plain sight next door, the same army raises the bar.
+    // A large blip next door raises the bar...
+    army.province = 'de-bavaria-w';
+    const blip = need();
+    expect(blip).toBeGreaterThan(hidden);
+    // ...and so does the same army in plain sight.
     army.province = 'de-hesse-w';
     expect(need()).toBeGreaterThan(hidden);
+  });
+
+  it('never reads a hidden army through the radar: whose it is, what it fields and its true strength stay hidden', () => {
+    const state = aiGame(5);
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    place(state, 'fr', 'de-saxony', { infantry: 2 });
+    const weak = place(state, 'de', 'de-berlin', { infantry: 6 });
+    for (const u of weak.units) u.strength = 0.2;
+    const before = buildContext(state, world, 'fr').radar.get('de-berlin');
+    // Six fresh tanks look the same on the radar as six worn-out infantry divisions.
+    delete state.armies[weak.id];
+    place(state, 'de', 'de-berlin', { tank: 6 });
+    expect(buildContext(state, world, 'fr').radar.get('de-berlin')).toBeCloseTo(before!);
   });
 
   it('sees what its co-belligerents see once it has Liaison Officers', () => {

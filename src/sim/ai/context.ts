@@ -1,9 +1,10 @@
 // What a computer opponent knows when it thinks: its territory and fronts,
 // where friendly and hostile power stands, and what the enemy fields. It plays
 // by the fog of war: it knows what a human in its place could, the map, the
-// military power figures every Diplomacy window shows, and the armies it (and,
-// with Liaison Officers, its co-belligerents) can see. Other nations' armies are read
-// only through this context, never straight from the state.
+// military power figures every Diplomacy window shows, the armies it (and,
+// with Liaison Officers, its co-belligerents) can see, and the radar blips it picks
+// up beyond its sight. Other nations' armies are read only through this context,
+// never straight from the state.
 import { AI, aiLevel, type AiLevel } from '../config/ai';
 import { UNITS } from '../config/units';
 import { applyCommand, type Command } from '../commands';
@@ -21,7 +22,7 @@ import {
   type NationEconomy,
 } from '../queries';
 import { NEUTRAL, RESOURCE_KEYS, type AiMemory, type Army, type GameState, type NationId, type OwnerId, type PartialResources, type ProvinceId } from '../types';
-import { isArmyVisible, visibleProvinces } from '../visibility';
+import { detectedProvinces, isArmyVisible, radarBlips, visibleProvinces } from '../visibility';
 import type { World } from '../world';
 
 export interface Ctx {
@@ -50,6 +51,12 @@ export interface Ctx {
    * the land round it one more between its lands).
    */
   unseen: Map<NationId, number>;
+  /**
+   * For a province out of sight but on my radar, the power I reckon stands there: a blip's size in units
+   * (`AI.blipUnits`) each as strong as my own average unit, or nothing where the radar shows nothing. Read through
+   * `hiddenPower`.
+   */
+  radar: Map<ProvinceId, number>;
   /** Power of armies at war with me (stationed or arriving) per province, as far as I can see; neutral garrisons included. */
   hostile: Map<ProvinceId, number>;
   /** Hostile power that could strike each owned province next (in it or one connection away; neutrals never attack). */
@@ -160,6 +167,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
   const enemies = world.nationIds.filter((id) => atWar(state, me, id));
   const mem = state.nations[me].ai!;
   const seen = visibleProvinces(state, world, me);
+  const detected = detectedProvinces(state, world, me);
   const presence = new Map<ProvinceId, number>();
   const hostile = new Map<ProvinceId, number>();
   const striking = new Map<ProvinceId, number>();
@@ -192,24 +200,43 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
       if (a.owner !== NEUTRAL) striking.set(where, (striking.get(where) ?? 0) + pw);
     }
   }
-  // Spread over what each nation holds out of sight: a city one place and the land round it one more, shared
-  // between its lands, so dividing the land does not thin a nation's armies out.
+  // On the radar, out of sight: a blip stands for a few units as strong as my own average one (whose they are it
+  // does not say: the province's holder, I reckon), and no blip for nothing at all.
+  let myUnits = 0;
+  let myPower = 0;
+  for (const a of armies) {
+    myUnits += a.units.length;
+    myPower += armyPower(state, a);
+  }
+  const perUnit = myUnits > 0 ? myPower / myUnits : AI.blipUnitPower;
+  const radar = new Map<ProvinceId, number>();
+  for (const pid of world.provinceIds) if (detected.has(pid) && !seen.has(pid)) radar.set(pid, 0);
+  const onRadar = new Map<NationId, number>();
+  for (const b of radarBlips(state, world, me, seen, detected)) {
+    const p = AI.blipUnits[b.size] * perUnit;
+    radar.set(b.province, p);
+    const o = state.provinces[b.province].owner;
+    onRadar.set(o, (onRadar.get(o) ?? 0) + p);
+  }
+  // The rest is spread over what each nation holds beyond my radar: a city one place and the land round it one
+  // more, shared between its lands, so dividing the land does not thin a nation's armies out.
   const dark = new Map<string, number>();
   for (const pid of world.provinceIds) {
     const o = state.provinces[pid].owner;
-    if (o !== me && !seen.has(pid)) dark.set(o, (dark.get(o) ?? 0) + placeShare(world, pid));
+    if (o !== me && !detected.has(pid)) dark.set(o, (dark.get(o) ?? 0) + placeShare(world, pid));
   }
   const unseen = new Map<NationId, number>();
   for (const n of world.nationIds) {
     const count = n === me ? 0 : (dark.get(n) ?? 0);
-    if (count > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0)) / count);
+    if (count > 0) unseen.set(n, Math.max(0, (total.get(n) ?? 0) - (inSight.get(n) ?? 0) - (onRadar.get(n) ?? 0)) / count);
   }
-  // Out of sight near the capital, a nation's estimated strength in each hidden province stands in (a land its share).
+  // Out of sight near the capital, what the radar shows or a nation's estimated strength in each hidden province
+  // stands in (a land its share).
   if (guardCapital) {
     for (const pid of [...ring1, ...ring2]) {
       const o = state.provinces[pid].owner;
       if (seen.has(pid) || o === me || o === NEUTRAL) continue;
-      capitalDanger += (unseen.get(o) ?? 0) * placeShare(world, pid) * reach(pid) * menace(o);
+      capitalDanger += guessAt(state, radar, unseen, pid, placeShare(world, pid)) * reach(pid) * menace(o);
     }
   }
   // What the enemy fields: each enemy's armour share as last seen, weighted by its strength.
@@ -255,6 +282,7 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     presence,
     seen,
     unseen,
+    radar,
     hostile,
     threat,
     frontier,
@@ -262,6 +290,21 @@ export function buildContext(state: GameState, world: World, me: NationId): Ctx 
     enemyArmour: weight > 0 ? armour / weight : 0,
     savings: {},
   };
+}
+
+function guessAt(state: GameState, radar: ReadonlyMap<ProvinceId, number>, unseen: ReadonlyMap<NationId, number>, pid: ProvinceId, share: number): number {
+  const r = radar.get(pid);
+  if (r !== undefined) return r;
+  const o = state.provinces[pid].owner;
+  return o === NEUTRAL ? 0 : (unseen.get(o) ?? 0) * share;
+}
+
+/**
+ * The power I reckon stands in a province out of sight: what my radar shows there (nothing, where it shows no
+ * blip), or beyond my radar the holder's estimated strength (`unseen`) times `share` (its share of a place).
+ */
+export function hiddenPower(ctx: Ctx, pid: ProvinceId, share = 1): number {
+  return guessAt(ctx.state, ctx.radar, ctx.unseen, pid, share);
 }
 
 /**

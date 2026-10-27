@@ -38,7 +38,7 @@ import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId, type RoadSpot } from '../types';
 import { areAllies } from '../visibility';
 import { cityOf, isCity, isCityGate, isOpenRoad, roadBorder } from '../world';
-import { battleReady, graceOver, hostileArmiesAt, idleArmies, issue, mainEnemy, type Ctx } from './context';
+import { battleReady, graceOver, hiddenPower, hostileArmiesAt, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
 /** Where an army stands: its province, or its spot on a road out of it. */
 const spotOf = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
@@ -118,14 +118,13 @@ function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
 function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
   const owner = state.provinces[pid].owner;
-  const guess = owner === NEUTRAL ? 0 : (ctx.unseen.get(owner) ?? 0);
-  let p = ctx.seen.has(pid) ? 0 : guess;
+  let p = ctx.seen.has(pid) ? 0 : hiddenPower(ctx, pid);
   for (const a of hostilesInSight(ctx, pid)) p += armyPower(state, a);
   // Enemy armies next door can join the fight.
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      if (!ctx.seen.has(n.id)) p += guess * placeShare(world, n.id) * AI.reinforcementShare;
+      if (!ctx.seen.has(n.id)) p += hiddenPower(ctx, n.id, placeShare(world, n.id)) * AI.reinforcementShare;
       for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * AI.reinforcementShare;
     }
   }
@@ -502,7 +501,7 @@ function screens(ctx: Ctx, staged: Set<ArmyId>, holds: Record<ArmyId, number>): 
   // Hostile power in a province, as far as I can see or guess.
   const held = (pid: ProvinceId): number => {
     if (!enemyHeld(pid)) return 0;
-    return ctx.seen.has(pid) ? (ctx.hostile.get(pid) ?? 0) : (ctx.unseen.get(state.provinces[pid].owner) ?? 0);
+    return ctx.seen.has(pid) ? (ctx.hostile.get(pid) ?? 0) : hiddenPower(ctx, pid);
   };
   // What an enemy land next door could send down the road: the land and its city, and part of the lands behind
   // it (not those beside it, next to mine as well, which a screen weighs on their own roads).

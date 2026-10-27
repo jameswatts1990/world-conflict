@@ -54,6 +54,14 @@ export interface UnitConfig {
   fortIgnore?: number;
   /** Reconnaissance: +10% army damage, faster capture, cheaper retreats. */
   recon?: boolean;
+  /**
+   * How many steps out its army sees (a region, a city and the lands round it, counting as one step; mountains and
+   * narrow seas stop it at the far side). Absent: `SIGHT.unit`, the province the army stands in. Room for aircraft
+   * and satellites to see far.
+   */
+  sight?: number;
+  /** How many steps out its army picks up radar blips. Absent: its sight plus `SIGHT.detectBeyond`. */
+  detect?: number;
 }
 
 /** Wheeled and tracked vehicles bog down off-road. */
@@ -207,6 +215,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     resilience: 0.9,
     shock: 1.2,
     recon: true,
+    sight: 1,
   },
   armouredCar: {
     name: 'Armoured Cars',
@@ -235,6 +244,7 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     resilience: 0.9,
     shock: 1,
     recon: true,
+    sight: 1,
   },
   artillery: {
     name: 'Field Artillery',

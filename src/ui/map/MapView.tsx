@@ -26,6 +26,7 @@ import {
   unitGen,
   type Army,
   type ArmyId,
+  type BlipSize,
   type GameState,
   type NationId,
   type OwnerId,
@@ -1330,6 +1331,77 @@ function Battles({ geo, state, k, seen }: { geo: MapGeometry; state: GameState; 
       })}
     </>
   );
+}
+
+/** A radar blip's radius on screen (pixels, before `symbolScale`), by its size. */
+const BLIP_RADIUS: Record<BlipSize, number> = { small: 5, medium: 7.5, large: 10.5 };
+
+/**
+ * Radar blips: unknown armies beyond the player's sight but within their detection range, one per province, drawn
+ * at the province's centre and sized by how many units are hidden there, with nothing else about them. They change
+ * only with the tick (and never during a gesture), so they are drawn again only when the blips themselves change.
+ */
+function RadarLayer({
+  ctrl,
+  geo,
+  k,
+  symbol,
+  panning,
+  onClick,
+  onContext,
+  onHover,
+}: {
+  ctrl: GameController;
+  geo: MapGeometry;
+  k: number;
+  symbol: number;
+  panning: RefObject<boolean>;
+  onClick: (pid: ProvinceId) => void;
+  onContext: (pid: ProvinceId, e: React.MouseEvent) => void;
+  onHover: (pid: ProvinceId | null) => void;
+}) {
+  const last = useRef('');
+  const sig = useSyncExternalStore(ctrl.subscribeFrame, () => {
+    if (panning.current) return last.current;
+    last.current = ctrl.radar().blips.map((b) => `${b.province}:${b.size}`).join('|');
+    return last.current;
+  });
+  return useMemo(() => {
+    if (!sig) return null;
+    return (
+      <g className="radar-layer">
+        {sig.split('|').map((entry) => {
+          const [pid, size] = entry.split(':') as [ProvinceId, BlipSize];
+          const [x, y] = geo.anchors[pid];
+          const r = BLIP_RADIUS[size] * Math.max(0.7, symbol);
+          return (
+            <g
+              key={pid}
+              className={`radar-blip ${size}`}
+              data-blip={pid}
+              data-size={size}
+              transform={`translate(${x},${y - (r + 6) / k}) scale(${1 / k})`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick(pid);
+              }}
+              onContextMenu={(e) => {
+                e.stopPropagation();
+                onContext(pid, e);
+              }}
+              onMouseEnter={() => onHover(pid)}
+              onMouseLeave={() => onHover(null)}
+            >
+              <title>{`Unknown army — ${size}`}</title>
+              <circle r={r + 4} className="radar-hit" />
+              <circle r={r} className="radar-ring" />
+              <circle r={Math.max(1.6, r * 0.28)} className="radar-dot" />
+            </g>
+          );
+        })}
+      </g>
+    );
+  }, [sig, geo, k, symbol, onClick, onContext, onHover]);
 }
 
 function ArmyMarker({
@@ -2676,6 +2748,16 @@ export function MapView(props: MapViewProps) {
       ),
       top: detail && (
         <>
+          <RadarLayer
+            ctrl={ctrl}
+            geo={geo}
+            k={k}
+            symbol={symbolScale(r, props.touch)}
+            panning={panning}
+            onClick={onProvinceClick}
+            onContext={onProvinceContext}
+            onHover={onHover}
+          />
           {cs ? (
             <ArmyModelLayer
               ctrl={ctrl}

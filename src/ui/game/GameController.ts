@@ -4,7 +4,7 @@
 // concerns, not simulation rules.
 import { attachGameAudio } from '../../audio';
 import { CLIENT_SPEEDS } from '../../sim/config/timing';
-import { GameLoop, Simulation, visibleProvinces, type Command, type CommandResult, type GameState, type NationId, type ProvinceId, type World } from '../../sim';
+import { GameLoop, Simulation, detectedProvinces, radarBlips, visibleProvinces, type Blip, type Command, type CommandResult, type GameState, type NationId, type ProvinceId, type World } from '../../sim';
 import { saveToSlot } from './storage';
 
 const UI_NOTIFY_MS = 120;
@@ -33,6 +33,7 @@ export class GameController {
   private lastAutosave = 0;
   private running = false;
   private sightCache: { state: GameState; tick: number; version: number; seen: ReadonlySet<ProvinceId> } | null = null;
+  private radarCache: { state: GameState; tick: number; version: number; blips: readonly Blip[]; at: ReadonlyMap<ProvinceId, Blip> } | null = null;
 
   constructor(
     readonly world: World,
@@ -57,6 +58,16 @@ export class GameController {
     const seen = visibleProvinces(this.state, this.world, this.human);
     this.sightCache = { state: this.state, tick: this.state.tick, version: this.version, seen };
     return seen;
+  }
+
+  /** The radar blips the player picks up beyond their sight (unknown armies, rough size only), worked out once per tick. */
+  radar(): { blips: readonly Blip[]; at: ReadonlyMap<ProvinceId, Blip> } {
+    const c = this.radarCache;
+    if (c && c.state === this.state && c.tick === this.state.tick && c.version === this.version) return c;
+    const blips = radarBlips(this.state, this.world, this.human, this.sight(), detectedProvinces(this.state, this.world, this.human));
+    const at = new Map(blips.map((b) => [b.province, b]));
+    this.radarCache = { state: this.state, tick: this.state.tick, version: this.version, blips, at };
+    return this.radarCache;
   }
 
   start(): void {
