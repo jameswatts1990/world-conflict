@@ -155,6 +155,20 @@ function neutralTargetsAllowed(ctx: Ctx): boolean {
   return ctx.enemies.length === 0 || ctx.mem.aggression > AI.secondWarAggression;
 }
 
+/**
+ * My power already taking a province uncontested (0 anywhere else): armies actually standing there, not support
+ * still marching in, whose marches keep their orders.
+ */
+function heldPower(ctx: Ctx, pid: ProvinceId): number {
+  if (!ctx.seen.has(pid) || ctx.state.provinces[pid].capture?.by !== ctx.me || hostilesInSight(ctx, pid).length > 0) return 0;
+  return idleArmies(ctx).filter((a) => a.province === pid).reduce((sum, a) => sum + armyPower(ctx.state, a), 0);
+}
+
+/** Power still to send to take a province: for a capture of mine, only what its occupiers lack against the danger. */
+export function reliefNeed(ctx: Ctx, pid: ProvinceId): number {
+  return attackNeed(ctx, pid) - heldPower(ctx, pid);
+}
+
 function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const owner = ctx.state.provinces[pid].owner;
   if (owner === ctx.me) return false;
@@ -162,11 +176,7 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   const by = ctx.state.provinces[pid].capture?.by;
   if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesIn(ctx.state, ctx.world, pid, by).length === 0) return false;
   // Leave an uncontested capture to its occupiers only if they can hold against the danger we can see or estimate.
-  // Count armies actually standing there, not support still marching in; existing marches keep their orders.
-  if (ctx.seen.has(pid) && ctx.state.provinces[pid].capture?.by === ctx.me && hostilesInSight(ctx, pid).length === 0) {
-    const held = idleArmies(ctx).filter((a) => a.province === pid).reduce((sum, a) => sum + armyPower(ctx.state, a), 0);
-    if (held >= attackNeed(ctx, pid)) return false;
-  }
+  if (reliefNeed(ctx, pid) <= 0) return false;
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);
   // On several fronts, only the main enemy is attacked; the other fronts are held.
   const main = mainEnemy(ctx);
@@ -219,7 +229,7 @@ export function chooseCampaigns(ctx: Ctx, available: number): Campaign[] {
     for (const n of world.neighbors[pid]) {
       if (seen.has(n.id) || !isTarget(ctx, n.id) || !canEnterProvince(state, ctx.me, n.id)) continue;
       seen.add(n.id);
-      const need = attackNeed(ctx, n.id);
+      const need = reliefNeed(ctx, n.id);
       if (need > available * 1.1) continue;
       const kind = n.kind;
       let score = targetValue(ctx, n.id) / (need + 25) - (kind === 'strait' ? 0.05 : 0);
@@ -437,7 +447,7 @@ export function handleMilitary(ctx: Ctx): void {
     let best: { pid: ProvinceId; score: number } | null = null;
     for (const n of world.neighbors[army.province]) {
       if (!isTarget(ctx, n.id) || !canEnterProvince(state, me, n.id)) continue;
-      const need = attackNeed(ctx, n.id);
+      const need = reliefNeed(ctx, n.id);
       if (power(army) < need) continue;
       const score = targetValue(ctx, n.id) - (n.kind === 'strait' ? 4 : 0) + random(state);
       if (!best || score > best.score) best = { pid: n.id, score };

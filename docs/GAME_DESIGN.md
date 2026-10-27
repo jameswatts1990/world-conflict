@@ -515,7 +515,8 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
 - **Military:** armies fight to the death, withdrawing only when the battle is hopeless (under a fifth of the
   enemy's power there) and the army's morale is spent (below 30%); armies taking a province hold it until it falls
   (unless they would starve first). Further attacks skip an uncontested capture the occupiers can hold; support
-  remains available when they are too weak for enemies seen nearby or estimated under the fog of war. Contested
+  remains available when they are too weak for enemies seen nearby or estimated under the fog of war, sized to what
+  the occupiers standing there lack rather than to the whole attack, so a small top-up goes at once. Contested
   captures still allow support. Free armies consider other targets or their usual defensive duties. Starving or
   worn-out armies go home to recover; the capital keeps a garrison sized to the danger around it (enemies next
   door, half of those two provinces away, and a third of the armies of great and major powers still at peace,
