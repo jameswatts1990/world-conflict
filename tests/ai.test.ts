@@ -200,6 +200,40 @@ describe.each(['normal', 'easy'] as const)('AI capture targets (%s)', (difficult
     ]));
   });
 
+  it('tops up a weak capture with only what its occupiers lack', () => {
+    // The occupiers hold part of what Lisbon needs; a smaller force next door makes up the rest, and goes now
+    // rather than waiting to gather a full-sized second army.
+    const { state, capturer, reserve } = threatenedCapture(false);
+    for (const a of Object.values(state.armies)) if (a.owner === 'es' && a.province === reserve.province && a.id !== reserve.id) delete state.armies[a.id];
+    const need = attackNeed(buildContext(state, world, 'es'), capturer.province);
+    const held = armyPower(state, capturer);
+    const topUp = place(state, 'es', reserve.province, { infantry: 1 });
+    const infantry = Math.ceil((need - held) / armyPower(state, topUp));
+    delete state.armies[topUp.id];
+    reserve.units = place(state, 'es', 'es-madrid', { infantry }).units;
+    for (const a of Object.values(state.armies)) if (a.province === 'es-madrid') delete state.armies[a.id];
+    // Two rear guards, each weaker than the top-up and both needed, stay behind against the enemy next door. They
+    // stand apart on a road so nothing merges.
+    const ctx = buildContext(state, world, 'es');
+    const guard = Math.ceil(((ctx.threat.get(reserve.province) ?? 0) * ctx.level.defenceFactor) / 2 / armyPower(state, topUp));
+    expect(guard).toBeLessThan(infantry);
+    for (const at of [0.1, 0.2]) place(state, 'es', reserve.province, { infantry: guard }).road = { toward: 'pt-lisbon-nne', at };
+    expect(held).toBeLessThan(need);
+    expect(armyPower(state, reserve)).toBeLessThan(need);
+    expect(held + armyPower(state, reserve)).toBeGreaterThanOrEqual(need);
+    const orders: AiOrderTrace[] = [];
+    setAiOrderTrace((t) => orders.push(t));
+    try {
+      handleMilitary(buildContext(state, world, 'es'));
+    } finally {
+      setAiOrderTrace(null);
+    }
+    expect(orders).toEqual(expect.arrayContaining([
+      expect.objectContaining({ armyId: reserve.id, to: capturer.province, reason: expect.stringMatching(/^(attack|strike)$/) }),
+    ]));
+    expect(orders.filter((o) => o.armyId === capturer.id)).toEqual([]);
+  });
+
   it('leaves an adequately held capture alone despite a visible enemy next door', () => {
     const { state, capturer, reserve } = threatenedCapture(true);
     const orders: AiOrderTrace[] = [];
