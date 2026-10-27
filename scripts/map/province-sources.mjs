@@ -130,6 +130,33 @@ export const PROVINCE_SOURCES = [
   { id: 'ie-dublin', country: 'IRL', regions: ['Dublin', 'Mid-East', 'Midlands', 'South-East', 'Border'] },
   { id: 'ie-cork', country: 'IRL', regions: ['South-West', 'Mid-West', 'West'] },
 
+  // Sweden (admin-1 units are its counties, län): the Mälaren valley and Östergötland round Stockholm, the
+  // west coast and Bergslagen round Gothenburg, Skåne and Småland, then Norrland in two
+  { id: 'se-stockholm', country: 'SWE', names: ['Stockholm', 'Uppsala', 'Södermanland', 'Västmanland', 'Östergötland', 'Gotland'] },
+  { id: 'se-gothenburg', country: 'SWE', names: ['Västra Götaland', 'Värmland', 'Orebro'] },
+  { id: 'se-skane', country: 'SWE', names: ['Skåne', 'Blekinge', 'Kronoberg', 'Kalmar', 'Halland', 'Jönköping'] },
+  { id: 'se-norrland', country: 'SWE', names: ['Dalarna', 'Gävleborg', 'Jämtland', 'Västernorrland'] },
+  { id: 'se-lulea', country: 'SWE', names: ['Västerbotten', 'Norrbotten'] },
+
+  // Norway (counties, fylker, before the 2020 mergers): the East and the South coast round Oslo, the
+  // fjords and Møre round Bergen, Trøndelag, and the North. Svalbard and Bouvet Island stay out.
+  { id: 'no-oslo', country: 'NOR', names: ['Oslo', 'Akershus', 'Østfold', 'Vestfold', 'Buskerud', 'Telemark', 'Hedmark', 'Oppland', 'Aust-Agder', 'Vest-Agder'] },
+  { id: 'no-bergen', country: 'NOR', names: ['Hordaland', 'Rogaland', 'Sogn og Fjordane', 'Møre og Romsdal'] },
+  { id: 'no-trondheim', country: 'NOR', names: ['Sør-Trøndelag', 'Nord-Trøndelag'] },
+  { id: 'no-narvik', country: 'NOR', names: ['Nordland', 'Troms', 'Finnmark'] },
+
+  // Finland (regions, maakunnat): Åland (its own code in Natural Earth) joins the South-West
+  { id: 'fi-helsinki', country: 'FIN', names: ['Uusimaa', 'Kymenlaakso', 'Päijät-Häme', 'Tavastia Proper'] },
+  { id: 'fi-turku', country: 'FIN', names: ['Finland Proper', 'Satakunta', 'Pirkanmaa', 'Ostrobothnia', 'Southern Ostrobothnia'] },
+  { id: 'fi-turku', country: 'ALD', whole: true, iso: 'FIN' },
+  { id: 'fi-karelia', country: 'FIN', names: ['South Karelia', 'Southern Savonia', 'Northern Savonia', 'North Karelia', 'Central Finland'] },
+  { id: 'fi-oulu', country: 'FIN', names: ['Northern Ostrobothnia', 'Central Ostrobothnia', 'Kainuu', 'Lapland'] },
+
+  // Iceland: the South and West round Reykjavík, the North round Akureyri, the East round Seyðisfjörður
+  { id: 'is-reykjavik', country: 'ISL', names: ['Reykjavík', 'Höfuðborgarsvæði', 'Suðurnes', 'Vesturland', 'Vestfirðir', 'Suðurland'] },
+  { id: 'is-akureyri', country: 'ISL', names: ['Norðurland vestra', 'Norðurland eystra'] },
+  { id: 'is-east', country: 'ISL', names: ['Austurland'] },
+
   // Minor powers (one province each; Belgium and Luxembourg share one)
   { id: 'be-brussels', country: 'BEL', whole: true },
   { id: 'be-brussels', country: 'LUX', whole: true },

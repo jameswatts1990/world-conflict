@@ -230,6 +230,67 @@ export const ROWS: ProvinceRow[] = [
     lands: { w: { name: 'Western Crete & the Cyclades' }, se: { name: 'Eastern Crete & the South Aegean' } },
     towns: [['Chania', 24.02, 35.5], ['Rethymno', 24.47, 35.36], ['Agios Nikolaos', 25.71, 35.19], ['Rhodes', 28.2, 36.42]] },
 
+  // Sweden: the Mälaren valley round Stockholm, the west coast round Gothenburg, Skåne and Småland round
+  // Kristianstad (Malmö lies 28 km across the Øresund from Copenhagen), Norrland's forests round Sundsvall
+  // and the iron-ore north round Luleå.
+  { id: 'se-stockholm', name: 'Mälardalen & Östergötland', core: 'se', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Stockholm', coord: [18.069, 59.329], size: 'capital' }, pop: 2400,
+    lands: { w: { name: 'Södermanland & Östergötland' }, n: { name: 'Uppland' } },
+    towns: [['Uppsala', 17.639, 59.858], ['Västerås', 16.545, 59.611], ['Norrköping', 16.192, 58.588], ['Linköping', 15.621, 58.411], ['Eskilstuna', 16.51, 59.371]] },
+  { id: 'se-gothenburg', name: 'Västergötland & Värmland', core: 'se', terrain: 'forest', tier: 'industrial', city: { name: 'Gothenburg', coord: [11.967, 57.707], size: 'major' }, pop: 1000,
+    lands: { nne: { name: 'Värmland & Närke' }, n: { name: 'Bohuslän & Dalsland' }, e: { name: 'Västergötland' } },
+    towns: [['Borås', 12.94, 57.721], ['Karlstad', 13.504, 59.379], ['Örebro', 15.207, 59.274], ['Trollhättan', 12.289, 58.283]] },
+  { id: 'se-skane', name: 'Skåne & Småland', core: 'se', terrain: 'plains', tier: 'city', city: { name: 'Kristianstad', coord: [14.156, 56.03], size: 'major' }, pop: 85,
+    lands: { n: { name: 'Skåne & Western Småland' }, ne: { name: 'Blekinge & Kalmar' } },
+    towns: [['Malmö', 13.0, 55.605], ['Helsingborg', 12.694, 56.046], ['Karlskrona', 15.631, 56.204], ['Kalmar', 16.349, 56.685], ['Växjö', 14.806, 56.879], ['Jönköping', 14.161, 57.782]] },
+  { id: 'se-norrland', name: 'Dalarna & Norrland', core: 'se', terrain: 'forest', tier: 'town', city: { name: 'Sundsvall', coord: [17.306, 62.391], size: 'town' }, pop: 100,
+    lands: { sw: { name: 'Dalarna & Gästrikland' }, w: { name: 'Härjedalen' }, nw2: { name: 'Jämtland' }, n: { name: 'Ångermanland' }, nw: { name: 'Medelpad & Hälsingland' } },
+    towns: [['Gävle', 17.141, 60.675], ['Falun', 15.627, 60.607], ['Östersund', 14.636, 63.179], ['Härnösand', 17.938, 62.632]] },
+  { id: 'se-lulea', name: 'Upper Norrland', core: 'se', terrain: 'forest', tier: 'city', city: { name: 'Luleå', coord: [22.157, 65.584], size: 'major' }, pop: 80,
+    lands: { nnw: { name: 'Iron Ore Fields', article: 'the' }, w: { name: 'Southern Lappland' }, sw: { name: 'Västerbotten' }, nw: { name: 'Lule Valley', article: 'the' }, n: { name: 'Torne Valley', article: 'the' } },
+    towns: [['Kiruna', 20.225, 67.856], ['Umeå', 20.263, 63.826], ['Gällivare', 20.656, 67.133], ['Skellefteå', 20.95, 64.75], ['Haparanda', 24.137, 65.836]] },
+
+  // Norway: the East and the South coast round Oslo, the western fjords and Møre round Bergen, Trøndelag
+  // round Trondheim, and the long North round Narvik, the iron-ore port of 1940.
+  { id: 'no-oslo', name: 'Eastern & Southern Norway', core: 'no', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Oslo', coord: [10.752, 59.913], size: 'capital' }, pop: 1500,
+    lands: { n2: { name: 'Gudbrandsdalen & Østerdalen' }, w: { name: 'Buskerud & Telemark' }, sw: { name: 'Sørlandet' }, n: { name: 'Hedmark & Romerike' }, se: { name: 'Østfold' } },
+    towns: [['Drammen', 10.204, 59.744], ['Hamar', 11.068, 60.795], ['Lillehammer', 10.466, 61.115], ['Kristiansand', 7.996, 58.147], ['Fredrikstad', 10.93, 59.22]] },
+  { id: 'no-bergen', name: 'Western Norway', core: 'no', terrain: 'mountains', tier: 'industrial', city: { name: 'Bergen', coord: [5.324, 60.393], size: 'major' }, pop: 420,
+    lands: { n: { name: 'Sogn & Møre' }, se: { name: 'Rogaland & Sunnhordland' }, ne: { name: 'Voss & Hardanger' } },
+    towns: [['Stavanger', 5.733, 58.97], ['Haugesund', 5.268, 59.413], ['Voss', 6.417, 60.628], ['Førde', 5.85, 61.452], ['Molde', 7.17, 62.75]] },
+  { id: 'no-trondheim', name: 'Trøndelag', core: 'no', terrain: 'mountains', tier: 'city', city: { name: 'Trondheim', coord: [10.395, 63.43], size: 'major' }, pop: 290,
+    lands: { ne: { name: 'Nord-Trøndelag' }, s: { name: 'Southern Trøndelag' } },
+    towns: [['Steinkjer', 11.495, 64.015], ['Levanger', 11.3, 63.746], ['Oppdal', 9.69, 62.594], ['Røros', 11.386, 62.575]] },
+  { id: 'no-narvik', name: 'Northern Norway', core: 'no', terrain: 'mountains', tier: 'town', city: { name: 'Narvik', coord: [17.427, 68.438], size: 'town' }, pop: 22,
+    lands: { ene: { name: 'West Finnmark' }, ssw: { name: 'Helgeland & Salten' }, ene2: { name: 'East Finnmark' }, ne: { name: 'Troms' }, sw: { name: 'Lofoten & Ofoten' } },
+    towns: [['Tromsø', 19.021, 69.649], ['Bodø', 14.462, 67.284], ['Mo i Rana', 14.142, 66.313], ['Hammerfest', 23.682, 70.663], ['Kirkenes', 30.045, 69.727]] },
+
+  // Finland: Uusimaa and Häme round Helsinki, the South-West and Ostrobothnia round Turku (with Tampere's
+  // mills and Åland), Karelia and Savonia round Lappeenranta, Viipuri's neighbour, and the North round Oulu.
+  { id: 'fi-helsinki', name: 'Uusimaa & Häme', core: 'fi', terrain: 'urban', landTerrain: 'forest', tier: 'capital', city: { name: 'Helsinki', coord: [24.938, 60.17], size: 'capital' }, pop: 1500,
+    lands: { ne: { name: 'Kymenlaakso & Päijät-Häme' }, nw: { name: 'Häme' } },
+    towns: [['Lahti', 25.661, 60.983], ['Hämeenlinna', 24.464, 60.996], ['Kotka', 26.938, 60.489], ['Porvoo', 25.664, 60.394]] },
+  { id: 'fi-turku', name: 'South-West Finland & Ostrobothnia', core: 'fi', terrain: 'forest', tier: 'industrial', city: { name: 'Turku', coord: [22.267, 60.452], size: 'major' }, pop: 330,
+    lands: { n2: { name: 'Ostrobothnia' }, ne: { name: 'Pirkanmaa' }, n: { name: 'Satakunta & Åland' } },
+    towns: [['Tampere', 23.761, 61.498], ['Pori', 21.797, 61.485], ['Vaasa', 21.616, 63.096], ['Seinäjoki', 22.84, 62.79]] },
+  { id: 'fi-karelia', name: 'Karelia & Savonia', core: 'fi', terrain: 'forest', tier: 'city', city: { name: 'Lappeenranta', coord: [28.188, 61.059], size: 'major' }, pop: 73,
+    lands: { nnw: { name: 'Northern Savonia & Central Finland' }, n: { name: 'North Karelia' }, nw: { name: 'Southern Savonia' }, ne: { name: 'Saimaa Lakes', article: 'the' } },
+    towns: [['Kuopio', 27.678, 62.892], ['Joensuu', 29.764, 62.601], ['Mikkeli', 27.273, 61.688], ['Jyväskylä', 25.747, 62.242], ['Savonlinna', 28.887, 61.869]] },
+  { id: 'fi-oulu', name: 'Northern Ostrobothnia & Lapland', core: 'fi', terrain: 'forest', tier: 'town', city: { name: 'Oulu', coord: [25.473, 65.012], size: 'town' }, pop: 210,
+    lands: { ne: { name: 'Southern Lapland' }, se: { name: 'Kainuu & Central Ostrobothnia' }, n: { name: 'Central Lapland' }, n2: { name: 'Western Lapland' }, n3: { name: 'Inari' } },
+    towns: [['Rovaniemi', 25.729, 66.503], ['Kajaani', 27.729, 64.227], ['Kokkola', 23.13, 63.838], ['Tornio', 24.147, 65.848]] },
+
+  // Iceland: one island, three regions. The South and West round Reykjavík, the North round Akureyri,
+  // the East round Seyðisfjörður, where the steamers from Bergen and the Faroes came in.
+  { id: 'is-reykjavik', name: 'Southern & Western Iceland', core: 'is', terrain: 'urban', landTerrain: 'hills', tier: 'capital', city: { name: 'Reykjavík', coord: [-21.87, 64.135], size: 'major' }, pop: 240,
+    lands: { e: { name: 'South Iceland' }, n: { name: 'Vesturland & the Westfjords' } },
+    towns: [['Keflavík', -22.56, 64.0], ['Selfoss', -21.0, 63.933], ['Borgarnes', -21.92, 64.539], ['Ísafjörður', -23.124, 66.075], ['Vík', -18.981, 63.439]] },
+  { id: 'is-akureyri', name: 'Northern Iceland', core: 'is', terrain: 'hills', tier: 'industrial', city: { name: 'Akureyri', coord: [-18.09, 65.683], size: 'major' }, pop: 20,
+    lands: { se: { name: 'Þingeyjarsýsla' }, sw: { name: 'Skagafjörður & Húnaflói' } },
+    towns: [['Húsavík', -17.338, 66.045], ['Siglufjörður', -18.909, 66.151], ['Sauðárkrókur', -19.639, 65.746], ['Blönduós', -20.29, 65.66]] },
+  { id: 'is-east', name: 'Eastern Iceland', core: 'is', terrain: 'mountains', tier: 'town', city: { name: 'Seyðisfjörður', coord: [-14.01, 65.26], size: 'town' }, pop: 1,
+    lands: { sw: { name: 'East Fjords', article: 'the' }, nw: { name: 'Fljótsdalshérað' } },
+    towns: [['Egilsstaðir', -14.395, 65.265], ['Neskaupstaður', -13.69, 65.15], ['Vopnafjörður', -14.83, 65.756], ['Höfn', -15.153, 64.322]] },
+
   // Western Balkan minor powers
   { id: 'ba-sarajevo', name: 'Bosnia & Herzegovina', core: 'ba', terrain: 'mountains', tier: 'capital', city: { name: 'Sarajevo', coord: [18.414, 43.856], size: 'capital' }, pop: 420,
     lands: { n: { name: 'Bosnian Valleys' }, sw: { name: 'Herzegovina' } },

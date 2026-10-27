@@ -173,6 +173,10 @@ const REGION_ALIAS: Record<string, string> = {
   rs: 'it',
   ro: 'de',
   ie: 'uk',
+  se: 'dk',
+  no: 'dk',
+  fi: 'dk',
+  is: 'dk',
 };
 
 function regionOf(seed: string): Region {
@@ -1051,6 +1055,12 @@ const NATIONAL_LANDMARKS: Record<string, LandmarkKind> = {
   // Alexander Nevsky Cathedral and the Greek parliament use existing silhouettes.
   'bg-sofia': 'dome',
   'gr-athens': 'palace',
+  // The Royal Palace on Stadsholmen, Akershus Fortress over Oslo's harbour, the green dome of Helsinki's
+  // cathedral, and Reykjavík's small cathedral by the Althing.
+  'se-stockholm': 'palace',
+  'no-oslo': 'castle',
+  'fi-helsinki': 'dome',
+  'is-reykjavik': 'church',
 };
 
 function landmark(l: Lot, kind: LandmarkKind, ctx: Ctx): void {

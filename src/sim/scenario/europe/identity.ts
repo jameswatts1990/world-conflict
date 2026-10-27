@@ -501,6 +501,32 @@ export const IDENTITIES: Record<string, NationIdentityOverrides> = {
   },
   ua: { formations: { cavalry: '{ord} Cossack Regiment' } },
   hu: { units: HU, formations: { cavalry: '{ord} Hussar Regiment' } },
+  se: {
+    units: {
+      artillery: {
+        ww1: n('7.5 cm kanon m/02', 'Krupp field gun, built at Bofors'),
+        interwar: n('Bofors 75 mm m/34', 'Field and mountain gun, sold across Europe'),
+        ww2: n('10.5 cm haubits m/39', 'Rheinmetall leFH 18, bought from Germany in 1939'),
+      },
+      antiTank: {
+        interwar: n('Bofors 37 mm', 'The anti-tank gun half of Europe bought'),
+        ww2: n('37 mm pansarvärnskanon m/38', 'Bofors anti-tank gun'),
+      },
+      armouredCar: { interwar: n('Landsverk L-180', 'Six tons, 20 mm Madsen'), ww2: n('Pansarbil m/39 Lynx', 'Drives both ways, 20 mm gun') },
+      lightTank: { ww2: n('Stridsvagn m/40', 'Landsverk light tank, 37 mm Bofors') },
+      tank: { ww2: n('Stridsvagn m/42', 'Landsverk medium tank, 75 mm') },
+    },
+  },
+  fi: {
+    units: {
+      mountain: {
+        ww1: n('Jääkärit', 'Volunteers trained in Germany'),
+        interwar: n('Jääkäri Battalion', 'Ski-borne light infantry'),
+        ww2: n('Sissi Battalion', 'Ski troops of the forest war'),
+      },
+    },
+    formations: { mountain: '{ord} Jäger Battalion' },
+  },
   bg: { formations: { stormtroopers: '{ord} Assault Battalion' } },
   gr: {
     units: { mountain: {
@@ -591,6 +617,35 @@ export const SPECIALITIES: Record<string, NationSpeciality | undefined> = {
       { kind: 'unitStat', units: ['mountain'], stat: 'defence', mult: 1.15 },
       { kind: 'unitStat', units: ['mountain'], stat: 'resilience', mult: 1.15 },
     ],
+  },
+  se: {
+    name: 'Bofors',
+    description: 'Guns for half of Europe: artillery and anti-tank guns +10% attack and cost 15% fewer materials.',
+    effects: [
+      { kind: 'unitStat', units: ['artillery', 'antiTank'], stat: 'attack', mult: 1.1 },
+      { kind: 'recruitCost', resource: 'materials', mult: 0.85, units: ['artillery', 'antiTank'] },
+    ],
+  },
+  no: {
+    name: 'Fjell og fjord',
+    description: 'Fells and fjords: coastal batteries cost 30% less to build and mountain infantry +10% defence.',
+    effects: [
+      { kind: 'constructionCost', mult: 0.7, building: 'coastalBattery' },
+      { kind: 'unitStat', units: ['mountain'], stat: 'defence', mult: 1.1 },
+    ],
+  },
+  fi: {
+    name: 'Motti',
+    description: 'Ski troops and the forest war: infantry and mountain infantry 10% faster, and armies hold out a minute longer out of supply.',
+    effects: [
+      { kind: 'unitStat', units: ['infantry', 'mountain'], stat: 'speed', mult: 1.1 },
+      { kind: 'attritionGrace', seconds: 60 },
+    ],
+  },
+  is: {
+    name: 'Fishing grounds',
+    description: 'Cod and herring from the richest waters of the North Atlantic: money output +10%.',
+    effects: [{ kind: 'production', resource: 'money', mult: 1.1 }],
   },
   ro: {
     name: 'Ploiești',

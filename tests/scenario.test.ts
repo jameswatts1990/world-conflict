@@ -113,6 +113,7 @@ describe('scenario data', () => {
       'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
       'me-podgorica-n|hr-dalmatia-e': 'the Dubrovnik coast is cut off from the rest of Dalmatia by Bosnia at Neum; the coastal road crosses that short gap',
       'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
+      'se-norrland-nw2|no-narvik-ssw': 'Jämtland meets Nordland only at a point in the Børgefjell fells, where Västerbotten comes in between',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
     expect(strays.sort()).toEqual(Object.keys(lastResort).sort());
