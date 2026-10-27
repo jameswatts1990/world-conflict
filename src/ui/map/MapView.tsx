@@ -1334,7 +1334,7 @@ function Battles({ geo, state, k, seen }: { geo: MapGeometry; state: GameState; 
 }
 
 /** A radar blip's radius on screen (pixels, before `symbolScale`), by its size. */
-const BLIP_RADIUS: Record<BlipSize, number> = { small: 5, medium: 7.5, large: 10.5 };
+const BLIP_RADIUS: Record<BlipSize, number> = { small: 7, medium: 10, large: 14 };
 
 /**
  * Radar blips: unknown armies beyond the player's sight but within their detection range, one per province, drawn
@@ -1394,6 +1394,7 @@ function RadarLayer({
             >
               <title>{`Unknown army — ${size}`}</title>
               <circle r={r + 4} className="radar-hit" />
+              <circle r={r} className="radar-back" />
               <circle r={r} className="radar-ring" />
               <circle r={Math.max(1.6, r * 0.28)} className="radar-dot" />
             </g>

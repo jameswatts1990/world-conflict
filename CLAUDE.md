@@ -236,9 +236,14 @@ than retuning silently, and recommend human playtests for anything about feel.
 - `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,
   units, VP and wars every 10 minutes (`neutral:N` is always 0 in Europe: its former neutral states are minor powers).
 - The AI plays under the fog of war: it may read other nations' armies only through the context (`ctx.seen`,
-  `ctx.hostile`, `ctx.unseen`, `ctx.enemyArmour` in `ai/context.ts`) or with `isArmyVisible`, never straight from
-  `state.armies` or `hostileArmiesIn` on a province it cannot see. Military power totals (`nationPower`), ownership
-  and city tiers are public. `tests/ai.test.ts` checks that hidden armies stay hidden.
+  `ctx.hostile`, `ctx.unseen`, `ctx.radar`/`hiddenPower`, `ctx.enemyArmour` in `ai/context.ts`) or with
+  `isArmyVisible` and `radarBlips`, never straight from `state.armies` or `hostileArmiesIn` on a province it cannot
+  see. Military power totals (`nationPower`), ownership and city tiers are public. `tests/ai.test.ts` checks that
+  hidden armies stay hidden.
+- Sight is short (`src/sim/visibility.ts`): held land sees its region and just over the border, an army only where it
+  stands unless a unit type sets more (`sight` in `config/units.ts`; reconnaissance 1). A step further out
+  (`detect`, default sight + 1; held land `SIGHT.provinceDetect`) hidden armies show as radar blips: province and size
+  bucket only (`radarBlips`). A blip must never reveal owner, unit types or strength. Both are derived, never stored.
 - `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag any new move
   order in `src/sim/ai/military.ts` with a reason.
 - The AI thinks every 8 s (14 on Easy: `thinkIntervalSeconds` in `AI_LEVELS`), but captures take 20 s or more. Any

@@ -350,6 +350,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Fog of war: provinces and armies see one province around them, reconnaissance units two over open land
       (mountains and narrow seas are seen across but not beyond, seas over 350 km not at all); unseen land is veiled and
       hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
+- [x] Shorter sight with radar blips: sight per unit type (most troops see only where they stand, reconnaissance
+      units a step further; held land just over its border), and beyond it unknown armies show as blips of a rough
+      size (small, medium, large), nothing else; the AI reads them by the same rules
 - [x] Shared sight between co-belligerents (powers fighting a common enemy) with the Liaison Officers research; the
       game calls them co-belligerents, not allies, since nobody agrees to it
 - [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
