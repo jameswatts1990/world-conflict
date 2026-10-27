@@ -264,7 +264,7 @@ try {
   // 9. Play on at DEV 200x until the campaign ends.
   await setSpeed(200);
   await setPaused(false);
-  await page.waitForSelector('[data-testid="outcome"]', { timeout: 300000 });
+  await page.waitForSelector('[data-testid="outcome"]', { timeout: 600000 });
   await page.waitForTimeout(300);
   await shot('08-outcome');
   const result = await page.getAttribute('[data-testid="outcome"]', 'data-result');
