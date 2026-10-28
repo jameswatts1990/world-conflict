@@ -26,8 +26,8 @@ export interface PowerTemplate {
   /** Starting buildings in the capital, the industrial heartland and a second recruiting city. */
   buildings: { capital: Buildings; industrial?: Buildings; recruiting?: Buildings };
   /**
-   * Starting units in the capital and the heartland, and in the field: field units go where the
-   * province rows place them (`garrison`), or are spread over the border provinces.
+   * Starting units in the capital and the heartland, and in the field: all start in cities, the field units
+   * in the cities the province rows place them (`garrison`), or spread over the border cities.
    */
   armies: { capital: Units; industrial?: Units; field: Units };
   /** How many cities (each with the land round it) a nation of this tier should have, so provinces stay a similar size. */

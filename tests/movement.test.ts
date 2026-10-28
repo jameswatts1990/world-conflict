@@ -5,7 +5,8 @@ import { clearArmies, landOf, linkBetween, place, quietGame, run, setWar, world 
 describe('movement legality', () => {
   it('cannot enter a nation at peace, can after declaring war', () => {
     const state = quietGame();
-    const army = Object.values(state.armies).find((a) => a.owner === 'fr' && world.provinces[a.province].around === 'fr-east')!;
+    // Armies start in cities now, so stand one on the French land that faces Hesse.
+    const army = place(state, 'fr', landOf('fr-east', 'de-hesse'), { infantry: 3 });
     const hesse = landOf('de-hesse', 'fr-east');
     const blocked = applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: hesse });
     expect(blocked.ok).toBe(false);

@@ -114,7 +114,7 @@ describe('event wording', () => {
     run(state, 200);
     // The army fights to the last man.
     const lost = state.events.find((e) => e.kind === 'army-destroyed')!;
-    expect(lost.text).toBe('The Netherlands lost the 3rd Army at Amsterdam.');
+    expect(lost.text).toBe('The Netherlands lost the 2nd Army at Amsterdam.');
     expect(lost.subject).toBe('nl');
     const captured = state.events.find((e) => e.kind === 'capture')!;
     expect(captured.subject).toBe('nl');
