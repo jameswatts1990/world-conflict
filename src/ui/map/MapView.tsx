@@ -11,11 +11,14 @@ import { zoom, zoomIdentity, zoomTransform, type D3ZoomEvent, type ZoomBehavior,
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  armyBlipKm,
   armyMorale,
+  armySightKm,
   atWar,
   buildingSlots,
   checkDeclareWar,
   connectionBetween,
+  greatCircleKm,
   isArmyInTransit,
   isCity,
   isOpenRoad,
@@ -1606,6 +1609,25 @@ function ArmyLayer({
   );
 }
 
+/**
+ * The selected army's reach, as two faint rings round it: how far it sees (enemy armies within are seen in full)
+ * and how far it picks up radar blips. Only for one of your own armies; drawn with the army layers' clock, so it
+ * waits while the map is dragged.
+ */
+function SightRings({ ctrl, geo, panning, army }: { ctrl: GameController; geo: MapGeometry; panning: RefObject<boolean>; army: Army | undefined }) {
+  useArmyClock(ctrl, panning);
+  if (!army || army.owner !== ctrl.human || !ctrl.state.armies[army.id]) return null;
+  const [x, y] = armyPosition(geo, army, ctrl.loop.paused ? 0 : ctrl.loop.alpha);
+  // Map units per km here: the conic's scale changes a few per cent across Europe.
+  const kmPerUnit = greatCircleKm(geo.invert([x, y]), geo.invert([x + 1, y])) || 1;
+  return (
+    <g className="sight-rings" pointerEvents="none">
+      <circle cx={x} cy={y} r={armyBlipKm(army) / kmPerUnit} className="blip-range" />
+      <circle cx={x} cy={y} r={armySightKm(army) / kmPerUnit} className="sight-range" />
+    </g>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // 3D armies (wherever the cities are 3D models)
 // ---------------------------------------------------------------------------
@@ -2749,6 +2771,7 @@ export function MapView(props: MapViewProps) {
       ),
       top: detail && (
         <>
+          {live && <SightRings ctrl={ctrl} geo={geo} panning={panning} army={primaryArmy} />}
           <RadarLayer
             ctrl={ctrl}
             geo={geo}

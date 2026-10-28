@@ -264,7 +264,8 @@ describe.each(['normal', 'easy'] as const)("AI and a co-belligerent's capture (%
     const capturer = place(state, 'fr', 'pt-lisbon', { infantry: 2 });
     state.provinces['pt-lisbon'].capture = { by: 'fr', progress: 1, required: captureTicks(state, world, 'pt-lisbon') };
     const approach = world.neighbors['pt-lisbon'].find((n) => state.provinces[n.id].owner === 'es')!.id;
-    const army = place(state, 'es', approach, { infantry: 10, artillery: 3 });
+    // Portugal's lands are wide (Lisbon lies over 100 km from each): a cavalry scout lets Spain see into the city.
+    const army = place(state, 'es', approach, { infantry: 10, artillery: 3, cavalry: 1 });
     const ctx = buildContext(state, world, 'es');
     expect(ctx.seen.has('pt-lisbon')).toBe(true);
     // Spain's army alone could take Lisbon, and would arrive stronger than France's occupiers.
@@ -490,19 +491,22 @@ describe('AI under the fog of war', () => {
     const state = aiGame(5);
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    // Baden, by the Rhine, borders France and is in sight; Swabia, behind it, is only on France's radar; Berlin
-    // and the north are beyond both.
+    // A French army in Alsace sees Baden over the Rhine (about 60 km away); Stuttgart, about 110 km off, is only on
+    // its radar; Swabia, Berlin and the north are beyond both.
+    place(state, 'fr', 'fr-east', { infantry: 2 });
     const army = place(state, 'de', 'de-berlin', { infantry: 10 });
     const need = () => attackNeed(buildContext(state, world, 'fr'), 'de-baden-sw');
     const hidden = need();
     army.province = 'de-north';
     expect(need()).toBeCloseTo(hidden);
-    // A large blip next door raises the bar...
     army.province = 'de-bavaria-w';
+    expect(need()).toBeCloseTo(hidden);
+    // A large blip next door raises the bar...
+    army.province = 'de-baden';
     const blip = need();
     expect(blip).toBeGreaterThan(hidden);
     // ...and so does the same army in plain sight.
-    army.province = 'de-hesse-w';
+    army.province = 'de-baden-sw';
     expect(need()).toBeGreaterThan(hidden);
   });
 

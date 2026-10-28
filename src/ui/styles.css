@@ -5064,6 +5064,20 @@ button.chip.queued:hover {
 .radar-dot {
   fill: #b6ffd0;
 }
+/* The selected army's reach: how far it sees, and further out how far it picks up blips. Faint, under the armies. */
+.sight-rings circle {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.sight-range {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.5;
+}
+.blip-range {
+  stroke: rgba(125, 255, 173, 0.45);
+  stroke-width: 1.2;
+  stroke-dasharray: 6 5;
+}
 .radar-blip:hover .radar-ring {
   fill: rgba(120, 255, 170, 0.3);
 }

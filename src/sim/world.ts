@@ -11,6 +11,22 @@ export interface Neighbor {
   seaKm?: number;
   /** On a road between two lands: how far towards the neighbour (0..1) the road crosses into it. */
   border?: number;
+  /** Where a road that bends runs, towards the neighbour (absent: straight between the anchors). */
+  line?: RoadTrace;
+}
+
+/**
+ * A point on the ground, for sight: metres from the earth's centre (x, y, z), in whole numbers. Distances between
+ * spots are worked out as the straight line through the earth (under 0.1 km short of the way over the ground at a
+ * few hundred km) and compared squared, in whole square metres, so whether an army is inside a circle never
+ * depends on floating-point details.
+ */
+export type Spot = readonly [number, number, number];
+
+/** A road as sight follows it: its knots (anchors and bends) and how far along the road (0..1) each lies. */
+export interface RoadTrace {
+  pts: Spot[];
+  at: number[];
 }
 
 export interface World {
@@ -38,6 +54,10 @@ export interface World {
   totalVp: number;
   /** Provinces where a sea crossing lands (coastal batteries allowed). */
   seaLandings: Set<ProvinceId>;
+  /** Each province's anchor (where its armies stand) as a spot on the ground, for sight. */
+  spots: Record<ProvinceId, Spot>;
+  /** Every province, west to east by its spot (`provincesNear` searches it). */
+  byEast: ProvinceId[];
 }
 
 // National specialities are static scenario data that effect lookups need
@@ -64,6 +84,51 @@ export function greatCircleKm(a: [number, number], b: [number, number]): number 
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
+const EARTH_RADIUS_M = EARTH_RADIUS_KM * 1000;
+
+/** A [longitude, latitude] as a spot on the ground. Rounded to whole metres, so nothing later depends on float trig. */
+export function spotOf([lon, lat]: [number, number]): Spot {
+  const toRad = Math.PI / 180;
+  const [l, p] = [lon * toRad, lat * toRad];
+  return [
+    Math.round(EARTH_RADIUS_M * Math.cos(p) * Math.cos(l)),
+    Math.round(EARTH_RADIUS_M * Math.cos(p) * Math.sin(l)),
+    Math.round(EARTH_RADIUS_M * Math.sin(p)),
+  ];
+}
+
+/** The square of the distance between two spots, in square metres (a whole number). */
+export function distanceSq(a: Spot, b: Spot): number {
+  const [dx, dy, dz] = [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  return dx * dx + dy * dy + dz * dz;
+}
+
+/** Is `b` within `km` of `a`? Exact: whole metres, compared squared. */
+export function withinKm(a: Spot, b: Spot, km: number): boolean {
+  const r = Math.round(km * 1000);
+  return distanceSq(a, b) <= r * r;
+}
+
+/**
+ * A road through its knots ([longitude, latitude]) with each knot's fraction of the way, measured as the map
+ * measures it (straight lines on Mercator between the knots, `roadThrough` in ui/map/geo.ts), so a fraction is
+ * the same spot in the simulation's sight as on the map. Fractions rounded to a millionth.
+ */
+function traceRoad(knots: [number, number][]): RoadTrace {
+  const toRad = Math.PI / 180;
+  const grid = knots.map(([lon, lat]) => [lon * toRad, Math.log(Math.tan(Math.PI / 4 + (lat * toRad) / 2))]);
+  const lengths = grid.slice(1).map((q, i) => Math.hypot(q[0] - grid[i][0], q[1] - grid[i][1]));
+  const total = lengths.reduce((s, x) => s + x, 0) || 1;
+  let gone = 0;
+  const at = [0];
+  for (const l of lengths) {
+    gone += l;
+    at.push(Math.round((gone / total) * 1e6) / 1e6);
+  }
+  at[at.length - 1] = 1;
+  return { pts: knots.map(spotOf), at };
+}
+
 export function buildWorld(scenario: ScenarioDef): World {
   const provinces: Record<ProvinceId, ProvinceDef> = {};
   for (const p of scenario.provinces) {
@@ -84,8 +149,10 @@ export function buildWorld(scenario: ScenarioDef): World {
     const distanceKm = Math.round(greatCircleKm(provinces[c.a].anchor, provinces[c.b].anchor));
     const sea = c.seaKm !== undefined ? { seaKm: c.seaKm } : {};
     const [there, back] = c.border === undefined ? [{}, {}] : [{ border: c.border }, { border: Math.round((1 - c.border) * 1000) / 1000 }];
-    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label, ...sea, ...there });
-    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label, ...sea, ...back });
+    const line = c.via?.length ? traceRoad([provinces[c.a].anchor, ...c.via, provinces[c.b].anchor]) : undefined;
+    const [ahead, behind] = line ? [{ line }, { line: { pts: [...line.pts].reverse(), at: line.at.map((t) => Math.round((1 - t) * 1e6) / 1e6).reverse() } }] : [{}, {}];
+    neighbors[c.a].push({ id: c.b, kind: c.kind, distanceKm, label: c.label, ...sea, ...there, ...ahead });
+    neighbors[c.b].push({ id: c.a, kind: c.kind, distanceKm, label: c.label, ...sea, ...back, ...behind });
   }
   for (const id of Object.keys(neighbors)) neighbors[id].sort((x, y) => (x.id < y.id ? -1 : x.id > y.id ? 1 : 0));
 
@@ -125,6 +192,11 @@ export function buildWorld(scenario: ScenarioDef): World {
     vicinity[p.id] = [region, ...next].flatMap((r) => members.get(r)!).filter((id) => id !== p.id);
   }
 
+  const spots: Record<ProvinceId, Spot> = {};
+  for (const p of scenario.provinces) spots[p.id] = spotOf(p.anchor);
+  // West to east by the spot's y (the axis through 90°E, about east through Europe); ties by id, so the order is fixed.
+  const byEast = scenario.provinces.map((p) => p.id).sort((a, b) => spots[a][1] - spots[b][1] || (a < b ? -1 : a > b ? 1 : 0));
+
   return {
     scenario,
     provinceIds: scenario.provinces.map((p) => p.id),
@@ -139,7 +211,59 @@ export function buildWorld(scenario: ScenarioDef): World {
     regionOf,
     totalVp,
     seaLandings,
+    spots,
+    byEast,
   };
+}
+
+/**
+ * The spot `t` (0..1) of the way along the road from `a`'s anchor to `b`'s (straight between them, should they
+ * not be neighbours).
+ */
+export function spotOnRoadLine(world: World, a: ProvinceId, b: ProvinceId, t: number): Spot {
+  const line = connectionBetween(world, a, b)?.line;
+  const pts = line?.pts ?? [world.spots[a], world.spots[b]];
+  const at = line?.at ?? [0, 1];
+  if (t <= 0) return pts[0];
+  if (t >= 1) return pts[pts.length - 1];
+  let i = 1;
+  while (i < pts.length - 1 && at[i] < t) i++;
+  const [p, q] = [pts[i - 1], pts[i]];
+  const f = (t - at[i - 1]) / (at[i] - at[i - 1] || 1);
+  return [Math.round(p[0] + (q[0] - p[0]) * f), Math.round(p[1] + (q[1] - p[1]) * f), Math.round(p[2] + (q[2] - p[2]) * f)];
+}
+
+const aroundCache = new WeakMap<World, Map<number, Record<ProvinceId, ProvinceId[]>>>();
+
+/** Every province whose anchor lies within `km` of `pid`'s (itself included), worked out once per world and distance. */
+export function provincesAround(world: World, pid: ProvinceId, km: number): ProvinceId[] {
+  let byKm = aroundCache.get(world);
+  if (!byKm) aroundCache.set(world, (byKm = new Map()));
+  let lists = byKm.get(km);
+  if (!lists) byKm.set(km, (lists = {}));
+  return (lists[pid] ??= provincesNear(world, world.spots[pid], km));
+}
+
+/** Every province whose anchor lies within `km` of `spot` (exactly, as `withinKm`), west to east. */
+export function provincesNear(world: World, spot: Spot, km: number): ProvinceId[] {
+  const r = Math.round(km * 1000);
+  const { byEast, spots } = world;
+  // Binary search for the first province not west of the circle, then walk east until past it.
+  let lo = 0;
+  let hi = byEast.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (spots[byEast[mid]][1] < spot[1] - r) lo = mid + 1;
+    else hi = mid;
+  }
+  const out: ProvinceId[] = [];
+  const r2 = r * r;
+  for (let i = lo; i < byEast.length; i++) {
+    const s = spots[byEast[i]];
+    if (s[1] > spot[1] + r) break;
+    if (distanceSq(s, spot) <= r2) out.push(byEast[i]);
+  }
+  return out;
 }
 
 /** Whether any province starts unowned: neutral states, garrisoned, that anyone may invade. */
