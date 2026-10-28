@@ -44,7 +44,7 @@ describe('Fusion, the research resource', () => {
 
   it('every nation starts with Fusion; saves from before Fusion get a stock to research with', () => {
     const state = aiGame(4, 'fr');
-    expect(state.nations.fr.resources.fusion).toBe(POWERS.great.startingResources.fusion);
+    expect(state.nations.fr.resources.fusion).toBe(POWERS.playable.startingResources.fusion);
     run(state, 120);
     const old = JSON.parse(serializeGame(state, 'v7'));
     old.schemaVersion = old.state.schemaVersion = 7;

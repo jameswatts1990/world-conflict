@@ -1,7 +1,7 @@
 // Blocs: equipment families shared by many nations. A nation names its bloc
 // and inherits everything its armies need from it (named designs, formation
 // and army names, and in the UI the look of its units); it overrides only
-// what it wants to make its own. The great powers override almost
+// what it wants to make its own. The original six override almost
 // everything; a new country can override nothing.
 //
 // Blocs follow who armed whom between 1914 and 1942, so their designs are

@@ -233,7 +233,7 @@ added, Normal all-AI stays within these ranges (reversals 1.4%, pile-on 0.2%, id
   survival moving from 50% to about 64%. 200 give ±4 and ±7. None tell 12% from 10%. Call a shift only from 100 or
   more. `scripts/dev/balance.ts 80 120` runs them in parallel and shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
+  limit). With the five-cities rule (15 playable nations, 96 VP, 39 to win) the figures have not been re-measured at 100 campaigns; see the pull request for a rough run. Before it (main with the Nordic powers), over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
   none end on objectives; all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%,
   Italy 13%, Spain 8.5%, France 6.5%, Greece 3%, Bulgaria and Ukraine 2%, Britain and Romania 1.5%, Sweden 0.5%,
   and Belarus, Finland, Iceland, Norway and Serbia 0%. Against main without the Nordic powers on the same seeds,

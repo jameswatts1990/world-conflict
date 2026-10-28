@@ -48,7 +48,7 @@ describe('fog of war', () => {
     const seen = visibleProvinces(state, world, 'fr');
     const held = world.provinceIds.filter((id) => state.provinces[id].owner === 'fr');
     expect([...seen].sort()).toEqual([...held].sort());
-    for (const id of ['de-baden-sw', 'be-brussels', 'uk-london', 'it-piedmont']) expect(seen.has(id)).toBe(false);
+    for (const id of ['de-hesse-s', 'be-brussels', 'uk-london', 'it-piedmont']) expect(seen.has(id)).toBe(false);
   });
 
   it('sight is a property of each unit type, in km on the map: most see 100 km, scouts further', () => {
@@ -74,16 +74,15 @@ describe('fog of war', () => {
     const scouts = place(state, 'by', 'by-brest', { infantry: 2, cavalry: 1 });
     // Polish armies, from the nearest to the farthest (km from Brest on the map).
     const at: Record<ProvinceId, number> = {
-      'pl-east-ne': 67, // Biała Podlaska
-      'pl-east': 122, // Lublin
-      'pl-east-n': 170, // Podlachia, on the edge of the cavalry's sight (169.5 km)
+      'pl-warsaw-e': 103, // Biała Podlaska
+      'pl-warsaw-se': 117, // Lublin
       'pl-warsaw': 183, // Warsaw
-      'pl-warsaw-s': 184, // Radom, south of Warsaw
-      'pl-warsaw-nw': 247, // Płock, north-west of Warsaw
-      'pl-warsaw-sw': 287, // Łódź, south-west of Warsaw
+      'pl-warsaw-ne': 195, // Podlachia
+      'pl-warsaw-sw': 274, // Łódź
+      'pl-warsaw-n': 275, // Masuria
       'pl-lesser': 345, // Kraków
       'pl-pomerania-s': 371,
-      'pl-silesia-se': 398,
+      'pl-silesia-se': 392,
     };
     const polish: Record<ProvinceId, ReturnType<typeof place>> = {};
     for (const [pid, d] of Object.entries(at)) {
@@ -95,27 +94,27 @@ describe('fog of war', () => {
       return Object.keys(at).filter((pid) => isArmyVisible(polish[pid], 'by', seen));
     };
     const blips = () => radarBlips(state, world, 'by').map((b) => b.province).sort();
-    expect(inSight()).toEqual(['pl-east-ne', 'pl-east', 'pl-east-n']);
-    expect(blips()).toEqual(['pl-warsaw', 'pl-warsaw-s', 'pl-warsaw-nw', 'pl-warsaw-sw', 'pl-lesser'].sort());
+    expect(inSight()).toEqual(['pl-warsaw-e', 'pl-warsaw-se']);
+    expect(blips()).toEqual(['pl-warsaw', 'pl-warsaw-ne', 'pl-warsaw-sw', 'pl-warsaw-n', 'pl-lesser'].sort());
     // A blip says only where and how big.
     expect(radarBlips(state, world, 'by').every((b) => b.size === 'small')).toBe(true);
 
-    // Without the cavalry, line infantry sees 100 km and picks up blips to 225 km: Lublin, Podlachia, Warsaw and
-    // Radom are blips, Płock and beyond hidden.
+    // Without the cavalry, line infantry sees 100 km and picks up blips to 225 km: Biała Podlaska, Lublin, Warsaw and
+    // Podlachia are blips, Łódź and beyond hidden.
     scouts.units = scouts.units.filter((u) => u.type !== 'cavalry');
-    expect(inSight()).toEqual(['pl-east-ne']);
-    expect(blips()).toEqual(['pl-east', 'pl-east-n', 'pl-warsaw', 'pl-warsaw-s'].sort());
+    expect(inSight()).toEqual([]);
+    expect(blips()).toEqual(['pl-warsaw-e', 'pl-warsaw-se', 'pl-warsaw', 'pl-warsaw-ne'].sort());
   });
 
   it('an army sees the province it stands in, and every province whose centre lies within its sight', () => {
     const state = quietGame();
     clearArmies(state);
     const before = visibleProvinces(state, world, 'fr');
-    place(state, 'fr', 'de-saxony', { infantry: 2 });
+    place(state, 'fr', 'de-berlin-ssw', { infantry: 2 });
     const seen = visibleProvinces(state, world, 'fr');
     const added = [...seen].filter((id) => !before.has(id)).sort();
-    const within = world.provinceIds.filter((id) => !before.has(id) && withinKm(world.spots['de-saxony'], world.spots[id], 100));
-    expect(within).toContain('de-saxony');
+    const within = world.provinceIds.filter((id) => !before.has(id) && withinKm(world.spots['de-berlin-ssw'], world.spots[id], 100));
+    expect(within).toContain('de-berlin-ssw');
     expect(added).toEqual(within.sort());
     expect(seen.has('de-berlin')).toBe(false); // about 150 km off
   });
@@ -124,7 +123,7 @@ describe('fog of war', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    place(state, 'fr', 'de-saxony', { infantry: 2 });
+    place(state, 'fr', 'de-berlin-ssw', { infantry: 2 });
     const seen = visibleProvinces(state, world, 'fr');
     const detected = detectedProvinces(state, world, 'fr');
     for (const id of seen) expect(detected.has(id)).toBe(true);
@@ -146,7 +145,7 @@ describe('fog of war', () => {
     const other = quietGame();
     clearArmies(other);
     setWar(other, 'fr', 'de');
-    place(other, 'fr', 'de-saxony', { infantry: 2 });
+    place(other, 'fr', 'de-berlin-ssw', { infantry: 2 });
     place(other, 'pl', 'de-berlin', { cavalry: 9 });
     expect(radarBlips(other, world, 'fr')).toEqual(radarBlips(state, world, 'fr'));
     expect([blipSize(1), blipSize(SIGHT.blipUnits.medium - 1), blipSize(SIGHT.blipUnits.medium), blipSize(SIGHT.blipUnits.large)]).toEqual([
@@ -156,7 +155,7 @@ describe('fog of war', () => {
       'large',
     ]);
     // Armies in sight are seen, not blips, and nobody picks up their own armies.
-    place(state, 'de', 'de-saxony', { infantry: 1 });
+    place(state, 'de', 'de-berlin', { infantry: 1 });
     expect(radarBlips(state, world, 'fr').map((b) => b.province)).toEqual(['de-berlin']);
     expect(radarBlips(state, world, 'de')).toEqual([]);
   });
@@ -166,12 +165,12 @@ describe('fog of war', () => {
     clearArmies(state);
     const seen = visibleProvinces(state, world, 'fr');
     const detected = detectedProvinces(state, world, 'fr');
-    // Baden (about 60 km from Alsace's centre) and Stuttgart (about 110) are on the radar, Frankfurt (about 185) not.
-    for (const id of ['de-baden-sw', 'de-baden']) expect([seen.has(id), detected.has(id)]).toEqual([false, true]);
+    // Belgium's west land and its city are on the radar of France's northern border lands, Hesse is not.
+    for (const id of ['be-brussels-w', 'be-brussels']) expect([seen.has(id), detected.has(id)]).toEqual([false, true]);
     expect(detected.has('de-hesse')).toBe(false);
-    place(state, 'de', 'de-baden-sw', { infantry: 5 });
+    place(state, 'de', 'be-brussels-w', { infantry: 5 });
     place(state, 'de', 'de-hesse', { infantry: 5 });
-    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-baden-sw', size: 'medium' }]);
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'be-brussels-w', size: 'medium' }]);
   });
 
   it('a marching army watches from where it is, never from the far end of its road', () => {
@@ -203,7 +202,7 @@ describe('fog of war', () => {
     setWar(state, 'fr', 'de');
     // One whose border lies near enough the French end that a German halted by it is within 100 km of them.
     const halt = (a: ProvinceId, b: ProvinceId) => Math.round(roadBorder(world, b, a) * 950) / 1000;
-    const road = longRoad((a, b) => km(a, b) * (1 - halt(a, b)) < 80);
+    const road = longRoad((a, b) => state.provinces[a].owner === 'fr' && state.provinces[b].owner === 'de' && km(a, b) * (1 - halt(a, b)) < 80);
     place(state, 'fr', road.a, { infantry: 1 });
     const german = place(state, 'de', road.b, { infantry: 1 });
     const seen = () => visibleProvinces(state, world, 'fr');

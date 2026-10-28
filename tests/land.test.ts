@@ -7,7 +7,7 @@ import { clearArmies, place, quietGame, richen, run, world } from './helpers';
 
 const E = BUILDING_EFFECTS;
 /** A core French land round a city without an oil field, and one round Bordeaux, which has one. */
-const LAND = 'fr-east-w';
+const LAND = 'fr-nord-se2';
 const OIL_LAND = world.provinces['fr-aquitaine'].lands![0];
 
 function build(state: ReturnType<typeof quietGame>, province: string, building: Parameters<typeof checkBuild>[4]) {
@@ -69,11 +69,11 @@ describe('land without a city', () => {
   it('loses its building when captured; a city keeps its buildings', () => {
     const state = quietGame();
     state.provinces[LAND].buildings = { fortifications: 3 };
-    state.provinces['fr-east'].buildings.industry = 1;
+    state.provinces['fr-nord'].buildings.industry = 1;
     transferProvince(state, world, LAND, 'de');
-    transferProvince(state, world, 'fr-east', 'de');
+    transferProvince(state, world, 'fr-nord', 'de');
     expect(state.provinces[LAND].buildings).toEqual({});
-    expect(state.provinces['fr-east'].buildings.industry).toBe(1);
+    expect(state.provinces['fr-nord'].buildings.industry).toBe(1);
   });
 
   it('economy buildings add to the land output', () => {

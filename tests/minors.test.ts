@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aiGame, place, quietGame, run, setWar, world } from './helpers';
 
-const minors = world.nationIds.filter((id) => world.nations[id].power === 'minor');
+const minors = world.nationIds.filter((id) => world.nations[id].power === 'state');
 
 /** France strikes Brussels with the given army; returns whether it fell within 15 minutes and the strength France lost. */
 function strike(units: { infantry: number; artillery?: number }) {

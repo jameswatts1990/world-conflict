@@ -43,7 +43,7 @@ npm run balance                                           # 100 campaigns of the
 npm run balance -- --quick                                # 25 campaigns (seeds 1-25): small changes
 npm run balance -- --games 400 --set AI.warStrengthRatio=1.3   # with an override
 npm run balance -- --vs main                              # against another commit, on the same seeds
-npm run balance -- --set AI.unitsFlat.minor=4 --vs defaults   # the same code with and without the override
+npm run balance -- --set AI.unitsFlat.state=4 --vs defaults   # the same code with and without the override
 npm run balance -- report balance-runs/<run>              # re-read a saved run (with today's goals)
 npm run balance -- compare balance-runs/<a> balance-runs/<b>
 ```

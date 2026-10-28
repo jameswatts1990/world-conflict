@@ -33,7 +33,7 @@ const SAVE_FUSION = 40;
 
 /** Upgrades a save's state one schema version at a time: entry n turns version n into n + 1. */
 const MIGRATIONS: Record<number, (state: GameState) => void> = {
-  // 8: Fusion, the research resource. Every nation gets a starting stock (a major power's) to research with.
+  // 8: Fusion, the research resource. Every nation gets a starting stock (a playable nation's) to research with.
   7: (state) => {
     for (const n of Object.values(state.nations)) n.resources.fusion ??= SAVE_FUSION;
   },

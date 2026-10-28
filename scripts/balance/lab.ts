@@ -1,5 +1,5 @@
 // The unit lab: staged battles between armies of equal cost, to see what each unit type is
-// worth for its price, by technology level, ground and role. Both sides are two great powers
+// worth for its price, by technology level, ground and role. Both sides are two playable nations
 // with their national specialities removed, the same technologies and Regular troops, in a
 // province held by the defender: one per terrain without forts, plus open ground behind forts.
 //
@@ -7,7 +7,7 @@
 // infantry, the way armies are actually raised (support units need a screen). Its value index
 // is how much line infantry it can face evenly, per unit of its own cost, relative to an army of
 // line infantry alone: 1.0 is priced like line infantry, 1.3 gives 30% more for the money.
-// Costs are priced in minutes of an average great power's base output (scenario data, which
+// Costs are priced in minutes of an average playable nation's base output (scenario data, which
 // `--output` can replace), with upkeep counted for a number of minutes, so fuel is dear.
 import type { GameState, NationId, ResourceKey, UnitType } from '../../src/sim/types';
 import type { World } from '../../src/sim/world';
@@ -26,7 +26,7 @@ export interface LabSettings {
   seeds: number;
   /** Minutes of upkeep counted in a unit's price. */
   upkeepMinutes: number;
-  /** A great power's output per minute to price resources by, replacing the scenario's base output. */
+  /** A playable nation's per minute to price resources by, replacing the scenario's base output. */
   output?: Partial<Record<ResourceKey, number>>;
 }
 
@@ -102,7 +102,7 @@ function setUp(sim: Sim, level: TechLevel, settings: LabSettings): Lab {
   const scenario = { ...base, id: `${base.id}-unit-lab`, nations: base.nations.map((n) => ({ ...n, speciality: undefined })) };
   const world = api.buildWorld(scenario);
   const state = api.createInitialState(world, { seed: 1, humanNation: null });
-  const great = world.nationIds.filter((id) => world.nations[id].power === 'great');
+  const great = world.nationIds.filter((id) => world.nations[id].power === 'playable');
   const [attacker, defender] = great;
   const techs = config.TECHS.filter((t) => t.col <= level.maxCol).map((t) => t.id);
   for (const id of world.nationIds) {
@@ -122,7 +122,7 @@ function setUp(sim: Sim, level: TechLevel, settings: LabSettings): Lab {
     const buildings = ground === FORTIFIED ? { fortifications: FORT_LEVEL } : {};
     Object.assign(state.provinces[pid], { owner: defender, buildings, construction: null, recruitQueue: [], capture: null });
   }
-  // Prices in minutes of an average great power's base output.
+  // Prices in minutes of an average playable nation's base output.
   const output = { money: 0, materials: 0, fuel: 0, manpower: 0, fusion: 0 };
   for (const pid of world.provinceIds) {
     const core = world.provinces[pid].core;

@@ -195,7 +195,7 @@ describe('combat resolution', () => {
     setWar(state, 'fr', 'de');
     // A French army deep in German land with no French territory nearby.
     for (const id of world.provinceIds) if (state.provinces[id].owner === 'fr') state.provinces[id].owner = 'de';
-    state.provinces['fr-west'].owner = 'fr';
+    state.provinces['fr-aquitaine'].owner = 'fr';
     const cut = place(state, 'fr', 'de-bavaria', { infantry: 2 });
     state.provinces['de-bavaria'].owner = 'fr'; // captured, but isolated from French hubs (no depot)
     run(state, 400);
@@ -207,13 +207,13 @@ describe('combat resolution', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const att = place(state, 'fr', 'fr-east', { infantry: 6, artillery: 2 });
-    place(state, 'de', 'de-baden', { infantry: 1 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: att.id, to: 'de-baden' });
+    const att = place(state, 'fr', 'fr-nord', { infantry: 6, artillery: 2 });
+    place(state, 'de', 'de-hesse', { infantry: 1 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: att.id, to: 'de-hesse' });
     run(state, 600);
-    expect(state.provinces['de-baden'].owner).toBe('fr');
-    expect(Object.values(state.armies).some((a) => a.owner === 'de' && a.province === 'de-baden')).toBe(false);
-    expect(state.events.some((e) => e.kind === 'capture' && e.province === 'de-baden')).toBe(true);
+    expect(state.provinces['de-hesse'].owner).toBe('fr');
+    expect(Object.values(state.armies).some((a) => a.owner === 'de' && a.province === 'de-hesse')).toBe(false);
+    expect(state.events.some((e) => e.kind === 'capture' && e.province === 'de-hesse')).toBe(true);
     expect(INTERVALS.combatRound).toBeGreaterThan(0);
   });
 });
@@ -231,12 +231,12 @@ describe('morale in battle', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const army = place(state, 'fr', 'de-baden', { infantry: 3 });
-    place(state, 'de', 'de-baden', { infantry: 3 });
+    const army = place(state, 'fr', 'de-hesse', { infantry: 3 });
+    place(state, 'de', 'de-hesse', { infantry: 3 });
     army.units[0].strength = 0.1;
     combatSystem(state, world);
     const before = army.units.map((u) => [u.id, u.strength] as const);
-    const order = applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east' });
+    const order = applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-nord' });
     expect(order.ok).toBe(true);
     expect(isArmyInTransit(army)).toBe(true);
     expect(army.units.length).toBe(before.length - 1);
@@ -280,7 +280,7 @@ describe('morale in battle', () => {
   it('marching on outside a battle costs nothing', () => {
     const state = quietGame();
     clearArmies(state);
-    const army = place(state, 'fr', 'fr-east', { infantry: 2 });
+    const army = place(state, 'fr', 'fr-nord', { infantry: 2 });
     applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-paris' });
     for (const u of army.units) expect(u.strength).toBe(1);
     expect(state.nations.fr.stats.retreats).toBe(0);
@@ -290,10 +290,10 @@ describe('morale in battle', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const army = place(state, 'fr', 'de-baden', { infantry: 3 });
-    place(state, 'de', 'de-baden', { infantry: 3, artillery: 2 });
+    const army = place(state, 'fr', 'de-hesse', { infantry: 3 });
+    place(state, 'de', 'de-hesse', { infantry: 3, artillery: 2 });
     for (let i = 0; i < 6; i++) combatSystem(state, world);
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east' });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-nord' });
     const before = armyMorale(army);
     run(state, 200);
     expect(armyMorale(state.armies[army.id])).toBeGreaterThan(before + 0.2);
@@ -304,9 +304,9 @@ describe('morale in battle', () => {
       const state = quietGame();
       clearArmies(state);
       setWar(state, 'fr', 'de');
-      place(state, 'fr', 'de-baden', units);
+      place(state, 'fr', 'de-hesse', units);
       let t = 0;
-      while (state.provinces['de-baden'].owner !== 'fr' && t < 500) {
+      while (state.provinces['de-hesse'].owner !== 'fr' && t < 500) {
         run(state, 1);
         t++;
       }

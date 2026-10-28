@@ -70,7 +70,7 @@ export interface Summary {
   /** Minor powers still standing at each minute (absent when the scenario has none). */
   minors: { aliveAt: { minute: number; rate: Rate }[]; outAt: number | null } | null;
   personality: { doctrine: (Band & { adjusted: number })[]; aggression: Band[]; economyBias: Band[] };
-  /** Playable great powers by provinces gained in the first 20 minutes, against how they did. */
+  /** Playable nations by provinces gained in the first 20 minutes, against how they did. */
   earlyGrab: { label: string; seats: number; wins: Rate; survived: Rate }[];
   /** unlockedIn: some nation had the research; raisableIn: some nation also held every building it needs. */
   units: { id: string; name: string; unlockedIn: Rate; raisableIn: Rate; raisedIn: Rate; raised: Mean; lost: Mean }[];
@@ -249,7 +249,7 @@ export function summarise(games: readonly GameRecord[], meta: RunMeta): Summary 
     ),
   };
 
-  const greatSeats = playableSeats.filter((s) => s.r.tier === 'great');
+  const greatSeats = playableSeats.filter((s) => s.r.tier === 'playable');
   const gained = (s: (typeof greatSeats)[number]) => (s.g.series.provinces[s.id][19] ?? 0) - (s.g.series.provinces[s.id][0] ?? 0);
   const earlyGrab = (
     [

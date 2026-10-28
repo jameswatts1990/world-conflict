@@ -1,6 +1,6 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Seven great powers, ten major powers and nineteen minor powers on
+A browser-based, real-time global strategy game. Fifteen playable five-city nations and twenty-one one-city states on
 recognisable Earth geography start with Great War technology and research their way towards the Second World War.
 The current build is a local single-player campaign on the **European theatre** at **Standard** speed (target ~2–3
 hours).
@@ -14,26 +14,26 @@ What is in it (Milestone 2, Depth):
   few signature designs.
 - **Hungary**, the first nation added through the bloc system: six provinces in the Danube basin, Central-pattern
   equipment, its own hussars and Toldi, Turán and Zrínyi armour.
-- **Romania and Serbia**, the first major powers (playable, five and three provinces, Western-pattern equipment),
+- **Romania and Serbia**, the first Balkan additions (Serbia is now a one-city state; Western-pattern equipment),
   with Slovakia, Slovenia and Croatia as minor powers: Hungary now has a neighbour on every side.
-- **Bulgaria and Greece**, playable major powers with five regions each and the Na nozh! and Evzone specialities,
+- **Bulgaria and Greece**, playable with five cities each and the Na nozh! and Evzone specialities,
   plus Bosnia & Herzegovina, Montenegro, Albania and North Macedonia as minor powers. Kosovo belongs to southern Serbia.
-- **Sweden, Norway, Finland and Iceland**, playable major powers (five, four, four and three regions) with the
-  Bofors, Fjell og fjord, Motti and Fishing grounds specialities. The Scandinavian mountains run along the
+- **Sweden, Norway and Finland**, playable with five cities each (Norway and Finland gained one), and **Iceland**, a one-city
+  state, with the Bofors, Fjell og fjord, Motti and Fishing grounds specialities. The Scandinavian mountains run along the
   Swedish–Norwegian border; Sweden meets Finland at Tornio and Norway meets Finland in Lapland. Sea crossings: the
   Øresund (Denmark–Sweden), the Skagerrak (Denmark–Norway), the Åland Sea (Stockholm–Turku), the Gulf of Finland
   (Helsinki–Tallinn), and Iceland's two long crossings from Seyðisfjörður, to Scotland past the Faroes and to Bergen.
-- **Ireland**, a two-province minor power (Dublin and Cork): Britain's one land border, in Ulster, with the Irish
+- **Ireland**, a one-city state (Dublin): Britain's one land border, in Ulster, with the Irish
   Sea crossing from Dublin to Wales.
-- **Ukraine and Belarus**, playable major powers with five and four regions, Eastern-pattern equipment,
+- **Ukraine and Belarus**, playable with five cities each (Belarus gained Mogilev), Eastern-pattern equipment,
   Cossack cavalry and the Brest Fortress speciality. Crimea and Sevastopol belong to Ukraine; Moldova and the three
   Baltic states are minor powers. Russia, including Kaliningrad, remains outside the theatre.
-- **Power tiers** for adding countries: great, major and minor powers (minor ones always computer-controlled)
-  get output, starting armies, objectives and size from their tier, so a new country is province rows,
+- **Two kinds of nation** for adding countries: playable (five cities) and state (one city, always computer-controlled)
+  get output, starting armies, objectives and size from their kind, so a new country is province rows,
   connections and one line.
-- **Nineteen minor powers** (Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
+- **Twenty one-city states** (Serbia, Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
   Slovakia, Slovenia, Croatia, Bosnia & Herzegovina, Montenegro, Albania, North Macedonia, Ireland, Moldova,
-  Lithuania, Latvia and Estonia): one- or two-region nations run by the computer. They recruit, research, defend
+  Lithuania, Latvia and Estonia): nations of one city each, run by the computer. They recruit, research, defend
   themselves and make peace, but never start a war and never win. Each holds a fortified capital with a garrison of
   six to eight divisions: an eight-unit probe fails, and taking one takes twelve to fourteen units with artillery
   and costs them 40–60% of their strength.
@@ -184,9 +184,9 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **29 of the 72 objective victory points** (★ great-power capitals 3 VP and industrial heartlands 2 VP,
-major-power capitals 2 VP and heartlands 1 VP, minor-power capitals 1 VP) continuously for **90 seconds**, or have
-the **highest score** when the **2 h 30 min** time limit ends. Only great and major powers can win: minor powers
+Hold **39 of the 96 objective victory points** (★ playable capitals 3 VP and industrial heartlands 2 VP,
+state capitals 1 VP) continuously for **90 seconds**, or have
+the **highest score** when the **2 h 30 min** time limit ends. Only playable nations can win: states
 are there to be conquered. You lose if your nation is eliminated or another power wins.
 
 ## Saving
@@ -197,7 +197,9 @@ Saves live in the browser's `localStorage` and can be exported or imported as JS
 **The campaign is paused while closed**: hiding the tab pauses the game and loading resumes exactly where the save
 was made. Offline progression belongs to the later server-backed version. A save made before a country was added
 still loads: the newcomer joins at its starting position, under computer control and at peace. Saves made before
-the neutral states became minor powers cannot be loaded.
+the neutral states became minor powers cannot be loaded, and neither can saves made before every playable nation
+was set to five cities and every other nation to one (many city and land ids were merged or renamed; there is no
+migration, so start a new campaign).
 
 ## Project layout
 

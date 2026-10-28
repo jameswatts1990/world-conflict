@@ -65,7 +65,7 @@ export interface Ctx {
   frontier: Set<ProvinceId>;
   /**
    * Danger to my capital, as far as I can see or estimate: hostile power in it, in its region or the regions next
-   * door, half of what stands in the regions beyond, and a share of the armies of great and major powers at peace,
+   * door, half of what stands in the regions beyond, and a share of the armies of playable nations at peace,
    * who could declare war. A capital in the interior is still in danger once an enemy is one region away.
    */
   capitalDanger: number;

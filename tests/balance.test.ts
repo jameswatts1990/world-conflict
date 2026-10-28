@@ -43,7 +43,7 @@ describe('balance statistics', () => {
 });
 
 describe('balance config overrides', () => {
-  const config = () => ({ AI: { attackRatio: 1.15, unitsFlat: { great: 8, minor: 0 }, doctrines: ['armour'] }, UNITS: { tank: { cost: { money: 320 } } } });
+  const config = () => ({ AI: { attackRatio: 1.15, unitsFlat: { playable: 8, state: 0 }, doctrines: ['armour'] }, UNITS: { tank: { cost: { money: 320 } } } });
 
   it('reads PATH=VALUE as JSON, or a bare word as a string', () => {
     expect(parseOverride('AI.attackRatio=1.3')).toEqual({ path: 'AI.attackRatio', value: 1.3 });
@@ -54,8 +54,8 @@ describe('balance config overrides', () => {
 
   it('sets nested values in place', () => {
     const c = config();
-    applyOverrides(c, [parseOverride('AI.unitsFlat.minor=3'), parseOverride('UNITS.tank.cost.money=280')]);
-    expect(c.AI.unitsFlat.minor).toBe(3);
+    applyOverrides(c, [parseOverride('AI.unitsFlat.state=3'), parseOverride('UNITS.tank.cost.money=280')]);
+    expect(c.AI.unitsFlat.state).toBe(3);
     expect(c.UNITS.tank.cost.money).toBe(280);
   });
 
