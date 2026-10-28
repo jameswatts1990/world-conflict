@@ -78,6 +78,9 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   would otherwise hit-test the whole drawing: about a second of main-thread time per 6 drags at a quarter CPU).
   A close-up terrain tile blocks the main thread for several frames while it bakes (the browser draws the SVG
   inside `toBlob`), so tiles wait for a gesture to end (`TerrainDetail` takes `panning`).
+  They are 512 px (`TILE_PX`), use 6 and 4 octaves of noise (it was 8 and 5), and
+  bake one per idle moment (`idleSlot` in `terrain.ts`), so no run of bakes takes consecutive frames; none starts
+  while a gesture is under way, even from tiles queued earlier (`holdBaking`, set by `MapView`).
 - City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
   raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
   `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.
@@ -93,7 +96,8 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   Layers move between the drawing and a fade, so keep slow work out of their own state (`nationLabels` is kept by
   `MapView`). After a gesture, marks drawn at a size on screen ease back from the size the gesture showed them at
   (`keepSize` on a wrapper `<g>` without a `transform` attribute, which the CSS animation would replace;
-  `.keep-size`, on screen only); never during a gesture (`stopSettling` at its start).
+  `.keep-size`, on screen only: decided from the marks' map positions, `markNearScreen`, not by measuring each one's
+  box); never during a gesture (`stopSettling` at its start).
 - Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
   (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 

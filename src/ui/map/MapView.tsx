@@ -69,6 +69,7 @@ import {
   detailLevel,
   fogTexture,
   requestTiles,
+  holdBaking,
   seaGlowTexture,
   terrainTexture,
   tilesFor,
@@ -180,6 +181,26 @@ const SETTLE_SCOPES = '.city-ground, .city-layer, .army-layer';
 /** Marks easing back to their size after a zoom (`keepSize`) stop doing so. */
 function stopSettling(layer: HTMLElement): void {
   for (const g of layer.querySelectorAll('.settling-0, .settling-1')) g.classList.remove('settling-0', 'settling-1');
+}
+/**
+ * How far (CSS pixels) a mark may reach past the point it is drawn at: marks within this of the screen settle.
+ * A close-up city's streets reach much further than its name, so the reach grows with the model's scale.
+ */
+const markReach = (ratio: number) => Math.max(180, cityModelScale(ratio) * 30);
+const TRANSLATE = /^translate\(\s*(-?[\d.e+-]+)[ ,]+(-?[\d.e+-]+)\s*\)/;
+/**
+ * Whether a `.keep-size` mark is on screen or near it, from the map spot of the `translate(x,y)` it sits under,
+ * for the drawing placed at `view` (x, y, k) on a screen of `w` by `h`: no layout is read. A mark with no such
+ * ancestor inside the drawing counts as on screen.
+ */
+function markNearScreen(el: Element, view: { x: number; y: number; k: number }, w: number, h: number, reach: number): boolean {
+  for (let up = el.parentElement; up && up.parentElement && up.parentElement.tagName.toLowerCase() !== 'svg'; up = up.parentElement) {
+    const m = TRANSLATE.exec(up.getAttribute('transform') ?? '');
+    if (!m) continue;
+    const [sx, sy] = [view.x + Number(m[1]) * view.k, view.y + Number(m[2]) * view.k];
+    return sx > -reach && sx < w + reach && sy > -reach && sy < h + reach;
+  }
+  return true;
 }
 /**
  * The style of a mark's content that eases back to its size after a zoom (`.keep-size`): `ax`, `ay` how far the
@@ -2406,11 +2427,13 @@ export function MapView(props: MapViewProps) {
       })
       .on('start', () => {
         panning.current = true;
+        holdBaking(true);
         // Marks still easing back after the last zoom stop where they are: nothing changes on the drawing during a gesture.
         if (layerRef.current) stopSettling(layerRef.current);
       })
       .on('end', () => {
         panning.current = false;
+        holdBaking(false);
         moving.current = false;
         settle();
         if (fadeOver.current) setFade(null);
@@ -2431,6 +2454,7 @@ export function MapView(props: MapViewProps) {
     return () => {
       ro.disconnect();
       window.clearTimeout(rescale);
+      holdBaking(false);
       sel.on('.zoom', null);
     };
   }, [geo, world, ctrl, place, drawingFits]);
@@ -2631,11 +2655,10 @@ export function MapView(props: MapViewProps) {
     // On the layers of marks alone: set on the whole map, the factors would have every shape in it styled again.
     for (const g of layer.querySelectorAll<SVGGElement>(SETTLE_SCOPES)) for (const [name, f] of Object.entries(factors)) g.style.setProperty(name, String(f));
     // Only the marks on screen ease back (each costs a little every frame): the cities' are drawn for the whole map.
-    const screen = stageRef.current!.getBoundingClientRect();
-    const onScreen = [...layer.querySelectorAll<SVGGraphicsElement>('.keep-size')].filter((el) => {
-      const r = el.getBoundingClientRect();
-      return r.right > screen.left && r.left < screen.right && r.bottom > screen.top && r.top < screen.bottom;
-    });
+    const view = drawn.current;
+    const [w, h] = frame.current.size;
+    const reach = markReach(ratio);
+    const onScreen = [...layer.querySelectorAll<SVGGraphicsElement>('.keep-size')].filter((el) => markNearScreen(el, view, w, h, reach));
     // The two names take turns, so a zoom straight after another eases from the start again.
     const name = `settling-${++settles.current % 2}`;
     stopSettling(layer);
