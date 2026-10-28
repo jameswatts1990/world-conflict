@@ -79,7 +79,8 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   A close-up terrain tile blocks the main thread for several frames while it bakes (the browser draws the SVG
   inside `toBlob`), so tiles wait for a gesture to end (`TerrainDetail` takes `panning`).
   They are 512 px (`TILE_PX`), use 6 and 4 octaves of noise (it was 8 and 5), and
-  bake one per idle moment (`idleSlot` in `terrain.ts`), so no run of bakes takes consecutive frames.
+  bake one per idle moment (`idleSlot` in `terrain.ts`), so no run of bakes takes consecutive frames; none starts
+  while a gesture is under way, even from tiles queued earlier (`holdBaking`, set by `MapView`).
 - City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
   raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
   `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.

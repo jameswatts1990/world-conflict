@@ -185,7 +185,7 @@ async function rasterise(svg: string, width: number, height: number, crop?: { x:
 
 /**
  * The relief as an SVG document for the map rectangle (x, y, w, h), at `px` pixels per map
- * unit. Close-up tiles (`fine`) add the finest octaves of noise, and steepen the lighting to
+ * unit. Close-up tiles (`fine`) add a finer octave of detail noise, and steepen the lighting to
  * match their resolution so the hills keep their shape; only the provinces they touch go in.
  */
 function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: number, h: number, px = PX_PER_UNIT, fine = false): string {
@@ -287,12 +287,20 @@ let wanted = new Set<string>();
 // a run of them never takes consecutive frames.
 let bakeQueue: Promise<unknown> = Promise.resolve();
 
-/** Resolves when the browser is idle (or after a short wait where it has no idle callbacks). */
-function idleSlot(): Promise<void> {
-  return new Promise((resolve) => {
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 400 });
-    else setTimeout(resolve, 50);
-  });
+/** Whether a gesture is under way: no tile starts baking until it ends (the map view sets it). */
+let held = false;
+export function holdBaking(on: boolean): void {
+  held = on;
+}
+
+/** Resolves when the browser is idle (or after a short wait where it has no idle callbacks), and no gesture is under way. */
+async function idleSlot(): Promise<void> {
+  do {
+    await new Promise<void>((resolve) => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 400 });
+      else setTimeout(resolve, 50);
+    });
+  } while (held);
 }
 
 /** A tile that has been baked, if it has. */
