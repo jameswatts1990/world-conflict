@@ -40,7 +40,7 @@ export function victorySystem(state: GameState, world: World): void {
     pushEvent(state, 'eliminated', `${sentence(nationName(world, id))} has been eliminated.`, { severity: 'bad' });
   }
 
-  // Only great and major powers can win: minor powers are there to be conquered.
+  // Only playable nations can win: minor powers are there to be conquered.
   const contenders = world.nationIds.filter((id) => !state.nations[id].eliminated && isContender(world, id));
   const topScorer = () => computeScores(state, world).find((s) => contenders.includes(s.nation))?.nation ?? null;
   const human = state.settings.humanNation;

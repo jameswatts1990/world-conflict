@@ -69,6 +69,7 @@ import {
   detailLevel,
   fogTexture,
   requestTiles,
+  holdBaking,
   seaGlowTexture,
   terrainTexture,
   tilesFor,
@@ -180,6 +181,26 @@ const SETTLE_SCOPES = '.city-ground, .city-layer, .army-layer';
 /** Marks easing back to their size after a zoom (`keepSize`) stop doing so. */
 function stopSettling(layer: HTMLElement): void {
   for (const g of layer.querySelectorAll('.settling-0, .settling-1')) g.classList.remove('settling-0', 'settling-1');
+}
+/**
+ * How far (CSS pixels) a mark may reach past the point it is drawn at: marks within this of the screen settle.
+ * A close-up city's streets reach much further than its name, so the reach grows with the model's scale.
+ */
+const markReach = (ratio: number) => Math.max(180, cityModelScale(ratio) * 30);
+const TRANSLATE = /^translate\(\s*(-?[\d.e+-]+)[ ,]+(-?[\d.e+-]+)\s*\)/;
+/**
+ * Whether a `.keep-size` mark is on screen or near it, from the map spot of the `translate(x,y)` it sits under,
+ * for the drawing placed at `view` (x, y, k) on a screen of `w` by `h`: no layout is read. A mark with no such
+ * ancestor inside the drawing counts as on screen.
+ */
+function markNearScreen(el: Element, view: { x: number; y: number; k: number }, w: number, h: number, reach: number): boolean {
+  for (let up = el.parentElement; up && up.parentElement && up.parentElement.tagName.toLowerCase() !== 'svg'; up = up.parentElement) {
+    const m = TRANSLATE.exec(up.getAttribute('transform') ?? '');
+    if (!m) continue;
+    const [sx, sy] = [view.x + Number(m[1]) * view.k, view.y + Number(m[2]) * view.k];
+    return sx > -reach && sx < w + reach && sy > -reach && sy < h + reach;
+  }
+  return true;
 }
 /**
  * The style of a mark's content that eases back to its size after a zoom (`.keep-size`): `ax`, `ay` how far the
@@ -466,7 +487,7 @@ function fadeRing(geo: MapGeometry): string {
  * the same relief are baked for the view once it settles and laid over it. Tiles already
  * baked at a coarser level stay underneath until the sharper ones arrive.
  */
-function TerrainDetail({ geo, world, view, k }: { geo: MapGeometry; world: World; view: [number, number, number, number]; k: number }) {
+function TerrainDetail({ geo, world, view, k, panning }: { geo: MapGeometry; world: World; view: [number, number, number, number]; k: number; panning: RefObject<boolean> }) {
   const [, bump] = useState(0);
   // Past 2 device pixels per screen pixel the extra sharpness is not worth the baking.
   const level = detailLevel(k * Math.min(2, window.devicePixelRatio || 1));
@@ -474,9 +495,16 @@ function TerrainDetail({ geo, world, view, k }: { geo: MapGeometry; world: World
   const key = need.map((t) => t.key).join(' ');
   useEffect(() => {
     let live = true;
-    const timer = window.setTimeout(() => {
+    let timer = 0;
+    // A tile takes the main thread for a few frames to bake, so it waits for a gesture to end.
+    const request = () => {
+      if (panning.current) {
+        timer = window.setTimeout(request, 180);
+        return;
+      }
       for (const job of requestTiles(geo, world, need)) job.then((t) => live && t && bump((n) => n + 1));
-    }, 180);
+    };
+    timer = window.setTimeout(request, 180);
     return () => {
       live = false;
       window.clearTimeout(timer);
@@ -891,7 +919,7 @@ const NAME_PX = { min: 9, max: 44 };
  * The nation names to show at zoom `k`, each at a size that can be read: the size that fits its territory
  * where that is big enough, else the smallest readable one. Zoomed out, a name grown to be readable may
  * run over its neighbours': the bigger territories' names go first and any name that would overlap one
- * already placed is left out, so the overview names the great powers rather than smudging them all.
+ * already placed is left out, so the overview names the playable nations rather than smudging them all.
  */
 function shownLabels(labels: NationLabel[], k: number): (NationLabel & { scale: number })[] {
   const placed: [number, number, number, number][] = [];
@@ -2245,6 +2273,8 @@ export function MapView(props: MapViewProps) {
   const [rest, setRest] = useState<ZoomTransform>(zoomIdentity);
   // Whether a drag, pinch, wheel or animated move of the map is under way.
   const panning = useRef(false);
+  // Whether the view has actually moved in the gesture under way (a press that has not yet is still a click).
+  const moving = useRef(false);
   // The zoom that fits the reference view to the screen (see baseFor).
   const [viewK, setViewK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
@@ -2317,7 +2347,8 @@ export function MapView(props: MapViewProps) {
     layer.style.transform = `translate(${x}px,${y}px) scale(${s})`;
     // So does finding what the pointer is over while the drawing is scaled (every wheel event does), so
     // until it is drawn for its new zoom a bare shield over it takes the pointer.
-    if (shieldRef.current) shieldRef.current.style.display = s === 1 ? '' : 'block';
+    // The same while the map is being dragged: every mouse move would otherwise hit-test the whole drawing.
+    if (shieldRef.current) shieldRef.current.style.display = s === 1 && !moving.current ? '' : 'block';
   }, []);
 
   /**
@@ -2385,6 +2416,7 @@ export function MapView(props: MapViewProps) {
       .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
       .on('zoom', (e: D3ZoomEvent<HTMLDivElement, unknown>) => {
         live.current = e.transform;
+        if (panning.current) moving.current = true;
         // A jump (the opening view, an arrow key) comes to rest at once.
         if (!panning.current) return settle();
         place();
@@ -2395,11 +2427,14 @@ export function MapView(props: MapViewProps) {
       })
       .on('start', () => {
         panning.current = true;
+        holdBaking(true);
         // Marks still easing back after the last zoom stop where they are: nothing changes on the drawing during a gesture.
         if (layerRef.current) stopSettling(layerRef.current);
       })
       .on('end', () => {
         panning.current = false;
+        holdBaking(false);
+        moving.current = false;
         settle();
         if (fadeOver.current) setFade(null);
       });
@@ -2419,6 +2454,7 @@ export function MapView(props: MapViewProps) {
     return () => {
       ro.disconnect();
       window.clearTimeout(rescale);
+      holdBaking(false);
       sel.on('.zoom', null);
     };
   }, [geo, world, ctrl, place, drawingFits]);
@@ -2619,11 +2655,10 @@ export function MapView(props: MapViewProps) {
     // On the layers of marks alone: set on the whole map, the factors would have every shape in it styled again.
     for (const g of layer.querySelectorAll<SVGGElement>(SETTLE_SCOPES)) for (const [name, f] of Object.entries(factors)) g.style.setProperty(name, String(f));
     // Only the marks on screen ease back (each costs a little every frame): the cities' are drawn for the whole map.
-    const screen = stageRef.current!.getBoundingClientRect();
-    const onScreen = [...layer.querySelectorAll<SVGGraphicsElement>('.keep-size')].filter((el) => {
-      const r = el.getBoundingClientRect();
-      return r.right > screen.left && r.left < screen.right && r.bottom > screen.top && r.top < screen.bottom;
-    });
+    const view = drawn.current;
+    const [w, h] = frame.current.size;
+    const reach = markReach(ratio);
+    const onScreen = [...layer.querySelectorAll<SVGGraphicsElement>('.keep-size')].filter((el) => markNearScreen(el, view, w, h, reach));
     // The two names take turns, so a zoom straight after another eases from the start again.
     const name = `settling-${++settles.current % 2}`;
     stopSettling(layer);
@@ -2904,7 +2939,7 @@ export function MapView(props: MapViewProps) {
             <SeaLayer geo={geo} glow={glow} />
             <WorldLayer geo={geo} />
             <TerrainLayer geo={geo} world={world} texture={texture} />
-            {texture && <TerrainDetail geo={geo} world={world} view={drawnView} k={k} />}
+            {texture && <TerrainDetail geo={geo} world={world} view={drawnView} k={k} panning={panning} />}
             <ProvinceLayer
               geo={geo}
               world={world}

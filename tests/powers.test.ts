@@ -16,7 +16,7 @@ import {
   type ScenarioDef,
 } from '../src/sim';
 
-// A small theatre: a great power, a major power, a one-province minor power and a neutral state in a row.
+// A small theatre: two playable nations, a one-province state and a neutral state in a row.
 const nation = (id: string, power: PowerTier, bloc: BlocId): NationDef => ({
   id,
   name: id.toUpperCase(),
@@ -27,7 +27,7 @@ const nation = (id: string, power: PowerTier, bloc: BlocId): NationDef => ({
   bloc,
   identity: nationIdentity(bloc),
 });
-const NATIONS = [nation('aa', 'great', 'western'), nation('bb', 'major', 'central'), nation('mm', 'minor', 'eastern')];
+const NATIONS = [nation('aa', 'playable', 'western'), nation('bb', 'playable', 'central'), nation('mm', 'state', 'eastern')];
 
 let lon = 0;
 const row = (id: string, core: string | null, tier: ProvinceRow['tier'], extra: Partial<ProvinceRow> = {}): ProvinceRow => ({
@@ -95,7 +95,7 @@ function scenario(r = rows()): ScenarioDef {
   };
 }
 
-describe('power tiers', () => {
+describe('nation kinds', () => {
   it('scale each nation to its tier: output, objectives and the capital', () => {
     const s = scenario();
     for (const n of NATIONS) {
@@ -113,14 +113,14 @@ describe('power tiers', () => {
   it('deal field units over border provinces first, and to the capital when there is nothing else', () => {
     const units = (province: string) => scenario().startingArmies.find((a) => a.province === province)?.units;
     // Everything starts inside the cities; nothing starts out on the land round them.
-    expect(units('aa-cap')).toEqual(POWERS.great.armies.capital);
-    expect(units('aa-b')).toEqual({ infantry: 3 }); // borders the major power
+    expect(units('aa-cap')).toEqual(POWERS.playable.armies.capital);
+    expect(units('aa-b')).toEqual({ infantry: 3 }); // borders the other playable nation
     expect(units('aa-a')).toEqual({ infantry: 2, cavalry: 1 });
     expect(units('aa-a-land')).toBeUndefined();
-    expect(units('bb-a')).toEqual(POWERS.major.armies.field);
-    const minor = POWERS.minor.armies;
-    const sum: Record<string, number> = { ...minor.capital };
-    for (const [t, k] of Object.entries(minor.field)) sum[t] = (sum[t] ?? 0) + (k ?? 0);
+    expect(units('bb-a')).toEqual(POWERS.playable.armies.field);
+    const state = POWERS.state.armies;
+    const sum: Record<string, number> = { ...state.capital };
+    for (const [t, k] of Object.entries(state.field)) sum[t] = (sum[t] ?? 0) + (k ?? 0);
     expect(units('mm-cap')).toEqual(sum); // no other province to deal field units to, so they join the capital
     expect(units('mm-cap-land')).toBeUndefined();
     const onLand = scenario().startingArmies.filter((a) => a.owner !== 'neutral' && a.province.endsWith('-land'));
@@ -139,7 +139,7 @@ describe('power tiers', () => {
     const s = scenario(rows({ 'aa-a': { recruiting: true, garrison: { infantry: 5, cavalry: 1 } } }));
     expect(s.startingArmies.find((a) => a.province === 'aa-a')!.units).toEqual({ infantry: 5, cavalry: 1 });
     expect(s.startingArmies.some((a) => a.province === 'aa-b')).toBe(false);
-    expect(s.startingBuildings.find((b) => b.province === 'aa-a')!.buildings).toEqual(POWERS.great.buildings.recruiting);
+    expect(s.startingBuildings.find((b) => b.province === 'aa-a')!.buildings).toEqual(POWERS.playable.buildings.recruiting);
     expect(s.startingBuildings.find((b) => b.province === 'nt-x')!.buildings).toEqual({ fortifications: 1 });
   });
 
@@ -164,7 +164,7 @@ describe('power tiers', () => {
     const state = createInitialState(world, { seed: 1, humanNation: 'bb' });
     expect(state.nations.bb.controller).toBe('human');
     expect(state.nations.mm.controller).toBe('ai');
-    expect(state.nations.mm.resources).toEqual(POWERS.minor.startingResources);
+    expect(state.nations.mm.resources).toEqual(POWERS.state.startingResources);
     for (let i = 0; i < 1800; i++) stepState(state, world);
     const mm = state.nations.mm;
     for (const v of Object.values(mm.resources)) expect(Number.isFinite(v) && v >= 0).toBe(true);

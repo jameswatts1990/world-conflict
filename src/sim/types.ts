@@ -256,11 +256,11 @@ export interface BlocDef {
 
 /**
  * How much of a power a nation is (see config/powers.ts): it sets the nation's output, starting
- * army and buildings, objective values and size. Great and major powers are playable and contend
- * for victory; minor powers are always computer-controlled, never start a war and never win.
+ * army and buildings, objective values and size. Playable nations (five cities each) contend
+ * for victory; states (one city each) are always computer-controlled, never start a war and never win.
  */
-export type PowerTier = 'great' | 'major' | 'minor';
-export const POWER_TIERS: readonly PowerTier[] = ['great', 'major', 'minor'];
+export type PowerTier = 'playable' | 'state';
+export const POWER_TIERS: readonly PowerTier[] = ['playable', 'state'];
 
 /** A nation's departures from its bloc's identity; anything left out comes from the bloc. */
 export interface NationIdentityOverrides {

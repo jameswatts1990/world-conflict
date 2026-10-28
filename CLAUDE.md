@@ -74,7 +74,13 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   under it. Anything new that changes from frame to frame goes in the top one.
 - Chrome lays out all SVG text again when the `<svg>` element's own transform changes, when a transform goes from
   `none` to something, and when it hit-tests the SVG while it is scaled. Hence the transform on the wrapper, never
-  `none`, and the shield that takes the pointer while the drawing is scaled.
+  `none`, and the shield that takes the pointer while the drawing is scaled or dragged (every mouse move of a drag
+  would otherwise hit-test the whole drawing: about a second of main-thread time per 6 drags at a quarter CPU).
+  A close-up terrain tile blocks the main thread for several frames while it bakes (the browser draws the SVG
+  inside `toBlob`), so tiles wait for a gesture to end (`TerrainDetail` takes `panning`).
+  They are 512 px (`TILE_PX`), use 6 and 4 octaves of noise (it was 8 and 5), and
+  bake one per idle moment (`idleSlot` in `terrain.ts`), so no run of bakes takes consecutive frames; none starts
+  while a gesture is under way, even from tiles queued earlier (`holdBaking`, set by `MapView`).
 - City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
   raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
   `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.
@@ -90,7 +96,8 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   Layers move between the drawing and a fade, so keep slow work out of their own state (`nationLabels` is kept by
   `MapView`). After a gesture, marks drawn at a size on screen ease back from the size the gesture showed them at
   (`keepSize` on a wrapper `<g>` without a `transform` attribute, which the CSS animation would replace;
-  `.keep-size`, on screen only); never during a gesture (`stopSettling` at its start).
+  `.keep-size`, on screen only: decided from the marks' map positions, `markNearScreen`, not by measuring each one's
+  box); never during a gesture (`stopSettling` at its start).
 - Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
   (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 
@@ -230,7 +237,7 @@ added, Normal all-AI stays within these ranges (reversals 1.4%, pile-on 0.2%, id
   survival moving from 50% to about 64%. 200 give ±4 and ±7. None tell 12% from 10%. Call a shift only from 100 or
   more. `scripts/dev/balance.ts 80 120` runs them in parallel and shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
+  limit). With the five-cities rule (15 playable nations, 96 VP, 39 to win) the figures have not been re-measured at 100 campaigns; see the pull request for a rough run. Before it (main with the Nordic powers), over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
   none end on objectives; all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%,
   Italy 13%, Spain 8.5%, France 6.5%, Greece 3%, Bulgaria and Ukraine 2%, Britain and Romania 1.5%, Sweden 0.5%,
   and Belarus, Finland, Iceland, Norway and Serbia 0%. Against main without the Nordic powers on the same seeds,

@@ -148,7 +148,7 @@ export function handleDiplomacy(ctx: Ctx): void {
   if (random(state) > (AI.warChance + ctx.mem.aggression * AI.warChancePerAggression) * ctx.level.warAppetite) return;
   let best: { target: NationId; score: number; ratio: number } | null = null;
   // Minor powers (the former neutral states) are left alone longer, so a player can take a neighbouring one first;
-  // an AI that opens by expanding goes for them before the great powers.
+  // an AI that opens by expanding goes for them before the playable nations.
   const opening = ctx.mem.opening ?? 'strike';
   const minorsOpen = graceOver(ctx, AI.neutralGraceSeconds * AI.openings[opening].neutrals);
   for (const target of neighbourNations(ctx)) {

@@ -17,7 +17,7 @@ import { aiGame, landsOf, run, world } from './helpers';
 
 /** A scripted player (France) issuing orders at fixed ticks, plus five AIs. */
 const SCRIPT: { tick: number; command: Command }[] = [
-  { tick: 3, command: { type: 'build', nation: 'fr', province: 'fr-west', building: 'industry' } },
+  { tick: 3, command: { type: 'build', nation: 'fr', province: 'fr-aquitaine', building: 'industry' } },
   { tick: 5, command: { type: 'research', nation: 'fr', tech: 'industrialMobilisation' } },
   { tick: 10, command: { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'artillery' } },
   { tick: 200, command: { type: 'declareWar', nation: 'fr', target: 'de' } },
@@ -195,14 +195,14 @@ describe('save / load', () => {
     old.state.provinces['fr-nord-land'].owner = 'de';
     old.state.provinces['fr-nord-land'].buildings = { fortifications: 2 };
     const army = Object.values(old.state.armies as Record<string, any>).find((a) => a.owner === 'fr')!;
-    army.province = 'fr-east-land';
+    army.province = 'fr-nord-land';
     const loaded = deserializeGame(JSON.stringify(old), state.scenarioId).state;
     expect(Object.keys(loaded.provinces).sort()).toEqual([...world.provinceIds].sort());
     // Each new land takes the old one's owner; its works and its armies go to the largest.
     for (const id of landsOf('fr-nord')) expect(loaded.provinces[id].owner).toBe('de');
     expect(loaded.provinces[landsOf('fr-nord')[0]].buildings).toEqual({ fortifications: 2 });
     for (const id of landsOf('fr-nord').slice(1)) expect(loaded.provinces[id].buildings).toEqual({});
-    expect(loaded.armies[army.id].province).toBe(landsOf('fr-east')[0]);
+    expect(loaded.armies[army.id].province).toBe(landsOf('fr-nord')[0]);
     expect(Object.values(loaded.armies).every((a) => a.move === null && world.provinces[a.province])).toBe(true);
     // And it plays on.
     run(loaded, 600);
@@ -260,7 +260,7 @@ describe('save / load', () => {
     (position) => {
       const state = aiGame(36, 'pl');
       const army = Object.values(state.armies).find((a) => a.owner === 'pl')!;
-      const from = 'pl-east-ne';
+      const from = 'pl-warsaw-ne';
       const to = 'pl-lesser-e';
       // These provinces survive the East expansion, but their old link does not.
       expect(world.provinces[from]).toBeDefined();

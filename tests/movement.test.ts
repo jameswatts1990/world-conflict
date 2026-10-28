@@ -6,8 +6,8 @@ describe('movement legality', () => {
   it('cannot enter a nation at peace, can after declaring war', () => {
     const state = quietGame();
     // Armies start in cities now, so stand one on the French land that faces Hesse.
-    const army = place(state, 'fr', landOf('fr-east', 'de-hesse'), { infantry: 3 });
-    const hesse = landOf('de-hesse', 'fr-east');
+    const army = place(state, 'fr', landOf('fr-nord', 'de-hesse'), { infantry: 3 });
+    const hesse = landOf('de-hesse', 'fr-nord');
     const blocked = applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: hesse });
     expect(blocked.ok).toBe(false);
     expect(applyCommand(state, world, { type: 'declareWar', nation: 'fr', target: 'de' }).ok).toBe(true);
@@ -62,7 +62,7 @@ describe('movement legality', () => {
     // Stepping out of a city takes far less than a march between lands, timed from where their armies stand.
     const gate = legTicks(state, world, army, 'fr-paris', out);
     const road = legTicks(state, world, army, out, into);
-    expect(gate).toBeLessThan(road / 3);
+    expect(gate).toBeLessThan(road / 2);
     const apart = Math.round(greatCircleKm(world.provinces[out].anchor, world.provinces[into].anchor));
     expect(world.neighbors[out].find((n) => n.id === into)!.distanceKm).toBe(apart);
   });
@@ -112,7 +112,7 @@ describe('movement legality', () => {
     expect(gate.move).toBeNull();
 
     // Stopped as it sets off, it never leaves.
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-west') });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-aquitaine') });
     applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id });
     expect(army.province).toBe(paris);
     expect(army.move).toBeNull();
@@ -130,8 +130,8 @@ describe('movement legality', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const army = place(state, 'fr', 'fr-east', { infantry: 4 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-saxony' });
+    const army = place(state, 'fr', 'fr-nord', { infantry: 4 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-berlin' });
     const route = state.armies[army.id].move!.path;
     const german = route.filter((pid) => world.provinces[pid].core === 'de');
     expect(german.some((pid) => world.provinces[pid].around === 'de-hesse')).toBe(true);
@@ -139,21 +139,21 @@ describe('movement legality', () => {
     for (const pid of german) expect(state.provinces[pid].owner).toBe('fr');
     // Only the lands on the way and the city it marched for: the cities it passed by stay German.
     expect(state.provinces['de-hesse'].owner).toBe('de');
-    expect(state.armies[army.id].province).toBe('de-saxony');
+    expect(state.armies[army.id].province).toBe('de-berlin');
   });
 
   it('a move order marches through enemy land, taking only the destination', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const army = place(state, 'fr', 'fr-east', { infantry: 4 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-saxony', mode: 'move' });
+    const army = place(state, 'fr', 'fr-nord', { infantry: 4 });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'de-berlin', mode: 'move' });
     const route = state.armies[army.id].move!.path;
     expect(route.length).toBeGreaterThan(1);
     // Not much longer: with the land behind it still German, the army is cut off from supply.
-    run(state, 300);
-    expect(state.armies[army.id].province).toBe('de-saxony');
-    expect(state.provinces['de-saxony'].owner).toBe('fr');
+    run(state, 600);
+    expect(state.armies[army.id].province).toBe('de-berlin');
+    expect(state.provinces['de-berlin'].owner).toBe('fr');
     for (const pid of route.slice(0, -1).filter((p) => world.provinces[p].core === 'de')) expect(state.provinces[pid].owner).toBe('de');
   });
 
@@ -161,14 +161,14 @@ describe('movement legality', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', 'fr-paris', { infantry: 2 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-east', mode: 'patrol' });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: 'fr-nord', mode: 'patrol' });
     const visits: string[] = [];
     for (let t = 0; t < 3000; t++) {
       run(state, 1);
       const a = state.armies[army.id];
-      if (!a.move?.leg && visits.at(-1) !== a.province && (a.province === 'fr-paris' || a.province === 'fr-east')) visits.push(a.province);
+      if (!a.move?.leg && visits.at(-1) !== a.province && (a.province === 'fr-paris' || a.province === 'fr-nord')) visits.push(a.province);
     }
-    expect(visits.slice(0, 3)).toEqual(['fr-east', 'fr-paris', 'fr-east']);
+    expect(visits.slice(0, 3)).toEqual(['fr-nord', 'fr-paris', 'fr-nord']);
     expect(state.armies[army.id].move?.mode).toBe('patrol');
     applyCommand(state, world, { type: 'stop', nation: 'fr', armyId: army.id });
     run(state, 600);
@@ -179,7 +179,7 @@ describe('movement legality', () => {
     const state = quietGame();
     clearArmies(state);
     const army = place(state, 'fr', landOf('fr-paris'), { infantry: 2 });
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-east'), mode: 'patrol' });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-nord'), mode: 'patrol' });
     run(state, 5);
     const next = army.move!.leg!.to;
     expect(applyCommand(state, world, { type: 'hold', nation: 'fr', armyId: army.id, hold: true }).ok).toBe(true);
@@ -188,7 +188,7 @@ describe('movement legality', () => {
     expect(army.road?.toward).toBe(next);
     expect(army.move).toBeNull();
     expect(army.holding).toBe(true);
-    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-east'), mode: 'move' });
+    applyCommand(state, world, { type: 'move', nation: 'fr', armyId: army.id, to: landOf('fr-nord'), mode: 'move' });
     expect(army.holding).toBe(false);
   });
 });

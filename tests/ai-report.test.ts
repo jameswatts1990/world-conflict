@@ -6,13 +6,13 @@ import { quietGame, world } from './helpers';
 describe('AI report: idle in the interior', () => {
   it('counts a city as on the border wherever one of its lands is', () => {
     const state = quietGame();
-    // Paris and both its lands border only French provinces at the start.
-    expect(isInterior(world, state, 'fr-paris', 'fr')).toBe(true);
-    // A foreign land next to one of Paris's lands, though not next to the city itself, puts the city on the border.
-    const outside = world.neighbors['fr-paris-se'].find((n) => !n.id.startsWith('fr-paris'))!.id;
-    expect(world.neighbors['fr-paris'].some((n) => n.id === outside)).toBe(false);
+    // Tuscany and its lands border only Italian provinces at the start.
+    expect(isInterior(world, state, 'it-tuscany', 'it')).toBe(true);
+    // A foreign land next to one of Tuscany's lands, though not next to the city itself, puts the city on the border.
+    const outside = world.provinces['it-tuscany'].lands!.flatMap((l) => world.neighbors[l]).find((n) => world.provinces[n.id].around !== 'it-tuscany' && world.provinces[n.id].id !== 'it-tuscany' && !world.neighbors['it-tuscany'].some((c) => c.id === n.id))!.id;
+    expect(world.neighbors['it-tuscany'].some((n) => n.id === outside)).toBe(false);
     state.provinces[outside].owner = 'de';
-    expect(isInterior(world, state, 'fr-paris', 'fr')).toBe(false);
+    expect(isInterior(world, state, 'it-tuscany', 'it')).toBe(false);
   });
 
   it("counts a land as on the border when another land of its city borders a foreign province", () => {

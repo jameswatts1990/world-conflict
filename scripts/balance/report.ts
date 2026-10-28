@@ -98,7 +98,7 @@ export function renderReport(s: Summary): string {
   out.push('');
   out.push(
     table(
-      ['Great power: provinces gained in the first 20 min', 'Seats', 'Wins', 'Lasts the campaign'],
+      ['Playable nation: provinces gained in the first 20 min', 'Seats', 'Wins', 'Lasts the campaign'],
       s.earlyGrab.map((b) => [b.label, b.seats, pct(b.wins), pct(b.survived)]),
     ),
     '',

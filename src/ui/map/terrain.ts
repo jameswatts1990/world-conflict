@@ -185,7 +185,7 @@ async function rasterise(svg: string, width: number, height: number, crop?: { x:
 
 /**
  * The relief as an SVG document for the map rectangle (x, y, w, h), at `px` pixels per map
- * unit. Close-up tiles (`fine`) add the finest octaves of noise, and steepen the lighting to
+ * unit. Close-up tiles (`fine`) add a finer octave of detail noise, and steepen the lighting to
  * match their resolution so the hills keep their shape; only the provinces they touch go in.
  */
 function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: number, h: number, px = PX_PER_UNIT, fine = false): string {
@@ -202,7 +202,7 @@ function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: num
 <clipPath id="land">${uses(() => '')}</clipPath>
 <filter id="relief" ${region}>
   <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="amp"/>
-  <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="${fine ? 8 : 6}" seed="11" result="noise"/>
+  <feTurbulence type="turbulence" baseFrequency="0.035" numOctaves="6" seed="11" result="noise"/>
   <feComponentTransfer in="noise" result="ridges"><feFuncA type="table" tableValues="1 0.35 0"/></feComponentTransfer>
   <feComposite in="ridges" in2="amp" operator="in" result="height"/>
   <feDiffuseLighting in="height" surfaceScale="${n((RELIEF_HEIGHT * px) / PX_PER_UNIT)}" diffuseConstant="1" lighting-color="#fff" result="light">
@@ -213,7 +213,7 @@ function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: num
   <feMerge><feMergeNode in="shade"/><feMergeNode in="lit"/></feMerge>
 </filter>
 <filter id="detail" ${region}>
-  <feTurbulence type="fractalNoise" baseFrequency="0.24" numOctaves="${fine ? 5 : 3}" seed="5" result="fine"/>
+  <feTurbulence type="fractalNoise" baseFrequency="0.24" numOctaves="${fine ? 4 : 3}" seed="5" result="fine"/>
   <feColorMatrix in="fine" type="matrix" values="0 0 0 0 0.24  0 0 0 0 0.33  0 0 0 0 0.17  1.9 0 0 0 -0.92" result="canopy"/>
   <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0" result="forestW"/>
   <feComposite in="canopy" in2="forestW" operator="in" result="forest"/>
@@ -238,13 +238,13 @@ function terrainSvg(geo: MapGeometry, world: World, x: number, y: number, w: num
 // ---------------------------------------------------------------------------
 
 /** Width and height of a close-up tile, in pixels. */
-const TILE_PX = 1024;
+const TILE_PX = 512;
 /** Close-up resolutions, pixels per map unit: a tile covers TILE_PX / level map units. */
 export const DETAIL_LEVELS = [8, 16, 32];
 /** Map units rendered round each tile and cropped away, so the relief's blur and lighting meet seamlessly. */
 const TILE_MARGIN = 8;
 /** Baked tiles kept for panning back; older ones are dropped. */
-const MAX_TILES = 40;
+const MAX_TILES = 120;
 
 export interface TerrainTile {
   key: string;
@@ -283,8 +283,25 @@ export function tilesFor(geo: MapGeometry, [vx, vy, vw, vh]: [number, number, nu
 const tiles = new Map<string, TerrainTexture>();
 const pending = new Map<string, Promise<TerrainTexture | null>>();
 let wanted = new Set<string>();
-// Tiles bake one at a time: each is a few hundred milliseconds of filter work.
+// Tiles bake one at a time: each is a few hundred milliseconds of filter work, and each waits for an idle slot so
+// a run of them never takes consecutive frames.
 let bakeQueue: Promise<unknown> = Promise.resolve();
+
+/** Whether a gesture is under way: no tile starts baking until it ends (the map view sets it). */
+let held = false;
+export function holdBaking(on: boolean): void {
+  held = on;
+}
+
+/** Resolves when the browser is idle (or after a short wait where it has no idle callbacks), and no gesture is under way. */
+async function idleSlot(): Promise<void> {
+  do {
+    await new Promise<void>((resolve) => {
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(() => resolve(), { timeout: 400 });
+      else setTimeout(resolve, 50);
+    });
+  } while (held);
+}
 
 /** A tile that has been baked, if it has. */
 export function bakedTile(key: string): TerrainTexture | undefined {
@@ -308,6 +325,8 @@ export function requestTiles(geo: MapGeometry, world: World, list: TerrainTile[]
     let job = pending.get(t.key);
     if (!job) {
       job = bakeQueue = bakeQueue.then(async () => {
+        if (!wanted.has(t.key)) return null;
+        await idleSlot();
         if (!wanted.has(t.key)) return null;
         const tex = await bakeTile(geo, world, t);
         tiles.set(t.key, tex);

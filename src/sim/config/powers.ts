@@ -1,11 +1,11 @@
-// Power tiers. A nation's tier sets everything about its start that is the
+// Nation kinds. A nation's kind (playable, or a one-city state) sets everything about its start that is the
 // same for every nation of that size: output, treasury, starting buildings and
 // army, the objective value of its capital and heartland, and how many
 // provinces it should have. Province rows only say which province is which
 // (src/sim/scenario/build.ts turns them into the starting setup).
 //
-// Great powers are the original template, unchanged. The smaller tiers keep
-// the same share of income going on army upkeep at the start (about a sixth).
+// A playable nation has five cities and the original great-power numbers; a state has one, keeps
+// about a sixth of its income going on army upkeep at the start, and cannot be played or win.
 import type { BuildingType, CityTier, PowerTier, Resources, UnitType } from '../types';
 
 type Units = Partial<Record<UnitType, number>>;
@@ -14,7 +14,7 @@ type Buildings = Partial<Record<BuildingType, number>>;
 export interface PowerTemplate {
   /** Shown on the nation picker and in diplomacy. */
   name: string;
-  /** Whether a human may play it, and whether it can win (`isContender`); minor powers can do neither. */
+  /** Whether a human may play it, and whether it can win (`isContender`); states can do neither. */
   playable: boolean;
   /** The nation's core provinces are scaled to these totals per minute (Standard speed). */
   output: Omit<Resources, 'fuel' | 'fusion'>;
@@ -30,13 +30,13 @@ export interface PowerTemplate {
    * in the cities the province rows place them (`garrison`), or spread over the border cities.
    */
   armies: { capital: Units; industrial?: Units; field: Units };
-  /** How many cities (each with the land round it) a nation of this tier should have, so provinces stay a similar size. */
+  /** How many cities (each with the land round it) a nation of this kind has, so provinces stay a similar size. */
   provinces: [number, number];
 }
 
 export const POWERS: Record<PowerTier, PowerTemplate> = {
-  great: {
-    name: 'Great power',
+  playable: {
+    name: 'Playable nation',
     playable: true,
     output: { money: 260, materials: 126, manpower: 42 },
     startingResources: { money: 1200, materials: 500, fuel: 150, manpower: 250, fusion: 60 },
@@ -52,28 +52,10 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
       industrial: { infantry: 2, artillery: 1 },
       field: { infantry: 5, cavalry: 1 },
     },
-    provinces: [6, 9],
+    provinces: [5, 5],
   },
-  major: {
-    name: 'Major power',
-    playable: true,
-    output: { money: 150, materials: 72, manpower: 24 },
-    startingResources: { money: 700, materials: 290, fuel: 90, manpower: 145, fusion: 45 },
-    vp: { capital: 2, industrial: 1 },
-    capitalCity: 3,
-    buildings: {
-      capital: { industry: 1, barracks: 1, armsWorks: 1, supplyDepot: 1 },
-      industrial: { industry: 1, barracks: 1, supplyDepot: 1 },
-    },
-    armies: {
-      capital: { infantry: 2, artillery: 1 },
-      industrial: { infantry: 2 },
-      field: { infantry: 2, cavalry: 1 },
-    },
-    provinces: [3, 5],
-  },
-  minor: {
-    name: 'Minor power',
+  state: {
+    name: 'Minor state',
     playable: false,
     output: { money: 70, materials: 32, manpower: 12 },
     startingResources: { money: 320, materials: 130, fuel: 40, manpower: 70, fusion: 30 },
@@ -88,7 +70,7 @@ export const POWERS: Record<PowerTier, PowerTemplate> = {
       capital: { infantry: 5 },
       field: { infantry: 1 },
     },
-    provinces: [1, 2],
+    provinces: [1, 1],
   },
 };
 

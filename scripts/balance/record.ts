@@ -8,7 +8,7 @@ import type { Sim } from './sim';
 
 export interface NationRecord {
   tier: PowerTier;
-  /** Whether a human may play it (great and major powers). */
+  /** Whether a human may play it (playable nations). */
   playable: boolean;
   /** The personality drawn for its AI. */
   personality: { aggression: number; economyBias: number; doctrine: string } | null;

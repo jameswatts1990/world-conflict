@@ -21,7 +21,7 @@ describe('cities', () => {
   it('city tiers set the number of building slots; infrastructure does not use one', () => {
     const state = quietGame();
     richen(state, 'fr');
-    const town = 'fr-centre';
+    const town = 'fr-aquitaine';
     expect(state.provinces[town].tier).toBe(1);
     expect(buildingSlots(state, world, town)).toBe(CITY.slots[1]);
     for (const b of ['barracks', 'armsWorks', 'housing'] as BuildingType[]) {
@@ -66,18 +66,18 @@ describe('cities', () => {
   it('higher building levels and some buildings need a bigger city', () => {
     const state = quietGame();
     richen(state, 'fr');
-    expect(build(state, 'fr-centre', 'industry').ok).toBe(true);
-    finish(state, 'fr-centre');
-    const l2 = checkBuild(state, world, 'fr', 'fr-centre', 'industry');
+    expect(build(state, 'fr-aquitaine', 'industry').ok).toBe(true);
+    finish(state, 'fr-aquitaine');
+    const l2 = checkBuild(state, world, 'fr', 'fr-aquitaine', 'industry');
     expect(l2.ok).toBe(false);
     if (!l2.ok) expect(l2.reason).toMatch(/City/);
-    expect(checkBuild(state, world, 'fr', 'fr-centre', 'university').ok).toBe(false);
+    expect(checkBuild(state, world, 'fr', 'fr-aquitaine', 'university').ok).toBe(false);
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'university').ok).toBe(true);
   });
 
   it('cities grow with housing and good morale, and gain a tier', () => {
     const state = quietGame();
-    const town = 'fr-centre';
+    const town = 'fr-aquitaine';
     state.provinces[town].buildings.housing = 3;
     const need = CITY.growthToNext[1];
     run(state, 60 * 20);
@@ -92,19 +92,19 @@ describe('cities', () => {
     richen(state, 'fr');
     state.nations.fr.research.completed.push('fieldRailways', 'fortificationEngineering', 'coastalDefences', 'propagandaMinistry', 'radioBroadcasting', 'occupationPolicy');
     // Coastal batteries only where a sea crossing lands.
-    expect(checkBuild(state, world, 'fr', 'fr-nord-sw', 'coastalBattery').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-nord-w', 'coastalBattery').ok).toBe(true);
     expect(checkBuild(state, world, 'fr', 'fr-nord-se', 'coastalBattery').ok).toBe(false);
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'coastalBattery').ok).toBe(false);
     // The land between cities takes infrastructure but nothing that needs a city's slots.
-    expect(checkBuild(state, world, 'fr', 'fr-east-w', 'fortifications').ok).toBe(true);
-    expect(checkBuild(state, world, 'fr', 'fr-east-w', 'railway').ok).toBe(true);
-    const barracks = checkBuild(state, world, 'fr', 'fr-east-w', 'barracks');
+    expect(checkBuild(state, world, 'fr', 'fr-nord-se2', 'fortifications').ok).toBe(true);
+    expect(checkBuild(state, world, 'fr', 'fr-nord-se2', 'railway').ok).toBe(true);
+    const barracks = checkBuild(state, world, 'fr', 'fr-nord-se2', 'barracks');
     expect(barracks.ok ? '' : barracks.reason).toMatch(/Needs a city/);
-    expect(buildingSlots(state, world, 'fr-east-w')).toBe(0);
+    expect(buildingSlots(state, world, 'fr-nord-se2')).toBe(0);
     // Occupation HQs only in occupied land.
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'garrisonHq').ok).toBe(false);
-    state.provinces['de-baden'].owner = 'fr';
-    expect(checkBuild(state, world, 'fr', 'de-baden', 'garrisonHq').ok).toBe(true);
+    state.provinces['de-hesse'].owner = 'fr';
+    expect(checkBuild(state, world, 'fr', 'de-hesse', 'garrisonHq').ok).toBe(true);
     // Locked until researched.
     expect(checkBuild(state, world, 'fr', 'fr-paris', 'powerPlant').ok).toBe(false);
   });

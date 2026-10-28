@@ -155,12 +155,12 @@ export const AI = {
   /** Reserve kept back when spending (fraction of income per minute). */
   reserveMinutes: 0.5,
   /**
-   * Army size cap: units per owned city, a flat reserve by power tier, and one unit per this much
+   * Army size cap: units per owned city, a flat reserve by kind of nation, and one unit per this much
    * money income a minute. A one-city minor power keeps a garrison of about seven behind its forts,
    * not a field army.
    */
   unitsPerProvince: 3,
-  unitsFlat: { great: 8, major: 5, minor: 3 } as Record<PowerTier, number>,
+  unitsFlat: { playable: 8, state: 3 } as Record<PowerTier, number>,
   unitsPerIncome: 50,
   /** Share of money income that may go to upkeep, plus this much per point of aggression... */
   upkeepShare: 0.45,
