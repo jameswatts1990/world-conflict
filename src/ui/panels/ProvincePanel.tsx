@@ -1,4 +1,4 @@
-// The city view: skyline, morale, growth, building slots and the build
+// The city view: morale, growth, building slots and the build
 // picker; unit cards for recruitment; armies present and routes.
 import { useState } from 'react';
 import { BUILDINGS, BUILDING_ORDER, CITY, landBuildings, landSite, slotsUsed } from '../../sim/config/buildings';
@@ -48,7 +48,7 @@ import {
   type UnitType,
   type World,
 } from '../../sim';
-import { BuildingTileArt, CityScene, cityConstruction, UnitIconArt, UnitPicture } from '../art/adapters';
+import { BuildingTileArt, UnitIconArt, UnitPicture } from '../art/adapters';
 import { ownerColor, strengthColor } from '../color';
 import { OwnerFlag } from '../flags';
 import type { GameController } from '../game/GameController';
@@ -142,29 +142,22 @@ function BattleBox({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 type Tab = 'city' | 'recruit' | 'armies';
 
 /**
- * A province's card: a city (its skyline on larger screens, buildings, recruitment and armies) or the land
- * round a city (its morale, infrastructure and armies). On a phone a city opens as a full-screen page
- * (`page`), with no skyline so its choices come first.
+ * A province's card: a city (buildings, recruitment and armies) or the land round a city (its morale,
+ * infrastructure and armies). On a phone a city opens as a full-screen page (`page`).
  */
 export function ProvincePanel({
   ctrl,
   pid,
   selectedArmies,
   onSelectArmy,
-  onSelectProvince,
   onClose,
-  compact = false,
   page = false,
 }: {
   ctrl: GameController;
   pid: ProvinceId;
   selectedArmies: ArmyId[];
   onSelectArmy: (id: ArmyId, additive: boolean) => void;
-  /** Moves the card to another province: from a city to the land round it, or back. */
-  onSelectProvince: (pid: ProvinceId) => void;
   onClose: () => void;
-  /** Phone layouts: no skyline. */
-  compact?: boolean;
   /** Shown as a full-screen page (a city on a phone): the close button reads as "back to the map". */
   page?: boolean;
 }) {
@@ -180,12 +173,9 @@ export function ProvincePanel({
   const seen = ctrl.sight();
   const known = seen.has(pid);
   const armies = armiesIn(state, world, pid).filter((a) => isArmyVisible(a, human, seen));
-  const capital = owner !== 'neutral' && world.nations[owner]?.capital === pid;
   const nationalCapital = city?.size === 'capital' && def.core !== null;
   const occupied = owner !== 'neutral' && def.core !== owner;
   const activeTab: Tab = (!mine || !city) && tab === 'recruit' ? 'city' : tab;
-  // The rest of this place: the lands round a city, or the city a land lies round.
-  const partners = def.lands ?? (def.around ? [def.around] : []);
 
   return (
     <section className={`panel province-panel${page ? ' page' : ''}${city ? '' : ' land'}`} data-testid="province-panel" data-province={pid}>
@@ -235,20 +225,6 @@ export function ProvincePanel({
               <Icon name="anchor" size={13} /> Landing
             </span>
           )}
-          {partners.map((partner) => (
-            <button
-              key={partner}
-              className="chip chip-link"
-              onClick={() => onSelectProvince(partner)}
-              title={city ? `Land round ${def.name}` : `${def.name} lies round this city`}
-              data-testid="partner-province"
-              data-partner={partner}
-            >
-              <Icon name={city ? 'flag' : 'city'} size={13} /> {city ? '' : 'City: '}
-              {world.provinces[partner].name}
-              <span className="chip-owner" style={{ background: ownerColor(world, state.provinces[partner].owner) }} />
-            </button>
-          ))}
         </div>
         <div className="hero-note">{TERRAIN_NOTE[def.terrain]}</div>
         {occupied && (
@@ -258,23 +234,6 @@ export function ProvincePanel({
           </div>
         )}
       </header>
-
-      {city && !compact && (
-        <div className="city-scene-wrap">
-          <CityScene
-            seed={pid}
-            tier={ps.tier}
-            capital={capital || nationalCapital}
-            buildings={known ? ps.buildings : {}}
-            construction={known ? cityConstruction(ps.construction?.building) : null}
-            terrain={def.terrain}
-            coastal={def.coastal}
-            nationColor={owner === 'neutral' ? undefined : color}
-            battle={known && !!state.battles[pid]}
-            width={354}
-          />
-        </div>
-      )}
 
       <nav className="tabs" role="tablist">
         <button className={activeTab === 'city' ? 'active' : ''} onClick={() => setTab('city')} data-tab="city">
@@ -581,6 +540,7 @@ function CityTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 
 function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: ProvinceId; building: BuildingType; res: Resources }) {
   const { state, world, human } = ctrl;
+  const [open, setOpen] = useState(false);
   const ps = state.provinces[pid];
   const city = !!world.provinces[pid].city;
   const cfg = BUILDINGS[building];
@@ -599,12 +559,20 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
   const replaces = city ? [] : landBuildings(ps.buildings).filter((b) => b !== building);
   const replaced = listText(replaces.map((b) => BUILDINGS[b].name));
   return (
-    <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}`}>
+    <li className={`bld${level > 0 ? ' built' : ''}${locked ? ' locked' : ''}${open ? ' open' : ''}`}>
       <span className="bld-icon">
         <BuildingIcon kind={building} size={18} />
       </span>
-      <span className="bld-info" title={cfg.description}>
+      <button
+        type="button"
+        className="bld-info"
+        aria-expanded={open}
+        title={open ? 'Hide the details' : 'Show the details'}
+        onClick={() => setOpen((o) => !o)}
+        data-building-info={building}
+      >
         <span className="bld-name">{cfg.name}</span>
+        <span className="bld-blurb">{firstSentence(cfg.description)}</span>
         <span className="bld-level">
           {locked ? (
             <span className="muted">
@@ -620,7 +588,7 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
         </span>
         {why && <span className="bld-why">{why}</span>}
         {!why && !locked && !maxed && replaces.length > 0 && <span className="bld-why">Replaces {replaced}</span>}
-      </span>
+      </button>
       {locked ? null : maxed ? (
         <span className="b-action">
           <span className="bld-done" title="Fully built">
@@ -645,7 +613,76 @@ function BuildRow({ ctrl, pid, building, res }: { ctrl: GameController; pid: Pro
           </span>
         </span>
       )}
+      {open && <BuildingDetails ctrl={ctrl} pid={pid} building={building} res={res} lockedBy={locked ? lockedBy : undefined} />}
     </li>
+  );
+}
+
+/** The first sentence of a description: the one line a building's row shows. */
+const firstSentence = (text: string) => text.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? text;
+
+/** What a building does in full, and what each level costs and needs. */
+function BuildingDetails({
+  ctrl,
+  pid,
+  building,
+  res,
+  lockedBy,
+}: {
+  ctrl: GameController;
+  pid: ProvinceId;
+  building: BuildingType;
+  res: Resources;
+  lockedBy?: string;
+}) {
+  const { state, world, human } = ctrl;
+  const cfg = BUILDINGS[building];
+  const level = state.provinces[pid].buildings[building] ?? 0;
+  const city = !!world.provinces[pid].city;
+  const needs: string[] = [];
+  if (lockedBy) needs.push(`Research: ${TECH_BY_ID[lockedBy].name}`);
+  if (cfg.requiresBuilding) needs.push(`Needs ${BUILDINGS[cfg.requiresBuilding].name} in the same city`);
+  if (cfg.coastalOnly) needs.push('Only where a sea crossing lands');
+  if (cfg.occupiedOnly) needs.push('Only in occupied territory');
+  if (cfg.oilLand) needs.push('Only in land round a city with an oil field');
+  const takesSlot = city && cfg.category !== 'infrastructure';
+  return (
+    <div className="bld-details" data-testid="building-details" data-building={building}>
+      <p className="bld-desc">{cfg.description}</p>
+      <div className="bld-facts muted small">
+        {LAND_CATEGORY_LABEL[cfg.category]}
+        {takesSlot ? ' · takes a building slot' : city ? ' · takes no slot' : ' · the land’s one building'}
+        {cfg.maxLevel > 1 ? ` · ${cfg.maxLevel} levels` : ''}
+      </div>
+      {needs.length > 0 && (
+        <ul className="bld-needs small">
+          {needs.map((n) => (
+            <li key={n}>
+              <Icon name="lock" size={11} /> {n}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ul className="bld-levels">
+        {Array.from({ length: cfg.maxLevel }, (_, i) => i + 1).map((l) => {
+          const tier = cfg.levelTiers?.[l - 1];
+          return (
+            <li key={l} className={l <= level ? 'done' : ''}>
+              <span className="bl-name">{cfg.maxLevel > 1 ? `Level ${l}` : 'Cost'}</span>
+              {l <= level ? (
+                <span className="built-tag">Built</span>
+              ) : (
+                <>
+                  <Cost cost={constructionCost(state, human, building, l)} have={res} />
+                  <span className="muted small">{formatDuration(constructionTicks(state, human, building, l), state)}</span>
+                </>
+              )}
+              {city && tier && tier > 1 && <span className="muted small bl-tier">needs a {CITY.tierNames[tier]}</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
