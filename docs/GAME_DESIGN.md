@@ -378,13 +378,23 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.7 Sight and the fog of war
 
-- A nation sees every province it holds and every province where its armies stand (or march from), and the provinces
-  one connection away from them, counting a region as one step: sight carries on round a city to its other lands for
-  free, and whoever sees a land next to a city sees into the city. An army with a reconnaissance unit (cavalry,
-  armoured cars) sees two steps away over open land. Mountains and narrow seas (up to 110 km of water, coast to
-  coast, such as the Channel) are seen across but not beyond, so scouts in Piedmont see Savoy, Haute-Provence and the
-  Riviera across the Alps, not the Rhône valley beyond; wider seas (Sardinia to Barcelona, Rome to Split) hide the far
-  shore altogether. A marching army is seen at the nearer end of its road.
+- **Sight is short.** Every province a nation holds sees its own region (a city and the lands round it count as one
+  step, so sight carries on round a city for free) and the provinces just over its border, and whoever sees a land
+  next to a city sees into the city. Armies see much less: how far is a property of each unit type (`sight` in
+  `src/sim/config/units.ts`), and an army sees as far as its best-sighted unit. Most troops see only the province
+  they stand in (in a city, its lands too; on a land, the city it lies round; on the march, both ends of the road).
+  Reconnaissance units (cavalry, armoured cars) see one step: their region and the provinces next to it. Later units
+  (aircraft, satellites) can be given far more. Sight carries over open land; mountains and narrow seas (up to 110 km
+  of water, coast to coast, such as the Channel) are seen across but not beyond, so scouts in Piedmont see Savoy,
+  Haute-Provence and the Riviera across the Alps, not the Rhône valley beyond; wider seas (Sardinia to Barcelona, Rome
+  to Split) hide the far shore altogether. A marching army is seen at the nearer end of its road.
+- **Radar blips.** A step further out than it sees, a nation picks up unknown armies as blips: held land detects two
+  steps out, and each unit one step further than it sees (or its type's own `detect`), by the same rules as sight. A
+  blip shows where (the province's centre) and a rough size, nothing else: not whose, not what units, not their
+  strength, and every hidden army in one province makes one blip. Its size counts their units together: small (1–3),
+  medium (4–7) or large (8 or more) (`SIGHT.blipUnits` in `src/sim/config/rules.ts`). Hovering a blip says
+  "Unknown army — large"; selecting the province says the same. A province on the radar that shows no blip is empty of
+  armies, as far as anyone can tell, so blips also show where the enemy is not.
 - **Co-belligerents** are powers at peace with each other and at war with a common enemy. It is not an alliance: there
   are no treaties yet, nobody agrees to it, and the game calls them co-belligerents, never allies, so that it never
   claims a pact the player did not make. With **Liaison Officers** (Society & Morale, the Twenties, after Staff College)
@@ -393,7 +403,8 @@ Specialities are optional: a nation without one shows its bloc instead.
 - Under the fog the player sees who holds each province and how big its city is, nothing else: no armies, battles,
   sieges, buildings, construction, morale or supply. The map dims it under a veil and drifting cloud. When the
   campaign ends the fog lifts.
-- Sight is worked out from the state whenever it is asked for (`src/sim/visibility.ts`) and never stored.
+- Sight and blips are worked out from the state whenever they are asked for (`src/sim/visibility.ts`) and never
+  stored, so saves are unchanged.
 - **Computer opponents play under the same fog** (§11): they know only what a human in their place could.
 
 ## 7. Morale
@@ -546,8 +557,10 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   worse.
 - **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
   military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
-  (§6.7), and its co-belligerents' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot
-  see is spread evenly over the places that power holds out of sight (each city one, and the land round it one more,
+  (§6.7), and its co-belligerents' with Liaison Officers. It reads radar blips as a player would: a blip stands for a
+  few units (2, 5 or 10 by size, `AI.blipUnits`) each as strong as its own average unit, credited to the province's
+  holder, and a province on its radar with no blip counts as empty. Beyond its radar it assumes the part of a power's
+  army it cannot see or pick up is spread evenly over the places that power holds out there (each city one, and the land round it one more,
   shared between its lands, so dividing the land does not thin an army out), and counts that when sizing an attack
   whose reinforcements could come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
   30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
@@ -769,8 +782,8 @@ support and infrastructure, saying what a new building would replace) and a link
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
-- Is one region of sight around your land and armies the right amount of fog? Mountains and seas over 110 km now
-  stop it: is that tight enough, or should provinces see only across land borders and leave scouting to armies?
+- Is sight now short enough, and are radar blips the right halfway house? Held land sees just over its border and
+  armies only where they stand; is that too blind at the front, and do blips give away too much (or too little)?
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
 - Positions differ in the 200-campaign five-region East run on the current economy. Against main on the same seeds,
   Germany's wins rise from 4% to 19%, Hungary's from 27.5% to 29%, and Poland's fall from 29.5% to 16.5%.

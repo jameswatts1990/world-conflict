@@ -5043,6 +5043,30 @@ button.chip.queued:hover {
 .army-back:focus {
   outline: none;
 }
+/* Radar blips: unknown armies beyond sight, a rough size and nothing else. Static, so they cost nothing between ticks. */
+.radar-blip {
+  cursor: pointer;
+}
+.radar-hit {
+  fill: transparent;
+}
+.radar-back {
+  fill: rgba(4, 22, 12, 0.55);
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 3.4;
+}
+.radar-ring {
+  fill: rgba(90, 255, 150, 0.18);
+  stroke: #7dffad;
+  stroke-width: 1.8;
+  stroke-dasharray: 4 2.5;
+}
+.radar-dot {
+  fill: #b6ffd0;
+}
+.radar-blip:hover .radar-ring {
+  fill: rgba(120, 255, 170, 0.3);
+}
 .army-ring {
   fill-opacity: 0.32;
   stroke: rgba(0, 0, 0, 0.45);

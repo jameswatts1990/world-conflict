@@ -1,7 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import { TECH_BY_ID } from '../src/sim/config/research';
 import { SIGHT } from '../src/sim/config/rules';
-import { alliesOf, applyCommand, areAllies, armySight, findPath, isArmyVisible, legTicks, visibleProvinces, type GameState, type NationId } from '../src/sim';
+import { UNITS } from '../src/sim/config/units';
+import {
+  alliesOf,
+  applyCommand,
+  areAllies,
+  armyDetect,
+  armySight,
+  blipSize,
+  detectedProvinces,
+  findPath,
+  isArmyVisible,
+  legTicks,
+  radarBlips,
+  unitSight,
+  visibleProvinces,
+  type GameState,
+  type NationId,
+  type UnitType,
+} from '../src/sim';
 import { clearArmies, landOf, landsOf, place, quietGame, run, setWar, world } from './helpers';
 
 function research(state: GameState, nation: NationId, tech: string) {
@@ -33,21 +51,102 @@ describe('fog of war', () => {
     expect(visibleProvinces(state, world, 'be').has('fr-nord')).toBe(true);
   });
 
-  it('armies see around them; reconnaissance units see further', () => {
+  it('sight is a property of each unit type: most see only where their army stands, scouts further', () => {
+    for (const type of Object.keys(UNITS) as UnitType[]) {
+      expect(unitSight(type)).toBe(UNITS[type].recon ? 1 : SIGHT.unit);
+    }
+    expect(SIGHT.unit).toBe(0);
+    const state = quietGame();
+    clearArmies(state);
+    // An army sees as far as its best-sighted unit.
+    expect(armySight(place(state, 'fr', 'fr-paris', { infantry: 3 }))).toBe(0);
+    expect(armySight(place(state, 'fr', 'fr-paris', { infantry: 3, cavalry: 1 }))).toBe(1);
+    expect(armyDetect(place(state, 'fr', 'fr-paris', { infantry: 3 }))).toBe(1);
+    expect(armyDetect(place(state, 'fr', 'fr-paris', { armouredCar: 1 }))).toBe(2);
+  });
+
+  it('an army sees only where it stands: in a city, the city and its lands; reconnaissance a step further', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const infantry = place(state, 'fr', 'de-hesse', { infantry: 2 });
-    expect(armySight(infantry)).toBe(SIGHT.army);
+    const before = visibleProvinces(state, world, 'fr');
+    expect(before.has('de-saxony')).toBe(false);
+    place(state, 'fr', 'de-saxony', { infantry: 2 });
     let seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-saxony')).toBe(true);
-    expect(seen.has('de-berlin')).toBe(false);
+    const added = [...seen].filter((id) => !before.has(id)).sort();
+    expect(added).toEqual(['de-saxony', ...landsOf('de-saxony')].sort());
+    for (const id of ['de-berlin', landOf('de-berlin', 'de-saxony'), 'cz-prague']) expect(seen.has(id)).toBe(false);
 
-    const scouts = place(state, 'fr', 'de-hesse', { infantry: 1, cavalry: 1 });
-    expect(armySight(scouts)).toBe(SIGHT.recon);
+    // On a land, its own land and the city it lies round, not the lands beside it.
+    clearArmies(state);
+    const land = landOf('de-saxony', 'de-berlin');
+    place(state, 'fr', land, { infantry: 2 });
     seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-berlin')).toBe(true); // Hesse, Saxony, Berlin
-    expect(seen.has('pl-warsaw')).toBe(false); // one step too far
+    expect([...seen].filter((id) => !before.has(id)).sort()).toEqual([land, 'de-saxony'].sort());
+
+    // Cavalry sees the region and one step beyond it, over open land.
+    clearArmies(state);
+    place(state, 'fr', 'de-saxony', { infantry: 1, cavalry: 1 });
+    seen = visibleProvinces(state, world, 'fr');
+    for (const id of ['de-saxony', ...landsOf('de-saxony'), landOf('de-berlin', 'de-saxony'), 'de-berlin', 'cz-prague']) expect(seen.has(id)).toBe(true);
+    expect(seen.has('pl-warsaw')).toBe(false);
+  });
+
+  it('beyond sight, the radar shows unknown armies as blips of a rough size and nothing more', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    place(state, 'fr', 'de-saxony', { infantry: 2 });
+    const seen = visibleProvinces(state, world, 'fr');
+    const detected = detectedProvinces(state, world, 'fr');
+    for (const id of seen) expect(detected.has(id)).toBe(true);
+    // The army's radar reaches a step further than held land's sight: Berlin, next door, but not Warsaw.
+    expect(seen.has('de-berlin')).toBe(false);
+    expect(detected.has('de-berlin')).toBe(true);
+    expect(detected.has(landOf('de-berlin', 'de-saxony'))).toBe(true);
+    expect(detected.has('pl-warsaw')).toBe(false);
+
+    const small = place(state, 'de', 'de-berlin', { infantry: 2 });
+    place(state, 'de', 'pl-warsaw', { infantry: 12 });
+    expect(isArmyVisible(small, 'fr', seen)).toBe(false);
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'small' }]);
+    // Every hidden army in a province makes one blip, sized by all their units together.
+    place(state, 'de', 'de-berlin', { tank: 1, artillery: 2 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'medium' }]);
+    place(state, 'it', 'de-berlin', { infantry: 4 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'large' }]);
+    // A blip says only where and how big: the same for anyone's armies and any units.
+    const other = quietGame();
+    clearArmies(other);
+    setWar(other, 'fr', 'de');
+    place(other, 'fr', 'de-saxony', { infantry: 2 });
+    place(other, 'pl', 'de-berlin', { cavalry: 9 });
+    expect(radarBlips(other, world, 'fr')).toEqual(radarBlips(state, world, 'fr'));
+    expect([blipSize(1), blipSize(SIGHT.blipUnits.medium - 1), blipSize(SIGHT.blipUnits.medium), blipSize(SIGHT.blipUnits.large)]).toEqual([
+      'small',
+      'small',
+      'medium',
+      'large',
+    ]);
+    // Armies in sight are seen, not blips, and nobody picks up their own armies.
+    place(state, 'de', 'de-saxony', { infantry: 1 });
+    expect(radarBlips(state, world, 'fr').map((b) => b.province)).toEqual(['de-berlin']);
+    expect(radarBlips(state, world, 'de')).toEqual([]);
+  });
+
+  it('held land picks up blips two steps out; without an army the radar ends there', () => {
+    const state = quietGame();
+    clearArmies(state);
+    const seen = visibleProvinces(state, world, 'fr');
+    const detected = detectedProvinces(state, world, 'fr');
+    // Over the Rhine France sees Hesse; one step beyond, it only detects.
+    expect(seen.has('de-hesse')).toBe(true);
+    expect(seen.has('de-saxony')).toBe(false);
+    expect(detected.has('de-saxony')).toBe(true);
+    expect(detected.has('de-berlin')).toBe(false);
+    place(state, 'de', 'de-saxony', { infantry: 5 });
+    place(state, 'de', 'de-berlin', { infantry: 5 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-saxony', size: 'medium' }]);
   });
 
   it('mountains and narrow seas are seen across, not beyond; wide seas hide everything', () => {
