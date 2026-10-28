@@ -19,7 +19,6 @@ import {
   type NationId,
   type NeutralStateDef,
   type ProvinceDef,
-  type ProvinceId,
   type Resources,
   type ScenarioDef,
   type Terrain,
@@ -233,21 +232,6 @@ export function withRoads(connections: ConnectionDef[], roads: Record<string, Ro
   });
 }
 
-/**
- * The land a row's field units take at the start: the one facing the most foreign land (by its links), and
- * among those one at the city's gate, or else the first of its lands.
- */
-function fieldLand(row: ProvinceRow, coreOf: Map<string, NationId | null>, land: LandData, links: ConnectionDef[]): ProvinceId {
-  const ids = (land[row.id]?.lands ?? []).map((l) => landId(row.id, l.key));
-  if (!ids.length) throw new Error(`No map data for ${row.id}: run scripts/map/city-provinces.ts`);
-  const rowOf = (pid: string) => (coreOf.has(pid) ? pid : pid.slice(0, pid.lastIndexOf('-')));
-  const score = (pid: ProvinceId) => {
-    const next = links.filter((c) => (c.a === pid || c.b === pid) && c.kind !== 'strait').map((c) => (c.a === pid ? c.b : c.a));
-    return next.filter((o) => coreOf.get(rowOf(o)) !== row.core).length * 2 + (next.includes(row.id) ? 1 : 0);
-  };
-  return ids.reduce((best, id) => (score(id) > score(best) ? id : best));
-}
-
 type Units = Partial<Record<UnitType, number>>;
 
 function addUnits(into: Map<string, Units>, province: string, units: Units | undefined): void {
@@ -260,18 +244,16 @@ function addUnits(into: Map<string, Units>, province: string, units: Units | und
 /**
  * Starting buildings and armies for every nation from its tier, plus the neutral
  * garrisons and fortifications the rows set by hand. Buildings stand in the cities,
- * and so do the capital's and the heartland's garrisons. A nation's field units take
- * the field, on the land round the cities (the land of each row that faces the most
- * foreign land): where its rows place them, or else dealt out one at a time over its
- * border rows first, then its other rows, then its capital. `connections` are the
- * rows' own; `links` those between provinces.
+ * and so do all of a nation's starting units: the capital's and the heartland's
+ * garrisons, and its field units, which are in the city of the row its rows place
+ * them in, or else dealt out one at a time over its border rows first, then its other
+ * rows, then its capital. `connections` are the rows' own.
  */
 export function buildStartingSetup(
   rows: ProvinceRow[],
   nations: Nations,
   connections: ConnectionDef[],
   land: LandData,
-  links: ConnectionDef[],
 ): Pick<ScenarioDef, 'startingBuildings' | 'startingArmies'> {
   const coreOf = new Map(rows.map((r) => [r.id, r.core]));
   const borders = new Set<string>();
@@ -295,17 +277,16 @@ export function buildStartingSetup(
     const units = new Map<string, Units>();
     addUnits(units, capital.id, power.armies.capital);
     if (industrial) addUnits(units, industrial.id, power.armies.industrial);
-    const field = (r: ProvinceRow) => fieldLand(r, coreOf, land, links);
     const placed = own.filter((r) => r.garrison);
     if (placed.length) {
-      for (const r of placed) addUnits(units, field(r), r.garrison);
+      for (const r of placed) addUnits(units, r.id, r.garrison);
     } else {
       const others = own.filter((r) => r !== capital && r !== industrial);
       const order = [...others.filter((r) => borders.has(r.id)), ...others.filter((r) => !borders.has(r.id))];
       const slots = order.length ? order : [capital];
       let i = 0;
       for (const type of UNIT_TYPES) {
-        for (let k = 0; k < (power.armies.field[type] ?? 0); k++) addUnits(units, field(slots[i++ % slots.length]), { [type]: 1 });
+        for (let k = 0; k < (power.armies.field[type] ?? 0); k++) addUnits(units, slots[i++ % slots.length].id, { [type]: 1 });
       }
     }
     for (const r of [capital, ...own.filter((x) => x !== capital)]) {

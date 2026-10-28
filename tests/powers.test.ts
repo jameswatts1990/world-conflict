@@ -79,7 +79,7 @@ const landData = (r: ProvinceRow[]): LandData =>
 
 function setup(r: ProvinceRow[]) {
   const land = landData(r);
-  return buildStartingSetup(r, NATIONS, CONNECTIONS, land, buildConnections(r, CONNECTIONS, land));
+  return buildStartingSetup(r, NATIONS, CONNECTIONS, land);
 }
 
 function scenario(r = rows()): ScenarioDef {
@@ -112,14 +112,19 @@ describe('nation kinds', () => {
 
   it('deal field units over border provinces first, and to the capital when there is nothing else', () => {
     const units = (province: string) => scenario().startingArmies.find((a) => a.province === province)?.units;
-    // Garrisons in the cities; field units out on the land.
+    // Everything starts inside the cities; nothing starts out on the land round them.
     expect(units('aa-cap')).toEqual(POWERS.playable.armies.capital);
-    expect(units('aa-b-land')).toEqual({ infantry: 3 }); // borders the other playable nation
-    expect(units('aa-a-land')).toEqual({ infantry: 2, cavalry: 1 });
-    expect(units('aa-a')).toBeUndefined();
-    expect(units('bb-a-land')).toEqual(POWERS.playable.armies.field);
-    expect(units('mm-cap')).toEqual(POWERS.state.armies.capital);
-    expect(units('mm-cap-land')).toEqual(POWERS.state.armies.field);
+    expect(units('aa-b')).toEqual({ infantry: 3 }); // borders the other playable nation
+    expect(units('aa-a')).toEqual({ infantry: 2, cavalry: 1 });
+    expect(units('aa-a-land')).toBeUndefined();
+    expect(units('bb-a')).toEqual(POWERS.playable.armies.field);
+    const state = POWERS.state.armies;
+    const sum: Record<string, number> = { ...state.capital };
+    for (const [t, k] of Object.entries(state.field)) sum[t] = (sum[t] ?? 0) + (k ?? 0);
+    expect(units('mm-cap')).toEqual(sum); // no other province to deal field units to, so they join the capital
+    expect(units('mm-cap-land')).toBeUndefined();
+    const onLand = scenario().startingArmies.filter((a) => a.owner !== 'neutral' && a.province.endsWith('-land'));
+    expect(onLand).toEqual([]);
     expect(units('nt-x')).toEqual({ infantry: 2 });
     for (const n of NATIONS) {
       const total: Record<string, number> = {};
@@ -132,8 +137,8 @@ describe('nation kinds', () => {
 
   it('use hand-placed field units and the recruiting city when the rows give them', () => {
     const s = scenario(rows({ 'aa-a': { recruiting: true, garrison: { infantry: 5, cavalry: 1 } } }));
-    expect(s.startingArmies.find((a) => a.province === 'aa-a-land')!.units).toEqual({ infantry: 5, cavalry: 1 });
-    expect(s.startingArmies.some((a) => a.province === 'aa-b-land')).toBe(false);
+    expect(s.startingArmies.find((a) => a.province === 'aa-a')!.units).toEqual({ infantry: 5, cavalry: 1 });
+    expect(s.startingArmies.some((a) => a.province === 'aa-b')).toBe(false);
     expect(s.startingBuildings.find((b) => b.province === 'aa-a')!.buildings).toEqual(POWERS.playable.buildings.recruiting);
     expect(s.startingBuildings.find((b) => b.province === 'nt-x')!.buildings).toEqual({ fortifications: 1 });
   });

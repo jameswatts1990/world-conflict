@@ -118,10 +118,10 @@ Every land province adds its own small output on top (§5).
 
 Europe has fifteen playable nations and twenty-one states. Each playable nation has one oil province,
 the same city ladder (one Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
-in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). States spend more
+in those cities), plus 5 INF and 1 cavalry in the field (all start inside cities, none on the land round them). States spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
-and armies are generated from the kind and the province rows (`src/sim/scenario/build.ts`); field units go where
-the rows place them, or onto border provinces first. Geography stays asymmetric, and each playable nation has one
+and armies are generated from the kind and the province rows (`src/sim/scenario/build.ts`); field units go into the cities
+the rows place them in, or into border cities first. Geography stays asymmetric, and each playable nation has one
 modest speciality (§6.4).
 
 ## 4. Time model
