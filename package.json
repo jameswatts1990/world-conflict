@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Browser-based real-time global strategy game prototype (WWI to WWII era progression).",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

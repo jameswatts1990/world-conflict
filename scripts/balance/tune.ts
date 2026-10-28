@@ -16,10 +16,11 @@
 // Options: --population 8, --generations 6, --games 32 (campaigns per setting per generation),
 // --validate 200 (campaigns each for the final check), --seed 1, --workers, --out DIR.
 // --resume picks up a run that stopped (a reclaimed machine, say) from its --out directory: the
-// generations in its history.jsonl are replayed rather than played again, so give the same options.
+// generations in its history.jsonl are replayed rather than played again, so give the same options;
+// the generation or check it stopped in carries on from the campaigns it had saved (checkpoint/).
 // --weight GOAL=W reweighs a goal in goals.ts for this run (0 leaves it out): for instance to keep
 // the AI from making up for a rules problem it should not hide.
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { renderComparison } from './compare';
@@ -96,6 +97,8 @@ const checkSeeds = range(tunerSeed * 1_000_000 + 900_001, validate);
 mkdirSync(out, { recursive: true });
 interface HistoryRow { generation: number; setting: number; penalty: number; settings: Record<string, number> }
 const historyFile = join(out, 'history.jsonl');
+// Campaigns of the generation (or final check) being played, saved as each finishes.
+const checkpoint = join(out, 'checkpoint');
 if (!values.resume && existsSync(historyFile)) throw new Error(`${out} already holds a tuning run: pass --resume to carry it on, or another --out`);
 const history: HistoryRow[] = values.resume && existsSync(historyFile) ? readFileSync(historyFile, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l) as HistoryRow) : [];
 const started = new Date();
@@ -127,13 +130,14 @@ for (let g = 0; g < generations; g++) {
     });
     console.error(`  generation ${g + 1}: replayed from ${historyFile}`);
   } else {
-    const results = await playBatches(batches, 0, workers, `campaigns, generation ${g + 1} of ${generations}`);
+    const { results } = await playBatches(batches, 0, workers, { label: `campaigns, generation ${g + 1} of ${generations}`, checkpoint });
     scored = results.map((r, i) => {
       const summary = summarise(r.records, makeMeta(`generation ${g + 1}, setting ${i + 1}`, head.commit, batches[i], 0, workers, started, r.catalogue));
       const penalty = penaltyOf(summary);
       appendFileSync(historyFile, JSON.stringify({ generation: g + 1, setting: i + 1, guess: i === 0, penalty, settings: settingsOf(xs[i]), terms: Object.fromEntries(summary.fun.terms.map((t) => [t.id, t.value])) }) + '\n');
       return { x: xs[i], penalty };
     });
+    rmSync(checkpoint, { recursive: true, force: true });
   }
   const guessPenalty = scored[0].penalty;
   const ranked = [...scored].sort((a, b) => a.penalty - b.penalty);
@@ -154,11 +158,14 @@ const checks: Batch[] = [
   { simRoot: head.simRoot, overrides: fixed, seeds: checkSeeds },
   { simRoot: head.simRoot, overrides: [...fixed, ...proposal], seeds: checkSeeds },
 ];
-const [a, b] = await playBatches(checks, 0, workers, 'campaigns, final check');
+const {
+  results: [a, b],
+} = await playBatches(checks, 0, workers, { label: 'campaigns, final check', checkpoint });
 const summaryA = summarise(a.records, makeMeta("today's settings", head.commit, checks[0], 0, workers, started, a.catalogue));
 const summaryB = summarise(b.records, makeMeta('proposed settings', head.commit, checks[1], 0, workers, started, b.catalogue));
 saveRun(join(out, 'check', 'today'), a.records, summaryA);
 saveRun(join(out, 'check', 'proposed'), b.records, summaryB);
+rmSync(checkpoint, { recursive: true, force: true });
 writeFileSync(join(out, 'best.json'), JSON.stringify({ overrides: proposal, fixed, weights, penalty: { today: penaltyOf(summaryA), proposed: penaltyOf(summaryB) } }, null, 2) + '\n');
 
 // How sure is the change? Resample each side's campaigns and recompute the penalties.

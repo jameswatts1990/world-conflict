@@ -35,7 +35,13 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   and without it; slow, so on request); `npm run balance:tune` searches AI settings for the design goals in
   `scripts/balance/goals.ts`. Runs land in `balance-runs/` (ignored by git).
 - After changing rules, AI or content, run `npm run balance -- --vs main` (and `npm run balance:units -- --vs main`
-  for unit changes) and put what moved in the pull request.
+  for unit changes) and put what moved in the pull request. It plays 100 campaigns of each, for big changes (new
+  countries, rules, AI); `--quick` plays 25, for small ones, and catches only breakage (see "Reviewing AI changes").
+  Better still, compare with a shared baseline of the main commit you started from (`npm run balance -- compare
+  <baseline> <run>`, same seeds; docs/BALANCE.md, "One baseline per main commit") rather than playing main again.
+- Balance runs save each campaign as it finishes and replace workers that die (Node has crashed natively on long
+  runs on Windows). If a run stops, run the same command with the same `--out`: only the missing campaigns are played,
+  and the result is the same as an uninterrupted run.
 - Every number the AI weighs belongs in `src/sim/config/ai.ts`, not inline in `ai/*.ts`, so `--set` and the tuner can
   reach it. A new unit type needs a share in `AI.doctrineMix`, a new building a rule in `handleConstruction`; the
   reports flag content the AI never uses.
@@ -218,8 +224,11 @@ added, Normal all-AI stays within these ranges (reversals 1.4%, pile-on 0.2%, id
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
   counting timing (about 13% and 6% at Normal, 11% and 4% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
-  same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
-  shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
+  same seeds. 25 campaigns (`npm run balance -- --quick`) give a nation's win rate ±13 points and survival ±18: they
+  catch breakage (a nation that never survives, wars that stop), and a win rate must move from 10% to about 36% to
+  show. 100 (the default, for new countries, rules and AI) give ±6 and ±10, and show 10% becoming about 20% or
+  survival moving from 50% to about 64%. 200 give ±4 and ±7. None tell 12% from 10%. Call a shift only from 100 or
+  more. `scripts/dev/balance.ts 80 120` runs them in parallel and shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
   limit). Currently, over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
   none end on objectives; all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%,

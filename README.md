@@ -74,7 +74,7 @@ What is in it (Milestone 2, Depth):
 
 ## Run it
 
-Requires Node.js 20+ (developed on Node 22).
+Requires Node.js 24 (the LTS release; CI runs on it).
 
 ```bash
 npm install
