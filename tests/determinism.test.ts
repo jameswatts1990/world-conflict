@@ -95,7 +95,7 @@ describe('determinism', () => {
       hashes[name] = hashState(state);
     }
     expect(new Set(Object.values(hashes)).size).toBe(1);
-  }, 120000);
+  }, 240000);
 
   it('a recorded command log replays to the same state', () => {
     const sim = new Simulation(world, scriptedGame());

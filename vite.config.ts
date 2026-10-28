@@ -31,5 +31,7 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     environment: 'node',
     testTimeout: 60000,
+    // Some suites play short campaigns in beforeAll.
+    hookTimeout: 60000,
   },
 });
