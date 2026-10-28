@@ -770,12 +770,14 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   selects your armies in a box, , and . cycle through them, the arrow keys pan and C jumps to the capital. A cursor
   tooltip summarises the province (city size, morale, units present by nation) and the army under the mouse.
 - **City view** (click a city's shape, marker or model; on a phone, a tap opens it as a page of its own between the
-  top bar and the tab bar, without the skyline so its choices come first): a procedural skyline that grows with the
-  city and shows every building, construction and battle (larger screens); links to the lands round it; any battle
-  there (sides, units, morale and share of firepower) and capture progress; morale and growth meters with factor
-  breakdowns; a building-slot grid with a cancellable construction job; a build picker by category, where a building
-  that cannot go here says why (no free slot, needs a bigger city, another building or an oil field); armies present
-  and routes. **Recruit** offers only what has been researched: unit cards with each nation's art and named designs
+  top bar and the tab bar, so its choices come first): no picture and no links to the lands round it, so the card
+  goes straight to its choices; any battle there (sides, units, morale and share of firepower) and capture progress;
+  morale and growth meters with factor breakdowns; a building-slot grid with a cancellable construction job; a build
+  picker by category, where each building shows a one-line description under its name and opens on a click to its full
+  text, what each level costs, how long it takes and what it needs (a researched technology, another building, a
+  bigger city, an oil field), and one that cannot go here says why (no free slot, needs a bigger city, another
+  building or an oil field); armies present and routes. Selecting an army shows its panel alone (the province it
+  stands in stays highlighted on the map). **Recruit** offers only what has been researched: unit cards with each nation's art and named designs
   (cards name a building they still need), and above them a training strip of fixed height (each job, its progress
   and a cancel button), so recruiting again and again never moves the buttons. Tapping a unit's picture or name opens
   its details: role and description, numbers, strengths and weaknesses read from its rules (terrain, armour, punch

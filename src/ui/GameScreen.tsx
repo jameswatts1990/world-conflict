@@ -614,16 +614,15 @@ export function GameScreen({
                   onClose={clearSelection}
                 />
               )}
-              {selectedProvince && (
+              {/* A selected army has the dock to itself: the province it stands in stays highlighted on the map. */}
+              {selectedProvince && !armySelected && (
                 <ProvincePanel
                   key={selectedProvince}
                   ctrl={ctrl}
                   pid={selectedProvince}
                   selectedArmies={selectedArmies}
                   onSelectArmy={selectArmy}
-                  onSelectProvince={selectProvince}
                   onClose={() => setSelectedProvince(null)}
-                  compact={compact}
                 />
               )}
             </aside>
@@ -639,9 +638,7 @@ export function GameScreen({
                   setCityPage(null);
                   selectArmy(id, additive);
                 }}
-                onSelectProvince={selectProvince}
                 onClose={closeCityPage}
-                compact
                 page
               />
             </div>
