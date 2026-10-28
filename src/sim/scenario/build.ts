@@ -2,7 +2,7 @@
 // the region round it (owner, terrain, city, role) and becomes the city, keyed by
 // the row's id, and the provinces of land the map divides the region into, keyed
 // `<id>-<compass point>` (the theatre's land.ts, generated from the shapes, lists
-// them). The owner's power tier (see config/powers.ts) decides the rest: output,
+// them). The owner's kind, playable or state (see config/powers.ts), decides the rest: output,
 // objective value, the capital's city size, and the starting buildings and army.
 // Shapes live separately in src/assets/map/map.topo.json, keyed by the same ids.
 import { POWERS } from '../config/powers';
@@ -27,7 +27,7 @@ import {
   type UnitType,
 } from '../types';
 
-/** A province's economic role. Exactly one capital per nation; great and major powers also need one heartland. */
+/** A province's economic role. Exactly one capital per nation; playable nations also need one heartland. */
 export type ProvinceRole = 'capital' | 'industrial' | 'city' | 'town';
 
 /** A land's name, and its terrain where it differs from the rest of the region's land. */

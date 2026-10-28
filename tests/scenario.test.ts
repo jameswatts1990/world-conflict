@@ -35,13 +35,13 @@ describe('scenario data', () => {
   it('folds Kosovo into Serbia without a separate country outline or label', () => {
     const topo = JSON.parse(readFileSync('src/assets/map/map.topo.json', 'utf8'));
     const shapes = topo.objects.provinces.geometries;
-    const south = shapes.filter((g: { properties: { pid: string } }) => g.properties.pid === 'rs-south' || g.properties.pid.startsWith('rs-south-'));
+    const south = shapes.filter((g: { properties: { pid: string } }) => g.properties.pid === 'rs-belgrade' || g.properties.pid.startsWith('rs-belgrade-'));
     expect(south.length).toBeGreaterThan(1);
     expect(south.every((g: { properties: { iso: string } }) => g.properties.iso === 'SRB')).toBe(true);
     expect(topo.objects.countries.geometries.some((g: { properties: { iso: string } }) => g.properties.iso === 'KOS')).toBe(false);
     const provinces = feature(topo, topo.objects.provinces) as unknown as { features: Feature<Polygon | MultiPolygon, { pid: string; iso: string }>[] };
     const pristina = provinces.features.find((p) => geoContains(p, [21.163, 42.663]));
-    expect(pristina?.properties.pid).toMatch(/^rs-south-/);
+    expect(pristina?.properties.pid).toMatch(/^rs-belgrade-/);
     expect(world.nationIds).not.toContain('kos');
   });
 
@@ -61,11 +61,11 @@ describe('scenario data', () => {
       expect(provinces.some((p) => geoContains(p, coord))).toBe(false);
     }
     expect(world.neighbors['ua-odesa-se']).toContainEqual(expect.objectContaining({ id: 'ua-odesa-e', kind: 'land' })); // Crimea reaches the Taurida steppe over Perekop.
-    expect(world.nations.ua.power).toBe('major');
+    expect(world.nations.ua.power).toBe('playable');
     expect(world.cityIds.filter((id) => world.provinces[id].core === 'ua').sort()).toEqual(['ua-dnipro', 'ua-galicia', 'ua-kharkiv', 'ua-kyiv', 'ua-odesa']);
-    expect(world.nations.by.power).toBe('major');
+    expect(world.nations.by.power).toBe('playable');
     for (const id of ['ua', 'by', 'md']) expect(world.nations[id].bloc).toBe('eastern');
-    for (const id of ['md', 'lt', 'lv', 'ee']) expect(world.nations[id].power).toBe('minor');
+    for (const id of ['md', 'lt', 'lv', 'ee']) expect(world.nations[id].power).toBe('state');
     for (const id of ['lt', 'lv', 'ee']) expect(world.nations[id].bloc).toBe('western');
     expect(world.nations.lt.capital).toBe('lt-vilnius');
     expect(provinces.find((p) => geoContains(p, [29.643, 46.848]))?.properties.pid).toMatch(/^md-chisinau-/);
@@ -110,8 +110,8 @@ describe('scenario data', () => {
     // Where the shapes leave a road no way that keeps to its two provinces (it goes as briefly as it can through
     // what it must), and why. Any other road that strays is a map to fix or a road to route again.
     const lastResort: Record<string, string> = {
-      'es-madrid-e|es-valencia-n': 'the Alcarria reaches Valencia only at the Rincón de Ademuz, its exclave beyond Aragon',
-      'me-podgorica-n|hr-dalmatia-e': 'the Dubrovnik coast is cut off from the rest of Dalmatia by Bosnia at Neum; the coastal road crosses that short gap',
+      'de-hesse-s|at-vienna-wsw2': 'Baden meets Austria only at Lake Constance, across a sliver of Bavarian Swabia',
+      'me-podgorica-n|hr-zagreb-s': 'the Dubrovnik coast is cut off from the rest of Dalmatia by Bosnia at Neum; the coastal road crosses that short gap',
       'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
@@ -177,7 +177,7 @@ describe('scenario data', () => {
     // Straits exist for islands (e.g. Britain) — they are explicit, not derived from shapes. They land on the
     // land round the cities, and every city is reached only through its own lands, at least two of them: no
     // land wraps round a city.
-    expect(world.neighbors['uk-london-sw'].some((n) => n.id === 'fr-nord-sw' && n.kind === 'strait')).toBe(true);
+    expect(world.neighbors['uk-london-ne'].some((n) => n.id === 'fr-nord-w' && n.kind === 'strait')).toBe(true);
     for (const id of world.cityIds) {
       const around = world.neighbors[id].map((n) => n.id);
       expect(around.filter((n) => !world.provinces[id].lands!.includes(n)), id).toEqual([]);
@@ -185,7 +185,7 @@ describe('scenario data', () => {
     }
   });
 
-  it('every nation matches its power tier: output, starting army, objectives and size', () => {
+  it('every nation matches its kind (playable or state): output, starting army, objectives and size', () => {
     for (const id of world.nationIds) {
       const power = POWERS[world.nations[id].power];
       const provs = world.scenario.provinces.filter((p) => p.core === id);
@@ -206,7 +206,7 @@ describe('scenario data', () => {
       }
       expect(units, `${id} starting army`).toEqual(startingUnits(world.nations[id].power));
       expect(provs.reduce((s, p) => s + (p.objectiveVp ?? 0), 0)).toBe(power.vp.capital + (power.vp.industrial ?? 0));
-      if (world.nations[id].power === 'great') {
+      if (world.nations[id].power === 'playable') {
         // Same city ladder (one Metropolis, one Large City) and one oil field.
         expect(cities.filter((p) => p.tier === 4)).toHaveLength(1);
         expect(cities.filter((p) => p.tier === 3)).toHaveLength(1);

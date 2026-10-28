@@ -28,7 +28,7 @@ describe('resource accounting', () => {
 
   it('building deducts its cost and improves production when complete', () => {
     const state = quietGame();
-    const pid = 'fr-rhone';
+    const pid = 'fr-aquitaine';
     const cost = BUILDINGS.industry.cost(1);
     const r0 = { ...state.nations.fr.resources };
     const out0 = provinceOutput(state, world, pid);
@@ -50,7 +50,7 @@ describe('resource accounting', () => {
     const state = quietGame();
     state.nations.fr.resources.money = 10;
     const r0 = { ...state.nations.fr.resources };
-    const res = applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-rhone', building: 'industry' });
+    const res = applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-aquitaine', building: 'industry' });
     expect(res.ok).toBe(false);
     expect(state.nations.fr.resources).toEqual(r0);
     // Cannot build in someone else's province.
@@ -60,14 +60,14 @@ describe('resource accounting', () => {
     state.nations.fr.resources.materials = 1e5;
     expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-paris', building: 'tankWorks' }).ok).toBe(false);
     state.nations.fr.research.completed.push('landships');
-    expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-nord', building: 'tankWorks' }).ok).toBe(false);
+    expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-midi', building: 'tankWorks' }).ok).toBe(false);
     expect(applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-paris', building: 'tankWorks' }).ok).toBe(true);
   });
 
   it('recruitment requires the right building, charges the cost and spawns after the timer', () => {
     const state = quietGame();
     clearArmies(state, 'fr-paris');
-    expect(applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-centre', unitType: 'infantry' }).ok).toBe(false);
+    expect(applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-aquitaine', unitType: 'infantry' }).ok).toBe(false);
     expect(applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'tank' }).ok).toBe(false);
     const m0 = state.nations.fr.resources.manpower;
     expect(applyCommand(state, world, { type: 'recruit', nation: 'fr', province: 'fr-paris', unitType: 'artillery' }).ok).toBe(true);
@@ -116,22 +116,22 @@ describe('resource accounting', () => {
     const state = quietGame();
     const cost = constructionCost(state, 'fr', 'fortifications', 1);
     const r0 = { ...state.nations.fr.resources };
-    const build = () => applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-east', building: 'fortifications' });
-    const cancel = () => applyCommand(state, world, { type: 'cancelBuild', nation: 'fr', province: 'fr-east' });
+    const build = () => applyCommand(state, world, { type: 'build', nation: 'fr', province: 'fr-midi', building: 'fortifications' });
+    const cancel = () => applyCommand(state, world, { type: 'cancelBuild', nation: 'fr', province: 'fr-midi' });
     expect(cancel().ok).toBe(false);
     build();
     expect(cancel().ok).toBe(true);
-    expect(state.provinces['fr-east'].construction).toBeNull();
+    expect(state.provinces['fr-midi'].construction).toBeNull();
     expect(state.nations.fr.resources).toEqual(r0);
     build();
     run(state, 5);
     const before = state.nations.fr.resources.money;
     cancel();
     expect(state.nations.fr.resources.money - before).toBeCloseTo(cost.money! * ECONOMY.startedJobRefund, 6);
-    expect(state.provinces['fr-east'].buildings.fortifications).toBeUndefined();
+    expect(state.provinces['fr-midi'].buildings.fortifications).toBeUndefined();
     // Only the owner can cancel.
     build();
-    expect(applyCommand(state, world, { type: 'cancelBuild', nation: 'de', province: 'fr-east' }).ok).toBe(false);
+    expect(applyCommand(state, world, { type: 'cancelBuild', nation: 'de', province: 'fr-midi' }).ok).toBe(false);
   });
 
   it('output follows province morale; occupied land also yields few recruits', () => {
@@ -182,7 +182,7 @@ describe('resource accounting', () => {
       army.units[0].strength = 0.5;
       if (short) {
         // A huge army elsewhere eats more manpower than France makes.
-        place(state, 'fr', 'fr-nord', { infantry: 400 });
+        place(state, 'fr', 'fr-midi', { infantry: 400 });
         state.nations.fr.resources.manpower = 0;
       }
       run(state, 30);

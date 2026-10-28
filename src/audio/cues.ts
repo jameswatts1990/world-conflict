@@ -65,12 +65,12 @@ const MAX_PER_BATCH = 2;
 
 /**
  * Whether another power's war or peace is news to the player (an alert, a sound): when one side borders
- * them, or both sides are great powers. Anything else stays in the field reports.
+ * them, or both sides are playable nations. Anything else stays in the field reports.
  */
 export function concernsPlayer(state: GameState, world: World, human: NationId, e: GameEvent): boolean {
   const sides = [e.actor, e.subject].filter((n): n is OwnerId => !!n && !!world.nations[n as NationId]);
   if (sides.some((n) => ownersBorder(state, world, n, human))) return true;
-  return sides.length === 2 && sides.every((n) => world.nations[n as NationId].power === 'great');
+  return sides.length === 2 && sides.every((n) => world.nations[n as NationId].power === 'playable');
 }
 
 /** The sound one event makes for the human player, if any. */

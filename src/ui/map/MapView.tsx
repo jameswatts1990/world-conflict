@@ -805,7 +805,7 @@ const NAME_PX = { min: 9, max: 44 };
  * The nation names to show at zoom `k`, each at a size that can be read: the size that fits its territory
  * where that is big enough, else the smallest readable one. Zoomed out, a name grown to be readable may
  * run over its neighbours': the bigger territories' names go first and any name that would overlap one
- * already placed is left out, so the overview names the great powers rather than smudging them all.
+ * already placed is left out, so the overview names the playable nations rather than smudging them all.
  */
 function shownLabels(labels: NationLabel[], k: number): (NationLabel & { scale: number })[] {
   const placed: [number, number, number, number][] = [];

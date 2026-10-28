@@ -378,6 +378,7 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Equipment blocs (Western, Central, Eastern): a new nation inherits named designs, formation names and unit
       art from its bloc and overrides only what it wants (see docs/ADDING_A_COUNTRY.md)
 - [x] Hungary, the first nation added through blocs; older saves take in newly added nations
+- [x] Five cities per playable nation, one per state (replaces great/major/minor; Serbia now a state). Follow-ups: Greece wins 29% (48 campaigns), so balance it with general mechanics; consider promoting Portugal (needs a five-city split)
 - [x] Power tiers (great, major, minor; minor powers computer-only) that scale output, treasury, starting army,
       objective VP, capital size and province count
 - [x] Starting setups generated from each nation's tier and its province rows

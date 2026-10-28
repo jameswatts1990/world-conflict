@@ -42,7 +42,7 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
 npm run balance                                           # 200 campaigns of the working tree
 npm run balance -- --games 400 --set AI.warStrengthRatio=1.3   # with an override
 npm run balance -- --vs main                              # against another commit, on the same seeds
-npm run balance -- --set AI.unitsFlat.minor=4 --vs defaults   # the same code with and without the override
+npm run balance -- --set AI.unitsFlat.state=4 --vs defaults   # the same code with and without the override
 npm run balance -- report balance-runs/<run>              # re-read a saved run (with today's goals)
 npm run balance -- compare balance-runs/<a> balance-runs/<b>
 ```

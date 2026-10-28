@@ -5,7 +5,7 @@
 //   npm run balance:units                              every unit, every technology level
 //   npm run balance:units -- --units tank,antiTank --levels ww2
 //   npm run balance:units -- --set UNITS.tank.cost.money=260
-//   npm run balance:units -- --output fuel=60          price fuel as if a great power made 60 a minute
+//   npm run balance:units -- --output fuel=60          price fuel as if a playable nation made 60 a minute
 //   npm run balance:units -- --vs main                 the working tree's units against main's
 //
 // Options: --budget 12 (army size in line infantry), --seeds 8 (battles per data point),

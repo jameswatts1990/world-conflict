@@ -3,7 +3,7 @@
 //   npm run balance                                     200 campaigns of the working tree
 //   npm run balance -- --games 400 --set AI.warStrengthRatio=1.3
 //   npm run balance -- --vs main                        the working tree against main, same seeds
-//   npm run balance -- --set AI.unitsFlat.minor=3 --vs defaults    with and without the override
+//   npm run balance -- --set AI.unitsFlat.state=3 --vs defaults    with and without the override
 //   npm run balance -- report balance-runs/<run>        re-read a saved run (with today's goals)
 //   npm run balance -- compare <run A> <run B>          compare two saved runs
 //

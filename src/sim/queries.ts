@@ -586,7 +586,7 @@ export function placeShare(world: World, pid: ProvinceId): number {
   return world.provinces[pid].city ? 1 : landShare(world, pid);
 }
 
-/** Great and major powers contend for victory; minor powers can be conquered but never win. */
+/** Playable nations contend for victory; one-city states can be conquered but never win. */
 export function isContender(world: World, nation: NationId): boolean {
   return POWERS[world.nations[nation].power].playable;
 }

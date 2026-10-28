@@ -33,7 +33,7 @@ export function DiplomacyPanel({ ctrl, onClose, onFocus }: { ctrl: GameControlle
   // Minor powers are many: those at war with you, bordering you or sending an offer are listed, the rest on request.
   const listed = (n: NationId) =>
     allMinors ||
-    world.nations[n].power !== 'minor' ||
+    world.nations[n].power !== 'state' ||
     n === human ||
     state.nations[human].relations[n]?.status === 'war' ||
     state.peaceOffers.some((o) => o.from === n && o.to === human) ||

@@ -136,7 +136,7 @@ describe('event wording', () => {
     state.nations.fr.relations.de.since = state.nations.de.relations.fr.since = -scaledTicks(state, DIPLOMACY.minWarSecondsBeforePeace);
     applyCommand(state, world, { type: 'offerPeace', nation: 'fr', target: 'de' });
     applyCommand(state, world, { type: 'respondPeace', nation: 'de', from: 'fr', accept: true });
-    expect(texts(state, 'withdraw')).toEqual([`The ${armyName(world, army)} withdrew from Essen to Lorraine.`]);
+    expect(texts(state, 'withdraw')).toEqual([`The ${armyName(world, army)} withdrew from Essen to Champagne.`]);
   });
 
   it('war and peace record who acted and who it concerns', () => {

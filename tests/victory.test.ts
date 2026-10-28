@@ -87,7 +87,7 @@ describe('victory conditions', () => {
     expect(score.outcome?.scores[0].nation).toBe('be');
     expect(score.outcome?.winner).toBe('fr');
 
-    // The last great or major power wins, though minor powers survive it.
+    // The last playable nation wins, though minor powers survive it.
     const standing = quietGame();
     standing.settings.humanNation = null;
     for (const id of world.provinceIds) standing.provinces[id].owner = id === 'it-rome' ? 'it' : 'nl';

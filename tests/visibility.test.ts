@@ -15,7 +15,7 @@ describe('fog of war', () => {
     const seen = visibleProvinces(state, world, 'fr');
     for (const id of world.provinceIds) if (state.provinces[id].owner === 'fr') expect(seen.has(id)).toBe(true);
     // Across the Rhine, the Alps and the Strait of Dover...
-    for (const id of ['de-baden', 'de-hesse', 'it-piedmont', 'uk-london', 'be-brussels']) expect(seen.has(id)).toBe(true);
+    for (const id of ['de-hesse', 'de-hesse', 'it-piedmont', 'uk-london', 'be-brussels']) expect(seen.has(id)).toBe(true);
     // ...but not deeper.
     for (const id of ['de-bavaria', 'de-berlin', 'it-rome', 'pl-warsaw', 'es-madrid']) expect(seen.has(id)).toBe(false);
   });
@@ -40,13 +40,13 @@ describe('fog of war', () => {
     const infantry = place(state, 'fr', 'de-hesse', { infantry: 2 });
     expect(armySight(infantry)).toBe(SIGHT.army);
     let seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-saxony')).toBe(true);
+    expect(seen.has('de-berlin-sw')).toBe(true);
     expect(seen.has('de-berlin')).toBe(false);
 
     const scouts = place(state, 'fr', 'de-hesse', { infantry: 1, cavalry: 1 });
     expect(armySight(scouts)).toBe(SIGHT.recon);
     seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-berlin')).toBe(true); // Hesse, Saxony, Berlin
+    expect(seen.has('de-berlin')).toBe(true); // Hesse, Thuringia, Berlin
     expect(seen.has('pl-warsaw')).toBe(false); // one step too far
   });
 
@@ -59,13 +59,13 @@ describe('fog of war', () => {
     // Scouts in Piedmont see over the Alps into the Rhône valley and Provence...
     for (const id of ['fr-rhone', 'fr-midi', 'ch-bern']) expect(seen.has(id)).toBe(true);
     // ...but no further, while over open land they would see two provinces out.
-    for (const id of ['fr-centre', 'fr-aquitaine', 'fr-east', 'de-baden']) expect(seen.has(id)).toBe(false);
+    for (const id of ['fr-paris', 'fr-aquitaine', 'fr-nord', 'de-hesse']) expect(seen.has(id)).toBe(false);
     // Sardinia does not watch Barcelona across 1,000 km of sea, nor Rome Split across the Adriatic.
-    for (const id of ['es-catalonia', 'hr-dalmatia']) expect(seen.has(id)).toBe(false);
+    for (const id of ['es-catalonia', 'hr-zagreb']) expect(seen.has(id)).toBe(false);
     // The Channel is narrow enough: London sees the French coast, not what lies behind it.
     seen = visibleProvinces(state, world, 'uk');
-    expect(seen.has('fr-normandy')).toBe(true);
-    expect(seen.has('fr-paris')).toBe(false);
+    expect(seen.has('fr-nord-w')).toBe(true);
+    expect(seen.has('fr-rhone')).toBe(false);
   });
 
   it('a marching army comes into sight at the nearer end of its road', () => {

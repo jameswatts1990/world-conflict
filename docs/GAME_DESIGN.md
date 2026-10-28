@@ -28,14 +28,17 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ## 3. The theatre
 
-- **Thirteen playable nations:** the great powers United Kingdom, France, Germany, Italy, Spain, Poland and Hungary,
-  and the major powers Romania, Serbia, Bulgaria, Greece, Ukraine and Belarus. The human picks one; the AI plays the rest. The
-  south-eastern edge reaches Greece and Bulgaria; Turkey stays outside the theatre. Kosovo belongs to southern Serbia.
+- **Twelve playable nations,** five cities each: United Kingdom, France, Germany, Italy, Spain, Poland, Hungary,
+  Romania, Bulgaria, Greece, Ukraine and Belarus. A nation is playable when its real area and population are large
+  enough (roughly 90,000 km² or more, with about 9 million people or a wide front); big countries keep only their
+  biggest cities (the rest are merged into the neighbouring city of the same country) and small ones are filled out with
+  lesser-known towns. The human picks one; the AI plays the rest. The
+  south-eastern edge reaches Greece and Bulgaria; Turkey stays outside the theatre. Kosovo belongs to Serbia.
   Ukraine has five regions: Kyiv, Dnipro, Kharkiv & the Donbas, Odesa & Crimea, and Lviv & the West.
   Crimea and Sevastopol belong to Ukraine; Russia, including Kaliningrad, remains outside the theatre.
-- **Nineteen minor powers:** Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia, Portugal,
-  Slovenia, Montenegro, Albania, North Macedonia, Moldova, Lithuania, Latvia and Estonia, one region each, and
-  Slovakia, Croatia, Bosnia & Herzegovina and Ireland, two each; always computer-controlled. They are there to
+- **Twenty one-city states:** Serbia, Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia,
+  Portugal, Slovakia, Slovenia, Croatia, Bosnia & Herzegovina, Montenegro, Albania, North Macedonia, Ireland, Moldova,
+  Lithuania, Latvia and Estonia, one city and the land round it each; always computer-controlled. They are there to
   be conquered, at a price. They recruit, research, defend themselves and make peace, but **never start a war and
   never win** (§10); invading one means declaring war on it. Every minor capital is fortified (level 2,
   Switzerland's mountain redoubt 3) and starts with six infantry divisions, which the AI tops up to about seven or
@@ -85,31 +88,29 @@ espionage, naval and air warfare, later eras, multiplayer.
   Montenegro meets Dalmatia's Dubrovnik coast, separated from the rest by Bosnia's Neum corridor. The scenario
   test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings widen Britain, Italy and Spain's choice of targets beyond France.
-  Ukraine and Belarus give Poland two major-power land frontiers; every great power has at least two great or major
-  powers as neighbours. Ireland borders Northern
+  Ukraine and Belarus give Poland two playable land frontiers; every playable nation has at least two playable
+  neighbours. Ireland borders Northern
   Ireland by land and lies one short crossing from Wales (the Irish Sea, Dublin–Cardiff), so Britain can reach it two
   ways and Ireland is not a dead end behind Ulster; no crossing joins it to France.
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
 
-Every nation has a **power tier** (`src/sim/config/powers.ts`) that sets its start, so nations of one tier start
-broadly balanced:
+Every nation is either **playable** or a **state** (`src/sim/config/powers.ts`), and that sets its start, so nations
+of one kind start broadly balanced:
 
-| Tier | Playable | City output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
+| Kind | Playable | City output per minute (money / materials / manpower) | Starting army | Objective VP | Cities |
 | --- | --- | --- | --- | --- | --- |
-| Great | Yes | 260 / 126 / 42 | 13 units | Capital 3, heartland 2 | 6–9 |
-| Major | Yes | 150 / 72 / 24 | 8 units | Capital 2, heartland 1 | 3–5 |
-| Minor | No (computer-controlled; never wins) | 70 / 32 / 12 | 6 units behind level-2 forts | Capital 1 | 1–2 |
+| Playable | Yes | 260 / 126 / 42 | 13 units | Capital 3, heartland 2 | 5 |
+| State | No (computer-controlled; never wins) | 70 / 32 / 12 | 6 units behind level-2 forts | Capital 1 | 1 |
 
-Every land province adds its own small output on top (§5), about 60 money and 20 manpower a minute for a great
-power's twenty or so lands.
+Every land province adds its own small output on top (§5).
 
-Europe has seven great powers, six major powers and nineteen minor powers. Each great power has one oil province,
+Europe has twelve playable nations and twenty states. Each playable nation has one oil province,
 the same city ladder (one Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
-in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). Major powers keep the same share of income on starting upkeep; minor powers spend more
+in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). States spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
-and armies are generated from the tier and the province rows (`src/sim/scenario/build.ts`); field units go where
+and armies are generated from the kind and the province rows (`src/sim/scenario/build.ts`); field units go where
 the rows place them, or onto border provinces first. Geography stays asymmetric, and each playable nation has one
 modest speciality (§6.4).
 
@@ -460,14 +461,13 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 72 VP in total (great-power capitals 3 and industrial heartlands 2, major-power capitals 2 and
-  heartlands 1, minor-power capitals 1). Holding **40% (29 VP)** continuously for **90 s** wins.
+- **Objectives:** 80 VP in total (playable capitals 3 and industrial heartlands 2, state capitals 1). Holding **40% (32 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 2 × cities + 1 × the land round each city +
   2 × technologies, each land scoring its share of its city's land (a city and its lands together score what one
   province did before cities were split out).
 - **Elimination:** a nation with no provinces is out. The last power standing wins.
-- **Minor powers never win.** Only great and major powers count for an objective victory, the top score and the
-  last power standing; a minor power can survive the campaign, but someone else wins it.
+- **States never win.** Only playable nations count for an objective victory, the top score and the
+  last power standing; a state can survive the campaign, but someone else wins it.
 
 ## 11. Computer opponents
 

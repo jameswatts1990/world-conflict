@@ -208,7 +208,7 @@ build, and the Challenge figures from the same ten seeds with an idle France at 
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with the five-region East on the current economy, none end on
+  limit). With the five-cities rule (12 playable nations, 5 cities each; 48 campaigns, rough): Greece 29%, Ukraine 19%, Germany 13%, Spain 10%, Italy and Bulgaria 6%, Hungary, Belarus 4%, the rest 2%. Before it, over 200 full campaigns with the five-region East on the current economy, none end on
   objectives; all reach the 150-minute score limit. Win rates: Hungary 29%, Germany 19%, Poland 16.5%, France
   and Italy 9.5% each, Britain 6.5%, Spain 6%, Greece 2%, Romania 1.5%, Ukraine 0.5%, and Belarus, Bulgaria and
   Serbia 0%. Against main on the same seeds, Germany rises from 4%, Hungary from 27.5%, and Poland falls from

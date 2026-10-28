@@ -14,17 +14,18 @@ export const PROVINCE_SOURCES = [
   { id: 'uk-scotland', country: 'GBR', regions: ['Highlands and Islands', 'North Eastern', 'Eastern', 'South Western'] },
   { id: 'uk-north', country: 'GBR', regions: ['North East', 'North West', 'Yorkshire and the Humber'] },
   { id: 'uk-midlands', country: 'GBR', regions: ['West Midlands', 'East Midlands'] },
-  { id: 'uk-west', country: 'GBR', regions: ['West Wales and the Valleys', 'East Wales', 'South West'] },
+  { id: 'uk-midlands', country: 'GBR', regions: ['West Wales and the Valleys', 'East Wales', 'South West'] },
   { id: 'uk-london', country: 'GBR', regions: ['Greater London', 'South East', 'East'] },
   { id: 'uk-ulster', country: 'GBR', regions: ['Northern Ireland'] },
 
   // France (metropolitan only; overseas departments are outside the prototype)
   { id: 'fr-paris', country: 'FRA', regions: ['Île-de-France'] },
   { id: 'fr-nord', country: 'FRA', regions: ['Hauts-de-France'] },
-  { id: 'fr-normandy', country: 'FRA', regions: ['Normandie'] },
-  { id: 'fr-west', country: 'FRA', regions: ['Bretagne', 'Pays de la Loire'] },
-  { id: 'fr-east', country: 'FRA', regions: ['Grand Est'] },
-  { id: 'fr-centre', country: 'FRA', regions: ['Centre-Val de Loire', 'Bourgogne-Franche-Comté'] },
+  { id: 'fr-paris', country: 'FRA', regions: ['Normandie'] },
+  { id: 'fr-aquitaine', country: 'FRA', regions: ['Bretagne', 'Pays de la Loire'] },
+  { id: 'fr-nord', country: 'FRA', regions: ['Grand Est'] },
+  { id: 'fr-paris', country: 'FRA', regions: ['Centre-Val de Loire'] },
+  { id: 'fr-rhone', country: 'FRA', regions: ['Bourgogne-Franche-Comté'] },
   { id: 'fr-rhone', country: 'FRA', regions: ['Auvergne-Rhône-Alpes'] },
   { id: 'fr-aquitaine', country: 'FRA', regions: ['Nouvelle-Aquitaine'] },
   { id: 'fr-midi', country: 'FRA', regions: ['Occitanie', "Provence-Alpes-Côte-d'Azur", 'Corse'] },
@@ -32,29 +33,29 @@ export const PROVINCE_SOURCES = [
   // Germany (admin-1 units are the 16 Länder; matched by name)
   { id: 'de-berlin', country: 'DEU', names: ['Berlin', 'Brandenburg'] },
   { id: 'de-north', country: 'DEU', names: ['Schleswig-Holstein', 'Hamburg', 'Mecklenburg-Vorpommern'] },
-  { id: 'de-lowersaxony', country: 'DEU', names: ['Niedersachsen', 'Bremen'] },
+  { id: 'de-north', country: 'DEU', names: ['Niedersachsen', 'Bremen'] },
   { id: 'de-ruhr', country: 'DEU', names: ['Nordrhein-Westfalen'] },
-  { id: 'de-saxony', country: 'DEU', names: ['Sachsen', 'Sachsen-Anhalt', 'Thüringen'] },
+  { id: 'de-berlin', country: 'DEU', names: ['Sachsen', 'Sachsen-Anhalt', 'Thüringen'] },
   { id: 'de-hesse', country: 'DEU', names: ['Hessen', 'Rheinland-Pfalz', 'Saarland'] },
-  { id: 'de-baden', country: 'DEU', names: ['Baden-Württemberg'] },
+  { id: 'de-hesse', country: 'DEU', names: ['Baden-Württemberg'] },
   { id: 'de-bavaria', country: 'DEU', names: ['Bayern'] },
 
   // Italy
   { id: 'it-piedmont', country: 'ITA', regions: ['Piemonte', "Valle d'Aosta", 'Liguria'] },
   { id: 'it-lombardy', country: 'ITA', regions: ['Lombardia'] },
-  { id: 'it-venetia', country: 'ITA', regions: ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige'] },
+  { id: 'it-lombardy', country: 'ITA', regions: ['Veneto', 'Friuli-Venezia Giulia', 'Trentino-Alto Adige'] },
   { id: 'it-tuscany', country: 'ITA', regions: ['Emilia-Romagna', 'Toscana'] },
   { id: 'it-rome', country: 'ITA', regions: ['Lazio', 'Umbria', 'Marche', 'Abruzzo', 'Molise'] },
   { id: 'it-naples', country: 'ITA', regions: ['Campania', 'Apulia', 'Basilicata', 'Calabria'] },
-  { id: 'it-islands', country: 'ITA', regions: ['Sicily', 'Sardegna'] },
+  { id: 'it-naples', country: 'ITA', regions: ['Sicily', 'Sardegna'] },
 
   // Spain (Canary Islands, Ceuta and Melilla are outside the prototype)
   { id: 'es-madrid', country: 'ESP', regions: ['Madrid', 'Castilla-La Mancha'] },
   { id: 'es-castile', country: 'ESP', regions: ['Castilla y León'] },
   { id: 'es-north', country: 'ESP', regions: ['País Vasco', 'Foral de Navarra', 'Cantabria', 'La Rioja'] },
-  { id: 'es-galicia', country: 'ESP', regions: ['Galicia', 'Asturias'] },
+  { id: 'es-north', country: 'ESP', regions: ['Galicia', 'Asturias'] },
   { id: 'es-catalonia', country: 'ESP', regions: ['Cataluña', 'Aragón', 'Islas Baleares'] },
-  { id: 'es-valencia', country: 'ESP', regions: ['Valenciana', 'Murcia'] },
+  { id: 'es-catalonia', country: 'ESP', regions: ['Valenciana', 'Murcia'] },
   { id: 'es-andalusia', country: 'ESP', regions: ['Andalucía', 'Extremadura'] },
 
   // Poland (admin-1 units are voivodeships; matched by name)
@@ -63,7 +64,7 @@ export const PROVINCE_SOURCES = [
   { id: 'pl-greater', country: 'POL', names: ['Greater Poland', 'Lubusz'] },
   { id: 'pl-silesia', country: 'POL', names: ['Silesian', 'Lower Silesian', 'Opole'] },
   { id: 'pl-lesser', country: 'POL', names: ['Lesser Poland', 'Subcarpathian', 'Świętokrzyskie'] },
-  { id: 'pl-east', country: 'POL', names: ['Lublin', 'Podlachian', 'Warmian-Masurian'] },
+  { id: 'pl-warsaw', country: 'POL', names: ['Lublin', 'Podlachian', 'Warmian-Masurian'] },
 
   // Hungary (admin-1 units are counties and cities with county rights, grouped
   // by statistical region; the two northern Transdanubian regions form one
@@ -73,7 +74,7 @@ export const PROVINCE_SOURCES = [
   { id: 'hu-east', country: 'HUN', regions: ['Northern Great Plain'] },
   { id: 'hu-south', country: 'HUN', regions: ['Great Southern Plain'] },
   { id: 'hu-west', country: 'HUN', regions: ['Western Transdanubia', 'Central Transdanubia'] },
-  { id: 'hu-southwest', country: 'HUN', regions: ['Southern Transdanubia'] },
+  { id: 'hu-west', country: 'HUN', regions: ['Southern Transdanubia'] },
 
   // Romania (admin-1 units are counties; matched by name, grouped by historical region)
   { id: 'ro-bucharest', country: 'ROU', names: ['Bucharest', 'Ilfov', 'Prahova', 'Dâmbovita', 'Arges', 'Giurgiu', 'Teleorman', 'Calarasi', 'Ialomita'] },
@@ -84,12 +85,12 @@ export const PROVINCE_SOURCES = [
 
   // Serbia (admin-1 units are districts; Kosovo is a separate country in Natural Earth)
   { id: 'rs-belgrade', country: 'SRB', names: ['Grad Beograd', 'Severno-Backi', 'Zapadno-Backi', 'Južno-Backi', 'Severno-Banatski', 'Srednje-Banatski', 'Južno-Banatski', 'Sremski'] },
-  { id: 'rs-sumadija', country: 'SRB', names: ['Šumadijski', 'Kolubarski', 'Macvanski', 'Zlatiborski', 'Moravicki', 'Raški', 'Pomoravski'] },
-  { id: 'rs-south', country: 'SRB', names: ['Podunavski', 'Branicevski', 'Borski', 'Zajecarski', 'Nišavski', 'Pirotski', 'Toplicki', 'Jablanicki', 'Pcinjski'] },
+  { id: 'rs-belgrade', country: 'SRB', names: ['Šumadijski', 'Kolubarski', 'Macvanski', 'Zlatiborski', 'Moravicki', 'Raški', 'Pomoravski'] },
+  { id: 'rs-belgrade', country: 'SRB', names: ['Podunavski', 'Branicevski', 'Borski', 'Zajecarski', 'Nišavski', 'Pirotski', 'Toplicki', 'Jablanicki', 'Pcinjski'] },
 
   // Kosovo belongs to Serbia's southern region in this scenario. Keep both source
   // rules under one id and tag all of their units Serbian, including the KOS source.
-  { id: 'rs-south', country: 'KOS', iso: 'SRB', whole: true },
+  { id: 'rs-belgrade', country: 'KOS', iso: 'SRB', whole: true },
 
   // Bulgaria: the Balkan range divides the Danube plain from Upper Thrace.
   { id: 'bg-sofia', country: 'BGR', names: ['Grad Sofiya', 'Sofia', 'Pernik', 'Kyustendil', 'Blagoevgrad', 'Vidin', 'Montana'] },
@@ -112,7 +113,7 @@ export const PROVINCE_SOURCES = [
   { id: 'gr-crete', country: 'GRC', names: ['Kriti', 'Notio Aigaio'] },
 
   // Bosnia is divided geographically, across both modern entities.
-  { id: 'ba-krajina', country: 'BIH', names: ['Banja Luka', 'Una-Sana', 'West Bosnia'] },
+  { id: 'ba-sarajevo', country: 'BIH', names: ['Banja Luka', 'Una-Sana', 'West Bosnia'] },
   { id: 'ba-sarajevo', country: 'BIH', whole: true, exclude: ['Banja Luka', 'Una-Sana', 'West Bosnia'] },
   { id: 'me-podgorica', country: 'MNE', whole: true },
   { id: 'al-tirana', country: 'ALB', whole: true },
@@ -120,15 +121,15 @@ export const PROVINCE_SOURCES = [
 
   // Minor powers of the Danube and the Adriatic
   { id: 'sk-bratislava', country: 'SVK', names: ['Bratislavský', 'Trnavský', 'Trenciansky', 'Nitriansky'] },
-  { id: 'sk-kosice', country: 'SVK', names: ['Žilinský', 'Banskobystrický', 'Prešov', 'Košický'] },
+  { id: 'sk-bratislava', country: 'SVK', names: ['Žilinský', 'Banskobystrický', 'Prešov', 'Košický'] },
   { id: 'si-ljubljana', country: 'SVN', whole: true },
   { id: 'hr-zagreb', country: 'HRV', names: ['Grad Zagreb', 'Zagrebacka', 'Krapinsko-Zagorska', 'Varaždinska', 'Medimurska', 'Koprivničko-Križevačka', 'Bjelovarsko-bilogorska', 'Viroviticko-Podravska', 'Osjecko-Baranjska', 'Vukovarsko-Srijemska', 'Brodsko-Posavska', 'Sisacko-Moslavacka', 'Karlovacka'] },
-  { id: 'hr-dalmatia', country: 'HRV', names: ['Istarska', 'Primorsko-Goranska', 'Licko-Senjska', 'Zadarska', 'Šibensko-Kninska', 'Splitsko-Dalmatinska', 'Dubrovacko-Neretvanska'] },
+  { id: 'hr-zagreb', country: 'HRV', names: ['Istarska', 'Primorsko-Goranska', 'Licko-Senjska', 'Zadarska', 'Šibensko-Kninska', 'Splitsko-Dalmatinska', 'Dubrovacko-Neretvanska'] },
 
   // Ireland (admin-1 units are counties, grouped by their NUTS 3 regions): Leinster and the Border
   // round Dublin, Munster and Connacht round Cork, 220 km apart
   { id: 'ie-dublin', country: 'IRL', regions: ['Dublin', 'Mid-East', 'Midlands', 'South-East', 'Border'] },
-  { id: 'ie-cork', country: 'IRL', regions: ['South-West', 'Mid-West', 'West'] },
+  { id: 'ie-dublin', country: 'IRL', regions: ['South-West', 'Mid-West', 'West'] },
 
   // Minor powers (one province each; Belgium and Luxembourg share one)
   { id: 'be-brussels', country: 'BEL', whole: true },
@@ -151,7 +152,8 @@ export const PROVINCE_SOURCES = [
 
   // Belarus: the source calls the oblast Minsk and the capital City of Minsk.
   { id: 'by-minsk', country: 'BLR', names: ['Minsk', 'City of Minsk'] },
-  { id: 'by-gomel', country: 'BLR', names: ['Gomel', 'Mogilev'] },
+  { id: 'by-gomel', country: 'BLR', names: ['Gomel'] },
+  { id: 'by-mogilev', country: 'BLR', names: ['Mogilev'] },
   { id: 'by-brest', country: 'BLR', names: ['Brest', 'Grodno'] },
   { id: 'by-vitebsk', country: 'BLR', names: ['Vitebsk'] },
   { id: 'md-chisinau', country: 'MDA', whole: true },

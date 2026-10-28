@@ -4,28 +4,32 @@ How to add a nation, using **Hungary** as the worked example (it was added this 
 mostly data: one row per province, the borders between them, and one line for the nation. Two things supply
 everything else:
 
-- its **power tier** (great, major or minor) sets its output, treasury, starting buildings and army, objective
+- its **kind** (playable with five cities, or a one-city state) sets its output, treasury, starting buildings and army, objective
   values and size;
 - its **bloc** sets its equipment, formation names and the look of its units.
 
-## Power tiers
+## Playable nations and states
 
-A tier (`src/sim/config/powers.ts`) is the template every nation of that size shares. Province rows only say
+A kind (`src/sim/config/powers.ts`) is the template every nation of that size shares. Province rows only say
 which province is the capital, the industrial heartland and so on. The generator (`src/sim/scenario/build.ts`)
-does the rest: it scales output to the tier's totals, assigns objective VP and the capital's size, and places
+does the rest: it scales output to the template's totals, assigns objective VP and the capital's size, and places
 the starting buildings and army.
 
-| Tier | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Capital | Provinces |
+| Kind | Playable | Output per minute (money / materials / manpower) | Starting army | Objective VP | Capital | Cities |
 | --- | --- | --- | --- | --- | --- | --- |
-| `great` | Yes | 260 / 140 / 70 | 13: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, field 5 INF + 1 CAV | Capital 3, heartland 2 | Metropolis | 6–9 |
-| `major` | Yes | 150 / 80 / 40 | 8: capital 2 INF + 1 ART, heartland 2 INF, field 2 INF + 1 CAV | Capital 2, heartland 1 | Large City | 3–5 |
-| `minor` | No: always computer-controlled, never wins | 70 / 35 / 20 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | 1–2 |
+| `playable` | Yes | 260 / 126 / 42 | 13: capital 3 INF + 1 ART, heartland 2 INF + 1 ART, field 5 INF + 1 CAV | Capital 3, heartland 2 | Metropolis | exactly 5 |
+| `state` | No: always computer-controlled, never wins | 70 / 32 / 12 | 6: capital 5 INF, field 1 INF | Capital 1 | City, fortifications 2 | exactly 1 |
 
-Major powers spend the same share of income on army upkeep at the start as a great power (about a sixth); minor
-powers spend about a quarter. Europe has seven great powers, six major powers (Romania, Serbia, Bulgaria, Greece,
-Ukraine and Belarus) and nineteen minor powers. Minor powers are real nations: they have an economy, research,
+Who is playable: a country needs real weight (roughly 90,000 km² or more and 9 million people or more, or a wide
+front) to be a playable five-city nation. A big country keeps only its biggest or most strategic cities and merges the
+rest into the neighbouring city of the same country (list their admin-1 units under the kept row's id in
+`scripts/map/province-sources.mjs`); a small one is filled out with lesser-known towns. Smaller countries are
+one-city states.
+
+States spend about a quarter of their income on army upkeep at the start, playable nations about a sixth. Europe has
+twelve playable nations and twenty states. States are real nations: they have an economy, research,
 recruit, defend themselves and make peace,
-and the AI plays them. They never start a war and never win (only great and major powers count for victory), and
+and the AI plays them. They never start a war and never win (only playable nations count for victory), and
 players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
 seven or eight behind the capital's forts (`unitsFlat` in `config/ai.ts`), so an eight-unit probe fails and taking
 one costs twelve to fourteen units with artillery about half their strength. A row's own `buildings` replace the
@@ -129,10 +133,10 @@ the country it covers (its `--hints` list the admin units and towns in it). A ro
 keys, and the scenario refuses a row whose names do not match its lands. `landTerrain` sets the lands' terrain
 where the row's would not do (never urban: round a capital it is the plain or hills it stands in). The role is
 `capital`, `industrial`, `city` or `town`; every nation needs exactly one
-`capital`, and great and major powers one `industrial` heartland. Roles only set relative weights: output is
+`capital`, and playable nations one `industrial` heartland. Roles only set relative weights: output is
 scaled to the tier's totals, and objective VP and the capital's size come from the tier, so rows don't set them.
 
-Optional fields: `recruiting: true` for a great power's second recruiting city, `garrison` to place field units
+Optional fields: `recruiting: true` for a playable nation's second recruiting city, `garrison` to place field units
 by hand, `buildings` for extras such as fortifications. Neutral states (`core: null`, none in Europe now) use `garrison`, `buildings` and `vp`
 directly.
 
