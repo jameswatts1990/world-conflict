@@ -30,7 +30,6 @@ import {
   captureTicks,
   fortificationReduction,
   homeSoilMult,
-  hostileArmiesIn,
   placeShare,
   scaledTicks,
 } from '../queries';
@@ -39,7 +38,7 @@ import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId, type RoadSpot } from '../types';
 import { areAllies } from '../visibility';
 import { cityOf, isCity, isCityGate, isOpenRoad, roadBorder } from '../world';
-import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
+import { battleReady, graceOver, hostileArmiesAt, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
 /** Where an army stands: its province, or its spot on a road out of it. */
 const spotOf = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
@@ -109,7 +108,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
 
 /** Hostile armies standing in a province, if I can see it (the fog of war hides the rest). */
 function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
-  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, ctx.world, pid, ctx.me) : [];
+  return ctx.seen.has(pid) ? hostileArmiesAt(ctx, pid) : [];
 }
 
 /**
@@ -174,7 +173,7 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   if (owner === ctx.me) return false;
   // Leave a co-belligerent's uncontested capture to it: arriving stronger would take the lead and start it again.
   const by = ctx.state.provinces[pid].capture?.by;
-  if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesIn(ctx.state, ctx.world, pid, by).length === 0) return false;
+  if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesAt(ctx, pid, by).length === 0) return false;
   // Leave an uncontested capture to its occupiers only if they can hold against the danger we can see or estimate.
   if (reliefNeed(ctx, pid) <= 0) return false;
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);

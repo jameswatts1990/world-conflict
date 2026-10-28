@@ -12,6 +12,7 @@ import {
   armyMorale,
   armyPower,
   atWar,
+  isArmyAway,
   isArmyInTransit,
   isContender,
   nationEconomy,
@@ -19,7 +20,7 @@ import {
   scaledTicks,
   type NationEconomy,
 } from '../queries';
-import { NEUTRAL, RESOURCE_KEYS, type AiMemory, type Army, type GameState, type NationId, type PartialResources, type ProvinceId } from '../types';
+import { NEUTRAL, RESOURCE_KEYS, type AiMemory, type Army, type GameState, type NationId, type OwnerId, type PartialResources, type ProvinceId } from '../types';
 import { isArmyVisible, visibleProvinces } from '../visibility';
 import type { World } from '../world';
 
@@ -65,6 +66,8 @@ export interface Ctx {
   enemyArmour: number;
   /** Resources set aside for research. */
   savings: PartialResources;
+  /** Armies standing in each province (not away on a leg), in `state.armies` order: built on first use, dropped by any order. */
+  standing?: Map<ProvinceId, Army[]>;
 }
 
 /** Which step of the AI's army handling gave an order (for tracing). */
@@ -91,10 +94,28 @@ export function issue(ctx: Ctx, cmd: Command, reason?: AiOrderReason): boolean {
   const army = traceSink && cmd.type === 'move' ? ctx.state.armies[cmd.armyId] : undefined;
   const from = army ? armyLocation(army) : null;
   const ok = applyCommand(ctx.state, ctx.world, cmd).ok;
+  if (ok) delete ctx.standing;
   if (ok && traceSink && cmd.type === 'move' && from && reason) {
     traceSink({ tick: ctx.state.tick, nation: ctx.me, armyId: cmd.armyId, from, to: cmd.to, reason });
   }
   return ok;
+}
+
+/**
+ * `hostileArmiesIn` for the AI's hot loops: the same armies in the same order, from an index of where armies stand.
+ * While an AI thinks only its orders change the armies, and `issue` drops the index after each one.
+ */
+export function hostileArmiesAt(ctx: Ctx, pid: ProvinceId, owner: OwnerId = ctx.me): Army[] {
+  if (!ctx.standing) {
+    ctx.standing = new Map();
+    for (const a of Object.values(ctx.state.armies)) {
+      if (isArmyAway(ctx.world, a)) continue;
+      const here = ctx.standing.get(a.province);
+      if (here) here.push(a);
+      else ctx.standing.set(a.province, [a]);
+    }
+  }
+  return (ctx.standing.get(pid) ?? []).filter((a) => areHostile(ctx.state, owner, a.owner));
 }
 
 export function nationPower(state: GameState, nation: NationId): number {
