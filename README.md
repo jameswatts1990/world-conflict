@@ -1,6 +1,6 @@
 # World Conflict
 
-A browser-based, real-time global strategy game. Twelve playable five-city nations and twenty one-city states on
+A browser-based, real-time global strategy game. Fifteen playable five-city nations and twenty-one one-city states on
 recognisable Earth geography start with Great War technology and research their way towards the Second World War.
 The current build is a local single-player campaign on the **European theatre** at **Standard** speed (target ~2–3
 hours).
@@ -18,6 +18,11 @@ What is in it (Milestone 2, Depth):
   with Slovakia, Slovenia and Croatia as minor powers: Hungary now has a neighbour on every side.
 - **Bulgaria and Greece**, playable with five cities each and the Na nozh! and Evzone specialities,
   plus Bosnia & Herzegovina, Montenegro, Albania and North Macedonia as minor powers. Kosovo belongs to southern Serbia.
+- **Sweden, Norway and Finland**, playable with five cities each (Norway and Finland gained one), and **Iceland**, a one-city
+  state, with the Bofors, Fjell og fjord, Motti and Fishing grounds specialities. The Scandinavian mountains run along the
+  Swedish–Norwegian border; Sweden meets Finland at Tornio and Norway meets Finland in Lapland. Sea crossings: the
+  Øresund (Denmark–Sweden), the Skagerrak (Denmark–Norway), the Åland Sea (Stockholm–Turku), the Gulf of Finland
+  (Helsinki–Tallinn), and Iceland's two long crossings from Seyðisfjörður, to Scotland past the Faroes and to Bergen.
 - **Ireland**, a one-city state (Dublin): Britain's one land border, in Ulster, with the Irish
   Sea crossing from Dublin to Wales.
 - **Ukraine and Belarus**, playable with five cities each (Belarus gained Mogilev), Eastern-pattern equipment,
@@ -69,7 +74,7 @@ What is in it (Milestone 2, Depth):
 
 ## Run it
 
-Requires Node.js 20+ (developed on Node 22).
+Requires Node.js 24 (the LTS release; CI runs on it).
 
 ```bash
 npm install
@@ -179,7 +184,7 @@ briefing drops the Chief of Staff's portrait to give its text the width.
 
 ## How to win
 
-Hold **32 of the 80 objective victory points** (★ playable capitals 3 VP and industrial heartlands 2 VP,
+Hold **39 of the 96 objective victory points** (★ playable capitals 3 VP and industrial heartlands 2 VP,
 state capitals 1 VP) continuously for **90 seconds**, or have
 the **highest score** when the **2 h 30 min** time limit ends. Only playable nations can win: states
 are there to be conquered. You lose if your nation is eliminated or another power wins.
@@ -246,11 +251,13 @@ tests/              Simulation tests
 - The scripted browser playthrough (`npm run e2e`) checks the gameplay loop through the real UI, not visual
   appearance; screenshots in `e2e-output/` are checked by eye.
 - Balance has only been measured with headless AI-vs-AI campaigns ([docs/BALANCE.md](docs/BALANCE.md)); human
-  playtesting is still needed. Over 200 full campaigns with five-region major Ukraine on the current economy,
-  none end on objectives; all reach the 150-minute score limit. Against main on the same seeds, Germany's wins
-  rise from 4% to 19%, Hungary's from 27.5% to 29%, and Poland's fall from 29.5% to 16.5%. Ukraine wins 0.5%,
-  Romania 1.5%, and Belarus and Serbia never win. Ukraine, Romania, Belarus and Serbia survive 69.5%, 39.5%,
-  49.5% and 30%. The East still misses balance goals. Balance changes are a separate follow-up using general mechanics.
+  playtesting is still needed. Over 200 full campaigns with the East and the Nordic powers, none end on objectives;
+  all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%, Italy 13%, Spain 8.5%,
+  France 6.5%, Greece 3%, Bulgaria and Ukraine 2%, Britain and Romania 1.5%, Sweden 0.5%, and Belarus, Finland,
+  Iceland, Norway and Serbia 0%. Campaign survival: Serbia 29.5%, Romania 45%, Bulgaria 56%, Belarus 56%, Norway
+  71.5%, Ukraine 73.5%, Sweden 76.5%, Finland 85.5%, Greece 87.5%, Iceland 94.5%. Finland takes Swedish land in 118
+  campaigns and Estonian land in 157; Iceland raids Norway in 163 and Britain in 61. Balance changes are a separate
+  follow-up using general mechanics.
 - There are no alliances yet: powers fighting a common enemy are only co-belligerents, and all that does is share
   sight through Liaison Officers.
 - When peace is signed, armies on the other side's territory are moved instantly to the nearest friendly province.
@@ -259,12 +266,16 @@ tests/              Simulation tests
   devices. Production JavaScript is split into six chunks totalling ~1,380 KB (438 KB gzipped, as reported by Vite).
 - Saves from before cities, morale and the research tree (schema 1, and schema 2 from earlier builds) cannot be
   loaded.
-- The theatre includes the western Balkans, Bulgaria and Greece, including Crete and the larger Aegean islands.
-  The eastern theatre reaches Estonia, Belarus and Ukraine, including Crimea. Russia, Kaliningrad and Turkey
-  remain context only. Kosovo is part of Serbia's southern region.
+- The theatre includes the western Balkans, Bulgaria and Greece, including Crete and the larger Aegean islands,
+  and the Nordic countries up to Finnmark and Iceland (Svalbard, the Faroes and Greenland stay context). The eastern
+  theatre reaches Estonia, Belarus and Ukraine, including Crimea. Russia, Kaliningrad and Turkey remain context only.
+  Kosovo is part of Serbia's southern region.
 - Saves from before the Balkans expansion cannot be loaded. Every save contains the renamed lands
   `hr-zagreb-sw` → `hr-zagreb-se` and `rs-south-s` → `rs-south-sw`, so all such saves are refused. There is no
   migration for these renames; start a new campaign.
 - Saves from before the East expansion load with its six newcomers at peace. Armies on removed roads return to
   their current province, and marches using removed links stop. Adding the East raises the objective requirement
   from 25 of 62 VP to 29 of 72 VP in those saved campaigns. The earlier Balkans restriction still applies.
+- Saves from before the Nordic powers load with Sweden, Norway, Finland and Iceland added at peace; the objective
+  requirement rises to 34 of 84 VP. No province key changes; the borders of Helsinki's two lands and of Denmark's
+  Zealand lands move a few kilometres.

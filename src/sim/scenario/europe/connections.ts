@@ -234,6 +234,48 @@ export const CONNECTIONS: ConnectionDef[] = [
   land('lt-vilnius', 'lv-riga'),
   land('lv-riga', 'ee-tallinn'),
 
+  // Sweden
+  land('se-stockholm', 'se-gothenburg'),
+  land('se-stockholm', 'se-skane'),
+  land('se-stockholm', 'se-norrland'),
+  land('se-gothenburg', 'se-skane'),
+  land('se-gothenburg', 'se-norrland'),
+  land('se-norrland', 'se-lulea'),
+  strait('se-skane', 'dk-copenhagen', 'Øresund'),
+  strait('se-stockholm', 'fi-turku', 'Åland Sea'),
+
+  // Norway: the Scandinavian mountains along the Swedish border, and between its own valleys and fjords.
+  mountain('no-oslo', 'no-bergen', 'Hardangervidda'),
+  land('no-oslo', 'no-kristiansand'),
+  mountain('no-kristiansand', 'no-bergen', 'Setesdal'),
+  mountain('no-oslo', 'no-trondheim', 'Dovrefjell'),
+  mountain('no-bergen', 'no-trondheim', 'Trollheimen'),
+  land('no-trondheim', 'no-narvik'),
+  land('no-oslo', 'se-gothenburg'), // Svinesund and the Värmland forests
+  mountain('no-oslo', 'se-norrland', 'Trysil fells'),
+  mountain('no-trondheim', 'se-norrland', 'Storlien Pass'),
+  mountain('no-narvik', 'se-norrland', 'Børgefjell'),
+  mountain('no-narvik', 'se-lulea', 'Riksgränsen'),
+  strait('no-oslo', 'dk-copenhagen', 'Skagerrak'),
+
+  // Finland
+  land('fi-helsinki', 'fi-turku'),
+  land('fi-helsinki', 'fi-tampere'),
+  land('fi-tampere', 'fi-turku'),
+  land('fi-tampere', 'fi-karelia'),
+  land('fi-helsinki', 'fi-karelia'),
+  land('fi-turku', 'fi-karelia'),
+  land('fi-turku', 'fi-oulu'),
+  land('fi-karelia', 'fi-oulu'),
+  land('fi-oulu', 'se-lulea'), // Tornio–Haparanda
+  land('fi-oulu', 'no-narvik'), // Lapland
+  strait('fi-helsinki', 'ee-tallinn', 'Gulf of Finland'),
+
+  // Iceland: the interior is highland and glacier; the south coast's unbridged sands cut it off to the east.
+  // Two long crossings from Seyðisfjörður, the steamers' port: to Scotland past the Faroes, and to Bergen.
+  strait('is-reykjavik', 'uk-scotland', 'Faroes crossing'),
+  strait('is-reykjavik', 'no-bergen', 'Norwegian Sea crossing'),
+
   // Between the minor powers
   land('be-brussels', 'nl-amsterdam'),
   land('at-vienna', 'cz-prague'),
@@ -245,4 +287,5 @@ export const CROSSINGS: Record<string, string> = {
   'fr-midi': 'Ligurian crossing',
   'it-naples': 'Tyrrhenian crossing',
   'dk-copenhagen': 'Little Belt',
+  'fi-turku': 'Archipelago Sea crossing',
 };

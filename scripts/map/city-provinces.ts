@@ -12,7 +12,7 @@
 // meeting at it and none surrounds it. The road to a neighbour crosses the land on that side. The lands
 // follow the borders of the region's admin-1 units (departments, counties, provinces) where the units are
 // small enough, and cut straight through bigger ones and through the units round the city. An island big
-// enough is a land of its own; islets join the nearest land. A land is keyed `<row id>-<compass point>`
+// enough is a land of its own; islets join the nearest land, each whole. A land is keyed `<row id>-<compass point>`
 // (`be-brussels-w`). Once the division is made, the borders it drew itself (each city's ring, and the straight
 // cuts through the units) are broken up like the natural borders, keeping their ends (`roughen`): every province
 // looks like one, and nothing gameplay reads moves.
@@ -1065,10 +1065,11 @@ async function main() {
         if (x === l) label[i] = to;
       });
     }
-    // Islets join the land nearest them.
-    for (let i = 0; i < n; i++) {
-      if (!islet[i]) continue;
-      const at = poleOf(flatPolys[i].reduce((a, b) => (areaOf(b) > areaOf(a) ? b : a)), 0.5);
+    // Islets join the land nearest them, each whole: an islet the region's units cut into pieces (Funen with
+    // Tåsinge and Langeland) goes to one land, so no land reaches another by way of an islet across the sea.
+    const isletParts = new Set(part.filter((_, i) => islet[i]));
+    for (const pi of isletParts) {
+      const at = poleOf(R[pi], 0.5);
       let best = -1;
       let bd = Infinity;
       for (let j = 0; j < n; j++) {
@@ -1076,7 +1077,7 @@ async function main() {
         const d = Math.min(...flatPolys[j].map((poly) => Math.abs(edgeDistance(poly, at))));
         if (d < bd) [bd, best] = [d, j];
       }
-      label[i] = label[best];
+      for (let i = 0; i < n; i++) if (islet[i] && part[i] === pi) label[i] = label[best];
     }
 
     // Join each land's pieces.

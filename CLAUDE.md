@@ -35,7 +35,13 @@ co-belligerents, never "allies", in anything the player reads: there are no trea
   and without it; slow, so on request); `npm run balance:tune` searches AI settings for the design goals in
   `scripts/balance/goals.ts`. Runs land in `balance-runs/` (ignored by git).
 - After changing rules, AI or content, run `npm run balance -- --vs main` (and `npm run balance:units -- --vs main`
-  for unit changes) and put what moved in the pull request.
+  for unit changes) and put what moved in the pull request. It plays 100 campaigns of each, for big changes (new
+  countries, rules, AI); `--quick` plays 25, for small ones, and catches only breakage (see "Reviewing AI changes").
+  Better still, compare with a shared baseline of the main commit you started from (`npm run balance -- compare
+  <baseline> <run>`, same seeds; docs/BALANCE.md, "One baseline per main commit") rather than playing main again.
+- Balance runs save each campaign as it finishes and replace workers that die (Node has crashed natively on long
+  runs on Windows). If a run stops, run the same command with the same `--out`: only the missing campaigns are played,
+  and the result is the same as an uninterrupted run.
 - Every number the AI weighs belongs in `src/sim/config/ai.ts`, not inline in `ai/*.ts`, so `--set` and the tuner can
   reach it. A new unit type needs a share in `AI.doctrineMix`, a new building a rule in `handleConstruction`; the
   reports flag content the AI never uses.
@@ -77,6 +83,14 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   `unitModelScale` grow the models with `closeUpGrowth` past `ZOOM.closeUp`. Models must never grow faster than the
   map (pixels per model unit over the zoom never rising): a city's coast reach is baked for the first model zoom
   (`REACH_SCALE`) and its buildings would reach the sea. Keep text (plates, badges) a constant size on screen.
+- Nothing switches at once as the zoom changes. Crossing a `STAGES` threshold (a change of look: chips, capitals'
+  names, models, nation names), what changes fades: the old look, drawn for the new zoom (`withinStage`), fades out
+  in a layer of its own over the new one fading in (`MapFade`, `fadeLayer`, `.map-fade`); only whole layers fade, so
+  the compositor does it without drawing the map again. A new zoom-dependent layer goes into `marks` and `fades`.
+  Layers move between the drawing and a fade, so keep slow work out of their own state (`nationLabels` is kept by
+  `MapView`). After a gesture, marks drawn at a size on screen ease back from the size the gesture showed them at
+  (`keepSize` on a wrapper `<g>` without a `transform` attribute, which the CSS animation would replace;
+  `.keep-size`, on screen only); never during a gesture (`stopSettling` at its start).
 - Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
   (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 
@@ -112,7 +126,10 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   straight distance between the anchors. An army walking within its land (to or from a spot on its
   road, `walksWithin`) has not left it: battles, captures and `hostileArmiesIn`/`armiesIn` go by `isArmyAway`, while
   merging, splitting and the like go by `isArmyInTransit` (any leg). Plan marches with `planMarch` (it starts from a province,
-  a road or mid-leg); `findPath` is province to province. The AI reads where its own armies are going (a province,
+  a road or mid-leg); `findPath` is province to province. Armies at war that come level on an open road stop there
+  to fight (`intercept` in `systems/movement.ts`, gated on the enemy's sight; not on a leg marked `withdrawing`), and
+  keep their march: an army can stand on a road (`road` set, `leg` null) with a path still to go, whose first entry
+  is either end of that road (`startLeg` carries on from the spot). The AI reads where its own armies are going (a province,
   or the land a road halt lies in) through `armyLocation` in `ai/context.ts`.
 
 ## Map rules
@@ -194,7 +211,9 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 
 The pathology and variety figures below are these two commands' results (ten seeds of 90 minutes; Easy with an idle
 France) on the simulation with the East (October 2026); the winner figures come from 200 campaigns of the same
-build, and the Challenge figures from the same ten seeds with an idle France at both levels.
+build, and the Challenge figures from the same ten seeds with an idle France at both levels. With the Nordic powers
+added, Normal all-AI stays within these ranges (reversals 1.4%, pile-on 0.2%, idle in the interior 9.4% against
+8.7% on main); the idle-France and Easy reports were not re-run on that build.
 
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
   pile-on attacks under 1% (about 0.2% at Normal and 0% at Easy, counting deliberate support to weak captures), orders
@@ -205,15 +224,19 @@ build, and the Challenge figures from the same ten seeds with an idle France at 
 - **Variety**: how much two campaigns' openings (captures and wars in the first 25 minutes) overlap, ignoring and
   counting timing (about 13% and 6% at Normal, 11% and 4% at Easy), and who fights the first war.
 - **Winners**: who wins and how early. Forty seeds swing by several wins per power through luck alone; compare on the
-  same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
-  shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
+  same seeds. 25 campaigns (`npm run balance -- --quick`) give a nation's win rate ±13 points and survival ±18: they
+  catch breakage (a nation that never survives, wars that stop), and a win rate must move from 10% to about 36% to
+  show. 100 (the default, for new countries, rules and AI) give ±6 and ±10, and show 10% becoming about 20% or
+  survival moving from 50% to about 64%. 200 give ±4 and ±7. None tell 12% from 10%. Call a shift only from 100 or
+  more. `scripts/dev/balance.ts 80 120` runs them in parallel and shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). With the five-cities rule (12 playable nations, 5 cities each; 48 campaigns, rough): Greece 29%, Ukraine 19%, Germany 13%, Spain 10%, Italy and Bulgaria 6%, Hungary, Belarus 4%, the rest 2%. Before it, over 200 full campaigns with the five-region East on the current economy, none end on
-  objectives; all reach the 150-minute score limit. Win rates: Hungary 29%, Germany 19%, Poland 16.5%, France
-  and Italy 9.5% each, Britain 6.5%, Spain 6%, Greece 2%, Romania 1.5%, Ukraine 0.5%, and Belarus, Bulgaria and
-  Serbia 0%. Against main on the same seeds, Germany rises from 4%, Hungary from 27.5%, and Poland falls from
-  29.5%. Campaign survival: Ukraine 69.5%, Belarus 49.5%, Romania 39.5%, Serbia 30%, Bulgaria 55%, Greece 84.5%.
-  Balance is a separate follow-up using general mechanics.
+  limit). With the five-cities rule (15 playable nations, 96 VP, 39 to win) the figures have not been re-measured at 100 campaigns; see the pull request for a rough run. Before it (main with the Nordic powers), over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
+  none end on objectives; all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%,
+  Italy 13%, Spain 8.5%, France 6.5%, Greece 3%, Bulgaria and Ukraine 2%, Britain and Romania 1.5%, Sweden 0.5%,
+  and Belarus, Finland, Iceland, Norway and Serbia 0%. Against main without the Nordic powers on the same seeds,
+  Hungary rises from 26%, Germany falls from 18.5% and Poland from 19%. Campaign survival: Serbia 29.5%, Romania
+  45%, Bulgaria 56%, Belarus 56%, Norway 71.5%, Ukraine 73.5%, Sweden 76.5%, Finland 85.5%, Greece 87.5%, Iceland
+  94.5%. Balance is a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
   Normal brings war at 7–29 minutes and a fall in 9 of 10, at 33–72 minutes; Easy brings war at 19–70 minutes and
   a fall in 1 of 10, at 85 minutes. An earlier run of 50 seeds of 90 minutes had France fall in 19 of 50 on Easy,
@@ -228,9 +251,20 @@ than retuning silently, and recommend human playtests for anything about feel.
 - `npm run sim:campaign -- <seed> <minutes>` runs a headless all-AI game, printing each nation's provinces,
   units, VP and wars every 10 minutes (`neutral:N` is always 0 in Europe: its former neutral states are minor powers).
 - The AI plays under the fog of war: it may read other nations' armies only through the context (`ctx.seen`,
-  `ctx.hostile`, `ctx.unseen`, `ctx.enemyArmour` in `ai/context.ts`) or with `isArmyVisible`, never straight from
-  `state.armies` or `hostileArmiesIn` on a province it cannot see. Military power totals (`nationPower`), ownership
-  and city tiers are public. `tests/ai.test.ts` checks that hidden armies stay hidden.
+  `ctx.hostile`, `ctx.unseen`, `ctx.radar`/`hiddenPower`, `ctx.enemyArmour` in `ai/context.ts`) or with
+  `isArmyVisible` and `radarBlips`, never straight from `state.armies` or `hostileArmiesIn` on a province it cannot
+  see. Military power totals (`nationPower`), ownership and city tiers are public. `tests/ai.test.ts` checks that
+  hidden armies stay hidden.
+- Sight is short (`src/sim/visibility.ts`): a nation sees whole only its own territory and the province each of its
+  armies stands in (`armySightedAt`: on a leg, the nearer end). Round each army are two circles in km on the map
+  (`sightKm`/`blipKm` in `config/units.ts`, defaults `SIGHT.unitKm` 100 and `SIGHT.unitBlipKm` 225; reconnaissance
+  170/350), centred on its spot (`armySpot`: anchor or point on its road); held land has a blip circle of
+  `SIGHT.landBlipKm` round each held anchor. Enemy armies inside a sight circle are seen wherever they stand (and
+  provinces whose anchor is inside are seen whole); inside a blip circle they show as radar blips: province and size
+  bucket only (`radarBlips`). A blip must never reveal owner, unit types or strength. Both are derived, never stored.
+  `visibleProvinces`/`detectedProvinces` return a `Watch` (a set of provinces plus the circles); pass it to
+  `isArmyVisible`, which uses the circles for armies on roads. Distances use `world.spots` (anchors as whole metres
+  on the globe) and compare squared whole numbers (`withinKm`), so boundaries never depend on float trig.
 - `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag any new move
   order in `src/sim/ai/military.ts` with a reason.
 - The AI thinks every 8 s (14 on Easy: `thinkIntervalSeconds` in `AI_LEVELS`), but captures take 20 s or more. Any

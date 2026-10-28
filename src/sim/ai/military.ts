@@ -30,7 +30,6 @@ import {
   captureTicks,
   fortificationReduction,
   homeSoilMult,
-  hostileArmiesIn,
   placeShare,
   scaledTicks,
 } from '../queries';
@@ -39,7 +38,7 @@ import { retreatTarget } from '../systems/combat';
 import { NEUTRAL, type Army, type ArmyId, type ProvinceId, type RoadSpot } from '../types';
 import { areAllies } from '../visibility';
 import { cityOf, isCity, isCityGate, isOpenRoad, roadBorder } from '../world';
-import { battleReady, graceOver, idleArmies, issue, mainEnemy, type Ctx } from './context';
+import { battleReady, graceOver, hiddenPower, hostileArmiesAt, idleArmies, issue, mainEnemy, type Ctx } from './context';
 
 /** Where an army stands: its province, or its spot on a road out of it. */
 const spotOf = (a: Army) => (a.road ? `${a.province}>${a.road.toward}@${a.road.at}` : a.province);
@@ -109,7 +108,7 @@ function distancesFrom(ctx: Ctx, from: ProvinceId, ownOnly: boolean): Map<Provin
 
 /** Hostile armies standing in a province, if I can see it (the fog of war hides the rest). */
 function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
-  return ctx.seen.has(pid) ? hostileArmiesIn(ctx.state, ctx.world, pid, ctx.me) : [];
+  return ctx.seen.has(pid) ? hostileArmiesAt(ctx, pid) : [];
 }
 
 /**
@@ -119,14 +118,13 @@ function hostilesInSight(ctx: Ctx, pid: ProvinceId): Army[] {
 function defenderPower(ctx: Ctx, pid: ProvinceId): number {
   const { state, world } = ctx;
   const owner = state.provinces[pid].owner;
-  const guess = owner === NEUTRAL ? 0 : (ctx.unseen.get(owner) ?? 0);
-  let p = ctx.seen.has(pid) ? 0 : guess;
+  let p = ctx.seen.has(pid) ? 0 : hiddenPower(ctx, pid);
   for (const a of hostilesInSight(ctx, pid)) p += armyPower(state, a);
   // Enemy armies next door can join the fight.
   if (owner !== NEUTRAL) {
     for (const n of world.neighbors[pid]) {
       if (state.provinces[n.id].owner !== owner) continue;
-      if (!ctx.seen.has(n.id)) p += guess * placeShare(world, n.id) * AI.reinforcementShare;
+      if (!ctx.seen.has(n.id)) p += hiddenPower(ctx, n.id, placeShare(world, n.id)) * AI.reinforcementShare;
       for (const a of hostilesInSight(ctx, n.id)) if (a.owner === owner) p += armyPower(state, a) * AI.reinforcementShare;
     }
   }
@@ -174,7 +172,7 @@ function isTarget(ctx: Ctx, pid: ProvinceId): boolean {
   if (owner === ctx.me) return false;
   // Leave a co-belligerent's uncontested capture to it: arriving stronger would take the lead and start it again.
   const by = ctx.state.provinces[pid].capture?.by;
-  if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesIn(ctx.state, ctx.world, pid, by).length === 0) return false;
+  if (by && by !== ctx.me && ctx.seen.has(pid) && areAllies(ctx.state, ctx.me, by) && hostileArmiesAt(ctx, pid, by).length === 0) return false;
   // Leave an uncontested capture to its occupiers only if they can hold against the danger we can see or estimate.
   if (reliefNeed(ctx, pid) <= 0) return false;
   if (owner === NEUTRAL) return neutralTargetsAllowed(ctx);
@@ -503,7 +501,7 @@ function screens(ctx: Ctx, staged: Set<ArmyId>, holds: Record<ArmyId, number>): 
   // Hostile power in a province, as far as I can see or guess.
   const held = (pid: ProvinceId): number => {
     if (!enemyHeld(pid)) return 0;
-    return ctx.seen.has(pid) ? (ctx.hostile.get(pid) ?? 0) : (ctx.unseen.get(state.provinces[pid].owner) ?? 0);
+    return ctx.seen.has(pid) ? (ctx.hostile.get(pid) ?? 0) : hiddenPower(ctx, pid);
   };
   // What an enemy land next door could send down the road: the land and its city, and part of the lands behind
   // it (not those beside it, next to mine as well, which a screen weighs on their own roads).

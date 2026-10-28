@@ -1,11 +1,14 @@
 // Plays batches of all-AI campaigns in parallel and keeps their records: the building block of
 // `npm run balance` and of the tuner. A run is saved as a directory: games.jsonl (one record per
-// campaign), meta.json, summary.json and report.md.
+// campaign), meta.json, summary.json and report.md. While it plays, each campaign is also saved
+// as it finishes in a checkpoint (checkpoint/ in the run's directory), so a run that stops can be
+// carried on by running the same command with the same --out.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Checkpoint, simFingerprint } from './checkpoint';
 import { checkoutRef, workingTree, type Checkout } from './git';
 import type { Override } from './overrides';
-import { progress, runTasks, seedChunks, type WorkerTask } from './pool';
+import { progress, runTasks, seedChunks, type PoolOptions, type WorkerTask } from './pool';
 import type { GameRecord } from './record';
 import { renderReport } from './report';
 import type { Catalogue } from './sim';
@@ -17,30 +20,83 @@ export interface Batch {
   seeds: number[];
 }
 
+export interface PlayOptions {
+  /** What the progress lines count ("campaigns"). */
+  label?: string;
+  /**
+   * A directory to save each campaign in as it finishes. Played again with the same batches, a
+   * run carries on from what it holds; the caller removes it once the run is saved.
+   */
+  checkpoint?: string;
+  pool?: PoolOptions;
+}
+
+export interface BatchResult {
+  records: GameRecord[];
+  catalogue: Catalogue;
+}
+
+type CheckpointEntry = { batch: number; record: GameRecord } | { batch: number; catalogue: Catalogue };
+
 /**
  * Plays several batches together (sharing the workers), returning each batch's records in seed
- * order and the content catalogue its simulation reported.
+ * order and the content catalogue its simulation reported, and when the run first started (an
+ * earlier attempt's start when carried on from a checkpoint).
  */
-export async function playBatches(batches: Batch[], minutes: number, workers: number, label = 'campaigns'): Promise<{ records: GameRecord[]; catalogue: Catalogue }[]> {
+export async function playBatches(batches: Batch[], minutes: number, workers: number, options: PlayOptions = {}): Promise<{ results: BatchResult[]; started: Date }> {
+  const results = batches.map(() => ({ records: new Map<number, GameRecord>(), catalogue: null as Catalogue | null }));
+  let checkpoint: Checkpoint<CheckpointEntry> | null = null;
+  if (options.checkpoint) {
+    const plan = { minutes, batches: batches.map((b) => ({ sim: simFingerprint(b.simRoot), overrides: b.overrides, seeds: b.seeds })) };
+    checkpoint = new Checkpoint<CheckpointEntry>(options.checkpoint, plan);
+    for (const entry of checkpoint.entries) {
+      const result = results[entry.batch];
+      if ('record' in entry) result.records.set(entry.record.seed, entry.record);
+      else result.catalogue ??= entry.catalogue;
+    }
+  }
   const tasks: WorkerTask[] = [];
   const owner: number[] = [];
   batches.forEach((b, i) => {
-    for (const seeds of seedChunks(b.seeds, workers)) {
+    const missing = b.seeds.filter((s) => !results[i].records.has(s));
+    for (const seeds of seedChunks(missing, workers)) {
       tasks.push({ kind: 'games', simRoot: b.simRoot, overrides: b.overrides, seeds, minutes });
       owner.push(i);
     }
   });
-  const results = batches.map(() => ({ records: [] as GameRecord[], catalogue: null as Catalogue | null }));
-  const tick = progress(label, batches.reduce((s, b) => s + b.seeds.length, 0));
-  await runTasks(tasks, workers, (msg, task) => {
-    const result = results[owner[task]];
-    if (msg.type === 'catalogue') result.catalogue ??= msg.catalogue;
-    else if (msg.type === 'game') {
-      result.records.push(msg.record);
-      tick();
-    }
-  });
-  return results.map((r) => ({ records: r.records.sort((a, b) => a.seed - b.seed), catalogue: r.catalogue! }));
+  const total = batches.reduce((s, b) => s + b.seeds.length, 0);
+  const saved = results.reduce((s, r) => s + r.records.size, 0);
+  if (saved > 0) console.error(`  Carrying on from ${checkpoint!.dir}: ${saved} of ${total} ${options.label ?? 'campaigns'} already played.`);
+  const started = checkpoint?.started ?? new Date();
+  const tick = progress(options.label ?? 'campaigns', total, saved);
+  try {
+    await runTasks(
+      tasks,
+      workers,
+      (msg, task) => {
+        const batch = owner[task];
+        const result = results[batch];
+        if (msg.type === 'catalogue' && !result.catalogue) {
+          result.catalogue = msg.catalogue;
+          checkpoint?.add({ batch, catalogue: msg.catalogue });
+        } else if (msg.type === 'game' && !result.records.has(msg.record.seed)) {
+          result.records.set(msg.record.seed, msg.record);
+          checkpoint?.add({ batch, record: msg.record });
+          tick();
+        }
+      },
+      options.pool,
+    );
+  } catch (err) {
+    if (!checkpoint) throw err;
+    const played = results.reduce((s, r) => s + r.records.size, 0);
+    throw new Error(`${err instanceof Error ? err.message : String(err)}
+${played} of ${total} campaigns are saved in ${checkpoint.dir}: run the same command with --out pointing at the same run to play only the rest.`);
+  }
+  return {
+    results: results.map((r) => ({ records: [...r.records.values()].sort((a, b) => a.seed - b.seed), catalogue: r.catalogue! })),
+    started,
+  };
 }
 
 export function makeMeta(label: string, commit: string, batch: Batch, minutes: number, workers: number, startedAt: Date, catalogue: Catalogue): RunMeta {

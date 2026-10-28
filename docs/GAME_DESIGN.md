@@ -28,15 +28,17 @@ espionage, naval and air warfare, later eras, multiplayer.
 
 ## 3. The theatre
 
-- **Twelve playable nations,** five cities each: United Kingdom, France, Germany, Italy, Spain, Poland, Hungary,
-  Romania, Bulgaria, Greece, Ukraine and Belarus. A nation is playable when its real area and population are large
+- **Fifteen playable nations,** five cities each: United Kingdom, France, Germany, Italy, Spain, Poland, Hungary,
+  Romania, Bulgaria, Greece, Ukraine, Belarus, Sweden, Norway and Finland. A nation is playable when its real area and population are large
   enough (roughly 90,000 km² or more, with about 9 million people or a wide front); big countries keep only their
   biggest cities (the rest are merged into the neighbouring city of the same country) and small ones are filled out with
   lesser-known towns. The human picks one; the AI plays the rest. The
   south-eastern edge reaches Greece and Bulgaria; Turkey stays outside the theatre. Kosovo belongs to Serbia.
   Ukraine has five regions: Kyiv, Dnipro, Kharkiv & the Donbas, Odesa & Crimea, and Lviv & the West.
-  Crimea and Sevastopol belong to Ukraine; Russia, including Kaliningrad, remains outside the theatre.
-- **Twenty one-city states:** Serbia, Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia,
+  Crimea and Sevastopol belong to Ukraine; Russia, including Kaliningrad, remains outside the theatre. The north
+  reaches Finnmark and Iceland; Svalbard, the Faroes and Greenland stay context, and Finland's eastern border faces
+  Russia, outside the theatre.
+- **Twenty-one one-city states:** Serbia, Iceland, Belgium & Luxembourg, the Netherlands, Denmark, Switzerland, Austria, Czechia,
   Portugal, Slovakia, Slovenia, Croatia, Bosnia & Herzegovina, Montenegro, Albania, North Macedonia, Ireland, Moldova,
   Lithuania, Latvia and Estonia, one city and the land round it each; always computer-controlled. They are there to
   be conquered, at a price. They recruit, research, defend themselves and make peace, but **never start a war and
@@ -46,7 +48,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   to fourteen units with artillery take it in three to five minutes while losing 40–60% of their strength
   (Switzerland needs about sixteen). The engine still supports neutral states (garrisoned, never attack, open to
   invasion without war); this scenario has none.
-- **99 cities, each a province of its own, among 261 provinces of land round them** (360 provinces). Each
+- **115 cities, each a province of its own, among 313 provinces of land round them** (428 provinces). Each
   region (a row of the scenario: a city and the land round it, merged from Natural Earth admin-1 regions) is
   divided into two to seven lands all round its city, as in Conflict of Nations: no land wraps round a city;
   every city stands where two or three lands meet, the borders between them running out from it, and a road out
@@ -56,7 +58,7 @@ espionage, naval and air warfare, later eras, multiplayer.
   bent there. The borders between lands follow the departments, counties and provinces inside the region where
   those are under 9,000 km², and cut through bigger ones and round the city. An island of 4,000 km² or
   more is a land of its own (Corsica, Sardinia, Jutland), joined to the rest by a named crossing; islets join the
-  nearest land. Each land is keyed by its compass point from the city (`be-brussels-w`) and named for the country
+  nearest land, each whole (Gotland, Åland, Funen), so no two lands touch by way of an islet across the sea. Each land is keyed by its compass point from the city (`be-brussels-w`) and named for the country
   it covers (Flanders, the Ardennes, the Welsh Marches, Val di Mazara, the Ribatejo). Each city is drawn tight
   round itself, 17 to 30 km across by size, keeping clear of every land border and following the coast where it
   reaches the sea. Every province looks like one, city or land: the borders the division draws itself (a city's
@@ -68,12 +70,13 @@ espionage, naval and air warfare, later eras, multiplayer.
   the plain or hills it stands in), the region's secondary towns that lie in them (place names only: the map does not draw them, and the generator keeps borders clear of them) and an
   anchor in their interior where their armies stand. The engine allows land with no city at all; this map has
   none yet.
-- **Movement connections** are written between rows (a city with its lands): 184 land, 38 mountain passes and
-  16 sea crossings, including the Irish Sea crossing to Wales, the Strait of Otranto and the Ionian crossing from Italy. The generator turns them
+- **Movement connections** are written between rows (a city with its lands): 199 land, 48 mountain passes and
+  22 sea crossings, including the Irish Sea crossing to Wales, the Strait of Otranto and the Ionian crossing from
+  Italy, and in the north the Øresund, Skagerrak, Åland Sea and Gulf of Finland. The generator turns them
   into links between provinces (`land.ts`): every two lands of
   neighbouring regions that share a border are linked (by land or a pass, as the connection says), a sea
   crossing joins the two lands with the nearest coasts, and inside a region every two lands that share a border
-  are linked, and the city to each land it touches, its only ways in or out (837 links: 203 city gates, 200 within regions and 434 between them).
+  are linked, and the city to each land it touches, its only ways in or out (977 links: 236 city gates, 249 within regions and 492 between them).
   Connections are authored data,
   separate from the map shapes:
   the generator refuses a map where two regions share a border without a land or mountain connection, or have
@@ -82,16 +85,23 @@ espionage, naval and air warfare, later eras, multiplayer.
   where its armies stand) to the other's over those two provinces alone, crossing their border once and never
   through a third province (the city between two lands, a land next door) or over the sea; a sea crossing runs
   over each province's own land to its coast. Where the straight line between the anchors would not, or would pass
-  within 3 km of anything else, the road bends round it (226 of the 837 do). Only three roads find no clean way, as
+  within 3 km of anything else, the road bends round it (265 of the 977 do). Only four roads find no clean way, as
   the shapes stand: the Alcarria, east of Madrid, reaches Valencia only at the Rincón de Ademuz, Valencia's exclave
-  beyond Aragon; Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt; and
-  Montenegro meets Dalmatia's Dubrovnik coast, separated from the rest by Bosnia's Neum corridor. The scenario
-  test names them and fails on any other. The North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
+  beyond Aragon; Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt;
+  Montenegro meets Dalmatia's Dubrovnik coast, separated from the rest by Bosnia's Neum corridor; and Jämtland
+  meets Nordland only at a point in the Børgefjell fells. The scenario test names them and fails on any other. The
+  North Sea (Manchester–Hamburg), Bay of Biscay (Cardiff–A Coruña) and western
   Mediterranean (Barcelona–Palermo) crossings widen Britain, Italy and Spain's choice of targets beyond France.
   Ukraine and Belarus give Poland two playable land frontiers; every playable nation has at least two playable
   neighbours. Ireland borders Northern
   Ireland by land and lies one short crossing from Wales (the Irish Sea, Dublin–Cardiff), so Britain can reach it two
-  ways and Ireland is not a dead end behind Ulster; no crossing joins it to France.
+  ways and Ireland is not a dead end behind Ulster; no crossing joins it to France. In the north the Scandinavian
+  mountains are passes (Trysil fells, the Storlien Pass, Børgefjell, Riksgränsen) except at Svinesund and the
+  Värmland forests; Finland meets Sweden at Tornio and Norway in Lapland by land. Denmark reaches Sweden across the
+  Øresund and Norway across the Skagerrak, Stockholm reaches Turku across the Åland Sea, and Helsinki reaches Tallinn across the Gulf of Finland (57 km). Iceland has no land
+  border: two long crossings from Seyðisfjörður (795 km of sea to Scotland past the Faroes, and on to Bergen) make
+  it reachable from two powers, so neither Britain alone nor Norway alone carries it (the variants measured are in
+  [BACKLOG.md](BACKLOG.md)).
 - The rest of the world is drawn hatched grey as context.
 
 ### Balance assumptions
@@ -106,7 +116,7 @@ of one kind start broadly balanced:
 
 Every land province adds its own small output on top (§5).
 
-Europe has twelve playable nations and twenty states. Each playable nation has one oil province,
+Europe has fifteen playable nations and twenty-one states. Each playable nation has one oil province,
 the same city ladder (one Metropolis, one Large City) and the same 13-unit army: capital 3 INF + 1 ART, heartland 2 INF + 1 ART (garrisons
 in those cities), plus 5 INF and 1 cavalry in the field (on the land round its cities, each where it faces the most foreign land). States spend more
 (about a quarter), since their garrison is what makes them worth an investment. Starting buildings
@@ -261,7 +271,8 @@ Prices and upkeep (`config/units.ts`; upkeep a minute at Standard speed):
 
 ### 6.2 Combat
 
-- Combat happens when hostile armies are stationary in the same province. Rounds run every 10 s. **The province
+- Combat happens when hostile armies are stationary in the same province (or meet on a road between two lands and
+  stop there, §6.5). Rounds run every 10 s. **The province
   owner's armies use defence values and everyone else uses attack values.**
 - **Targeting:** each unit fires at a random enemy unit, weighted: support units are hit about a third as often
   while their army has front-line units to screen them.
@@ -292,8 +303,9 @@ d'Infanterie", "1. Panzer-Regiment", "1ª Armata"). Every nation fields named eq
 armour) and **Eastern** (Russian and Soviet designs: T-26, BT-7, T-34). Each supplies a complete identity and a
 unit look (uniform colours, headgear, insignia). A nation names its bloc and overrides any part: the original six
 override nearly everything, Hungary its hussars and five armour designs, Bulgaria its assault formations, and
-Greece its mountain units and formations (Evzones), and Ukraine its Cossack cavalry. Romania and Serbia use their
-bloc identities unchanged.
+Greece its mountain units and formations (Evzones), Ukraine its Cossack cavalry, Sweden its Bofors guns and
+Landsverk armour, and Finland its Jäger and Sissi ski troops. Romania, Serbia, Norway and Iceland use their bloc
+identities unchanged (Sweden is Central, Finland Eastern, Norway and Iceland Western).
 Within a bloc, nations are told apart by counter colour and by the bloc insignia drawn in each nation's colour.
 Blocs are equipment, not alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.md).
 
@@ -314,6 +326,10 @@ Blocs are equipment, not alliances. See [ADDING_A_COUNTRY.md](ADDING_A_COUNTRY.m
 | Serbia | Kolubara | Infantry +15% morale resilience and +10% defence |
 | Bulgaria | Na nozh! | Assault infantry +15% attack and +10% morale shock |
 | Greece | Evzones | Mountain infantry +15% defence and +15% morale resilience |
+| Sweden | Bofors | Artillery and anti-tank guns +10% attack, 15% fewer materials to raise |
+| Norway | Fjell og fjord | Coastal batteries 30% cheaper to build; mountain infantry +10% defence |
+| Finland | Motti | Infantry and mountain infantry 10% faster; armies hold out a minute longer out of supply |
+| Iceland | Fishing grounds | Money output +10% |
 
 Specialities are optional: a nation without one shows its bloc instead.
 
@@ -358,6 +374,20 @@ Specialities are optional: a nation without one shows its bloc instead.
   battle then, that is its withdrawal under fire: an army ordered elsewhere from a road (or a broken one falling back
   from it) fights on as it walks back, and passes straight through its crossroads, paying the price there. Patrols
   run between provinces.
+- **Meeting the enemy on the road (interception).** A march cannot slip past an enemy it is at war with. Entering a
+  province where an enemy army stands already stops it there to fight (it holds at the crossroads until the battle
+  is over, as above). On the road between two lands, an army that comes level with an enemy army on that road (one
+  standing on it, one coming the other way, or one it catches up with) is stopped at that spot if the enemy can see
+  it (its nation's sight, §6.7: in practice always, since an army sees 100 km round it and so the spot where it
+  meets the enemy, but fog rules decide);
+  two marching armies stop if either sees the other. Both then stand on the road at the meeting point, in the land
+  whose stretch of road it is, and fight a normal battle there (§6.2): the defender is whoever holds that land, as
+  in any battle. Each keeps its march order: the winner goes on along its road once the field is clear; the player
+  can give a new order at any time (leaving is a withdrawal under fire). The field reports say "intercepted" (or
+  that the two "ran into each other"). Not intercepted: armies at peace (including co-belligerents and bystanders),
+  an army pulling out of a battle under fire on its way out (it has paid already), and crossings by sea or between a
+  city and its land, which are not roads (they meet where they land, if the enemy is still there). The computer
+  plays by the same rule and accepts these fights rather than routing round them.
 - **Merging on arrival.** An army of yours that ends its march in a city where another of your armies stands idle
   joins it (not one holding, nor out on the land or on a road): the army standing there keeps its orders and options,
   the merged army the senior (lowest-numbered) name, and the field reports say so. Computer opponents gather their
@@ -379,13 +409,28 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.7 Sight and the fog of war
 
-- A nation sees every province it holds and every province where its armies stand (or march from), and the provinces
-  one connection away from them, counting a region as one step: sight carries on round a city to its other lands for
-  free, and whoever sees a land next to a city sees into the city. An army with a reconnaissance unit (cavalry,
-  armoured cars) sees two steps away over open land. Mountains and narrow seas (up to 110 km of water, coast to
-  coast, such as the Channel) are seen across but not beyond, so scouts in Piedmont see Savoy, Haute-Provence and the
-  Riviera across the Alps, not the Rhône valley beyond; wider seas (Sardinia to Barcelona, Rome to Split) hide the far
-  shore altogether. A marching army is seen at the nearer end of its road.
+- **Full sight is short.** A nation sees in full only its own territory (the provinces it holds, not over the
+  border) and the province each of its armies stands in (on the march, the nearer end of its road, never the far end).
+- **Sight and blip circles, in km on the map.** Each unit type has two circles (`sightKm` and `blipKm` in
+  `src/sim/config/units.ts`; absent, `SIGHT.unitKm` and `SIGHT.unitBlipKm` in `src/sim/config/rules.ts`), and an army
+  has the best of its units'. They are centred where the army is (its province's centre, or its spot on the road it
+  is marching or halted on). An enemy army within the sight circle is seen in full wherever it stands, at a
+  province's centre or out on a road, and so is every province whose centre lies inside (the map clears its fog).
+  Within the larger blip circle, enemy armies show as radar blips. Line troops (infantry, artillery, tanks and the
+  rest) see 100 km and pick up blips to 225 km; reconnaissance units (cavalry, armoured cars) see 170 km and pick up
+  blips to 350 km. Later units (aircraft, radar stations, satellites) are meant to get far larger circles. Distance
+  is the straight line on the ground; mountains and seas do not block it. Held land sees only itself, but picks up
+  blips within 120 km of the centre of each province it holds (`SIGHT.landBlipKm`), which reaches about 80 to 100 km
+  over the border, so the border is never blind. Selecting one of your armies shows its two circles as faint rings.
+- **Calibration.** Brest to Warsaw is about 183 km on the map. Belarusian cavalry at Brest sees the Polish border
+  lands (Biała Podlaska 67 km, Lublin 122 km, Podlachia 170 km) in full; Warsaw (183 km), Radom (184), Płock (247),
+  Łódź (287) and Kraków (345) are blips; Pomerania (371) and beyond are hidden. Line infantry at Brest sees only
+  Biała Podlaska, and Lublin, Podlachia, Warsaw and Radom are blips (`tests/visibility.test.ts` checks this).
+- **Radar blips.** A blip shows where (the centre of the province the army is in) and a rough size, nothing else: not
+  whose, not what units, not their strength, and every hidden army in one province makes one blip. Its size counts
+  their units together: small (1–3), medium (4–7) or large (8 or more) (`SIGHT.blipUnits`). Hovering a blip says
+  "Unknown army — large"; selecting the province says the same. A province on the radar that shows no blip is empty of
+  armies, as far as anyone can tell, so blips also show where the enemy is not.
 - **Co-belligerents** are powers at peace with each other and at war with a common enemy. It is not an alliance: there
   are no treaties yet, nobody agrees to it, and the game calls them co-belligerents, never allies, so that it never
   claims a pact the player did not make. With **Liaison Officers** (Society & Morale, the Twenties, after Staff College)
@@ -394,7 +439,8 @@ Specialities are optional: a nation without one shows its bloc instead.
 - Under the fog the player sees who holds each province and how big its city is, nothing else: no armies, battles,
   sieges, buildings, construction, morale or supply. The map dims it under a veil and drifting cloud. When the
   campaign ends the fog lifts.
-- Sight is worked out from the state whenever it is asked for (`src/sim/visibility.ts`) and never stored.
+- Sight and blips are worked out from the state whenever they are asked for (`src/sim/visibility.ts`) and never
+  stored, so saves are unchanged.
 - **Computer opponents play under the same fog** (§11): they know only what a human in their place could.
 
 ## 7. Morale
@@ -461,7 +507,7 @@ War). Technologies unlock units and buildings, upgrade equipment generations, an
 
 ## 10. Victory
 
-- **Objectives:** 80 VP in total (playable capitals 3 and industrial heartlands 2, state capitals 1). Holding **40% (32 VP)** continuously for **90 s** wins.
+- **Objectives:** 96 VP in total (playable capitals 3 and industrial heartlands 2, state capitals 1). Holding **40% (39 VP)** continuously for **90 s** wins.
 - **Time limit:** at 150 min the highest score wins. Score = 10 × VP + 2 × cities + 1 × the land round each city +
   2 × technologies, each land scoring its share of its city's land (a city and its lands together score what one
   province did before cities were split out).
@@ -546,8 +592,10 @@ peace twice as long and leaves neutrals alone 1.5 times as long. The bullets des
   worse.
 - **Knowledge (fog of war):** the AI knows what a human in its place could: the map (who holds what, city sizes), the
   military power figures the Diplomacy window shows everyone, and the armies, battles and forts within its own sight
-  (§6.7), and its co-belligerents' with Liaison Officers. Out of sight it assumes the part of a power's army it cannot
-  see is spread evenly over the places that power holds out of sight (each city one, and the land round it one more,
+  (§6.7), and its co-belligerents' with Liaison Officers. It reads radar blips as a player would: a blip stands for a
+  few units (2, 5 or 10 by size, `AI.blipUnits`) each as strong as its own average unit, credited to the province's
+  holder, and a province on its radar with no blip counts as empty. Beyond its radar it assumes the part of a power's
+  army it cannot see or pick up is spread evenly over the places that power holds out there (each city one, and the land round it one more,
   shared between its lands, so dividing the land does not thin an army out), and counts that when sizing an attack
   whose reinforcements could come from the dark. It remembers each nation's share of armour as last seen (each think's sightings move the estimate
   30% of the way), so tanks that drop out of sight still call for anti-tank guns. Enemy armies marching from the fog
@@ -716,7 +764,7 @@ The look follows modern browser grand-strategy games: a dark, glassy command-cen
   overview map, hidden by default (the browser remembers the choice). Closing the army card returns to the map. Field reports
   (the event log) sit bottom left; alerts pop up top left (below any banner) for wars, peace, research, eliminations,
   shortages, objective captures, provinces you win or lose, enemy attacks on your territory, armies you lose, enemy
-  withdrawals, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
+  withdrawals, interceptions on the road involving your armies, and rejected peace offers. A war declared on you is red, your own declaration orange, and other powers'
   wars and treaties neutral; those alert (and sound) only when one side borders you or both are great powers, the rest
   staying in the field reports. Alerts only count down while the game runs. Keyboard and mouse extras: Shift-drag
   selects your armies in a box, , and . cycle through them, the arrow keys pan and C jumps to the capital. A cursor
@@ -769,11 +817,13 @@ support and infrastructure, saying what a new building would replace) and a link
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
-- Is one region of sight around your land and armies the right amount of fog? Mountains and seas over 110 km now
-  stop it: is that tight enough, or should provinces see only across land borders and leave scouting to armies?
+- Are the sight circles the right size (line troops 100 km sight and 225 km blips, scouts 170 and 350, held land
+  blips to 120 km)? Held land sees only itself: is the front too blind, and do blips give away too much (or too
+  little)? Some regions are wide (Lisbon lies 120 to 150 km from its lands), so a line army next door does not see
+  into the city.
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
-- Positions differ in the 200-campaign five-region East run on the current economy. Against main on the same seeds,
-  Germany's wins rise from 4% to 19%, Hungary's from 27.5% to 29%, and Poland's fall from 29.5% to 16.5%.
-  Ukraine wins 0.5%, Romania 1.5%, Greece 2%, and Belarus, Bulgaria and Serbia never win. Ukraine lasts 69.5%
-  of campaigns, Romania 39.5%, Belarus 49.5%, Serbia 30% and Bulgaria 55%. Hungary remains above the win-share
-  goal; Romania and Serbia are below the survival goal. Balance is a separate follow-up using general mechanics.
+- Positions differ in the 200-campaign run with the East and the Nordic powers: Hungary wins 29.5%, Poland 17% and
+  Germany 15%; Serbia, Belarus and three of the four Nordic powers never win (Sweden 0.5%). Serbia lasts 29.5% of
+  campaigns, Romania 45%, Norway 71.5%, Sweden 76.5%, Finland 85.5% and Iceland 94.5%. Hungary remains above the
+  win-share goal; Romania and Serbia are below the survival goal. Which differences feel fair to a human player?
+  Balance is a separate follow-up using general mechanics.

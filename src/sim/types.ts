@@ -328,6 +328,8 @@ export interface MoveLeg {
   to: ProvinceId;
   elapsed: number;
   duration: number;
+  /** Pulling out of a battle under fire: nobody intercepts it on this leg (absent: an ordinary leg). */
+  withdrawing?: true;
 }
 
 /**

@@ -301,7 +301,7 @@ export function ProvincePanel({
             <Progress value={ps.capture.progress / ps.capture.required} color={world.nations[ps.capture.by].color} />
           </div>
         )}
-        {activeTab === 'city' && (!known ? <FogNote ctrl={ctrl} /> : city ? <CityTab ctrl={ctrl} pid={pid} /> : <LandTab ctrl={ctrl} pid={pid} />)}
+        {activeTab === 'city' && (!known ? <FogNote ctrl={ctrl} pid={pid} /> : city ? <CityTab ctrl={ctrl} pid={pid} /> : <LandTab ctrl={ctrl} pid={pid} />)}
         {activeTab === 'recruit' && <RecruitTab ctrl={ctrl} pid={pid} />}
         {activeTab === 'armies' && <ArmiesTab ctrl={ctrl} pid={pid} selectedArmies={selectedArmies} onSelectArmy={onSelectArmy} />}
       </div>
@@ -405,19 +405,30 @@ function LandTab({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
 }
 
 /** A province under the fog of war shows this instead of its city: what is hidden, and how to see it. */
-function FogNote({ ctrl }: { ctrl: GameController }) {
+/** A radar blip's size in words. */
+const BLIP_TEXT = { small: 'small', medium: 'medium-sized', large: 'large' } as const;
+
+function FogNote({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const { state, world, human } = ctrl;
   const allies = alliesOf(state, world, human).map((a) => world.nations[a].name);
-  const reach = (n: number) => (n === 1 ? 'the provinces next to them' : `${n} provinces out`);
+  const blip = ctrl.radar().at.get(pid);
+  const sightKm = UNITS.cavalry.sightKm ?? SIGHT.unitKm;
+  const blipKm = UNITS.cavalry.blipKm ?? SIGHT.unitBlipKm;
   return (
     <div className="fog-note" data-testid="fog-note">
       <div className="fog-title">
         <Icon name="fog" size={15} /> Under the fog of war
       </div>
+      {blip && (
+        <p className="small" data-testid="fog-blip">
+          Radar contact: an unknown army here, {BLIP_TEXT[blip.size]}. Whose it is and what it fields are hidden.
+        </p>
+      )}
       <p className="muted small">
-        No reports come from here: its armies, battles, buildings and morale are hidden. Your provinces watch {reach(SIGHT.province)}, armies{' '}
-        {reach(SIGHT.army)}, and armies with reconnaissance units (cavalry, armoured cars) {reach(SIGHT.recon)} over open land. Mountains
-        and narrow seas are seen across but not beyond, and seas wider than {SIGHT.seaKm} km not at all.
+        No reports come from here: its armies, battles, buildings and morale are hidden. You see your own territory and the province
+        each of your armies stands in. Round each army you see enemy armies within {SIGHT.unitKm} km ({sightKm} km with cavalry or
+        armoured cars), and further out, up to {SIGHT.unitBlipKm} km ({blipKm} km), you pick up unknown armies on the radar, as
+        blips of a rough size. Your land picks up blips up to {SIGHT.landBlipKm} km from the middle of each province you hold.
       </p>
       <p className="muted small">
         {sharesAlliedSight(state, human)

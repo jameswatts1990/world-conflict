@@ -66,6 +66,25 @@ async function waitUntil(fn, timeoutMs, label) {
   throw new Error(`Timed out waiting for: ${label}`);
 }
 
+/**
+ * Like waitUntil, but the limit is game time: `ticks` ticks after the call, however fast the machine runs the
+ * game (a loaded CI runner may manage far fewer ticks a second than the speed asks for). A game that stops
+ * advancing still fails, after `stallMs` with no tick.
+ */
+async function waitUntilTicks(fn, ticks, label, stallMs = 30000) {
+  const until = (await state((s) => s.tick)) + ticks;
+  let last = -1;
+  let lastAt = Date.now();
+  for (;;) {
+    if (await state(fn)) return;
+    const tick = await state((s) => s.tick);
+    if (tick > until) throw new Error(`Timed out waiting for: ${label} (${ticks} ticks of game time)`);
+    if (tick !== last) [last, lastAt] = [tick, Date.now()];
+    else if (Date.now() - lastAt > stallMs) throw new Error(`Timed out waiting for: ${label} (the game stopped at tick ${tick})`);
+    await page.waitForTimeout(250);
+  }
+}
+
 /** A screen point that hits the given province's own <path> (not a marker or label). */
 async function provincePoint(pid) {
   return page.evaluate((pid) => {
@@ -229,12 +248,12 @@ try {
   if (target !== 'pt-lisbon') throw new Error('attack order not accepted');
   step('merged armies, ordered the invasion of Portugal and declared war when asked', { castileArmyMerged: castileArmy, units: merged[0].units.length });
   await setPaused(false);
-  await waitUntil((s) => Object.keys(s.battles).some((pid) => pid.startsWith('pt-')), 30000, 'battle start');
+  await waitUntilTicks((s) => Object.keys(s.battles).some((pid) => pid.startsWith('pt-')), 600, 'battle start');
   await page.waitForTimeout(400);
   await shot('05-battle');
   step('battle started in Portugal');
   // A Move order marches through the lands round Lisbon (they stay Portuguese) and takes the city.
-  await waitUntil((s) => s.provinces['pt-lisbon'].owner === 'es', 90000, 'capture of Lisbon');
+  await waitUntilTicks((s) => s.provinces['pt-lisbon'].owner === 'es', 1800, 'capture of Lisbon');
   await setPaused(true);
   await shot('06-captured');
   // What the fortress cost: the invaders' remaining strength (100% = every division at full strength).
@@ -264,7 +283,7 @@ try {
   // 9. Play on at DEV 200x until the campaign ends.
   await setSpeed(200);
   await setPaused(false);
-  await page.waitForSelector('[data-testid="outcome"]', { timeout: 300000 });
+  await page.waitForSelector('[data-testid="outcome"]', { timeout: 600000 });
   await page.waitForTimeout(300);
   await shot('08-outcome');
   const result = await page.getAttribute('[data-testid="outcome"]', 'data-result');

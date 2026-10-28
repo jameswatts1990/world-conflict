@@ -113,6 +113,9 @@ describe('scenario data', () => {
       'de-hesse-s|at-vienna-wsw2': 'Baden meets Austria only at Lake Constance, across a sliver of Bavarian Swabia',
       'me-podgorica-n|hr-zagreb-s': 'the Dubrovnik coast is cut off from the rest of Dalmatia by Bosnia at Neum; the coastal road crosses that short gap',
       'be-brussels-w|nl-amsterdam-se': 'Flanders meets Brabant & Holland only at Zeelandic Flanders, across the Western Scheldt',
+      'is-reykjavik|is-reykjavik-n': 'the Westfjords hang off Iceland by a narrow isthmus; the road crosses a short stretch of fjord',
+      'fi-helsinki-n|fi-karelia-nw': 'Häme meets Savonia only at a narrow gap between the lakes, past a corner of Päijät-Häme',
+      'se-norrland-nw2|no-narvik-ssw': 'Jämtland meets Nordland only at a point in the Børgefjell fells, where Västerbotten comes in between',
     };
     const strays = faults.filter((f) => f.third || f.sea || f.back).map((f) => f.link);
     expect(strays.sort()).toEqual(Object.keys(lastResort).sort());

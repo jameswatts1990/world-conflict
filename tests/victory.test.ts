@@ -98,6 +98,7 @@ describe('victory conditions', () => {
     expect(standing.nations.be.eliminated).toBe(false);
   });
 
+  // A full 150-minute campaign: on CI it now takes over a minute, past the default 60 s test timeout.
   it('an all-AI campaign always reaches an outcome within the time limit', () => {
     const state = aiGame(11);
     run(state, state.settings.timeLimitTicks + 5);
@@ -107,5 +108,5 @@ describe('victory conditions', () => {
     expect(state.events.length).toBeGreaterThan(0);
     expect(world.nationIds.some((id) => state.nations[id].stats.provincesCaptured > 0)).toBe(true);
     expect(world.nationIds.every((id) => state.nations[id].research.completed.length > 0 || state.nations[id].eliminated)).toBe(true);
-  });
+  }, 180000);
 });

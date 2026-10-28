@@ -135,14 +135,22 @@ export const CAPTURE = {
 
 /** Fog of war: how far, in connections, a nation's provinces and armies see. */
 export const SIGHT = {
-  /** Every province a nation holds watches itself and its neighbours. */
-  province: 1,
-  /** So does every army, from the province it stands in or marches from. */
-  army: 1,
-  /** An army with a reconnaissance unit (cavalry, armoured cars) sees this far over land (mountains and seas stop it). */
-  recon: 2,
-  /** Sea crossings up to this wide (coast to coast) are watched like a mountain border: the far shore, nothing beyond. Wider seas hide everything. */
-  seaKm: 110,
+  /**
+   * How far a unit sees, in km on the map, when its type sets no `sightKm` (`UNITS`): enemy armies within it are
+   * seen in full, wherever they stand (at a province's centre or on a road). An army sees as far as its
+   * best-sighted unit. Every nation also sees its own territory whole, and the province each of its armies stands in.
+   */
+  unitKm: 100,
+  /** How far a unit picks up radar blips (unknown armies, a rough size and nothing else) when its type sets no `blipKm`. */
+  unitBlipKm: 225,
+  /**
+   * Held land sees only itself, but picks up radar blips this far (km) round the centre (anchor) of each province
+   * it holds, so the border is not blind: a land's centre lies some 20 to 40 km inside it, so about 80 to 100 km
+   * over the border.
+   */
+  landBlipKm: 120,
+  /** A radar blip is medium from this many units (all the hidden armies in the province together), large from the next. */
+  blipUnits: { medium: 4, large: 8 },
 };
 
 export const DIPLOMACY = {

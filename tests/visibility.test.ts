@@ -1,99 +1,216 @@
 import { describe, expect, it } from 'vitest';
 import { TECH_BY_ID } from '../src/sim/config/research';
 import { SIGHT } from '../src/sim/config/rules';
-import { alliesOf, applyCommand, areAllies, armySight, findPath, isArmyVisible, legTicks, visibleProvinces, type GameState, type NationId } from '../src/sim';
-import { clearArmies, landOf, landsOf, place, quietGame, run, setWar, world } from './helpers';
+import { UNITS } from '../src/sim/config/units';
+import {
+  alliesOf,
+  applyCommand,
+  areAllies,
+  armyBlipKm,
+  armySightKm,
+  armySpot,
+  blipSize,
+  detectedProvinces,
+  distanceSq,
+  findPath,
+  isArmyVisible,
+  legTicks,
+  radarBlips,
+  roadBorder,
+  unitBlipKm,
+  unitSightKm,
+  visibleProvinces,
+  withinKm,
+  type GameState,
+  type NationId,
+  type ProvinceId,
+  type UnitType,
+} from '../src/sim';
+import { clearArmies, place, quietGame, run, setWar, world } from './helpers';
 
 function research(state: GameState, nation: NationId, tech: string) {
   state.nations[nation].research.completed.push(tech);
 }
 
+/** How far apart two provinces' anchors are, in km. */
+const km = (a: ProvinceId, b: ProvinceId) => Math.sqrt(distanceSq(world.spots[a], world.spots[b])) / 1000;
+
+/** A road over open land between two regions, long enough that its far end lies beyond a line army's sight. */
+const longRoad = (ok: (a: ProvinceId, b: ProvinceId) => boolean = () => true) =>
+  world.scenario.connections.find(
+    (c) => c.kind === 'land' && world.regionOf[c.a] !== world.regionOf[c.b] && km(c.a, c.b) > 140 && km(c.a, c.b) < 200 && ok(c.a, c.b),
+  )!;
+
 describe('fog of war', () => {
-  it('a nation sees its own land and one province beyond its borders', () => {
+  it('a nation sees its own territory whole, and nothing over the border without an army there', () => {
     const state = quietGame();
     clearArmies(state);
     const seen = visibleProvinces(state, world, 'fr');
-    for (const id of world.provinceIds) if (state.provinces[id].owner === 'fr') expect(seen.has(id)).toBe(true);
-    // Across the Rhine, the Alps and the Strait of Dover...
-    for (const id of ['de-hesse', 'de-hesse', 'it-piedmont', 'uk-london', 'be-brussels']) expect(seen.has(id)).toBe(true);
-    // ...but not deeper.
-    for (const id of ['de-bavaria', 'de-berlin', 'it-rome', 'pl-warsaw', 'es-madrid']) expect(seen.has(id)).toBe(false);
+    const held = world.provinceIds.filter((id) => state.provinces[id].owner === 'fr');
+    expect([...seen].sort()).toEqual([...held].sort());
+    for (const id of ['de-hesse-s', 'be-brussels', 'uk-london', 'it-piedmont']) expect(seen.has(id)).toBe(false);
   });
 
-  it('sight is reckoned over the land: seeing a land next to a city shows the city, and a city looks out from its lands', () => {
+  it('sight is a property of each unit type, in km on the map: most see 100 km, scouts further', () => {
+    for (const type of Object.keys(UNITS) as UnitType[]) {
+      expect(unitSightKm(type)).toBe(UNITS[type].recon ? 170 : SIGHT.unitKm);
+      expect(unitBlipKm(type)).toBe(UNITS[type].recon ? 350 : SIGHT.unitBlipKm);
+      expect(unitBlipKm(type)).toBeGreaterThan(unitSightKm(type));
+    }
+    expect([SIGHT.unitKm, SIGHT.unitBlipKm, SIGHT.landBlipKm]).toEqual([100, 225, 120]);
     const state = quietGame();
     clearArmies(state);
-    // Belgium holds only Brussels and the lands round it: from there it sees the lands next door and the
-    // cities they lie round, but no further.
-    const seen = visibleProvinces(state, world, 'be');
-    for (const id of [landOf('fr-nord', 'be-brussels'), 'fr-nord', landOf('de-ruhr', 'be-brussels'), 'de-ruhr', 'nl-amsterdam']) expect(seen.has(id)).toBe(true);
-    expect(seen.has('fr-paris')).toBe(false);
-    // A city cut off inside enemy land still looks out over the lands next to its own.
-    for (const land of landsOf('be-brussels')) state.provinces[land].owner = 'fr';
-    expect(visibleProvinces(state, world, 'be').has('fr-nord')).toBe(true);
+    // An army sees as far as its best-sighted unit.
+    expect(armySightKm(place(state, 'fr', 'fr-paris', { infantry: 3 }))).toBe(100);
+    expect(armySightKm(place(state, 'fr', 'fr-paris', { infantry: 3, cavalry: 1 }))).toBe(170);
+    expect(armyBlipKm(place(state, 'fr', 'fr-paris', { infantry: 3 }))).toBe(225);
+    expect(armyBlipKm(place(state, 'fr', 'fr-paris', { armouredCar: 1 }))).toBe(350);
   });
 
-  it('armies see around them; reconnaissance units see further', () => {
+  it('calibration: Belarusian cavalry at Brest sees the Polish border lands, and Warsaw and the lands round it only as blips', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'by', 'pl');
+    const scouts = place(state, 'by', 'by-brest', { infantry: 2, cavalry: 1 });
+    // Polish armies, from the nearest to the farthest (km from Brest on the map).
+    const at: Record<ProvinceId, number> = {
+      'pl-warsaw-e': 103, // Biała Podlaska
+      'pl-warsaw-se': 117, // Lublin
+      'pl-warsaw': 183, // Warsaw
+      'pl-warsaw-ne': 195, // Podlachia
+      'pl-warsaw-sw': 274, // Łódź
+      'pl-warsaw-n': 275, // Masuria
+      'pl-lesser': 345, // Kraków
+      'pl-pomerania-s': 371,
+      'pl-silesia-se': 392,
+    };
+    const polish: Record<ProvinceId, ReturnType<typeof place>> = {};
+    for (const [pid, d] of Object.entries(at)) {
+      expect(Math.round(km('by-brest', pid))).toBe(d);
+      polish[pid] = place(state, 'pl', pid, { infantry: 2 });
+    }
+    const inSight = () => {
+      const seen = visibleProvinces(state, world, 'by');
+      return Object.keys(at).filter((pid) => isArmyVisible(polish[pid], 'by', seen));
+    };
+    const blips = () => radarBlips(state, world, 'by').map((b) => b.province).sort();
+    expect(inSight()).toEqual(['pl-warsaw-e', 'pl-warsaw-se']);
+    expect(blips()).toEqual(['pl-warsaw', 'pl-warsaw-ne', 'pl-warsaw-sw', 'pl-warsaw-n', 'pl-lesser'].sort());
+    // A blip says only where and how big.
+    expect(radarBlips(state, world, 'by').every((b) => b.size === 'small')).toBe(true);
+
+    // Without the cavalry, line infantry sees 100 km and picks up blips to 225 km: Biała Podlaska, Lublin, Warsaw and
+    // Podlachia are blips, Łódź and beyond hidden.
+    scouts.units = scouts.units.filter((u) => u.type !== 'cavalry');
+    expect(inSight()).toEqual([]);
+    expect(blips()).toEqual(['pl-warsaw-e', 'pl-warsaw-se', 'pl-warsaw', 'pl-warsaw-ne'].sort());
+  });
+
+  it('an army sees the province it stands in, and every province whose centre lies within its sight', () => {
+    const state = quietGame();
+    clearArmies(state);
+    const before = visibleProvinces(state, world, 'fr');
+    place(state, 'fr', 'de-berlin-ssw', { infantry: 2 });
+    const seen = visibleProvinces(state, world, 'fr');
+    const added = [...seen].filter((id) => !before.has(id)).sort();
+    const within = world.provinceIds.filter((id) => !before.has(id) && withinKm(world.spots['de-berlin-ssw'], world.spots[id], 100));
+    expect(within).toContain('de-berlin-ssw');
+    expect(added).toEqual(within.sort());
+    expect(seen.has('de-berlin')).toBe(false); // about 150 km off
+  });
+
+  it('beyond sight, the radar shows unknown armies as blips of a rough size and nothing more', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    const infantry = place(state, 'fr', 'de-hesse', { infantry: 2 });
-    expect(armySight(infantry)).toBe(SIGHT.army);
-    let seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-berlin-sw')).toBe(true);
+    place(state, 'fr', 'de-berlin-ssw', { infantry: 2 });
+    const seen = visibleProvinces(state, world, 'fr');
+    const detected = detectedProvinces(state, world, 'fr');
+    for (const id of seen) expect(detected.has(id)).toBe(true);
+    // Berlin, about 150 km away, is on the radar but out of sight; Warsaw is beyond both.
     expect(seen.has('de-berlin')).toBe(false);
+    expect(detected.has('de-berlin')).toBe(true);
+    expect(detected.has('pl-warsaw')).toBe(false);
 
-    const scouts = place(state, 'fr', 'de-hesse', { infantry: 1, cavalry: 1 });
-    expect(armySight(scouts)).toBe(SIGHT.recon);
-    seen = visibleProvinces(state, world, 'fr');
-    expect(seen.has('de-berlin')).toBe(true); // Hesse, Thuringia, Berlin
-    expect(seen.has('pl-warsaw')).toBe(false); // one step too far
+    const small = place(state, 'de', 'de-berlin', { infantry: 2 });
+    place(state, 'de', 'pl-warsaw', { infantry: 12 });
+    expect(isArmyVisible(small, 'fr', seen)).toBe(false);
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'small' }]);
+    // Every hidden army in a province makes one blip, sized by all their units together.
+    place(state, 'de', 'de-berlin', { tank: 1, artillery: 2 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'medium' }]);
+    place(state, 'it', 'de-berlin', { infantry: 4 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'de-berlin', size: 'large' }]);
+    // A blip says only where and how big: the same for anyone's armies and any units.
+    const other = quietGame();
+    clearArmies(other);
+    setWar(other, 'fr', 'de');
+    place(other, 'fr', 'de-berlin-ssw', { infantry: 2 });
+    place(other, 'pl', 'de-berlin', { cavalry: 9 });
+    expect(radarBlips(other, world, 'fr')).toEqual(radarBlips(state, world, 'fr'));
+    expect([blipSize(1), blipSize(SIGHT.blipUnits.medium - 1), blipSize(SIGHT.blipUnits.medium), blipSize(SIGHT.blipUnits.large)]).toEqual([
+      'small',
+      'small',
+      'medium',
+      'large',
+    ]);
+    // Armies in sight are seen, not blips, and nobody picks up their own armies.
+    place(state, 'de', 'de-berlin', { infantry: 1 });
+    expect(radarBlips(state, world, 'fr').map((b) => b.province)).toEqual(['de-berlin']);
+    expect(radarBlips(state, world, 'de')).toEqual([]);
   });
 
-  it('mountains and narrow seas are seen across, not beyond; wide seas hide everything', () => {
+  it('held land picks up blips a little way over the border; without an army the radar ends there', () => {
     const state = quietGame();
     clearArmies(state);
-    setWar(state, 'it', 'fr');
-    place(state, 'it', 'it-piedmont', { infantry: 1, cavalry: 1 });
-    let seen = visibleProvinces(state, world, 'it');
-    // Scouts in Piedmont see over the Alps into the Rhône valley and Provence...
-    for (const id of ['fr-rhone', 'fr-midi', 'ch-bern']) expect(seen.has(id)).toBe(true);
-    // ...but no further, while over open land they would see two provinces out.
-    for (const id of ['fr-paris', 'fr-aquitaine', 'fr-nord', 'de-hesse']) expect(seen.has(id)).toBe(false);
-    // Sardinia does not watch Barcelona across 1,000 km of sea, nor Rome Split across the Adriatic.
-    for (const id of ['es-catalonia', 'hr-zagreb']) expect(seen.has(id)).toBe(false);
-    // The Channel is narrow enough: London sees the French coast, not what lies behind it.
-    seen = visibleProvinces(state, world, 'uk');
-    expect(seen.has('fr-nord-w')).toBe(true);
-    expect(seen.has('fr-rhone')).toBe(false);
+    const seen = visibleProvinces(state, world, 'fr');
+    const detected = detectedProvinces(state, world, 'fr');
+    // Belgium's west land and its city are on the radar of France's northern border lands, Hesse is not.
+    for (const id of ['be-brussels-w', 'be-brussels']) expect([seen.has(id), detected.has(id)]).toEqual([false, true]);
+    expect(detected.has('de-hesse')).toBe(false);
+    place(state, 'de', 'be-brussels-w', { infantry: 5 });
+    place(state, 'de', 'de-hesse', { infantry: 5 });
+    expect(radarBlips(state, world, 'fr')).toEqual([{ province: 'be-brussels-w', size: 'medium' }]);
   });
 
-  it('a marching army comes into sight at the nearer end of its road', () => {
+  it('a marching army watches from where it is, never from the far end of its road', () => {
     const state = quietGame();
     clearArmies(state);
     setWar(state, 'fr', 'de');
-    place(state, 'fr', 'de-hesse', { infantry: 1 });
+    const german = (pid: ProvinceId) => state.provinces[pid].owner === 'de';
+    const road = longRoad((a, b) => german(a) && german(b));
+    const french = place(state, 'fr', road.a, { infantry: 1 });
+    const enemy = place(state, 'de', road.b, { infantry: 1 });
+    expect(isArmyVisible(enemy, 'fr', visibleProvinces(state, world, 'fr'))).toBe(false);
+    expect(findPath(state, world, french, road.a, road.b)!.path).toEqual([road.b]);
+    const ticks = legTicks(state, world, french, road.a, road.b);
+    expect(applyCommand(state, world, { type: 'move', nation: 'fr', armyId: french.id, to: road.b }).ok).toBe(true);
+    run(state, 1);
+    // Just set out: the German army at the far end is still a blip, not in plain sight.
+    expect(french.move?.leg).toBeTruthy();
+    expect(isArmyVisible(enemy, 'fr', visibleProvinces(state, world, 'fr'))).toBe(false);
+    expect(radarBlips(state, world, 'fr').map((b) => b.province)).toEqual([road.b]);
+    // Closer, within 100 km of it, the French see it.
+    run(state, ticks - 3);
+    expect(withinKm(armySpot(world, french), world.spots[road.b], 100)).toBe(true);
+    expect(isArmyVisible(enemy, 'fr', visibleProvinces(state, world, 'fr'))).toBe(true);
+  });
+
+  it('an army on a road is seen where it stands on the road, though its province is out of sight', () => {
+    const state = quietGame();
+    clearArmies(state);
+    setWar(state, 'fr', 'de');
+    // One whose border lies near enough the French end that a German halted by it is within 100 km of them.
+    const halt = (a: ProvinceId, b: ProvinceId) => Math.round(roadBorder(world, b, a) * 950) / 1000;
+    const road = longRoad((a, b) => state.provinces[a].owner === 'fr' && state.provinces[b].owner === 'de' && km(a, b) * (1 - halt(a, b)) < 80);
+    place(state, 'fr', road.a, { infantry: 1 });
+    const german = place(state, 'de', road.b, { infantry: 1 });
     const seen = () => visibleProvinces(state, world, 'fr');
-    // A road from German land out of sight into German land in sight, between two regions (so not
-    // the way through a city).
-    const now = seen();
-    const road = world.scenario.connections.find(
-      (c) =>
-        c.kind === 'land' &&
-        world.regionOf[c.a] !== world.regionOf[c.b] &&
-        world.provinces[c.a].core === 'de' &&
-        world.provinces[c.b].core === 'de' &&
-        now.has(c.a) !== now.has(c.b),
-    )!;
-    const [from, to] = now.has(road.a) ? [road.b, road.a] : [road.a, road.b];
-    const german = place(state, 'de', from, { infantry: 1 });
-    expect(findPath(state, world, german, from, to)!.path).toEqual([to]);
     expect(isArmyVisible(german, 'fr', seen())).toBe(false);
-    const ticks = legTicks(state, world, german, from, to);
-    expect(applyCommand(state, world, { type: 'move', nation: 'de', armyId: german.id, to }).ok).toBe(true);
-    run(state, Math.floor(ticks / 2) - 1);
-    expect(isArmyVisible(german, 'fr', seen())).toBe(false);
-    run(state, 2);
+    // Halted on the road towards the French, near the border: still in its own land, but within sight.
+    german.road = { toward: road.a, at: halt(road.a, road.b) };
+    expect(seen().has(road.b)).toBe(false);
+    expect(withinKm(armySpot(world, german), world.spots[road.a], 100)).toBe(true);
     expect(isArmyVisible(german, 'fr', seen())).toBe(true);
     // Its owner always sees it.
     expect(isArmyVisible(german, 'de', new Set())).toBe(true);

@@ -2,8 +2,8 @@
 // read from the unit's configuration and its owner's effects, so the text cannot drift from
 // the rules.
 import { ARMY_RULES, UNITS } from '../sim/config/units';
-import { MOVEMENT } from '../sim/config/rules';
-import { specialityEffects, unitStats, type GameState, type NationId, type Terrain, type UnitType, type World } from '../sim';
+import { MOVEMENT, SIGHT } from '../sim/config/rules';
+import { specialityEffects, unitBlipKm, unitSightKm, unitStats, type GameState, type NationId, type Terrain, type UnitType, type World } from '../sim';
 import { TERRAIN_LABEL } from './labels';
 
 export interface UnitTraits {
@@ -53,7 +53,13 @@ export function unitTraits(state: GameState, world: World, nation: NationId, typ
   if (cfg.fortIgnore) strengths.push(`Ignores ${Math.round(cfg.fortIgnore * 100)}% of the defender's fortifications`);
   if (cfg.recon) {
     strengths.push(
-      `Reconnaissance: its army deals +10% damage, captures ${Math.round((ARMY_RULES.reconCapture - 1) * 100)}% faster, sees further and withdraws at half the cost`,
+      `Reconnaissance: its army deals +10% damage, captures ${Math.round((ARMY_RULES.reconCapture - 1) * 100)}% faster and withdraws at half the cost`,
+    );
+  }
+  const sight = unitSightKm(type);
+  if (sight > SIGHT.unitKm) {
+    strengths.push(
+      `Sees further: enemy armies within ${sight} km (most troops ${SIGHT.unitKm} km), and picks up unknown armies ${unitBlipKm(type)} km out (most ${SIGHT.unitBlipKm} km)`,
     );
   }
   if (cfg.targetWeight < 1) strengths.push('Fights from the second line: rarely hit while other troops screen it');

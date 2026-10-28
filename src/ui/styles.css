@@ -684,6 +684,91 @@ kbd {
 .map-top > g {
   pointer-events: auto;
 }
+/*
+ * Zooming past a change of look (MapView's STAGES: chips to counters, markers to 3D cities and armies...), the old
+ * look fades out over the new one fading in. Only whole layers fade, which the compositor does without drawing the
+ * map again; the fade lasts FADE_MS in MapView. The top layer fades in itself when its armies change, and its two
+ * animations alternate so that a fade following another starts again.
+ */
+.map-fade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  will-change: opacity;
+}
+/* Not even the hit areas (they take the pointer over their whole shape) answer it while they fade. */
+.map-fade,
+.map-fade * {
+  pointer-events: none !important;
+}
+.map-fade.fade-in,
+.map-top.fade-in.fade-0 {
+  animation: map-fade-in 320ms ease-out both;
+}
+.map-top.fade-in.fade-1 {
+  animation: map-fade-in-again 320ms ease-out both;
+}
+.map-fade.fade-out {
+  animation: map-fade-out 320ms ease-in both;
+}
+@keyframes map-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes map-fade-in-again {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes map-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  /* At once, but still an animation: its end ends the fade. */
+  .map-fade.fade-in,
+  .map-top.fade-in {
+    animation-duration: 1ms;
+  }
+  .map-fade.fade-out {
+    display: none;
+  }
+}
+/*
+ * After a zoom, the map is drawn again for it: marks drawn at a size on screen (counters, badges, names, models),
+ * which grew or shrank with the map during the gesture, ease back from the size the gesture showed rather than jump
+ * (MapView's `keepSize` and KEEP_SIZE_MS). The layers of marks hold the factors (`--settle`, and `--settle-symbol`,
+ * `-city`, `-army` for marks that grow with the zoom); each mark, how far it stands from what it is placed round
+ * (`--ax`, `--ay`), so it eases back towards it.
+ */
+.keep-size {
+  --f: var(--settle, 1);
+}
+.keep-size.settling-0 {
+  animation: keep-size-0 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.keep-size.settling-1 {
+  animation: keep-size-1 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+@keyframes keep-size-0 {
+  from {
+    transform: translate(calc((var(--f) - 1) * var(--ax, 0px)), calc((var(--f) - 1) * var(--ay, 0px))) scale(var(--f));
+  }
+}
+@keyframes keep-size-1 {
+  from {
+    transform: translate(calc((var(--f) - 1) * var(--ax, 0px)), calc((var(--f) - 1) * var(--ay, 0px))) scale(var(--f));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .keep-size.settling-0,
+  .keep-size.settling-1 {
+    animation: none;
+  }
+}
 /* Over the map while its drawing is scaled for a zoom under way: it takes the pointer instead. */
 .map-shield {
   position: absolute;
@@ -4957,6 +5042,44 @@ button.chip.queued:hover {
 /* Clicking an army behind a city focuses this layer; its focus ring would frame every army in it. */
 .army-back:focus {
   outline: none;
+}
+/* Radar blips: unknown armies beyond sight, a rough size and nothing else. Static, so they cost nothing between ticks. */
+.radar-blip {
+  cursor: pointer;
+}
+.radar-hit {
+  fill: transparent;
+}
+.radar-back {
+  fill: rgba(4, 22, 12, 0.55);
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 3.4;
+}
+.radar-ring {
+  fill: rgba(90, 255, 150, 0.18);
+  stroke: #7dffad;
+  stroke-width: 1.8;
+  stroke-dasharray: 4 2.5;
+}
+.radar-dot {
+  fill: #b6ffd0;
+}
+/* The selected army's reach: how far it sees, and further out how far it picks up blips. Faint, under the armies. */
+.sight-rings circle {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.sight-range {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.5;
+}
+.blip-range {
+  stroke: rgba(125, 255, 173, 0.45);
+  stroke-width: 1.2;
+  stroke-dasharray: 6 5;
+}
+.radar-blip:hover .radar-ring {
+  fill: rgba(120, 255, 170, 0.3);
 }
 .army-ring {
   fill-opacity: 0.32;

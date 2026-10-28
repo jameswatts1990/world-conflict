@@ -54,6 +54,13 @@ export interface UnitConfig {
   fortIgnore?: number;
   /** Reconnaissance: +10% army damage, faster capture, cheaper retreats. */
   recon?: boolean;
+  /**
+   * How far its army sees, in km on the map: enemy armies within it are seen in full. Absent: `SIGHT.unitKm`.
+   * Room for aircraft, radar stations and satellites to see far.
+   */
+  sightKm?: number;
+  /** How far its army picks up radar blips, in km on the map. Absent: `SIGHT.unitBlipKm`. */
+  blipKm?: number;
 }
 
 /** Wheeled and tracked vehicles bog down off-road. */
@@ -207,6 +214,8 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     resilience: 0.9,
     shock: 1.2,
     recon: true,
+    sightKm: 170,
+    blipKm: 350,
   },
   armouredCar: {
     name: 'Armoured Cars',
@@ -235,6 +244,8 @@ export const UNITS: Record<UnitType, UnitConfig> = {
     resilience: 0.9,
     shock: 1,
     recon: true,
+    sightKm: 170,
+    blipKm: 350,
   },
   artillery: {
     name: 'Field Artillery',

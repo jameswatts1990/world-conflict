@@ -4,7 +4,7 @@ Three tools play the game against itself in the background and report what they 
 
 | Command | What it answers | Time (4 cores) |
 | --- | --- | --- |
-| `npm run balance` | How campaigns play: who wins and who is knocked out, pace, drama, which AI personalities do well, what the AI does with every unit, building and technology | 200 campaigns in about 9 minutes |
+| `npm run balance` | How campaigns play: who wins and who is knocked out, pace, drama, which AI personalities do well, what the AI does with every unit, building and technology | 100 campaigns in about 15–25 minutes (`--quick`, 25: about 5) |
 | `npm run balance:units` | What each unit type is worth for its price, by technology level, ground and role, and which armies beat which | under a minute |
 | `npm run balance:techs` | What each technology is worth to the nation that has it, by experiment: the same campaigns with and without it | about 2 hours for all of them (one technology: a few minutes); on demand in CI |
 | `npm run balance:tune` | Trains the AI: searches its settings for the ones that best meet the design goals | about 1.5 hours (`--quick`: 5 minutes) |
@@ -21,8 +21,8 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
 1. **Units:** `npm run balance:units -- --vs main` fights every unit type in the working tree against main's. A new
    unit appears as "new"; look at its value (about 1.0 means priced like line infantry), its matchups, and the red
    flags (worth under 0.75× or over 1.35× its price, or beating or losing to every other army of the same cost).
-2. **Campaigns:** `npm run balance -- --vs main` plays 200 campaigns of each on the same seeds. Read *Changes that
-   stand out* and the red flags. Check that the new nation survives and wins about as often as others of its tier.
+2. **Campaigns:** `npm run balance -- --vs main` plays 100 campaigns of each on the same seeds (see
+   [How many campaigns](#how-many-campaigns)). Read *Changes that stand out* and the red flags. Check that the new nation survives and wins about as often as others of its tier.
    Check also that the AI actually uses the new content: a unit nobody raises needs a share in `AI.doctrineMix`
    (`src/sim/config/ai.ts`), and a building nobody builds needs a rule in `handleConstruction`
    (`src/sim/ai/economy.ts`).
@@ -39,7 +39,8 @@ remain the ground truth; see [Limits](#limits-and-next-steps).
 ## Campaigns: `npm run balance`
 
 ```bash
-npm run balance                                           # 200 campaigns of the working tree
+npm run balance                                           # 100 campaigns of the working tree: big changes
+npm run balance -- --quick                                # 25 campaigns (seeds 1-25): small changes
 npm run balance -- --games 400 --set AI.warStrengthRatio=1.3   # with an override
 npm run balance -- --vs main                              # against another commit, on the same seeds
 npm run balance -- --set AI.unitsFlat.state=4 --vs defaults   # the same code with and without the override
@@ -47,16 +48,14 @@ npm run balance -- report balance-runs/<run>              # re-read a saved run 
 npm run balance -- compare balance-runs/<a> balance-runs/<b>
 ```
 
-Options: `--games N` (200) or `--seeds 1-300`, `--minutes M` to stop campaigns early (0, the default, plays them to
+Options: `--games N` (100), `--quick` (25) or `--seeds 1-300`, `--minutes M` to stop campaigns early (0, the default, plays them to
 the end; stopped runs skip the length and content checks), `--workers W` (every core), `--out DIR`
 (`balance-runs/<date-time>-…`, ignored by git) and `--quiet`. Each run saves `report.md`, `summary.json`,
 `meta.json` and `games.jsonl` (one record per campaign: final standings, each nation's AI personality, units raised
 and lost by type, buildings, research, a per-minute series of VP, provinces, power and technologies, and every war,
 peace and capture), so new questions can be asked of old runs.
 
-A campaign takes about 11 seconds of one core. Rates from 200 campaigns are good to about ±5 points (the report
-shows each nation's margin), enough to see a nation that is knocked out three games in four, not one that wins 12%
-instead of 10%. Rank and survival move more visibly than wins.
+A campaign takes about 20–50 seconds of one core (October 2026: all of them reach the 150-minute limit).
 
 The report, top to bottom:
 
@@ -75,6 +74,43 @@ The report, top to bottom:
   could raise it (and held the buildings it needs) and did; the same for buildings; the technologies winners research
   more than others, and those almost nobody researches. That last table is correlation (winners may research a
   technology because they are winning); the tech lab measures what a technology is actually worth.
+
+### How many campaigns
+
+Each campaign is one coin toss for every rate in the report, so the number of campaigns sets what a run can see. The
+margins below are 95% (the report shows each nation's), and "shows" means a p-value under 0.05 when two runs on the
+same seeds are compared, which the comparison calls **possible**; **likely real** (q under 0.05) needs a bigger change
+still, since a report tests dozens of numbers at once.
+
+| Campaigns | A rate near 10% (a nation's wins) | A rate near 50% (survival) | Use it for |
+| --- | --- | --- | --- |
+| 25 (`--quick`) | ±13 points; a change shows from 10% to about 36% | ±18; 50% to about 80% | Small changes (a tweak to one unit, building or AI number, a fix): catches a change that breaks the game (a nation never surviving, wars stopping, content the AI no longer uses), not one that shifts it |
+| 100 (default) | ±6; 10% to about 20% | ±10; 50% to about 64% | Big changes (a new country or region, rules, the AI): shows a nation doubling its wins or a clear shift in survival, pace and drama |
+| 200 | ±4; 10% to about 17% | ±7; 50% to about 60% | Settling a borderline result before a balance decision |
+
+Neither can tell a nation winning 12% from one winning 10%: that takes thousands. Rank and survival move more
+visibly than wins. If a quick run flags something, run 100 before believing it either way.
+
+### Runs that stop
+
+Each campaign is saved as it finishes (in `checkpoint/` inside the run's directory). If a worker dies (Node has
+crashed now and then on long runs on Windows: exit code 3221225477, or V8's "Check failed", seen on Node 22), it is
+replaced and plays only the campaigns it had not finished, up to 3 times per task. If the run itself stops (the
+retries spent, Ctrl+C, a reboot), run the same command again with the same `--out` (the run prints it when you did not
+give one): the saved campaigns are kept and only the missing ones are played. The finished run is the same as one that
+never stopped: the same seeds and records, in seed order (only the time each campaign took differs, as it does between
+any two runs), and the checkpoint is removed. A checkpoint refuses to carry on with other options or seeds, or once
+the simulation code (`src/sim`, either side's for `--vs`) has changed, so campaigns of different code cannot be mixed.
+`balance:tune` and `balance:techs` save as they go too.
+
+### One baseline per main commit
+
+Playing main again for every comparison doubles each run. Instead, play each main commit once and share it:
+`npm run balance -- --out balance-runs/main-<short hash>` on a checkout of exactly that commit (or the Balance
+workflow's artifact for it). Then compare your branch with `npm run balance -- compare balance-runs/main-<hash>
+balance-runs/<your run>`. This gives the same comparison as `--vs main` only when both runs used the same seeds,
+`--minutes` and overrides, the baseline is of the commit your branch starts from, and your branch has not changed the
+balance tools; otherwise use `--vs`.
 
 ### Overrides: `--set PATH=VALUE`
 
@@ -232,10 +268,10 @@ tech lab's are above.
 ## Continuous integration
 
 - **Every push** (`ci.yml`) runs the tools on a few short campaigns and battles, so they keep up with the simulation.
-- **The Balance workflow** (`balance.yml`) plays 400 campaigns and the unit lab every night on the default branch,
+- **The Balance workflow** (`balance.yml`) plays 100 campaigns and the unit lab every night on the default branch,
   and posts the reports on the run's summary page with the raw runs as an artifact.
-- **On demand** from the Actions tab, with the number of campaigns, a ref to compare with and overrides.
-- **On pull requests labelled `balance`**, it plays 200 campaigns of each against the base branch.
+- **On demand** from the Actions tab, with the number of campaigns (100), a ref to compare with and overrides.
+- **On pull requests labelled `balance`**, it plays 100 campaigns of each against the base branch.
 - **The Tech lab workflow** (`tech-lab.yml`) runs only on demand (Actions → Tech lab → Run workflow), with the number of
   campaigns, the technologies, the handover minute and overrides. It splits the technologies over four runners and
   posts the joined report on the run's summary page; all of them at 60 campaigns take about 40 minutes.
@@ -248,16 +284,17 @@ Runners are free for a public repository.
 
 | File | Role |
 | --- | --- |
-| `cli.ts`, `units.ts`, `tune.ts` | The three commands |
+| `cli.ts`, `units.ts`, `tune.ts`, `techs.ts` | The commands |
 | `run.ts` | Plays batches of campaigns, saves and loads runs |
-| `pool.ts`, `worker.ts` | Parallel workers: each task runs in a fresh vite-node process with its own copy of the simulation and its own overrides |
+| `pool.ts`, `worker.ts` | Parallel workers: each task runs in a fresh vite-node process with its own copy of the simulation and its own overrides; a worker that dies is replaced for what it had left |
+| `checkpoint.ts` | Saves results as they arrive, so a stopped run carries on |
 | `sim.ts` | Loads a copy of the simulation (the working tree's or a worktree's) and applies overrides before the rest of it loads |
 | `record.ts` | Plays and records one campaign, sampling it once a game-minute without changing it |
 | `summary.ts`, `report.ts`, `compare.ts`, `stats.ts` | Numbers, the markdown reports, comparisons and their statistics |
 | `goals.ts` | Goals, the goal penalty and the red flags |
 | `lab.ts` | The unit lab's battles and its value search |
 | `space.ts` | The tuner's search spaces |
-| `techs.ts`, `techlab.ts`, `techreport.ts` | The tech lab: its command, its paired campaigns, and its numbers and report |
+| `techlab.ts`, `techreport.ts` | The tech lab's paired campaigns, and its numbers and report |
 | `git.ts` | Worktrees for `--vs` |
 
 The tools never import the simulation statically: they load whichever copy a run asks for, which is how they can

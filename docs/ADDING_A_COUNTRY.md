@@ -27,7 +27,7 @@ rest into the neighbouring city of the same country (list their admin-1 units un
 one-city states.
 
 States spend about a quarter of their income on army upkeep at the start, playable nations about a sixth. Europe has
-twelve playable nations and twenty states. States are real nations: they have an economy, research,
+fifteen playable nations and twenty-one states. States are real nations: they have an economy, research,
 recruit, defend themselves and make peace,
 and the AI plays them. They never start a war and never win (only playable nations count for victory), and
 players can't pick them on the nation picker. They are there to be conquered at a price: the AI keeps a garrison of
@@ -121,7 +121,10 @@ regions if you can (`province-sources.mjs`); if the geography really is that way
 
 **Province size.** Aim for principal cities at least about 100 km apart. Hungary first had seven provinces, but
 Budapest, Székesfehérvár and Győr sit 60–110 km apart, so their army counters piled onto each other at the
-opening zoom. Merging two regions fixed it. The tiers' province ranges keep small countries small.
+opening zoom. Merging two regions fixed it. The tiers' province ranges keep small countries small. Across a strait
+the same holds: Malmö is 28 km from Copenhagen, so Skåne & Småland's city is Kristianstad, 105 km away. A capital
+whose region is mostly sea and fjord can take a smaller city ring (`size: 'major'`, as Athens and Reykjavík do) when
+the capital-sized one would cut the land round it in two.
 
 ### 2. Province rows ★ — `src/sim/scenario/europe/provinces.ts`
 
@@ -207,6 +210,12 @@ country: nations, tiers and content all come from the scenario. Measure each new
 without it), and watch for a power that gains its first land border: its AI draws its claims from the cities across
 its land borders, so an island power with one neighbour claims that neighbour's city in every campaign (Britain and
 Dublin, since Ireland was added).
+
+A whole nation offshore (Iceland) needs nothing special from the generator: its regions border each other, it has
+no border provinces, so its field units go to its other provinces, and its AI claims nothing. It does need at least
+one crossing (the movement graph must be connected), and one is a trap either way: with only the crossing to
+Scotland, Iceland invaded Britain in four campaigns in five, because nothing ever threatens its own coast; with only
+the crossing to Bergen, nobody reached it and it lasted 98%. Two crossings, to two powers, let both sides reach it.
 
 The scenario tests cover any number of nations. They check that every province has a shape, that every town lies
 inside its own province (coastal and riverside towns sometimes need nudging a few kilometres inland onto the

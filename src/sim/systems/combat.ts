@@ -299,6 +299,9 @@ export function retreatTarget(state: GameState, world: World, army: Army, from: 
 export function withdrawArmy(state: GameState, world: World, army: Army, pid: ProvinceId): void {
   const enemies = hostileArmiesIn(state, world, pid, army.owner);
   if (enemies.length === 0) return;
+  // Having paid to get away, it is not stopped again on the road out (see `intercept` in movement).
+  const out = army.move?.leg;
+  if (out && out.to !== pid) out.withdrawing = true;
   const recon = army.units.some((u) => UNITS[u.type].recon);
   const loss = MORALE.retreatLoss * (recon ? 0.5 : 1);
   const before = army.units.length;

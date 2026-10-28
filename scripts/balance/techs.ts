@@ -10,8 +10,11 @@
 // Options: --games N (60) or --seeds 1-60, --at 20 (minute of the handover), --minutes M (0 = to the end),
 // --workers, --out DIR, --quiet. Every technology costs one campaign per seed, so all of them at 60 seeds
 // is about 3,000 campaigns: two hours on 4 cores, or about half an hour split over 4 runners in CI.
+// Each seed's results are saved as they finish (DIR/checkpoint/): if a run stops, run the same
+// command with the same --out and only the missing seeds are played.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { Checkpoint, simFingerprint } from './checkpoint';
 import { parseArgs } from 'node:util';
 import { workingTree } from './git';
 import { parseOverride } from './overrides';
@@ -78,16 +81,28 @@ if (command === 'merge') {
   }
   const out = values.out ?? newRunDir('techs');
   console.error(`Tech lab: ${techs.length} technologies × ${seeds.length} seeds (about ${techs.length * seeds.length} campaigns) on ${workers} workers…`);
-  const tasks: WorkerTask[] = seeds.map((seed) => ({ kind: 'techs', simRoot: head.simRoot, overrides, seeds: [seed], techs: techs.map((t) => t.id), settings }));
-  const results: TechSeedResult[] = [];
-  const tick = progress('campaigns', seeds.length * (techs.length + 1));
-  await runTasks(tasks, workers, (msg) => {
-    if (msg.type !== 'techs') return;
-    if (msg.result) results.push(msg.result);
-    tick(techs.length + 1);
-  });
+  if (!values.out) console.error(`  (If the run stops, carry it on with the same command and --out ${out})`);
+  const ids = techs.map((t) => t.id);
+  const checkpoint = new Checkpoint<{ seed: number; result: TechSeedResult | null }>(join(out, 'checkpoint'), { sim: simFingerprint(head.simRoot), overrides, seeds, techs: ids, settings });
+  const done = new Map(checkpoint.entries.map((e) => [e.seed, e.result]));
+  const tasks: WorkerTask[] = seeds.filter((seed) => !done.has(seed)).map((seed) => ({ kind: 'techs', simRoot: head.simRoot, overrides, seeds: [seed], techs: ids, settings }));
+  if (done.size > 0) console.error(`  Carrying on from ${checkpoint.dir}: ${done.size} of ${seeds.length} seeds already played.`);
+  const tick = progress('campaigns', seeds.length * (techs.length + 1), done.size * (techs.length + 1));
+  try {
+    await runTasks(tasks, workers, (msg) => {
+      if (msg.type !== 'techs' || done.has(msg.seed)) return;
+      done.set(msg.seed, msg.result);
+      checkpoint.add({ seed: msg.seed, result: msg.result });
+      tick(techs.length + 1);
+    });
+  } catch (err) {
+    throw new Error(`${err instanceof Error ? err.message : String(err)}
+${done.size} of ${seeds.length} seeds are saved in ${checkpoint.dir}: run the same command with --out ${out} to play only the rest.`);
+  }
+  const results = [...done.values()].filter((r): r is TechSeedResult => r !== null);
   const run: TechRun = { label: head.label, commit: head.commit, overrides, settings, seeds: describeSeeds(seeds), techs, results: results.sort((a, b) => a.seed - b.seed) };
   save(out, run);
+  checkpoint.remove();
   if (!values.quiet) console.log(renderTechs(run));
   console.error(`Saved to ${out}/ (techs.md, techs.json).`);
 } else {

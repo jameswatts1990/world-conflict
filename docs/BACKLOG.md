@@ -350,6 +350,12 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Fog of war: provinces and armies see one province around them, reconnaissance units two over open land
       (mountains and narrow seas are seen across but not beyond, seas over 350 km not at all); unseen land is veiled and
       hides armies, battles, sieges, buildings and morale; the fog lifts when the campaign ends
+- [x] Shorter sight with radar blips: sight per unit type (most troops see only where they stand, reconnaissance
+      units a step further; held land just over its border), and beyond it unknown armies show as blips of a rough
+      size (small, medium, large), nothing else; the AI reads them by the same rules
+- [x] Sight as circles in km on the map: full sight is a nation's own territory and where its armies stand; each
+      unit type sees enemy armies within `sightKm` (line troops 100 km, scouts 170) and picks up blips within
+      `blipKm` (225, 350), held land blips within 120 km; a marching army no longer watches from the far end of its road
 - [x] Shared sight between co-belligerents (powers fighting a common enemy) with the Liaison Officers research; the
       game calls them co-belligerents, not allies, since nobody agrees to it
 - [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they
@@ -411,6 +417,20 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Ukraine and Belarus (major), Moldova and the Baltic states (minor); Crimea and Sevastopol Ukrainian,
       Vilnius the Lithuanian capital; Ukraine in five regions. Ukraine, Belarus and Moldova use Eastern equipment;
       the Baltic states Western. Russia and Kaliningrad remain outside the theatre.
+- [x] The Nordic countries: Sweden, Norway, Finland and Iceland as major powers (36 nations with the East, 115 regions, 84 VP);
+      the Scandinavian mountains as named passes, the Øresund, Skagerrak, Åland Sea and Gulf of Finland (Helsinki–Tallinn)
+      crossings, and Iceland joined to
+      Scotland (past the Faroes) and to Bergen. Measured and left out: Iceland–Scotland alone (Iceland invades
+      Britain in four campaigns in five), Iceland–Norway alone (nobody reaches Iceland: it lasts 98%), Germany–Sweden
+      across the Baltic (Sweden lasts 37%), the Kvarken (no change) and dropping the Skagerrak and Åland crossings
+      (Sweden and Norway last about a third)
+- [x] The Gulf of Finland crossing (Helsinki–Tallinn) gives Finland a second front: it takes Swedish land in 118
+      campaigns in 200 instead of 181, and Sweden lasts 76.5% instead of 48%. Measured and left out: a Gotland–Riga
+      crossing (Sweden turns on Latvia and lasts 66%, Latvia lasts 15% instead of 25%, Hungary wins 36.5%)
+- [ ] A secure flank makes a bully: Iceland, which nobody needs to garrison against, raids Norway (163 campaigns in
+      200) or Britain (61) and lasts 94.5%; Finland still lasts 85.5% and takes Estonian land in 157. A general
+      mechanic for the balance follow-up (how the AI weighs a power whose army need not defend anything, or garrisons
+      against landings), not per-nation tweaks
 - [x] A projection for the far north before Scandinavia: a conformal conic over Europe (35°N and 65°N) in place of
       Mercator, which drew a kilometre at 71°N twice as long as at 48°N; the world round the theatre is a cap of the
       globe fading into the sea
