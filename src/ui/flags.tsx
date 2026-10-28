@@ -69,6 +69,19 @@ function chequy(x: number, y: number, size: number): ReactElement {
   );
 }
 
+/** A Nordic cross set towards the hoist, as Denmark's, with an optional border round it. */
+function nordicCross(field: string, cross: string, border?: string): ReactElement {
+  return (
+    <>
+      <rect width={W} height={H} fill={field} />
+      {border && <rect x={8.2} width={5} height={H} fill={border} />}
+      {border && <rect y={7.5} width={W} height={5} fill={border} />}
+      <rect x={9} width={3.4} height={H} fill={cross} />
+      <rect y={8.3} width={W} height={3.4} fill={cross} />
+    </>
+  );
+}
+
 /** Small heraldic eagle, legible at flag scale. */
 function eagle(fill: string): ReactElement {
   return <path d="M15 7L12 4L10 4L11 6L13 7L12 9L8 6L5 6L8 9L5 9L9 12L12 12L10 16L15 14L20 16L18 12L21 12L25 9L22 9L25 6L22 6L18 9L17 7L19 6L20 4L18 4Z" fill={fill} />;
@@ -159,6 +172,10 @@ const FLAGS: Record<string, ReactElement> = {
       <rect y={8.3} width={W} height={3.4} fill="#fff" />
     </>
   ),
+  se: nordicCross('#006aa7', '#fecc00'),
+  no: nordicCross('#ba0c2f', '#00205b', '#fff'),
+  fi: nordicCross('#f4f4f4', '#002f6c'),
+  is: nordicCross('#02529c', '#dc1e35', '#fff'),
   ch: (
     <>
       <rect width={W} height={H} fill="#d52b1e" />

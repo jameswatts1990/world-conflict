@@ -64,6 +64,28 @@ const base: Omit<NationDef, 'speciality' | 'identity'>[] = [
     trait: 'Mountain shield',
     blurb: 'A peninsula behind the Pindus and the Rhodopes. Macedonia guards the road north; Crete and the Aegean islands stretch the homeland across the sea.',
   },
+  // The Nordic powers. Sweden armed itself (Bofors guns, Landsverk tanks) on German patterns; Norway and
+  // Iceland bought British and French; Finland fought with Russian imperial stocks and captured Soviet kit.
+  {
+    id: 'se', name: 'Sweden', adjective: 'Swedish', color: '#d6a52a', capital: 'se-stockholm', power: 'major', bloc: 'central',
+    trait: 'Northern iron',
+    blurb: 'The largest of the Nordic powers: Bofors guns, the iron ore of Kiruna and a long Baltic coast. Norway beyond the mountains, Finland at the head of the Gulf of Bothnia, Denmark across the Øresund.',
+  },
+  {
+    id: 'no', name: 'Norway', adjective: 'Norwegian', color: '#8e2d4a', capital: 'no-oslo', power: 'major', bloc: 'western',
+    trait: 'Fjords and fells',
+    blurb: 'A long coast of fjords behind the Scandinavian mountains. Sweden along the whole land border, Finland in the far north; Denmark lies across the Skagerrak.',
+  },
+  {
+    id: 'fi', name: 'Finland', adjective: 'Finnish', color: '#8fb3e8', capital: 'fi-helsinki', power: 'major', bloc: 'eastern',
+    trait: 'Forest and winter',
+    blurb: 'Lakes and forests at the edge of the theatre. Sweden at Tornio and across the Åland Sea, Norway in Lapland, Estonia across the Gulf of Finland; the long eastern border faces Russia, outside the war.',
+  },
+  {
+    id: 'is', name: 'Iceland', adjective: 'Icelandic', color: '#3b9e9a', capital: 'is-reykjavik', power: 'major', bloc: 'western',
+    trait: 'Remote island',
+    blurb: 'Alone in the North Atlantic, a long voyage from Scotland and Norway. No land border to defend or to cross: every war is fought across the sea.',
+  },
   { id: 'ba', name: 'Bosnia & Herzegovina', adjective: 'Bosnian', color: '#c6a24d', capital: 'ba-sarajevo', power: 'minor', bloc: 'central' },
   { id: 'me', name: 'Montenegro', adjective: 'Montenegrin', color: '#963e59', capital: 'me-podgorica', power: 'minor', bloc: 'western' },
   { id: 'al', name: 'Albania', adjective: 'Albanian', color: '#a178b5', capital: 'al-tirana', power: 'minor', bloc: 'western' },

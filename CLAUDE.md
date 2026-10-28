@@ -205,7 +205,9 @@ npx vite-node scripts/dev/ai-report.ts 10 90 --human fr --difficulty easy
 
 The pathology and variety figures below are these two commands' results (ten seeds of 90 minutes; Easy with an idle
 France) on the simulation with the East (October 2026); the winner figures come from 200 campaigns of the same
-build, and the Challenge figures from the same ten seeds with an idle France at both levels.
+build, and the Challenge figures from the same ten seeds with an idle France at both levels. With the Nordic powers
+added, Normal all-AI stays within these ranges (reversals 1.4%, pile-on 0.2%, idle in the interior 9.4% against
+8.7% on main); the idle-France and Easy reports were not re-run on that build.
 
 - **Pathologies** should stay near zero: back-and-forth reversals under 1–2% of orders, abandoned captures about 0%,
   pile-on attacks under 1% (about 0.2% at Normal and 0% at Easy, counting deliberate support to weak captures), orders
@@ -219,12 +221,13 @@ build, and the Challenge figures from the same ten seeds with an idle France at 
   same seeds and use 80 or more before calling a shift. `scripts/dev/balance.ts 80 120` runs them in parallel and
   shows, per power: wins, eliminations, land held over time, capitals lost, wars declared by and on it, enemies at
   once, and who takes its land. Run 150 minutes to see whole campaigns ("on time" counts wins on score at the
-  limit). Currently, over 200 full campaigns with the five-region East on the current economy, none end on
-  objectives; all reach the 150-minute score limit. Win rates: Hungary 29%, Germany 19%, Poland 16.5%, France
-  and Italy 9.5% each, Britain 6.5%, Spain 6%, Greece 2%, Romania 1.5%, Ukraine 0.5%, and Belarus, Bulgaria and
-  Serbia 0%. Against main on the same seeds, Germany rises from 4%, Hungary from 27.5%, and Poland falls from
-  29.5%. Campaign survival: Ukraine 69.5%, Belarus 49.5%, Romania 39.5%, Serbia 30%, Bulgaria 55%, Greece 84.5%.
-  Balance is a separate follow-up using general mechanics.
+  limit). Currently, over 200 full campaigns with the East and the Nordic powers (36 nations, 84 VP, 34 to win),
+  none end on objectives; all reach the 150-minute score limit. Win rates: Hungary 29.5%, Poland 17%, Germany 15%,
+  Italy 13%, Spain 8.5%, France 6.5%, Greece 3%, Bulgaria and Ukraine 2%, Britain and Romania 1.5%, Sweden 0.5%,
+  and Belarus, Finland, Iceland, Norway and Serbia 0%. Against main without the Nordic powers on the same seeds,
+  Hungary rises from 26%, Germany falls from 18.5% and Poland from 19%. Campaign survival: Serbia 29.5%, Romania
+  45%, Bulgaria 56%, Belarus 56%, Norway 71.5%, Ukraine 73.5%, Sweden 76.5%, Finland 85.5%, Greece 87.5%, Iceland
+  94.5%. Balance is a separate follow-up using general mechanics.
 - **Challenge**: when war comes to an idle player and when they fall. With an idle France over 10 seeds of 90 minutes,
   Normal brings war at 7–29 minutes and a fall in 9 of 10, at 33–72 minutes; Easy brings war at 19–70 minutes and
   a fall in 1 of 10, at 85 minutes. An earlier run of 50 seeds of 90 minutes had France fall in 19 of 50 on Easy,
