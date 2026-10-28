@@ -362,7 +362,8 @@ Specialities are optional: a nation without one shows its bloc instead.
   province where an enemy army stands already stops it there to fight (it holds at the crossroads until the battle
   is over, as above). On the road between two lands, an army that comes level with an enemy army on that road (one
   standing on it, one coming the other way, or one it catches up with) is stopped at that spot if the enemy can see
-  it (its nation's sight, §6.7: in practice always, since an army watches the road it is on, but fog rules decide);
+  it (its nation's sight, §6.7: in practice always, since an army sees 100 km round it and so the spot where it
+  meets the enemy, but fog rules decide);
   two marching armies stop if either sees the other. Both then stand on the road at the meeting point, in the land
   whose stretch of road it is, and fight a normal battle there (§6.2): the defender is whoever holds that land, as
   in any battle. Each keeps its march order: the winner goes on along its road once the field is clear; the player
@@ -392,21 +393,26 @@ Specialities are optional: a nation without one shows its bloc instead.
 
 ### 6.7 Sight and the fog of war
 
-- **Sight is short.** Every province a nation holds sees its own region (a city and the lands round it count as one
-  step, so sight carries on round a city for free) and the provinces just over its border, and whoever sees a land
-  next to a city sees into the city. Armies see much less: how far is a property of each unit type (`sight` in
-  `src/sim/config/units.ts`), and an army sees as far as its best-sighted unit. Most troops see only the province
-  they stand in (in a city, its lands too; on a land, the city it lies round; on the march, both ends of the road).
-  Reconnaissance units (cavalry, armoured cars) see one step: their region and the provinces next to it. Later units
-  (aircraft, satellites) can be given far more. Sight carries over open land; mountains and narrow seas (up to 110 km
-  of water, coast to coast, such as the Channel) are seen across but not beyond, so scouts in Piedmont see Savoy,
-  Haute-Provence and the Riviera across the Alps, not the Rhône valley beyond; wider seas (Sardinia to Barcelona, Rome
-  to Split) hide the far shore altogether. A marching army is seen at the nearer end of its road.
-- **Radar blips.** A step further out than it sees, a nation picks up unknown armies as blips: held land detects two
-  steps out, and each unit one step further than it sees (or its type's own `detect`), by the same rules as sight. A
-  blip shows where (the province's centre) and a rough size, nothing else: not whose, not what units, not their
-  strength, and every hidden army in one province makes one blip. Its size counts their units together: small (1–3),
-  medium (4–7) or large (8 or more) (`SIGHT.blipUnits` in `src/sim/config/rules.ts`). Hovering a blip says
+- **Full sight is short.** A nation sees in full only its own territory (the provinces it holds, not over the
+  border) and the province each of its armies stands in (on the march, the nearer end of its road, never the far end).
+- **Sight and blip circles, in km on the map.** Each unit type has two circles (`sightKm` and `blipKm` in
+  `src/sim/config/units.ts`; absent, `SIGHT.unitKm` and `SIGHT.unitBlipKm` in `src/sim/config/rules.ts`), and an army
+  has the best of its units'. They are centred where the army is (its province's centre, or its spot on the road it
+  is marching or halted on). An enemy army within the sight circle is seen in full wherever it stands, at a
+  province's centre or out on a road, and so is every province whose centre lies inside (the map clears its fog).
+  Within the larger blip circle, enemy armies show as radar blips. Line troops (infantry, artillery, tanks and the
+  rest) see 100 km and pick up blips to 225 km; reconnaissance units (cavalry, armoured cars) see 170 km and pick up
+  blips to 350 km. Later units (aircraft, radar stations, satellites) are meant to get far larger circles. Distance
+  is the straight line on the ground; mountains and seas do not block it. Held land sees only itself, but picks up
+  blips within 120 km of the centre of each province it holds (`SIGHT.landBlipKm`), which reaches about 80 to 100 km
+  over the border, so the border is never blind. Selecting one of your armies shows its two circles as faint rings.
+- **Calibration.** Brest to Warsaw is about 183 km on the map. Belarusian cavalry at Brest sees the Polish border
+  lands (Biała Podlaska 67 km, Lublin 122 km, Podlachia 170 km) in full; Warsaw (183 km), Radom (184), Płock (247),
+  Łódź (287) and Kraków (345) are blips; Pomerania (371) and beyond are hidden. Line infantry at Brest sees only
+  Biała Podlaska, and Lublin, Podlachia, Warsaw and Radom are blips (`tests/visibility.test.ts` checks this).
+- **Radar blips.** A blip shows where (the centre of the province the army is in) and a rough size, nothing else: not
+  whose, not what units, not their strength, and every hidden army in one province makes one blip. Its size counts
+  their units together: small (1–3), medium (4–7) or large (8 or more) (`SIGHT.blipUnits`). Hovering a blip says
   "Unknown army — large"; selecting the province says the same. A province on the radar that shows no blip is empty of
   armies, as far as anyone can tell, so blips also show where the enemy is not.
 - **Co-belligerents** are powers at peace with each other and at war with a common enemy. It is not an alliance: there
@@ -796,8 +802,10 @@ support and infrastructure, saying what a new building would replace) and a link
 - Battles last about 1–2 minutes and end in routs: is that the right pace, and is encirclement readable enough?
 - Is city growth worth its slots, and is the research tree's length right for a 2.5-hour game?
 - Do national specialities feel distinct without breaking the starting balance?
-- Is sight now short enough, and are radar blips the right halfway house? Held land sees just over its border and
-  armies only where they stand; is that too blind at the front, and do blips give away too much (or too little)?
+- Are the sight circles the right size (line troops 100 km sight and 225 km blips, scouts 170 and 350, held land
+  blips to 120 km)? Held land sees only itself: is the front too blind, and do blips give away too much (or too
+  little)? Some regions are wide (Lisbon lies 120 to 150 km from its lands), so a line army next door does not see
+  into the city.
 - Is Easy gentle enough for a first campaign, and Normal a fair fight for an experienced player?
 - Positions differ in the 200-campaign five-region East run on the current economy. Against main on the same seeds,
   Germany's wins rise from 4% to 19%, Hungary's from 27.5% to 29%, and Poland's fall from 29.5% to 16.5%.

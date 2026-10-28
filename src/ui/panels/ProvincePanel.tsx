@@ -412,6 +412,8 @@ function FogNote({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
   const { state, world, human } = ctrl;
   const allies = alliesOf(state, world, human).map((a) => world.nations[a].name);
   const blip = ctrl.radar().at.get(pid);
+  const sightKm = UNITS.cavalry.sightKm ?? SIGHT.unitKm;
+  const blipKm = UNITS.cavalry.blipKm ?? SIGHT.unitBlipKm;
   return (
     <div className="fog-note" data-testid="fog-note">
       <div className="fog-title">
@@ -423,10 +425,10 @@ function FogNote({ ctrl, pid }: { ctrl: GameController; pid: ProvinceId }) {
         </p>
       )}
       <p className="muted small">
-        No reports come from here: its armies, battles, buildings and morale are hidden. Your land watches its own region and the provinces just
-        over its border; an army sees only where it stands, and reconnaissance units (cavalry, armoured cars) see a step further over open land.
-        Mountains and narrow seas are seen across but not beyond, and seas wider than {SIGHT.seaKm} km not at all. A little further out than they
-        see, your land and armies pick up unknown armies on the radar, as blips of a rough size.
+        No reports come from here: its armies, battles, buildings and morale are hidden. You see your own territory and the province
+        each of your armies stands in. Round each army you see enemy armies within {SIGHT.unitKm} km ({sightKm} km with cavalry or
+        armoured cars), and further out, up to {SIGHT.unitBlipKm} km ({blipKm} km), you pick up unknown armies on the radar, as
+        blips of a rough size. Your land picks up blips up to {SIGHT.landBlipKm} km from the middle of each province you hold.
       </p>
       <p className="muted small">
         {sharesAlliedSight(state, human)

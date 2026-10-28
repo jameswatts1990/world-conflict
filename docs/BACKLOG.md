@@ -353,6 +353,9 @@ Found by playing full campaigns in the browser and reading the code end to end.
 - [x] Shorter sight with radar blips: sight per unit type (most troops see only where they stand, reconnaissance
       units a step further; held land just over its border), and beyond it unknown armies show as blips of a rough
       size (small, medium, large), nothing else; the AI reads them by the same rules
+- [x] Sight as circles in km on the map: full sight is a nation's own territory and where its armies stand; each
+      unit type sees enemy armies within `sightKm` (line troops 100 km, scouts 170) and picks up blips within
+      `blipKm` (225, 350), held land blips within 120 km; a marching army no longer watches from the far end of its road
 - [x] Shared sight between co-belligerents (powers fighting a common enemy) with the Liaison Officers research; the
       game calls them co-belligerents, not allies, since nobody agrees to it
 - [x] Computer opponents play under the same fog: they know the map, the public military power figures and what they

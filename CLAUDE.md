@@ -243,10 +243,16 @@ than retuning silently, and recommend human playtests for anything about feel.
   `isArmyVisible` and `radarBlips`, never straight from `state.armies` or `hostileArmiesIn` on a province it cannot
   see. Military power totals (`nationPower`), ownership and city tiers are public. `tests/ai.test.ts` checks that
   hidden armies stay hidden.
-- Sight is short (`src/sim/visibility.ts`): held land sees its region and just over the border, an army only where it
-  stands unless a unit type sets more (`sight` in `config/units.ts`; reconnaissance 1). A step further out
-  (`detect`, default sight + 1; held land `SIGHT.provinceDetect`) hidden armies show as radar blips: province and size
+- Sight is short (`src/sim/visibility.ts`): a nation sees whole only its own territory and the province each of its
+  armies stands in (`armySightedAt`: on a leg, the nearer end). Round each army are two circles in km on the map
+  (`sightKm`/`blipKm` in `config/units.ts`, defaults `SIGHT.unitKm` 100 and `SIGHT.unitBlipKm` 225; reconnaissance
+  170/350), centred on its spot (`armySpot`: anchor or point on its road); held land has a blip circle of
+  `SIGHT.landBlipKm` round each held anchor. Enemy armies inside a sight circle are seen wherever they stand (and
+  provinces whose anchor is inside are seen whole); inside a blip circle they show as radar blips: province and size
   bucket only (`radarBlips`). A blip must never reveal owner, unit types or strength. Both are derived, never stored.
+  `visibleProvinces`/`detectedProvinces` return a `Watch` (a set of provinces plus the circles); pass it to
+  `isArmyVisible`, which uses the circles for armies on roads. Distances use `world.spots` (anchors as whole metres
+  on the globe) and compare squared whole numbers (`withinKm`), so boundaries never depend on float trig.
 - `setAiOrderTrace` (from `src/sim`) sees every AI move order with the decision step that issued it; tag any new move
   order in `src/sim/ai/military.ts` with a reason.
 - The AI thinks every 8 s (14 on Easy: `thinkIntervalSeconds` in `AI_LEVELS`), but captures take 20 s or more. Any
