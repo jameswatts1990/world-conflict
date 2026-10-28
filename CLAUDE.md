@@ -77,6 +77,14 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   `unitModelScale` grow the models with `closeUpGrowth` past `ZOOM.closeUp`. Models must never grow faster than the
   map (pixels per model unit over the zoom never rising): a city's coast reach is baked for the first model zoom
   (`REACH_SCALE`) and its buildings would reach the sea. Keep text (plates, badges) a constant size on screen.
+- Nothing switches at once as the zoom changes. Crossing a `STAGES` threshold (a change of look: chips, capitals'
+  names, models, nation names), what changes fades: the old look, drawn for the new zoom (`withinStage`), fades out
+  in a layer of its own over the new one fading in (`MapFade`, `fadeLayer`, `.map-fade`); only whole layers fade, so
+  the compositor does it without drawing the map again. A new zoom-dependent layer goes into `marks` and `fades`.
+  Layers move between the drawing and a fade, so keep slow work out of their own state (`nationLabels` is kept by
+  `MapView`). After a gesture, marks drawn at a size on screen ease back from the size the gesture showed them at
+  (`keepSize` on a wrapper `<g>` without a `transform` attribute, which the CSS animation would replace;
+  `.keep-size`, on screen only); never during a gesture (`stopSettling` at its start).
 - Measure with `scripts/dev/pan-perf.mjs`, and for the cost of one full raster by layer, Chrome's paint profiler
   (`LayerTree.makeSnapshot` and `profileSnapshot` over CDP).
 
