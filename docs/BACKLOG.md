@@ -203,6 +203,15 @@ rock-paper-scissors without names or art, and the AI could be smarter.
       quarter of the CPU, frames reaching the screen while dragging went from 22 to 41 a second (52 on the desktop,
       from 22); a mid-game map left alone rasterises a third as much. `scripts/dev/pan-perf.mjs` now counts the
       frames that reach the screen and the raster time, for zooms and the desktop as well as phone drags
+- [x] Zoom frame rate, first pass: close-up terrain tiles are 512 px (a quarter of the work each, so no one bake
+      holds the main thread for long), use fewer octaves of fine noise (6 and 4 instead of 8 and 5) and bake one
+      per idle moment (`requestIdleCallback`) instead of back to back; after a zoom, which marks ease back is
+      decided from their map positions rather than by measuring each on screen. On an emulated phone at a quarter of
+      the CPU, a zoom followed by a pause (tiles baking) dropped 57% of frames, now 38%, with tile encoding on the
+      main thread halved (4.5 s to 2.2 s); zooms back to back (no time to bake) are unchanged within the run-to-run
+      noise, and drags and the desktop likewise. Tried and dropped: `RESCALE` 3 with `RESCALE_MS` 350 (no clear gain
+      for visibly softer zooms); the layers (`SeaLayer` to `BorderLayer`) already skip a zoom's redraw. Still to
+      check on real devices (iOS Safari, Android Chrome)
 - [ ] Map redraws, next: each one still rasterises the whole view; a quarter of that is the border layer's wide
       strokes (each power's band, your glowing outline), a quarter the terrain bitmaps and the sea's gradient.
       Measure on real devices (above) before restyling them
