@@ -466,7 +466,7 @@ function fadeRing(geo: MapGeometry): string {
  * the same relief are baked for the view once it settles and laid over it. Tiles already
  * baked at a coarser level stay underneath until the sharper ones arrive.
  */
-function TerrainDetail({ geo, world, view, k }: { geo: MapGeometry; world: World; view: [number, number, number, number]; k: number }) {
+function TerrainDetail({ geo, world, view, k, panning }: { geo: MapGeometry; world: World; view: [number, number, number, number]; k: number; panning: RefObject<boolean> }) {
   const [, bump] = useState(0);
   // Past 2 device pixels per screen pixel the extra sharpness is not worth the baking.
   const level = detailLevel(k * Math.min(2, window.devicePixelRatio || 1));
@@ -474,9 +474,16 @@ function TerrainDetail({ geo, world, view, k }: { geo: MapGeometry; world: World
   const key = need.map((t) => t.key).join(' ');
   useEffect(() => {
     let live = true;
-    const timer = window.setTimeout(() => {
+    let timer = 0;
+    // A tile takes the main thread for a few frames to bake, so it waits for a gesture to end.
+    const request = () => {
+      if (panning.current) {
+        timer = window.setTimeout(request, 180);
+        return;
+      }
       for (const job of requestTiles(geo, world, need)) job.then((t) => live && t && bump((n) => n + 1));
-    }, 180);
+    };
+    timer = window.setTimeout(request, 180);
     return () => {
       live = false;
       window.clearTimeout(timer);
@@ -2245,6 +2252,8 @@ export function MapView(props: MapViewProps) {
   const [rest, setRest] = useState<ZoomTransform>(zoomIdentity);
   // Whether a drag, pinch, wheel or animated move of the map is under way.
   const panning = useRef(false);
+  // Whether the view has actually moved in the gesture under way (a press that has not yet is still a click).
+  const moving = useRef(false);
   // The zoom that fits the reference view to the screen (see baseFor).
   const [viewK, setViewK] = useState(1);
   const [size, setSize] = useState<[number, number]>([1, 1]);
@@ -2317,7 +2326,8 @@ export function MapView(props: MapViewProps) {
     layer.style.transform = `translate(${x}px,${y}px) scale(${s})`;
     // So does finding what the pointer is over while the drawing is scaled (every wheel event does), so
     // until it is drawn for its new zoom a bare shield over it takes the pointer.
-    if (shieldRef.current) shieldRef.current.style.display = s === 1 ? '' : 'block';
+    // The same while the map is being dragged: every mouse move would otherwise hit-test the whole drawing.
+    if (shieldRef.current) shieldRef.current.style.display = s === 1 && !moving.current ? '' : 'block';
   }, []);
 
   /**
@@ -2385,6 +2395,7 @@ export function MapView(props: MapViewProps) {
       .filter((e: MouseEvent) => (!e.ctrlKey || e.type === 'wheel') && !e.button && !(e.shiftKey && e.type === 'mousedown'))
       .on('zoom', (e: D3ZoomEvent<HTMLDivElement, unknown>) => {
         live.current = e.transform;
+        if (panning.current) moving.current = true;
         // A jump (the opening view, an arrow key) comes to rest at once.
         if (!panning.current) return settle();
         place();
@@ -2400,6 +2411,7 @@ export function MapView(props: MapViewProps) {
       })
       .on('end', () => {
         panning.current = false;
+        moving.current = false;
         settle();
         if (fadeOver.current) setFade(null);
       });
@@ -2904,7 +2916,7 @@ export function MapView(props: MapViewProps) {
             <SeaLayer geo={geo} glow={glow} />
             <WorldLayer geo={geo} />
             <TerrainLayer geo={geo} world={world} texture={texture} />
-            {texture && <TerrainDetail geo={geo} world={world} view={drawnView} k={k} />}
+            {texture && <TerrainDetail geo={geo} world={world} view={drawnView} k={k} panning={panning} />}
             <ProvinceLayer
               geo={geo}
               world={world}

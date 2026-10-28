@@ -74,7 +74,10 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   under it. Anything new that changes from frame to frame goes in the top one.
 - Chrome lays out all SVG text again when the `<svg>` element's own transform changes, when a transform goes from
   `none` to something, and when it hit-tests the SVG while it is scaled. Hence the transform on the wrapper, never
-  `none`, and the shield that takes the pointer while the drawing is scaled.
+  `none`, and the shield that takes the pointer while the drawing is scaled or dragged (every mouse move of a drag
+  would otherwise hit-test the whole drawing: about a second of main-thread time per 6 drags at a quarter CPU).
+  A close-up terrain tile blocks the main thread for several frames while it bakes (the browser draws the SVG
+  inside `toBlob`), so tiles wait for a gesture to end (`TerrainDetail` takes `panning`).
 - City, port and army models are SVG documents shown as `<image>`s, which Chrome replays shape by shape on every
   raster and lays out again on every zoom; the map draws them as bitmaps baked for the zoom (`spriteHref` in
   `art/adapters.tsx`, through `spriteSrc`). A new sprite on the map goes through `spriteSrc` too.
