@@ -98,6 +98,7 @@ export function eventCue(e: GameEvent, state: GameState, world: World, human: Na
       return world.provinces[e.province].objectiveVp ? 'report' : null;
     }
     case 'battle':
+    case 'intercept':
       return e.nations.includes(human) ? 'battle' : null;
     case 'rout':
       return e.nations.includes(human) ? 'rout' : null;

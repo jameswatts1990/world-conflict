@@ -120,7 +120,10 @@ The map is drawn in SVG; what makes it slow is the browser rasterising it (drawi
   straight distance between the anchors. An army walking within its land (to or from a spot on its
   road, `walksWithin`) has not left it: battles, captures and `hostileArmiesIn`/`armiesIn` go by `isArmyAway`, while
   merging, splitting and the like go by `isArmyInTransit` (any leg). Plan marches with `planMarch` (it starts from a province,
-  a road or mid-leg); `findPath` is province to province. The AI reads where its own armies are going (a province,
+  a road or mid-leg); `findPath` is province to province. Armies at war that come level on an open road stop there
+  to fight (`intercept` in `systems/movement.ts`, gated on the enemy's sight; not on a leg marked `withdrawing`), and
+  keep their march: an army can stand on a road (`road` set, `leg` null) with a path still to go, whose first entry
+  is either end of that road (`startLeg` carries on from the spot). The AI reads where its own armies are going (a province,
   or the land a road halt lies in) through `armyLocation` in `ai/context.ts`.
 
 ## Map rules
