@@ -1,8 +1,9 @@
 name: Balance
 
-# Plays hundreds of all-AI campaigns and the unit lab, and posts the reports on the run's summary
-# page (docs/BALANCE.md): nightly on the default branch, on demand, and on pull requests labelled
-# "balance", where the pull request is compared with its base branch on the same campaigns.
+# Plays 100 all-AI campaigns and the unit lab, and posts the reports on the run's summary page
+# (docs/BALANCE.md, "How many campaigns"): nightly on the default branch, on demand, and on pull
+# requests labelled "balance", where the pull request is compared with its base branch on the
+# same campaigns. The nightly run's artifact can serve as the shared baseline for its commit.
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -10,7 +11,7 @@ on:
     inputs:
       games:
         description: Campaigns to play (on each side when comparing)
-        default: '300'
+        default: '100'
       vs:
         description: Compare with a git ref (main, a tag, a commit) or "defaults"; blank for a plain run
         default: ''
@@ -33,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 180
     env:
-      GAMES: ${{ github.event_name == 'pull_request' && '200' || inputs.games || '400' }}
+      GAMES: ${{ github.event_name == 'pull_request' && '100' || inputs.games || '100' }}
       VS: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || inputs.vs }}
       SET: ${{ inputs.set }}
     steps:
@@ -43,7 +44,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
       - run: npm ci
         env:
