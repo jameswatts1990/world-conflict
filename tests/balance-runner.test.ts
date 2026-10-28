@@ -3,8 +3,7 @@
 // --out ends with exactly the records an uninterrupted run would have.
 import type { ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Checkpoint, simFingerprint } from '../scripts/balance/checkpoint';
@@ -16,7 +15,9 @@ import { summarise, type RunMeta } from '../scripts/balance/summary';
 
 const dirs: string[] = [];
 const tempDir = () => {
-  const dir = mkdtempSync(join(tmpdir(), 'wc-balance-'));
+  // Inside the checkout's own balance-runs/ (ignored by git), not the machine's shared temp folder.
+  mkdirSync('balance-runs', { recursive: true });
+  const dir = resolve(mkdtempSync(join('balance-runs', 'test-')));
   dirs.push(dir);
   return dir;
 };
